@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/scouter.css?v=8" />
+  <link rel="stylesheet" href="/scouter.css?v=9" />
 </head>
 <body>
   <div id="app" class="shell v-glass">
@@ -23,35 +23,33 @@
       <span class="corner corner-tr"></span>
     </div>
 
-    <header class="site-header">
-      <div class="site-header-inner">
-        <div class="brand-lockup">
-          <div class="brand-mark">SC</div>
-          <div>
-            <div class="brand-name">Coalition</div>
-            <div class="brand-sub">Scouter</div>
-          </div>
-        </div>
-        <div class="m-lcd stat-lcd">
-          <div class="m-readout" id="statCount">00</div>
-          <div class="v-label stat-lbl">Saved</div>
-        </div>
+    <div class="intake-shell">
+      <div id="intakeBar" class="intake-bar v-panel v-cut-sm hidden">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFD98A" stroke-width="1.6"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.3 7l8.7 5 8.7-5M12 22V12"/></svg>
+        <span class="v-label" style="font-size:9px">On rail</span>
+        <div class="v-readout v-emit-gold" id="statCount">00</div>
       </div>
-    </header>
 
-    <div class="page-body">
-      <div class="page-hero">
+      <div id="railToolbar" class="rail-toolbar hidden">
+        <div class="rail-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" id="railFilter" placeholder="Filter intake" autocomplete="off" />
+        </div>
+        <button type="button" class="m-btn m-btn-primary" id="btnNewScan">New scan</button>
+      </div>
+
+      <div class="page-hero" id="pageHero">
         <div class="hero-eyebrow">
           <svg class="hero-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <span class="v-label">Rail · Mobile intake</span>
+          <span class="v-label" id="pageEyebrow">Rail · Mobile intake</span>
         </div>
-        <h1 class="v-title" id="pageTitle">New scan</h1>
-        <p class="hero-sub">Capture photos and barcodes on this device. Items stay on your phone until Command Core sync.</p>
+        <h1 class="v-title" id="pageTitle" style="font-size:28px;line-height:1.05;margin-top:6px">New scan</h1>
+        <p class="hero-sub" id="pageSub">Capture photos and barcodes on this device. Items stay on your phone until Command Core sync.</p>
         <div class="gold-rule"></div>
       </div>
 
       <section id="viewCapture" class="view active">
-        <div class="m-panel v-cut panel-rise">
+        <div class="v-panel v-cut panel-block">
           <div class="panel-head">
             <h2 class="panel-title">Photos</h2>
             <span class="v-label" id="photoCountLbl">0 added</span>
@@ -61,40 +59,40 @@
             <div class="photo-drop-icon">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             </div>
-            <div class="photo-drop-title">DROP IMAGES HERE</div>
-            <div class="photo-drop-sub">Tap, drag, or use camera · HEIC supported · auto-compressed</div>
+            <div class="photo-drop-title">Drop a folder of scans</div>
+            <div class="photo-drop-sub">or tap to browse · HEIC supported · auto-compressed</div>
           </label>
-          <div class="photo-scroll" id="photoGrid"></div>
+          <div class="photo-scroll no-scrollbar" id="photoGrid"></div>
           <div class="m-btn-row">
-            <button type="button" class="m-btn m-btn-cut" id="btnCamera">Camera</button>
-            <button type="button" class="m-btn m-btn-cut" id="btnGallery">Gallery</button>
+            <button type="button" class="m-btn" id="btnCamera">Camera</button>
+            <button type="button" class="m-btn" id="btnGallery">Gallery</button>
           </div>
         </div>
 
-        <div class="m-panel v-cut panel-rise">
+        <div class="v-panel v-cut panel-block">
           <div class="panel-head">
             <h2 class="panel-title">Identify</h2>
           </div>
           <div class="m-btn-row-3">
-            <button type="button" class="m-btn m-btn-cut" id="btnScan">Scan</button>
-            <button type="button" class="m-btn m-btn-cut" id="btnLookup">Lookup</button>
-            <button type="button" class="m-btn m-btn-cut" id="btnManual">Manual</button>
+            <button type="button" class="m-btn" id="btnScan">Scan</button>
+            <button type="button" class="m-btn" id="btnLookup">Lookup</button>
+            <button type="button" class="m-btn" id="btnManual">Manual</button>
           </div>
           <div class="field-stack">
             <label class="m-eyebrow" for="barcodeInput">Barcode</label>
-            <input class="m-input" id="barcodeInput" placeholder="Scan or type UPC / EAN" inputmode="numeric" autocomplete="off" />
+            <input class="m-input w-full px-3 py-2.5" id="barcodeInput" placeholder="Scan or type UPC / EAN" inputmode="numeric" autocomplete="off" />
           </div>
           <div class="field-stack hidden" id="manualRow">
             <label class="m-eyebrow" for="manualTitle">Product title</label>
             <div class="m-btn-row">
-              <input class="m-input" id="manualTitle" placeholder="Enter manually" autocomplete="off" />
-              <button type="button" class="m-btn m-btn-cut" id="btnManualOk">Set</button>
+              <input class="m-input w-full px-3 py-2.5" id="manualTitle" placeholder="Enter manually" autocomplete="off" />
+              <button type="button" class="m-btn" id="btnManualOk">Set</button>
             </div>
           </div>
-          <div class="status-strip" id="identifyStatus">Add a photo, barcode, or title to commit</div>
+          <div class="status-strip" id="identifyStatus">Add a photo, barcode, or title to start intake</div>
         </div>
 
-        <div class="m-panel v-cut panel-rise">
+        <div class="v-panel v-cut panel-block">
           <div class="panel-head">
             <h2 class="panel-title">Item data</h2>
           </div>
@@ -112,7 +110,7 @@
           </div>
           <div class="field-stack">
             <label class="m-eyebrow" for="fieldNotes">Notes</label>
-            <textarea class="m-input" id="fieldNotes" placeholder="Optional notes…" rows="2"></textarea>
+            <textarea class="m-input w-full px-3 py-2.5" id="fieldNotes" placeholder="Optional notes…" rows="2"></textarea>
           </div>
         </div>
       </section>
@@ -127,17 +125,17 @@
     </div>
 
     <nav class="bottom-nav">
+      <button type="button" class="nav-tab" data-view="collection">
+        <span class="nav-tab-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        </span>
+        Intake
+      </button>
       <button type="button" class="nav-tab active" data-view="capture">
         <span class="nav-tab-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
         </span>
         Scan
-      </button>
-      <button type="button" class="nav-tab" data-view="collection">
-        <span class="nav-tab-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        </span>
-        Rail
       </button>
     </nav>
   </div>
@@ -149,7 +147,7 @@
     <div id="scanReader" class="scan-reader"></div>
     <video id="scanVideo" playsinline muted autoplay hidden></video>
     <p class="scan-hint v-label">Align barcode in frame</p>
-    <button type="button" class="m-btn m-btn-cut" id="btnScanClose">Cancel</button>
+    <button type="button" class="m-btn" id="btnScanClose">Cancel</button>
   </div>
 
   <div class="drag-overlay" id="dragOverlay" aria-hidden="true">
@@ -161,8 +159,8 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="/lib/html5-qrcode.min.js?v=8"></script>
-  <script src="/lib/image.js?v=8"></script>
-  <script src="/scouter.js?v=8"></script>
+  <script src="/lib/html5-qrcode.min.js?v=9"></script>
+  <script src="/lib/image.js?v=9"></script>
+  <script src="/scouter.js?v=9"></script>
 </body>
 </html>

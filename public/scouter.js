@@ -9,6 +9,16 @@ const CATEGORIES = [
 ];
 
 const catMap = Object.fromEntries(CATEGORIES.map((c) => [c.value, c]));
+
+/** Category hub colors — from Coalition ScanIntake.jsx CAT_HUBS */
+const CAT_HUBS = {
+  pokemon_sealed: { core: "#FFB43D", hi: "#FFD98A", sub: "Sealed" },
+  graded_slabs: { core: "#2BD9C0", hi: "#8FF6E8", sub: "Graded" },
+  raw_cards: { core: "#4FA8D8", hi: "#BFE9FF", sub: "Raw" },
+  sports_cards: { core: "#2E6F91", hi: "#7FD4FF", sub: "Sports" },
+  other: { core: "#4FC3F7", hi: "#A8E4FF", sub: "Other" },
+};
+
 const MAX_PHOTOS = 8;
 
 const state = {
@@ -21,6 +31,7 @@ const state = {
   scanner: null,
   scanLoop: null,
   html5Scanner: null,
+  filterQuery: "",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -59,6 +70,13 @@ const els = {
   btnScanClose: $("btnScanClose"),
   toast: $("toast"),
   dragOverlay: $("dragOverlay"),
+  intakeBar: $("intakeBar"),
+  railToolbar: $("railToolbar"),
+  railFilter: $("railFilter"),
+  btnNewScan: $("btnNewScan"),
+  pageHero: $("pageHero"),
+  pageEyebrow: $("pageEyebrow"),
+  pageSub: $("pageSub"),
 };
 
 function showToast(msg, type = "ok") {
@@ -195,60 +213,96 @@ async function addFiles(fileList) {
   }
 }
 
+function filteredItems() {
+  const q = state.filterQuery.trim().toLowerCase();
+  if (!q) return state.items;
+  return state.items.filter(
+    (i) =>
+      (i.title || "").toLowerCase().includes(q) ||
+      (i.barcode || "").toLowerCase().includes(q),
+  );
+}
+
+function holoCardHtml(item, hub) {
+  const src = photoSrc(item.photos[0]);
+  const title = escapeHtml(item.title || "Untitled");
+  const sub = [`×${item.quantity}`, item.barcode].filter(Boolean).join(" · ");
+  const face = src
+    ? `<img src="${src}" alt="" />`
+    : `<div class="holo-card-empty">NO IMG</div>`;
+  return `
+    <div class="holo-card-wrap">
+      <button type="button" class="holo-card" data-item="${item.id}" style="box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), inset 0 0 0 1px ${hub.core}55, 0 18px 40px -16px rgba(0,0,0,0.95)">
+        ${face}
+        <span class="holo-card-plate">
+          <span class="holo-card-title">${title}</span>
+          <span class="holo-card-sub" style="color:${hub.hi}">${escapeHtml(sub)}</span>
+        </span>
+      </button>
+    </div>`;
+}
+
 function renderCollection() {
   const count = state.items.length;
   els.statCount.textContent = String(count).padStart(2, "0");
 
+  const filtered = filteredItems();
+
   if (!count) {
-    els.collectionRoot.innerHTML =
-      '<div class="coll-empty m-panel v-cut">Nothing on the rail yet.<br/>Capture an item to begin.</div>';
+    els.collectionRoot.innerHTML = `
+      <div class="coll-empty-state">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2E6F91" stroke-width="1.4" style="opacity:0.7;filter:drop-shadow(0 0 14px #7FD4FF)"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        <div class="v-label" style="margin-top:16px;font-size:12px">Intake empty</div>
+        <p>Scan a barcode or drop a photo to bring inventory in.</p>
+      </div>`;
+    return;
+  }
+
+  if (!filtered.length) {
+    els.collectionRoot.innerHTML = `
+      <div class="coll-empty-state">
+        <div class="v-label" style="font-size:12px">No matches</div>
+        <p>Try a different filter term.</p>
+      </div>`;
     return;
   }
 
   els.collectionRoot.innerHTML = "";
 
   for (const cat of CATEGORIES) {
-    const items = state.items.filter((i) => i.category === cat.value);
+    const items = filtered.filter((i) => i.category === cat.value);
     if (!items.length) continue;
 
+    const hub = CAT_HUBS[cat.value] || CAT_HUBS.other;
     const section = document.createElement("section");
-    section.className = "hub-section m-panel v-cut open";
+    section.className = "hub-section v-panel v-cut panel-block";
+    section.style.boxShadow = `inset 0 1px 0 rgba(255,255,255,0.14), inset 0 0 40px -20px ${hub.hi}, 0 18px 44px -22px rgba(0,0,0,0.9)`;
+
     section.innerHTML = `
       <div class="hub-head">
-        <span class="hub-name">${cat.label}</span>
-        <span class="hub-count">${String(items.length).padStart(2, "0")}</span>
-      </div>
-      <div class="hub-items"></div>`;
-
-    const list = section.querySelector(".hub-items");
-    for (const item of items) {
-      const src = photoSrc(item.photos[0]);
-      const thumb = src
-        ? `<img class="item-thumb" src="${src}" alt="" />`
-        : `<div class="item-thumb-empty">NO IMG</div>`;
-      const title = item.title || "Untitled item";
-      const meta = [`×${item.quantity}`, item.barcode].filter(Boolean).join(" · ");
-
-      const row = document.createElement("div");
-      row.className = "item-card";
-      row.innerHTML = `
-        ${thumb}
-        <div class="item-info">
-          <div class="item-title">${escapeHtml(title)}</div>
-          <div class="item-meta">${escapeHtml(meta)}</div>
+        <div class="hub-icon" style="background:radial-gradient(circle at 32% 26%, rgba(255,255,255,0.2), ${hub.hi}22 32%, rgba(0,0,0,0.62) 72%);box-shadow:inset 0 0 0 1.5px ${hub.core}, 0 0 24px -8px ${hub.core}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${hub.hi}" stroke-width="1.6"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         </div>
-        <button type="button" class="item-del" data-del="${item.id}">×</button>`;
-      list.appendChild(row);
-    }
+        <div class="hub-meta">
+          <div class="v-label" style="font-size:9px">${hub.sub.toUpperCase()}</div>
+          <div class="v-title" style="font-size:16px;line-height:1.1;margin-top:2px">${cat.label}</div>
+        </div>
+        <div class="hub-count v-readout" style="color:${hub.hi};text-shadow:0 0 16px ${hub.core}">${String(items.length).padStart(2, "0")}</div>
+      </div>
+      <div class="holo-scroll no-scrollbar v-stage"></div>`;
 
-    section.querySelector(".hub-head").addEventListener("click", () => {
-      section.classList.toggle("open");
-    });
+    const scroll = section.querySelector(".holo-scroll");
+    scroll.innerHTML = items.map((it) => holoCardHtml(it, hub)).join("");
 
-    section.querySelectorAll("[data-del]").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        deleteItem(btn.dataset.del);
+    scroll.querySelectorAll("[data-item]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const item = state.items.find((i) => i.id === btn.dataset.item);
+        if (!item) return;
+        const title = item.title || "Untitled";
+        const meta = [`Qty ${item.quantity}`, item.barcode].filter(Boolean).join(" · ");
+        if (confirm(`${title}\n${meta}\n\nDelete this item from your phone?`)) {
+          deleteItem(item.id);
+        }
       });
     });
 
@@ -282,7 +336,7 @@ function resetCapture() {
   els.manualRow.classList.add("hidden");
   setCategory("other");
   renderPhotoGrid();
-  setStatus("Add a photo, barcode, or title to commit");
+  setStatus("Add a photo, barcode, or title to start intake");
   updateSaveState();
 }
 
@@ -401,11 +455,24 @@ function navigate(view) {
   els.viewCapture.classList.toggle("active", !isCollection);
   els.viewCollection.classList.toggle("active", isCollection);
   els.saveBar.classList.toggle("hidden", isCollection);
-  els.pageTitle.textContent = isCollection ? "Rail" : "New scan";
+  els.pageHero.classList.toggle("hidden", isCollection);
+  els.intakeBar.classList.toggle("hidden", !isCollection);
+  els.railToolbar.classList.toggle("hidden", !isCollection);
+
+  if (isCollection) {
+    els.pageTitle.textContent = "Intake";
+    renderCollection();
+    stopScanner();
+  } else {
+    els.pageTitle.textContent = "New scan";
+    els.pageEyebrow.textContent = "Rail · Mobile intake";
+    els.pageSub.textContent =
+      "Capture photos and barcodes on this device. Items stay on your phone until Command Core sync.";
+  }
+
   document.querySelectorAll(".nav-tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.view === view);
   });
-  if (isCollection) stopScanner();
 }
 
 async function stopScanner() {
@@ -656,6 +723,12 @@ function bindEvents() {
   });
 
   els.btnSave.addEventListener("click", saveCapture);
+
+  els.btnNewScan?.addEventListener("click", () => navigate("capture"));
+  els.railFilter?.addEventListener("input", () => {
+    state.filterQuery = els.railFilter.value;
+    renderCollection();
+  });
 
   document.querySelectorAll(".nav-tab").forEach((tab) => {
     tab.addEventListener("click", () => navigate(tab.dataset.view));
