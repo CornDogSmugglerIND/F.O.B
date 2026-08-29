@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#04070C" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -12,122 +13,152 @@
   <link rel="manifest" href="/manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/scouter.css?v=3" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/scouter.css?v=4" />
 </head>
 <body>
-  <div id="app">
-    <header class="hud-header">
-      <div class="hud-header-row">
-        <div class="hud-brand">
-          <div class="hud-mark">SC</div>
+  <div id="app" class="app-shell v-glass">
+    <div class="v-sweep"></div>
+    <div class="corner-brackets"></div>
+
+    <header class="site-header">
+      <div class="site-header-inner">
+        <div class="brand-lockup">
+          <div class="brand-icon">SC</div>
           <div>
-            <div class="hud-title">Scouter</div>
-            <div class="hud-sub">Intake · Coalition</div>
+            <div class="brand-name">Coalition</div>
+            <div class="brand-tag">Scouter · mobile intake</div>
           </div>
         </div>
-        <div class="hud-stat">
-          <div class="hud-stat-val" id="statCount">0</div>
-          <div class="hud-stat-lbl">SCANNED</div>
+        <div class="m-lcd">
+          <div class="m-lcd-val" id="statCount">0</div>
+          <div class="m-lcd-lbl">SCANNED</div>
         </div>
       </div>
     </header>
 
-    <main class="hud-main">
-      <!-- CAPTURE -->
-      <section id="viewCapture" class="view active">
-        <div class="v-panel photo-section">
-          <div class="v-label">Visual Capture</div>
-          <div class="photo-grid" id="photoGrid"></div>
-          <div class="m-btn-row" style="margin-top:10px">
-            <button type="button" class="m-btn" id="btnCamera">Camera</button>
-            <button type="button" class="m-btn" id="btnGallery">Gallery</button>
-          </div>
-        </div>
+    <div class="page-inner">
+      <div class="page-head">
+        <div class="v-label">Rail · Step 0</div>
+        <h1 class="v-title v-emit-gold">Scouter</h1>
+        <p class="page-sub">Snap photos, scan a barcode, commit to your collection — syncs to Command Core later.</p>
+      </div>
+      <div class="gold-rule"></div>
 
-        <div class="v-panel identify-panel">
-          <div class="v-label">Identify</div>
-          <div class="m-btn-row-3" style="margin-top:10px">
-            <button type="button" class="m-btn" id="btnScan">Scan</button>
-            <button type="button" class="m-btn" id="btnLookup">Lookup</button>
-            <button type="button" class="m-btn m-btn-ghost" id="btnManual">Manual</button>
+      <main>
+        <section id="viewCapture" class="view active">
+          <div class="m-panel">
+            <div class="panel-head">
+              <div class="panel-title">Photos</div>
+              <span class="v-label" id="photoCountLbl">0 added</span>
+            </div>
+            <div class="photo-drop" id="photoDrop">
+              <div class="photo-drop-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
+              <div class="photo-drop-title">Drop or tap to add photos</div>
+              <div class="photo-drop-sub">iPhone HEIC OK · auto-compressed for upload</div>
+            </div>
+            <div class="photo-grid" id="photoGrid"></div>
+            <div class="photo-actions">
+              <button type="button" class="m-btn m-btn-cut" id="btnCamera">Camera</button>
+              <button type="button" class="m-btn m-btn-cut" id="btnGallery">Gallery</button>
+            </div>
           </div>
-          <div class="identify-status" id="identifyStatus">Add photos or scan a barcode</div>
-          <div class="field-row" id="barcodeRow">
-            <input type="text" class="field-input" id="barcodeInput" placeholder="Barcode (optional)" inputmode="numeric" autocomplete="off" />
-          </div>
-          <div class="field-row hidden" id="manualRow">
-            <input type="text" class="field-input" id="manualTitle" placeholder="Product name" autocomplete="off" />
-            <button type="button" class="m-btn" id="btnManualOk">Set</button>
-          </div>
-          <input type="hidden" id="fieldBarcode" />
-          <input type="hidden" id="fieldTitle" />
-        </div>
 
-        <div class="v-panel meta-panel">
-          <div class="v-label">Item Data</div>
-          <div class="meta-grid">
-            <div class="meta-field">
-              <label class="v-label">Qty</label>
-              <div class="qty-control">
-                <button type="button" class="qty-btn" id="qtyMinus">−</button>
-                <div class="qty-val" id="qtyVal">1</div>
-                <button type="button" class="qty-btn" id="qtyPlus">+</button>
+          <div class="m-panel">
+            <div class="panel-head">
+              <div class="panel-title">Identify</div>
+            </div>
+            <div class="m-btn-row-3">
+              <button type="button" class="m-btn m-btn-cut" id="btnScan">Scan</button>
+              <button type="button" class="m-btn m-btn-cut" id="btnLookup">Lookup</button>
+              <button type="button" class="m-btn m-btn-cut" id="btnManual">Manual</button>
+            </div>
+            <div class="field-stack">
+              <label class="m-eyebrow" for="barcodeInput">Barcode</label>
+              <input type="text" class="m-input" id="barcodeInput" placeholder="Optional — scan or type UPC" inputmode="numeric" autocomplete="off" />
+            </div>
+            <div class="field-stack hidden" id="manualRow">
+              <label class="m-eyebrow" for="manualTitle">Product name</label>
+              <div class="m-btn-row">
+                <input type="text" class="m-input" id="manualTitle" placeholder="Enter title manually" autocomplete="off" />
+                <button type="button" class="m-btn m-btn-cut" id="btnManualOk">Set</button>
               </div>
             </div>
-            <div class="meta-field">
-              <label class="v-label">Category</label>
-              <select class="category-select" id="fieldCategory"></select>
+            <div class="status-strip" id="identifyStatus">Add photos or scan a barcode to begin</div>
+            <input type="hidden" id="fieldBarcode" />
+            <input type="hidden" id="fieldTitle" />
+          </div>
+
+          <div class="m-panel">
+            <div class="panel-head">
+              <div class="panel-title">Item data</div>
             </div>
-            <div class="meta-field full">
-              <label class="v-label">Notes</label>
-              <textarea class="notes-input" id="fieldNotes" placeholder="Optional notes…" rows="2"></textarea>
+            <div class="field-stack">
+              <label class="m-eyebrow">Quantity</label>
+              <div class="qty-row">
+                <div class="qty-control">
+                  <button type="button" class="qty-btn" id="qtyMinus">−</button>
+                  <div class="qty-val" id="qtyVal">1</div>
+                  <button type="button" class="qty-btn" id="qtyPlus">+</button>
+                </div>
+              </div>
+            </div>
+            <div class="field-stack">
+              <label class="m-eyebrow">Category</label>
+              <div class="chip-row" id="categoryChips"></div>
+              <select class="m-input hidden" id="fieldCategory" aria-hidden="true" tabindex="-1"></select>
+            </div>
+            <div class="field-stack">
+              <label class="m-eyebrow" for="fieldNotes">Notes</label>
+              <textarea class="m-input" id="fieldNotes" placeholder="Optional notes…" rows="2"></textarea>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- COLLECTION -->
-      <section id="viewCollection" class="view">
-        <div id="collectionRoot"></div>
-      </section>
-    </main>
+        <section id="viewCollection" class="view">
+          <div id="collectionRoot"></div>
+        </section>
+      </main>
+    </div>
 
     <div class="save-bar" id="saveBar">
-      <button type="button" class="m-btn m-btn-primary" id="btnSave" disabled>Commit to Collection</button>
+      <button type="button" class="m-btn m-btn-primary m-btn-cut" id="btnSave" disabled>Commit to collection</button>
     </div>
 
     <nav class="bottom-nav">
       <button type="button" class="nav-tab active" data-view="capture">
-        <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <span class="nav-tab-icon">
+          <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </span>
         Capture
       </button>
       <button type="button" class="nav-tab" data-view="collection">
-        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span class="nav-tab-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </span>
         Collection
       </button>
     </nav>
   </div>
 
-  <!-- Hidden file inputs -->
   <input type="file" id="inputCamera" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" capture="environment" multiple hidden />
   <input type="file" id="inputGallery" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" multiple hidden />
 
-  <!-- Barcode scanner -->
   <div class="scan-overlay" id="scanOverlay">
     <div class="scan-video-wrap">
       <video id="scanVideo" playsinline muted autoplay></video>
       <div class="scan-reticle"></div>
-      <div class="scan-sweep"></div>
     </div>
     <div class="scan-controls">
-      <button type="button" class="m-btn m-btn-ghost" id="btnScanClose">Cancel</button>
+      <button type="button" class="m-btn m-btn-cut" id="btnScanClose">Cancel</button>
     </div>
   </div>
 
   <div class="toast" id="toast"></div>
 
-  <script src="/lib/image.js?v=3"></script>
-  <script src="/scouter.js?v=3"></script>
+  <script src="/lib/image.js?v=4"></script>
+  <script src="/scouter.js?v=4"></script>
 </body>
 </html>

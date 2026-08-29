@@ -27,6 +27,8 @@ const els = {
   viewCapture: $("viewCapture"),
   viewCollection: $("viewCollection"),
   photoGrid: $("photoGrid"),
+  photoDrop: $("photoDrop"),
+  photoCountLbl: $("photoCountLbl"),
   btnCamera: $("btnCamera"),
   btnGallery: $("btnGallery"),
   inputCamera: $("inputCamera"),
@@ -45,6 +47,7 @@ const els = {
   qtyMinus: $("qtyMinus"),
   qtyPlus: $("qtyPlus"),
   fieldCategory: $("fieldCategory"),
+  categoryChips: $("categoryChips"),
   fieldNotes: $("fieldNotes"),
   btnSave: $("btnSave"),
   saveBar: $("saveBar"),
@@ -64,7 +67,15 @@ function showToast(msg, type = "ok") {
 
 function setIdentifyStatus(msg, kind = "") {
   els.identifyStatus.textContent = msg;
-  els.identifyStatus.className = `identify-status${kind ? ` ${kind}` : ""}`;
+  els.identifyStatus.className = `status-strip${kind ? ` ${kind}` : ""}`;
+}
+
+function setCategory(value) {
+  state.category = value;
+  els.fieldCategory.value = value;
+  els.categoryChips.querySelectorAll(".m-chip").forEach((chip) => {
+    chip.classList.toggle("on", chip.dataset.value === value);
+  });
 }
 
 async function api(path, opts = {}) {
@@ -110,38 +121,27 @@ function updateSaveState() {
 }
 
 function renderPhotoGrid() {
-  const slots = [];
   const count = state.draftPhotos.length;
-  const showAdd = count < MAX_PHOTOS;
+  els.photoCountLbl.textContent = `${count} added`;
+  els.photoDrop.classList.toggle("hidden", count > 0 && count >= MAX_PHOTOS);
 
-  for (let i = 0; i < count; i++) {
-    const p = state.draftPhotos[i];
-    slots.push(`
-      <div class="photo-slot filled" data-idx="${i}">
+  els.photoGrid.innerHTML = state.draftPhotos
+    .map(
+      (p, i) => `
+      <div class="photo-thumb" data-idx="${i}">
         <img src="${p.previewUrl}" alt="" />
         <button type="button" class="rm" data-rm="${i}" aria-label="Remove">×</button>
-      </div>`);
-  }
+      </div>`,
+    )
+    .join("");
 
-  if (showAdd) {
-    slots.push(`
-      <div class="photo-slot" data-add="1">
-        <span class="slot-icon">+</span>
-        <span class="slot-lbl">ADD</span>
-      </div>`);
-  }
-
-  els.photoGrid.innerHTML = slots.join("");
+  els.photoGrid.classList.toggle("hidden", count === 0);
 
   els.photoGrid.querySelectorAll("[data-rm]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       removePhoto(Number(btn.dataset.rm));
     });
-  });
-
-  els.photoGrid.querySelector("[data-add]")?.addEventListener("click", () => {
-    els.inputGallery.click();
   });
 }
 
@@ -193,12 +193,12 @@ async function addFiles(fileList) {
 
 function renderCollection() {
   const count = state.items.length;
-  els.statCount.textContent = String(count);
+  els.statCount.textContent = String(count).padStart(2, "0");
 
   if (!count) {
     els.collectionRoot.innerHTML = `
-      <div class="coll-empty v-panel">
-        <div class="v-readout-lg">No items yet</div>
+      <div class="coll-empty m-panel v-cut">
+        <div class="v-readout v-emit-gold">No items yet</div>
         <p>Capture photos or scan a barcode,<br/>then commit to collection.</p>
       </div>`;
     return;
@@ -211,7 +211,7 @@ function renderCollection() {
     if (!items.length) continue;
 
     const section = document.createElement("section");
-    section.className = "hub-section v-panel open";
+    section.className = "hub-section m-panel v-cut open";
     section.innerHTML = `
       <div class="hub-head">
         <span class="hub-name">${cat.label}</span>
@@ -282,6 +282,7 @@ function resetCapture() {
   state.barcode = "";
   els.qtyVal.textContent = "1";
   els.fieldCategory.value = "other";
+  setCategory("other");
   els.fieldNotes.value = "";
   els.fieldBarcode.value = "";
   els.fieldTitle.value = "";
@@ -289,7 +290,7 @@ function resetCapture() {
   els.manualTitle.value = "";
   els.manualRow.classList.add("hidden");
   renderPhotoGrid();
-  setIdentifyStatus("Add photos or scan a barcode");
+  setIdentifyStatus("Add photos or scan a barcode to begin");
   updateSaveState();
 }
 
@@ -389,7 +390,7 @@ async function saveCapture() {
     setIdentifyStatus(e.message, "err");
   } finally {
     els.btnSave.disabled = false;
-    els.btnSave.textContent = "Commit to Collection";
+    els.btnSave.textContent = "Commit to collection";
     updateSaveState();
   }
 }
@@ -466,12 +467,29 @@ function initCategories() {
   els.fieldCategory.innerHTML = CATEGORIES.map(
     (c) => `<option value="${c.value}">${c.label}</option>`,
   ).join("");
-  els.fieldCategory.value = state.category;
+  els.categoryChips.innerHTML = CATEGORIES.map(
+    (c) => `<button type="button" class="m-chip${c.value === state.category ? " on" : ""}" data-value="${c.value}">${c.label}</button>`,
+  ).join("");
+  els.categoryChips.querySelectorAll(".m-chip").forEach((chip) => {
+    chip.addEventListener("click", () => setCategory(chip.dataset.value));
+  });
+  setCategory(state.category);
 }
 
 function bindEvents() {
   els.btnCamera.addEventListener("click", () => els.inputCamera.click());
   els.btnGallery.addEventListener("click", () => els.inputGallery.click());
+  els.photoDrop.addEventListener("click", () => els.inputGallery.click());
+  els.photoDrop.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    els.photoDrop.classList.add("drag");
+  });
+  els.photoDrop.addEventListener("dragleave", () => els.photoDrop.classList.remove("drag"));
+  els.photoDrop.addEventListener("drop", (e) => {
+    e.preventDefault();
+    els.photoDrop.classList.remove("drag");
+    addFiles(e.dataTransfer.files);
+  });
   els.inputCamera.addEventListener("change", (e) => {
     addFiles(e.target.files);
     e.target.value = "";
@@ -513,9 +531,7 @@ function bindEvents() {
     state.qty += 1;
     els.qtyVal.textContent = String(state.qty);
   });
-  els.fieldCategory.addEventListener("change", () => {
-    state.category = els.fieldCategory.value;
-  });
+  els.fieldCategory.addEventListener("change", () => setCategory(els.fieldCategory.value));
 
   els.btnSave.addEventListener("click", saveCapture);
 
