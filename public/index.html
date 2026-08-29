@@ -13,12 +13,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/scouter.css?v=7" />
+  <link rel="stylesheet" href="/scouter.css?v=8" />
 </head>
 <body>
   <div id="app" class="shell v-glass">
     <div class="v-sweep" aria-hidden="true"></div>
-    <div class="corner-brackets" aria-hidden="true"></div>
+    <div class="corner-brackets" aria-hidden="true">
+      <span class="corner corner-tl"></span>
+      <span class="corner corner-tr"></span>
+    </div>
 
     <header class="site-header">
       <div class="site-header-inner">
@@ -58,8 +61,8 @@
             <div class="photo-drop-icon">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             </div>
-            <div class="photo-drop-title">Drop or tap to add photos</div>
-            <div class="photo-drop-sub">2400px JPG ideal · HEIC supported · auto-compressed</div>
+            <div class="photo-drop-title">DROP IMAGES HERE</div>
+            <div class="photo-drop-sub">Tap, drag, or use camera · HEIC supported · auto-compressed</div>
           </label>
           <div class="photo-scroll" id="photoGrid"></div>
           <div class="m-btn-row">
@@ -120,7 +123,7 @@
     </div>
 
     <div class="save-dock" id="saveBar">
-      <button type="button" class="m-btn m-btn-primary m-btn-cut-wide" id="btnSave" disabled>Commit to collection</button>
+      <button type="button" class="m-btn m-btn-primary m-btn-cut-wide" id="btnSave" disabled>Start intake</button>
     </div>
 
     <nav class="bottom-nav">
@@ -128,13 +131,13 @@
         <span class="nav-tab-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
         </span>
-        Capture
+        Scan
       </button>
       <button type="button" class="nav-tab" data-view="collection">
         <span class="nav-tab-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
         </span>
-        Collection
+        Rail
       </button>
     </nav>
   </div>
@@ -149,10 +152,17 @@
     <button type="button" class="m-btn m-btn-cut" id="btnScanClose">Cancel</button>
   </div>
 
+  <div class="drag-overlay" id="dragOverlay" aria-hidden="true">
+    <div class="drag-overlay-inner">
+      <svg class="drag-overlay-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <div class="v-label drag-overlay-label">Release to intake</div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
-  <script src="/lib/html5-qrcode.min.js?v=7"></script>
-  <script src="/lib/image.js?v=7"></script>
-  <script src="/scouter.js?v=7"></script>
+  <script src="/lib/html5-qrcode.min.js?v=8"></script>
+  <script src="/lib/image.js?v=8"></script>
+  <script src="/scouter.js?v=8"></script>
 </body>
 </html>

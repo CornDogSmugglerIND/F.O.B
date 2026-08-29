@@ -58,6 +58,7 @@ const els = {
   scanVideo: $("scanVideo"),
   btnScanClose: $("btnScanClose"),
   toast: $("toast"),
+  dragOverlay: $("dragOverlay"),
 };
 
 function showToast(msg, type = "ok") {
@@ -384,13 +385,13 @@ async function saveCapture() {
     loadItems();
     resetCapture();
     navigate("collection");
-    showToast("Committed to collection");
+    showToast("Intake started — saved to collection");
   } catch (e) {
     showToast(e.message, "err");
     setStatus(e.message, "err");
   } finally {
     els.btnSave.disabled = false;
-    els.btnSave.textContent = "Commit to collection";
+    els.btnSave.textContent = "Start intake";
     updateSaveState();
   }
 }
@@ -400,7 +401,7 @@ function navigate(view) {
   els.viewCapture.classList.toggle("active", !isCollection);
   els.viewCollection.classList.toggle("active", isCollection);
   els.saveBar.classList.toggle("hidden", isCollection);
-  els.pageTitle.textContent = isCollection ? "Collection" : "New scan";
+  els.pageTitle.textContent = isCollection ? "Rail" : "New scan";
   document.querySelectorAll(".nav-tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.view === view);
   });
@@ -554,6 +555,40 @@ function initCategories() {
   });
 }
 
+function bindDragOverlay() {
+  let dragDepth = 0;
+
+  const show = () => els.dragOverlay?.classList.add("show");
+  const hide = () => {
+    dragDepth = 0;
+    els.dragOverlay?.classList.remove("show");
+    els.photoDrop?.classList.remove("drag");
+  };
+
+  document.addEventListener("dragenter", (e) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+    dragDepth += 1;
+    show();
+  });
+
+  document.addEventListener("dragover", (e) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+    els.photoDrop?.classList.add("drag");
+  });
+
+  document.addEventListener("dragleave", () => {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) hide();
+  });
+
+  document.addEventListener("drop", (e) => {
+    if (!e.dataTransfer?.files?.length) return;
+    hide();
+  });
+}
+
 function bindEvents() {
   els.btnCamera.addEventListener("click", () => els.inputCamera.click());
   els.btnGallery.addEventListener("click", () => els.inputGallery.click());
@@ -629,6 +664,7 @@ function bindEvents() {
 
 function init() {
   initCategories();
+  bindDragOverlay();
   bindEvents();
   loadItems();
   updateSaveState();
