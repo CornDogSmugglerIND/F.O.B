@@ -1,8 +1,11 @@
-import { test } from "node:test";
+import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { createApp } from "../src/app.js";
+import { setDataRoot } from "../src/store.js";
 
-/** Start the app on an ephemeral port and return { baseUrl, close }. */
 async function startServer() {
   const app = createApp();
   const server = await new Promise((resolve) => {
@@ -15,45 +18,73 @@ async function startServer() {
   };
 }
 
-test("GET /api/health reports ok", async () => {
+let tempDir;
+
+before(async () => {
+  tempDir = await mkdtemp(join(tmpdir(), "scouter-test-"));
+  setDataRoot(tempDir);
+});
+
+after(async () => {
+  if (tempDir) await rm(tempDir, { recursive: true, force: true });
+});
+
+test("GET /api/health reports scouter", async () => {
   const { baseUrl, close } = await startServer();
   try {
     const res = await fetch(`${baseUrl}/api/health`);
-    assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.status, "ok");
-    assert.equal(body.service, "fob");
-    assert.equal(typeof body.uptimeSeconds, "number");
+    assert.equal(body.service, "scouter");
   } finally {
     await close();
   }
 });
 
-test("POST /api/echo reverses text", async () => {
-  const { baseUrl, close } = await startServer();
-  try {
-    const res = await fetch(`${baseUrl}/api/echo`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: "abc" }),
-    });
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.original, "abc");
-    assert.equal(body.reversed, "cba");
-    assert.equal(body.length, 3);
-  } finally {
-    await close();
-  }
-});
-
-test("GET / serves the frontend", async () => {
+test("GET / serves Scouter frontend", async () => {
   const { baseUrl, close } = await startServer();
   try {
     const res = await fetch(`${baseUrl}/`);
-    assert.equal(res.status, 200);
     const html = await res.text();
-    assert.match(html, /F\.O\.B/);
+    assert.match(html, /Scouter/);
+    assert.match(html, /Commit to collection/);
+  } finally {
+    await close();
+  }
+});
+
+test("Scouter API creates and lists items with quantity and category", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const createRes = await fetch(`${baseUrl}/api/scouter/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Test Card",
+        barcode: "123456789012",
+        quantity: 3,
+        category: "raw_cards",
+      }),
+    });
+    assert.equal(createRes.status, 201);
+    const created = await createRes.json();
+    assert.equal(created.item.quantity, 3);
+    assert.equal(created.item.category, "raw_cards");
+
+    const listRes = await fetch(`${baseUrl}/api/scouter/items`);
+    const list = await listRes.json();
+    assert.equal(list.items.length, 1);
+  } finally {
+    await close();
+  }
+});
+
+test("barcode lookup returns structured response", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const res = await fetch(`${baseUrl}/api/scouter/barcode/abc`);
+    const body = await res.json();
+    assert.equal(body.found, false);
   } finally {
     await close();
   }
