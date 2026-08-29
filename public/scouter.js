@@ -31,6 +31,8 @@ const els = {
   viewCollection: $("viewCollection"),
   photoGrid: $("photoGrid"),
   photoDrop: $("photoDrop"),
+  photoCountLbl: $("photoCountLbl"),
+  pageTitle: $("pageTitle"),
   btnCamera: $("btnCamera"),
   btnGallery: $("btnGallery"),
   inputCamera: $("inputCamera"),
@@ -67,7 +69,7 @@ function showToast(msg, type = "ok") {
 
 function setStatus(msg, kind = "") {
   els.identifyStatus.textContent = msg;
-  els.identifyStatus.className = `status${kind ? ` ${kind}` : ""}`;
+  els.identifyStatus.className = `status-strip${kind ? ` ${kind}` : ""}`;
 }
 
 function loadLocalItems() {
@@ -128,16 +130,17 @@ function updateSaveState() {
 
 function setCategory(value) {
   state.category = value;
-  els.categoryChips.querySelectorAll(".chip").forEach((chip) => {
-    chip.classList.toggle("on", chip.dataset.value === value);
+  els.categoryChips.querySelectorAll(".m-chip").forEach((chip) => {
+    chip.classList.toggle("m-chip-on", chip.dataset.value === value);
   });
 }
 
 function renderPhotoGrid() {
+  els.photoCountLbl.textContent = `${state.draftPhotos.length} added`;
   els.photoGrid.innerHTML = state.draftPhotos
     .map(
       (p, i) => `
-      <div class="thumb">
+      <div class="photo-thumb">
         <img src="${p.dataUrl}" alt="" />
         <button type="button" data-rm="${i}" aria-label="Remove">×</button>
       </div>`,
@@ -193,11 +196,11 @@ async function addFiles(fileList) {
 
 function renderCollection() {
   const count = state.items.length;
-  els.statCount.textContent = String(count);
+  els.statCount.textContent = String(count).padStart(2, "0");
 
   if (!count) {
     els.collectionRoot.innerHTML =
-      '<div class="empty card">Nothing saved yet.<br/>Add an item on the Capture tab.</div>';
+      '<div class="coll-empty m-panel v-cut">Nothing on the rail yet.<br/>Capture an item to begin.</div>';
     return;
   }
 
@@ -208,36 +211,36 @@ function renderCollection() {
     if (!items.length) continue;
 
     const section = document.createElement("section");
-    section.className = "card group open";
+    section.className = "hub-section m-panel v-cut open";
     section.innerHTML = `
-      <div class="group-head">
-        <h3>${cat.label}</h3>
-        <span>${items.length}</span>
+      <div class="hub-head">
+        <span class="hub-name">${cat.label}</span>
+        <span class="hub-count">${String(items.length).padStart(2, "0")}</span>
       </div>
-      <div class="group-items"></div>`;
+      <div class="hub-items"></div>`;
 
-    const list = section.querySelector(".group-items");
+    const list = section.querySelector(".hub-items");
     for (const item of items) {
       const src = photoSrc(item.photos[0]);
       const thumb = src
-        ? `<img src="${src}" alt="" />`
-        : `<div class="no-img">No photo</div>`;
+        ? `<img class="item-thumb" src="${src}" alt="" />`
+        : `<div class="item-thumb-empty">NO IMG</div>`;
       const title = item.title || "Untitled item";
       const meta = [`×${item.quantity}`, item.barcode].filter(Boolean).join(" · ");
 
       const row = document.createElement("div");
-      row.className = "item";
+      row.className = "item-card";
       row.innerHTML = `
         ${thumb}
-        <div class="item-main">
-          <strong>${escapeHtml(title)}</strong>
-          <span>${escapeHtml(meta)}</span>
+        <div class="item-info">
+          <div class="item-title">${escapeHtml(title)}</div>
+          <div class="item-meta">${escapeHtml(meta)}</div>
         </div>
         <button type="button" class="item-del" data-del="${item.id}">×</button>`;
       list.appendChild(row);
     }
 
-    section.querySelector(".group-head").addEventListener("click", () => {
+    section.querySelector(".hub-head").addEventListener("click", () => {
       section.classList.toggle("open");
     });
 
@@ -278,7 +281,7 @@ function resetCapture() {
   els.manualRow.classList.add("hidden");
   setCategory("other");
   renderPhotoGrid();
-  setStatus("Add a photo, barcode, or title to save");
+  setStatus("Add a photo, barcode, or title to commit");
   updateSaveState();
 }
 
@@ -316,7 +319,7 @@ async function saveCapture() {
   if (els.btnSave.disabled) return;
 
   els.btnSave.disabled = true;
-  els.btnSave.textContent = "Saving…";
+  els.btnSave.textContent = "Committing…";
 
   try {
     const now = new Date().toISOString();
@@ -381,13 +384,13 @@ async function saveCapture() {
     loadItems();
     resetCapture();
     navigate("collection");
-    showToast("Saved on this phone");
+    showToast("Committed to collection");
   } catch (e) {
     showToast(e.message, "err");
     setStatus(e.message, "err");
   } finally {
     els.btnSave.disabled = false;
-    els.btnSave.textContent = "Save item";
+    els.btnSave.textContent = "Commit to collection";
     updateSaveState();
   }
 }
@@ -397,7 +400,8 @@ function navigate(view) {
   els.viewCapture.classList.toggle("active", !isCollection);
   els.viewCollection.classList.toggle("active", isCollection);
   els.saveBar.classList.toggle("hidden", isCollection);
-  document.querySelectorAll(".tab").forEach((tab) => {
+  els.pageTitle.textContent = isCollection ? "Collection" : "New scan";
+  document.querySelectorAll(".nav-tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.view === view);
   });
   if (isCollection) stopScanner();
@@ -543,9 +547,9 @@ async function startScanner() {
 function initCategories() {
   els.categoryChips.innerHTML = CATEGORIES.map(
     (c) =>
-      `<button type="button" class="chip${c.value === state.category ? " on" : ""}" data-value="${c.value}">${c.label}</button>`,
+      `<button type="button" class="m-chip${c.value === state.category ? " m-chip-on" : ""}" data-value="${c.value}">${c.label}</button>`,
   ).join("");
-  els.categoryChips.querySelectorAll(".chip").forEach((chip) => {
+  els.categoryChips.querySelectorAll(".m-chip").forEach((chip) => {
     chip.addEventListener("click", () => setCategory(chip.dataset.value));
   });
 }
@@ -553,7 +557,20 @@ function initCategories() {
 function bindEvents() {
   els.btnCamera.addEventListener("click", () => els.inputCamera.click());
   els.btnGallery.addEventListener("click", () => els.inputGallery.click());
-  els.photoDrop.addEventListener("click", () => els.inputGallery.click());
+  els.photoDrop.addEventListener("click", (e) => {
+    if (e.target.closest("[data-rm]")) return;
+    els.inputGallery.click();
+  });
+  els.photoDrop.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    els.photoDrop.classList.add("drag");
+  });
+  els.photoDrop.addEventListener("dragleave", () => els.photoDrop.classList.remove("drag"));
+  els.photoDrop.addEventListener("drop", (e) => {
+    e.preventDefault();
+    els.photoDrop.classList.remove("drag");
+    addFiles(e.dataTransfer.files);
+  });
   els.inputCamera.addEventListener("change", (e) => {
     addFiles(e.target.files);
     e.target.value = "";
@@ -605,7 +622,7 @@ function bindEvents() {
 
   els.btnSave.addEventListener("click", saveCapture);
 
-  document.querySelectorAll(".tab").forEach((tab) => {
+  document.querySelectorAll(".nav-tab").forEach((tab) => {
     tab.addEventListener("click", () => navigate(tab.dataset.view));
   });
 }

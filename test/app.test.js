@@ -47,7 +47,7 @@ test("GET / serves Scouter frontend", async () => {
     const res = await fetch(`${baseUrl}/`);
     const html = await res.text();
     assert.match(html, /Scouter/);
-    assert.match(html, /Save item/);
+    assert.match(html, /Commit to collection/);
   } finally {
     await close();
   }

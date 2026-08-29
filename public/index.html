@@ -8,86 +8,108 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <title>Scouter</title>
+  <title>Scouter · Coalition</title>
   <link rel="manifest" href="/manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/scouter.css?v=6" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/scouter.css?v=7" />
 </head>
 <body>
-  <div id="app">
-    <header class="topbar">
-      <div class="topbar-row">
-        <div>
-          <h1>Scouter</h1>
-          <p>Mobile intake for Coalition</p>
+  <div id="app" class="shell v-glass">
+    <div class="v-sweep" aria-hidden="true"></div>
+    <div class="corner-brackets" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <div class="site-header-inner">
+        <div class="brand-lockup">
+          <div class="brand-mark">SC</div>
+          <div>
+            <div class="brand-name">Coalition</div>
+            <div class="brand-sub">Scouter</div>
+          </div>
         </div>
-        <div class="stat-pill">
-          <strong id="statCount">0</strong>
-          <span>saved</span>
+        <div class="m-lcd stat-lcd">
+          <div class="m-readout" id="statCount">00</div>
+          <div class="v-label stat-lbl">Saved</div>
         </div>
       </div>
     </header>
 
-    <div class="content">
+    <div class="page-body">
+      <div class="page-hero">
+        <div class="hero-eyebrow">
+          <svg class="hero-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span class="v-label">Rail · Mobile intake</span>
+        </div>
+        <h1 class="v-title" id="pageTitle">New scan</h1>
+        <p class="hero-sub">Capture photos and barcodes on this device. Items stay on your phone until Command Core sync.</p>
+        <div class="gold-rule"></div>
+      </div>
+
       <section id="viewCapture" class="view active">
-        <div class="intro">
-          <h2>Add an item</h2>
-          <p>Photos save on this phone first. Barcode lookup uses the network when available.</p>
+        <div class="m-panel v-cut panel-rise">
+          <div class="panel-head">
+            <h2 class="panel-title">Photos</h2>
+            <span class="v-label" id="photoCountLbl">0 added</span>
+          </div>
+          <label class="photo-drop" id="photoDrop">
+            <input type="file" id="photoDropInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" multiple hidden />
+            <div class="photo-drop-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div class="photo-drop-title">Drop or tap to add photos</div>
+            <div class="photo-drop-sub">2400px JPG ideal · HEIC supported · auto-compressed</div>
+          </label>
+          <div class="photo-scroll" id="photoGrid"></div>
+          <div class="m-btn-row">
+            <button type="button" class="m-btn m-btn-cut" id="btnCamera">Camera</button>
+            <button type="button" class="m-btn m-btn-cut" id="btnGallery">Gallery</button>
+          </div>
         </div>
 
-        <div class="card">
-          <div class="card-title">Photos</div>
-          <div class="dropzone" id="photoDrop">
-            <div class="dropzone-title">Tap to add photos</div>
-            <div class="dropzone-sub">Camera or gallery · HEIC supported</div>
+        <div class="m-panel v-cut panel-rise">
+          <div class="panel-head">
+            <h2 class="panel-title">Identify</h2>
           </div>
-          <div class="thumbs" id="photoGrid"></div>
-          <div class="row-2">
-            <button type="button" class="btn" id="btnCamera">Camera</button>
-            <button type="button" class="btn" id="btnGallery">Gallery</button>
+          <div class="m-btn-row-3">
+            <button type="button" class="m-btn m-btn-cut" id="btnScan">Scan</button>
+            <button type="button" class="m-btn m-btn-cut" id="btnLookup">Lookup</button>
+            <button type="button" class="m-btn m-btn-cut" id="btnManual">Manual</button>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Identify</div>
-          <div class="btn-row-3">
-            <button type="button" class="btn" id="btnScan">Scan</button>
-            <button type="button" class="btn" id="btnLookup">Lookup</button>
-            <button type="button" class="btn" id="btnManual">Manual</button>
+          <div class="field-stack">
+            <label class="m-eyebrow" for="barcodeInput">Barcode</label>
+            <input class="m-input" id="barcodeInput" placeholder="Scan or type UPC / EAN" inputmode="numeric" autocomplete="off" />
           </div>
-          <div class="stack">
-            <label class="label" for="barcodeInput">Barcode</label>
-            <input class="input" id="barcodeInput" placeholder="Optional UPC / EAN" inputmode="numeric" autocomplete="off" />
-          </div>
-          <div class="stack hidden" id="manualRow">
-            <label class="label" for="manualTitle">Title</label>
-            <div class="row-2">
-              <input class="input" id="manualTitle" placeholder="Product name" autocomplete="off" />
-              <button type="button" class="btn" id="btnManualOk">Set</button>
+          <div class="field-stack hidden" id="manualRow">
+            <label class="m-eyebrow" for="manualTitle">Product title</label>
+            <div class="m-btn-row">
+              <input class="m-input" id="manualTitle" placeholder="Enter manually" autocomplete="off" />
+              <button type="button" class="m-btn m-btn-cut" id="btnManualOk">Set</button>
             </div>
           </div>
-          <div class="status" id="identifyStatus">Add a photo, barcode, or title to save</div>
+          <div class="status-strip" id="identifyStatus">Add a photo, barcode, or title to commit</div>
         </div>
 
-        <div class="card">
-          <div class="card-title">Details</div>
-          <div class="stack">
-            <label class="label">Quantity</label>
-            <div class="qty">
-              <button type="button" id="qtyMinus">−</button>
-              <output id="qtyVal">1</output>
-              <button type="button" id="qtyPlus">+</button>
+        <div class="m-panel v-cut panel-rise">
+          <div class="panel-head">
+            <h2 class="panel-title">Item data</h2>
+          </div>
+          <div class="field-stack">
+            <label class="m-eyebrow">Quantity</label>
+            <div class="qty-control">
+              <button type="button" class="qty-btn" id="qtyMinus">−</button>
+              <output class="qty-val" id="qtyVal">1</output>
+              <button type="button" class="qty-btn" id="qtyPlus">+</button>
             </div>
           </div>
-          <div class="stack">
-            <label class="label">Category</label>
-            <div class="chips" id="categoryChips"></div>
+          <div class="field-stack">
+            <label class="m-eyebrow">Category</label>
+            <div class="chip-row" id="categoryChips"></div>
           </div>
-          <div class="stack">
-            <label class="label" for="fieldNotes">Notes</label>
-            <textarea class="input" id="fieldNotes" placeholder="Optional" rows="2"></textarea>
+          <div class="field-stack">
+            <label class="m-eyebrow" for="fieldNotes">Notes</label>
+            <textarea class="m-input" id="fieldNotes" placeholder="Optional notes…" rows="2"></textarea>
           </div>
         </div>
       </section>
@@ -97,13 +119,23 @@
       </section>
     </div>
 
-    <div class="savebar" id="saveBar">
-      <button type="button" class="btn btn-primary" id="btnSave" disabled>Save item</button>
+    <div class="save-dock" id="saveBar">
+      <button type="button" class="m-btn m-btn-primary m-btn-cut-wide" id="btnSave" disabled>Commit to collection</button>
     </div>
 
-    <nav class="tabs">
-      <button type="button" class="tab active" data-view="capture">Capture</button>
-      <button type="button" class="tab" data-view="collection">Collection</button>
+    <nav class="bottom-nav">
+      <button type="button" class="nav-tab active" data-view="capture">
+        <span class="nav-tab-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </span>
+        Capture
+      </button>
+      <button type="button" class="nav-tab" data-view="collection">
+        <span class="nav-tab-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </span>
+        Collection
+      </button>
     </nav>
   </div>
 
@@ -112,15 +144,15 @@
 
   <div class="scan-overlay" id="scanOverlay">
     <div id="scanReader" class="scan-reader"></div>
-    <video id="scanVideo" class="scan-video-fallback" playsinline muted autoplay hidden></video>
-    <p class="scan-hint">Point at the barcode — UPC / EAN</p>
-    <button type="button" class="btn" id="btnScanClose">Cancel scan</button>
+    <video id="scanVideo" playsinline muted autoplay hidden></video>
+    <p class="scan-hint v-label">Align barcode in frame</p>
+    <button type="button" class="m-btn m-btn-cut" id="btnScanClose">Cancel</button>
   </div>
 
   <div class="toast" id="toast"></div>
 
-  <script src="/lib/html5-qrcode.min.js?v=6"></script>
-  <script src="/lib/image.js?v=6"></script>
-  <script src="/scouter.js?v=6"></script>
+  <script src="/lib/html5-qrcode.min.js?v=7"></script>
+  <script src="/lib/image.js?v=7"></script>
+  <script src="/scouter.js?v=7"></script>
 </body>
 </html>
