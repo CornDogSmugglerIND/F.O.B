@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 
-let dataRoot = join(process.cwd(), "data");
+/** Vercel serverless only allows writes under /tmp (ephemeral). */
+let dataRoot = process.env.VERCEL
+  ? join(tmpdir(), "scouter-data")
+  : join(process.cwd(), "data");
 let ready = false;
 
 /** @typedef {{ id: string, filename: string, url: string, createdAt: string }} Photo */
