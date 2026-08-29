@@ -9,7 +9,7 @@ let dataRoot = process.env.VERCEL
   : join(process.cwd(), "data");
 let ready = false;
 
-/** @typedef {{ id: string, filename: string, url: string, createdAt: string }} Photo */
+/** @typedef {{ id: string, filename: string | null, url: string, dataUrl: string | null, createdAt: string }} Photo */
 /** @typedef {{ id: string, createdAt: string, updatedAt: string, title: string | null, barcode: string | null, quantity: number, category: string, brand: string | null, description: string | null, lookupSource: string | null, notes: string | null, photos: Photo[] }} ScoutItem */
 
 function itemsFile() {
@@ -54,6 +54,14 @@ export async function listScoutItems() {
 
 export async function getScoutItem(id) {
   return (await readItems()).find((item) => item.id === id) ?? null;
+}
+
+export async function findPhoto(photoId) {
+  for (const item of await readItems()) {
+    const photo = item.photos.find((p) => p.id === photoId);
+    if (photo) return { item, photo };
+  }
+  return null;
 }
 
 export async function createScoutItem(partial = {}) {
@@ -111,4 +119,22 @@ export async function addPhotoToItem(id, photo) {
   const item = await getScoutItem(id);
   if (!item) return null;
   return updateScoutItem(id, { photos: [...item.photos, photo] });
+}
+
+/** Store inline base64 so photos survive Vercel /tmp file churn. */
+export async function addInlinePhotoToItem(itemId, dataUrl) {
+  const photoId = randomUUID();
+  const photo = {
+    id: photoId,
+    filename: null,
+    url: `/api/scouter/photos/${photoId}`,
+    dataUrl,
+    createdAt: new Date().toISOString(),
+  };
+  return addPhotoToItem(itemId, photo);
+}
+
+export async function replaceAllItems(items) {
+  await writeItems(items);
+  return items;
 }
