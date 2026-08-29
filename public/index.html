@@ -1,188 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
-    />
-    <meta name="theme-color" content="#04070C" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>Scouter</title>
-    <link rel="manifest" href="./manifest.json" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="./scouter.css" />
-  </head>
-  <body>
-    <div class="hud-bg" id="hud-bg" aria-hidden="true">
-      <div class="hud-bg__grid"></div>
-      <div class="hud-bg__glow"></div>
-    </div>
-
-    <div class="hud-frame" aria-hidden="true">
-      <span class="hud-frame__corner hud-frame__corner--tl"></span>
-      <span class="hud-frame__corner hud-frame__corner--tr"></span>
-      <span class="hud-frame__corner hud-frame__corner--bl"></span>
-      <span class="hud-frame__corner hud-frame__corner--br"></span>
-    </div>
-
-    <div id="app" class="app">
-      <header class="topbar v-panel v-cut">
-        <div class="v-sweep"></div>
-        <div class="topbar__brand">
-          <span class="topbar__mark">
-            <span class="topbar__mark-core">SC</span>
-            <span class="topbar__mark-ring"></span>
-          </span>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#04070C" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Scouter</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/scouter.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="hud-header">
+      <div class="hud-header-row">
+        <div class="hud-brand">
+          <div class="hud-mark">SC</div>
           <div>
-            <div class="v-label">Scouter HUD</div>
-            <h1 class="topbar__title v-readout">INTAKE HUB</h1>
+            <div class="hud-title">Scouter</div>
+            <div class="hud-sub">Intake · Coalition</div>
           </div>
         </div>
-        <div class="topbar__stats">
-          <div class="v-label">Scans</div>
-          <div id="total-count" class="v-readout v-readout--gold">00</div>
-        </div>
-      </header>
-
-      <div class="status-strip v-panel v-cut-sm">
-        <div class="status-strip__item">
-          <span class="status-strip__dot status-strip__dot--live"></span>
-          <span class="v-label">Link</span>
-          <span id="status-link" class="status-strip__val">ONLINE</span>
-        </div>
-        <div class="status-strip__item">
-          <span class="v-label">Mode</span>
-          <span id="status-mode" class="status-strip__val status-strip__val--gold">COLLECTION</span>
-        </div>
-        <div class="status-strip__item status-strip__item--right">
-          <span class="v-label">Clock</span>
-          <span id="status-clock" class="status-strip__val v-mono">--:--</span>
+        <div class="hud-stat">
+          <div class="hud-stat-val" id="statCount">0</div>
+          <div class="hud-stat-lbl">SCANNED</div>
         </div>
       </div>
+    </header>
+
+    <main class="hud-main">
+      <!-- CAPTURE -->
+      <section id="viewCapture" class="view active">
+        <div class="v-panel photo-section">
+          <div class="v-label">Visual Capture</div>
+          <div class="photo-grid" id="photoGrid"></div>
+          <div class="m-btn-row" style="margin-top:10px">
+            <button type="button" class="m-btn" id="btnCamera">Camera</button>
+            <button type="button" class="m-btn" id="btnGallery">Gallery</button>
+          </div>
+        </div>
+
+        <div class="v-panel identify-panel">
+          <div class="v-label">Identify</div>
+          <div class="m-btn-row-3" style="margin-top:10px">
+            <button type="button" class="m-btn" id="btnScan">Scan</button>
+            <button type="button" class="m-btn" id="btnLookup">Lookup</button>
+            <button type="button" class="m-btn m-btn-ghost" id="btnManual">Manual</button>
+          </div>
+          <div class="identify-status" id="identifyStatus">Add photos or scan a barcode</div>
+          <div class="field-row hidden" id="manualRow">
+            <input type="text" class="field-input" id="manualTitle" placeholder="Product name" autocomplete="off" />
+            <button type="button" class="m-btn" id="btnManualOk">Set</button>
+          </div>
+          <input type="hidden" id="fieldBarcode" />
+          <input type="hidden" id="fieldTitle" />
+        </div>
+
+        <div class="v-panel meta-panel">
+          <div class="v-label">Item Data</div>
+          <div class="meta-grid">
+            <div class="meta-field">
+              <label class="v-label">Qty</label>
+              <div class="qty-control">
+                <button type="button" class="qty-btn" id="qtyMinus">−</button>
+                <div class="qty-val" id="qtyVal">1</div>
+                <button type="button" class="qty-btn" id="qtyPlus">+</button>
+              </div>
+            </div>
+            <div class="meta-field">
+              <label class="v-label">Category</label>
+              <select class="category-select" id="fieldCategory"></select>
+            </div>
+            <div class="meta-field full">
+              <label class="v-label">Notes</label>
+              <textarea class="notes-input" id="fieldNotes" placeholder="Optional notes…" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <!-- COLLECTION -->
-      <main id="view-collection" class="view view--active v-glass" aria-label="Collection">
-        <div class="v-sweep"></div>
-        <div id="collection-empty" class="empty v-panel v-cut hidden">
-          <div class="empty__reticle"></div>
-          <div class="v-label">Intake queue</div>
-          <h2 class="v-readout v-readout--sm">NO SCANS YET</h2>
-          <p>Feed the machine — scan barcodes and drop photos. Your HUD collection builds by category.</p>
-          <button class="btn btn--primary" data-nav="capture">Engage scanner</button>
-        </div>
-        <div id="collection-hubs" class="hub-list"></div>
-      </main>
+      <section id="viewCollection" class="view">
+        <div id="collectionRoot"></div>
+      </section>
+    </main>
 
-      <!-- CAPTURE -->
-      <main id="view-capture" class="view v-glass" aria-label="Capture" hidden>
-        <div class="v-sweep"></div>
-
-        <section class="panel v-panel v-cut panel--in">
-          <div class="panel__header">
-            <div class="v-label">Module A</div>
-            <h2 class="v-readout v-readout--sm">PHOTO CAPTURE</h2>
-            <p>Stack as many shots as you need.</p>
-          </div>
-          <div id="photo-grid" class="photo-grid"></div>
-          <div class="row-actions">
-            <label class="btn btn--secondary btn--lift">
-              <span class="btn__icon">📷</span> Camera
-              <input id="photo-camera" type="file" accept="image/*" capture="environment" multiple hidden />
-            </label>
-            <label class="btn btn--ghost btn--lift">
-              <span class="btn__icon">＋</span> Gallery
-              <input id="photo-gallery" type="file" accept="image/*" multiple hidden />
-            </label>
-          </div>
-        </section>
-
-        <section class="panel v-panel v-cut panel--in panel--in-2">
-          <div class="panel__header">
-            <div class="v-label">Module B</div>
-            <h2 class="v-readout v-readout--sm">BARCODE SCAN</h2>
-            <p>Reticle lock on UPC / EAN.</p>
-          </div>
-          <div id="scanner-wrap" class="scanner-wrap hidden">
-            <div class="scanner-reticle">
-              <span class="scanner-reticle__corner scanner-reticle__corner--tl"></span>
-              <span class="scanner-reticle__corner scanner-reticle__corner--tr"></span>
-              <span class="scanner-reticle__corner scanner-reticle__corner--bl"></span>
-              <span class="scanner-reticle__corner scanner-reticle__corner--br"></span>
-              <div class="scanner-reticle__line"></div>
-            </div>
-            <div id="scanner-box" class="scanner-box"></div>
-          </div>
-          <button id="toggle-scanner" type="button" class="btn btn--ghost btn--block btn--lift">Activate reticle scanner</button>
-          <label class="field">
-            <span class="v-label">Barcode</span>
-            <input id="barcode-input" class="field__input" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or enter code" />
-          </label>
-          <button id="lookup-btn" type="button" class="btn btn--secondary btn--block btn--lift">Identify product</button>
-          <div id="lookup-result" class="lookup-result hidden"></div>
-        </section>
-
-        <section class="panel v-panel v-cut panel--in panel--in-3">
-          <div class="panel__header">
-            <div class="v-label">Module C</div>
-            <h2 class="v-readout v-readout--sm">ITEM DATA</h2>
-          </div>
-          <label class="field">
-            <span class="v-label">Title</span>
-            <input id="title-input" class="field__input" type="text" placeholder="Product title" />
-          </label>
-          <label class="field field--qty">
-            <span class="v-label">Quantity</span>
-            <div class="qty-stepper">
-              <button type="button" class="qty-stepper__btn" id="qty-minus" aria-label="Decrease">−</button>
-              <input id="qty-input" class="field__input qty-stepper__input" type="number" min="1" value="1" inputmode="numeric" />
-              <button type="button" class="qty-stepper__btn" id="qty-plus" aria-label="Increase">＋</button>
-            </div>
-          </label>
-          <div class="field">
-            <span class="v-label">Category</span>
-            <div id="category-chips" class="chip-grid"></div>
-            <select id="category-input" class="field__input field__input--hidden" aria-hidden="true" tabindex="-1"></select>
-          </div>
-          <label class="field">
-            <span class="v-label">Notes</span>
-            <textarea id="notes-input" class="field__input" rows="2" placeholder="Optional"></textarea>
-          </label>
-        </section>
-
-        <button id="save-btn" type="button" class="btn btn--primary btn--block btn--save btn--lift">Commit to collection</button>
-      </main>
-
-      <dialog id="detail-sheet" class="sheet">
-        <div class="sheet__inner v-panel v-cut">
-          <div class="v-sweep"></div>
-          <button type="button" class="sheet__close" id="detail-close" aria-label="Close">✕</button>
-          <div id="detail-content"></div>
-        </div>
-      </dialog>
-
-      <nav class="tabbar" aria-label="Primary">
-        <button class="tabbar__btn tabbar__btn--active btn--lift" data-nav="collection" aria-current="page">
-          <span class="tabbar__icon">◫</span>
-          <span class="v-label">Collection</span>
-        </button>
-        <button class="tabbar__btn btn--lift" data-nav="capture">
-          <span class="tabbar__icon tabbar__icon--accent">◎</span>
-          <span class="v-label">Capture</span>
-        </button>
-      </nav>
+    <div class="save-bar" id="saveBar">
+      <button type="button" class="m-btn m-btn-primary" id="btnSave" disabled>Commit to Collection</button>
     </div>
 
-    <div id="toast" class="toast hidden" role="status"></div>
-    <div id="flash" class="flash hidden" aria-hidden="true"></div>
+    <nav class="bottom-nav">
+      <button type="button" class="nav-tab active" data-view="capture">
+        <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Capture
+      </button>
+      <button type="button" class="nav-tab" data-view="collection">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Collection
+      </button>
+    </nav>
+  </div>
 
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <script type="module" src="./scouter.js"></script>
-  </body>
+  <!-- Hidden file inputs -->
+  <input type="file" id="inputCamera" accept="image/*" capture="environment" multiple hidden />
+  <input type="file" id="inputGallery" accept="image/*" multiple hidden />
+
+  <!-- Barcode scanner -->
+  <div class="scan-overlay" id="scanOverlay">
+    <div class="scan-video-wrap">
+      <video id="scanVideo" playsinline muted autoplay></video>
+      <div class="scan-reticle"></div>
+      <div class="scan-sweep"></div>
+    </div>
+    <div class="scan-controls">
+      <button type="button" class="m-btn m-btn-ghost" id="btnScanClose">Cancel</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="/lib/image.js"></script>
+  <script src="/scouter.js"></script>
+</body>
 </html>
