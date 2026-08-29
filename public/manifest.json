@@ -1,0 +1,10 @@
+{
+  "name": "Scouter",
+  "short_name": "Scouter",
+  "description": "Portable intake scanner — barcode, photos, collection",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#04070C",
+  "theme_color": "#04070C",
+  "orientation": "portrait"
+}

@@ -2,28 +2,130 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>F.O.B</title>
-    <link rel="stylesheet" href="./style.css" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="theme-color" content="#04070C" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Scouter</title>
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./scouter.css" />
   </head>
   <body>
-    <main class="card">
-      <header>
-        <h1>F.O.B</h1>
-        <p class="subtitle">A minimal Express starter, running in a Cloud Agent environment.</p>
-        <span id="health" class="badge badge--pending">checking…</span>
+    <div id="app" class="app">
+      <header class="topbar">
+        <div class="topbar__brand">
+          <span class="topbar__mark">SC</span>
+          <div>
+            <h1 class="topbar__title">Scouter</h1>
+            <p class="topbar__subtitle">Portable intake scanner</p>
+          </div>
+        </div>
+        <span id="total-count" class="pill">0 scans</span>
       </header>
 
-      <section class="demo">
-        <label for="text">Try the API</label>
-        <div class="row">
-          <input id="text" type="text" placeholder="Type something…" value="Hello, F.O.B" />
-          <button id="send" type="button">Reverse</button>
+      <!-- COLLECTION -->
+      <main id="view-collection" class="view view--active" aria-label="Collection">
+        <div id="collection-empty" class="empty hidden">
+          <div class="empty__icon">◎</div>
+          <h2>No scans yet</h2>
+          <p>Capture barcodes and photos on the go. Your collection builds here by category.</p>
+          <button class="btn btn--primary" data-nav="capture">Start scanning</button>
         </div>
-        <pre id="result" class="result" aria-live="polite">Response will appear here.</pre>
-      </section>
-    </main>
+        <div id="collection-hubs" class="hub-list"></div>
+      </main>
 
-    <script src="./app.js"></script>
+      <!-- CAPTURE -->
+      <main id="view-capture" class="view" aria-label="Capture" hidden>
+        <section class="panel">
+          <div class="panel__header">
+            <h2>Photos</h2>
+            <p>Add as many shots as you need.</p>
+          </div>
+          <div id="photo-grid" class="photo-grid"></div>
+          <div class="row-actions">
+            <label class="btn btn--secondary btn--block">
+              📷 Camera
+              <input id="photo-camera" type="file" accept="image/*" capture="environment" multiple hidden />
+            </label>
+            <label class="btn btn--ghost btn--block">
+              ＋ Gallery
+              <input id="photo-gallery" type="file" accept="image/*" multiple hidden />
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel__header">
+            <h2>Barcode</h2>
+            <p>Scan or type a UPC/EAN.</p>
+          </div>
+          <div id="scanner-box" class="scanner-box hidden"></div>
+          <button id="toggle-scanner" type="button" class="btn btn--ghost btn--block">Start camera scanner</button>
+          <label class="field">
+            <span>Barcode</span>
+            <input id="barcode-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or enter code" />
+          </label>
+          <button id="lookup-btn" type="button" class="btn btn--secondary btn--block">Identify product</button>
+          <div id="lookup-result" class="lookup-result hidden"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel__header">
+            <h2>Details</h2>
+          </div>
+          <label class="field">
+            <span>Title</span>
+            <input id="title-input" type="text" placeholder="Product title" />
+          </label>
+          <label class="field">
+            <span>Quantity</span>
+            <input id="qty-input" type="number" min="1" value="1" inputmode="numeric" />
+          </label>
+          <label class="field">
+            <span>Category</span>
+            <select id="category-input"></select>
+          </label>
+          <label class="field">
+            <span>Notes</span>
+            <textarea id="notes-input" rows="2" placeholder="Optional"></textarea>
+          </label>
+        </section>
+
+        <button id="save-btn" type="button" class="btn btn--primary btn--block btn--save">Save to collection</button>
+      </main>
+
+      <!-- ITEM DETAIL SHEET -->
+      <dialog id="detail-sheet" class="sheet">
+        <div class="sheet__inner">
+          <button type="button" class="sheet__close" id="detail-close" aria-label="Close">✕</button>
+          <div id="detail-content"></div>
+        </div>
+      </dialog>
+
+      <nav class="tabbar" aria-label="Primary">
+        <button class="tabbar__btn tabbar__btn--active" data-nav="collection" aria-current="page">
+          <span class="tabbar__icon">☰</span>
+          <span>Collection</span>
+        </button>
+        <button class="tabbar__btn" data-nav="capture">
+          <span class="tabbar__icon tabbar__icon--accent">◎</span>
+          <span>Capture</span>
+        </button>
+      </nav>
+    </div>
+
+    <div id="toast" class="toast hidden" role="status"></div>
+
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script type="module" src="./scouter.js"></script>
   </body>
 </html>

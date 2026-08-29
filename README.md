@@ -1,55 +1,60 @@
-# F.O.B
+# Scouter
 
-A minimal [Express](https://expressjs.com/) web application that serves as the
-starter codebase and the Cloud Agent development-environment demo.
+Portable **mobile intake scanner** for your reseller workflow — built in F.O.B, outside Base44.
+
+Scan barcodes, add photos, set quantity, and browse your collection by category. Visor/HUD theme aligned with Coalition Command Core.
 
 ## Requirements
 
-- Node.js >= 20 (the repo is developed against Node 22)
+- Node.js >= 20
 - npm
+- Phone browser with camera (HTTPS in production for camera access)
 
 ## Getting started
 
 ```bash
-npm install      # install dependencies
-npm run dev      # start the dev server with auto-reload on http://localhost:3000
-npm start        # start the server without watch mode
-npm test         # run the test suite (node:test)
+npm install
+npm run dev      # http://localhost:3000
+npm test
 ```
 
-The server listens on `PORT` (default `3000`) and `HOST` (default `0.0.0.0`).
+Add to your phone home screen for a full-screen PWA experience.
+
+## Features (v1)
+
+### Capture
+- **Multiple photos** — camera or gallery
+- **Barcode scan** — camera scanner or manual entry
+- **Product identify** — free UPC catalog lookup (best-effort)
+- **Quantity** — default 1, editable
+- **Category** — Pokemon Sealed, Graded Slabs, Raw Cards, Sports Cards, Other
+
+### Collection
+- Items grouped by **category hub**
+- Holo-style cards with photo, title, qty, barcode
+- Tap a card for detail / delete
 
 ## API
 
-| Method | Path          | Description                              |
-| ------ | ------------- | ---------------------------------------- |
-| GET    | `/api/health` | Liveness/readiness probe with uptime.    |
-| POST   | `/api/echo`   | Returns the request `text` reversed.     |
-| GET    | `/`           | Serves the single-page frontend.         |
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| GET | `/api/health` | Health check |
+| GET | `/api/scouter/items` | List all scans |
+| POST | `/api/scouter/items` | Create scan |
+| PATCH | `/api/scouter/items/:id` | Update scan |
+| DELETE | `/api/scouter/items/:id` | Delete scan |
+| POST | `/api/scouter/items/:id/photos` | Upload photos (`photos` field) |
+| POST | `/api/scouter/items/:id/identify` | Barcode lookup + merge |
+| GET | `/api/scouter/barcode/:code` | Lookup only |
 
-Example:
+Data stored under `data/` (JSON + uploaded photos).
 
-```bash
-curl -s http://localhost:3000/api/health
-curl -s -X POST http://localhost:3000/api/echo \
-  -H 'Content-Type: application/json' \
-  -d '{"text":"Hello, F.O.B"}'
-```
+## Roadmap
 
-## Project layout
-
-```
-src/app.js        Express app factory (routes + static serving)
-src/server.js     Server bootstrap (binds to PORT/HOST)
-public/           Static frontend (HTML/CSS/JS)
-test/app.test.js  Integration tests against the app
-```
+- Sync to Coalition desktop intake
+- Market prices / auto-pricing hooks
+- Push to Double Holo, Shopify, eBay
 
 ## Cloud Agent environment
 
-The Cloud Agent environment is defined in
-[`.cursor/environment.json`](.cursor/environment.json):
-
-- `install`: `npm install`
-- `terminals`: runs `npm run dev` so the app is always available on port 3000
-- `ports`: exposes `3000`
+See [`.cursor/environment.json`](.cursor/environment.json).
