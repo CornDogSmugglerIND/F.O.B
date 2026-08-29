@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/scouter.css?v=5" />
+  <link rel="stylesheet" href="/scouter.css?v=6" />
 </head>
 <body>
   <div id="app">
@@ -111,13 +111,16 @@
   <input type="file" id="inputGallery" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" multiple hidden />
 
   <div class="scan-overlay" id="scanOverlay">
-    <video id="scanVideo" playsinline muted autoplay></video>
+    <div id="scanReader" class="scan-reader"></div>
+    <video id="scanVideo" class="scan-video-fallback" playsinline muted autoplay hidden></video>
+    <p class="scan-hint">Point at the barcode — UPC / EAN</p>
     <button type="button" class="btn" id="btnScanClose">Cancel scan</button>
   </div>
 
   <div class="toast" id="toast"></div>
 
-  <script src="/lib/image.js?v=5"></script>
-  <script src="/scouter.js?v=5"></script>
+  <script src="/lib/html5-qrcode.min.js?v=6"></script>
+  <script src="/lib/image.js?v=6"></script>
+  <script src="/scouter.js?v=6"></script>
 </body>
 </html>

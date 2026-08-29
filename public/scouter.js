@@ -20,6 +20,7 @@ const state = {
   barcode: "",
   scanner: null,
   scanLoop: null,
+  html5Scanner: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -51,6 +52,7 @@ const els = {
   saveBar: $("saveBar"),
   collectionRoot: $("collectionRoot"),
   scanOverlay: $("scanOverlay"),
+  scanReader: $("scanReader"),
   scanVideo: $("scanVideo"),
   btnScanClose: $("btnScanClose"),
   toast: $("toast"),
@@ -410,50 +412,131 @@ async function stopScanner() {
     state.scanner.getTracks().forEach((t) => t.stop());
     state.scanner = null;
   }
+  if (state.html5Scanner) {
+    try {
+      await state.html5Scanner.stop();
+      await state.html5Scanner.clear();
+    } catch {
+      /* already stopped */
+    }
+    state.html5Scanner = null;
+  }
+  els.scanReader.innerHTML = "";
   els.scanOverlay.classList.remove("open");
   els.scanVideo.srcObject = null;
+  els.scanVideo.hidden = true;
+}
+
+function html5BarcodeFormats() {
+  if (!window.Html5QrcodeSupportedFormats) return undefined;
+  const F = Html5QrcodeSupportedFormats;
+  return [F.UPC_A, F.UPC_E, F.EAN_13, F.EAN_8, F.CODE_128];
+}
+
+async function onBarcodeScanned(code) {
+  await stopScanner();
+  els.barcodeInput.value = code;
+  state.barcode = code.trim();
+  updateSaveState();
+  await lookupBarcode(code);
+  showToast(`Barcode: ${code}`);
+}
+
+async function startHtml5Scanner() {
+  if (!window.Html5Qrcode) {
+    throw new Error("Scanner library missing");
+  }
+
+  els.scanVideo.hidden = true;
+  els.scanReader.innerHTML = "";
+  els.scanOverlay.classList.add("open");
+  setStatus("Camera open — point at barcode", "busy");
+
+  state.html5Scanner = new Html5Qrcode("scanReader", {
+    formatsToSupport: html5BarcodeFormats(),
+    verbose: false,
+  });
+
+  await state.html5Scanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 280, height: 150 } },
+    (text) => onBarcodeScanned(text),
+    () => {},
+  );
+}
+
+async function startNativeScanner() {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: "environment" } },
+    audio: false,
+  });
+  els.scanReader.innerHTML = "";
+  els.scanVideo.hidden = false;
+  els.scanVideo.srcObject = stream;
+  els.scanOverlay.classList.add("open");
+  state.scanner = stream;
+  setStatus("Camera open — point at barcode", "busy");
+
+  const detector = new BarcodeDetector({
+    formats: ["upc_a", "upc_e", "ean_13", "ean_8", "code_128"],
+  });
+
+  const tick = async () => {
+    if (!state.scanner) return;
+    try {
+      const codes = await detector.detect(els.scanVideo);
+      if (codes.length) {
+        await onBarcodeScanned(codes[0].rawValue);
+        return;
+      }
+    } catch {
+      /* frame miss */
+    }
+    state.scanLoop = requestAnimationFrame(tick);
+  };
+  state.scanLoop = requestAnimationFrame(tick);
+}
+
+/** Try to read a barcode from photos already added (works everywhere). */
+async function scanBarcodeFromPhotos() {
+  if (!state.draftPhotos.length || !window.Html5Qrcode) return null;
+
+  const probe = new Html5Qrcode(/* element id not needed for scanFile */ "scanReader");
+  for (const photo of state.draftPhotos) {
+    if (!photo.file) continue;
+    try {
+      const text = await probe.scanFile(photo.file, false);
+      if (text) return text;
+    } catch {
+      /* try next photo */
+    }
+  }
+  return null;
 }
 
 async function startScanner() {
-  if (!("BarcodeDetector" in window)) {
-    showToast("Barcode scan needs iOS 17+ or Chrome", "err");
-    els.manualRow.classList.remove("hidden");
-    return;
-  }
-
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" } },
-      audio: false,
-    });
-    els.scanVideo.srcObject = stream;
-    els.scanOverlay.classList.add("open");
-    state.scanner = stream;
-
-    const detector = new BarcodeDetector({
-      formats: ["upc_a", "upc_e", "ean_13", "ean_8", "code_128"],
-    });
-
-    const tick = async () => {
-      if (!state.scanner) return;
-      try {
-        const codes = await detector.detect(els.scanVideo);
-        if (codes.length) {
-          const code = codes[0].rawValue;
-          await stopScanner();
-          els.barcodeInput.value = code;
-          await lookupBarcode(code);
-          return;
-        }
-      } catch {
-        /* frame miss */
-      }
-      state.scanLoop = requestAnimationFrame(tick);
-    };
-    state.scanLoop = requestAnimationFrame(tick);
-  } catch {
-    showToast("Camera access denied", "err");
+    if ("BarcodeDetector" in window) {
+      await startNativeScanner();
+      return;
+    }
+    await startHtml5Scanner();
+  } catch (err) {
     await stopScanner();
+
+    const fromPhoto = await scanBarcodeFromPhotos();
+    if (fromPhoto) {
+      els.barcodeInput.value = fromPhoto;
+      state.barcode = fromPhoto.trim();
+      updateSaveState();
+      await lookupBarcode(fromPhoto);
+      showToast(`Barcode from photo: ${fromPhoto}`);
+      return;
+    }
+
+    showToast("Camera scan unavailable — type barcode below", "err");
+    setStatus("Type the barcode number in the field above, or tap Lookup", "err");
+    els.barcodeInput.focus();
   }
 }
 
@@ -482,7 +565,18 @@ function bindEvents() {
 
   els.btnScan.addEventListener("click", () => startScanner());
   els.btnScanClose.addEventListener("click", () => stopScanner());
-  els.btnLookup.addEventListener("click", () => lookupBarcode(els.barcodeInput.value));
+  els.btnLookup.addEventListener("click", async () => {
+    if (!els.barcodeInput.value.trim() && state.draftPhotos.length) {
+      setStatus("Checking photos for barcode…", "busy");
+      const fromPhoto = await scanBarcodeFromPhotos();
+      if (fromPhoto) {
+        els.barcodeInput.value = fromPhoto;
+        state.barcode = fromPhoto.trim();
+        updateSaveState();
+      }
+    }
+    lookupBarcode(els.barcodeInput.value);
+  });
   els.barcodeInput.addEventListener("input", () => {
     state.barcode = els.barcodeInput.value.trim();
     updateSaveState();
