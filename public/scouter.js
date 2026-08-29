@@ -32,6 +32,7 @@ const els = {
   inputCamera: $("inputCamera"),
   inputGallery: $("inputGallery"),
   identifyStatus: $("identifyStatus"),
+  barcodeInput: $("barcodeInput"),
   manualRow: $("manualRow"),
   manualTitle: $("manualTitle"),
   btnManual: $("btnManual"),
@@ -75,11 +76,17 @@ async function api(path, opts = {}) {
   }
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    if (res.status === 413) {
-      throw new Error("Photo too large — try fewer photos or retake closer");
+    const text = await res.text();
+    let body = {};
+    try {
+      body = JSON.parse(text);
+    } catch {
+      /* plain text error from gateway */
     }
-    throw new Error(body.error || `Request failed (${res.status})`);
+    if (res.status === 413 || text.includes("PAYLOAD_TOO_LARGE") || text.includes("Too Large")) {
+      throw new Error("Photo too large — try one photo at a time");
+    }
+    throw new Error(body.error || text.slice(0, 120) || `Request failed (${res.status})`);
   }
 
   if (res.status === 204) return null;
@@ -147,9 +154,10 @@ function removePhoto(idx) {
 }
 
 async function addFiles(fileList) {
-  const incoming = [...(fileList ?? [])].filter((f) => f.type.startsWith("image/"));
+  const isImage = window.ScouterImage?.isImageFile ?? ((f) => f.type?.startsWith("image/"));
+  const incoming = [...(fileList ?? [])].filter(isImage);
   if (!incoming.length) {
-    showToast("No images selected", "err");
+    showToast("No images selected — iPhone HEIC is supported", "err");
     return;
   }
 
@@ -174,7 +182,8 @@ async function addFiles(fileList) {
 
     renderPhotoGrid();
     updateSaveState();
-    setIdentifyStatus(`${state.draftPhotos.length} photo(s) ready`);
+    const kb = Math.round(compressed.reduce((n, f) => n + f.size, 0) / 1024);
+    setIdentifyStatus(`${state.draftPhotos.length} photo(s) ready · ~${kb} KB`, "ok");
     showToast(`${batch.length} photo(s) added`);
   } catch (e) {
     setIdentifyStatus(e.message, "err");
@@ -276,6 +285,7 @@ function resetCapture() {
   els.fieldNotes.value = "";
   els.fieldBarcode.value = "";
   els.fieldTitle.value = "";
+  els.barcodeInput.value = "";
   els.manualTitle.value = "";
   els.manualRow.classList.add("hidden");
   renderPhotoGrid();
@@ -292,6 +302,7 @@ async function lookupBarcode(code) {
 
   state.barcode = trimmed;
   els.fieldBarcode.value = trimmed;
+  els.barcodeInput.value = trimmed;
   setIdentifyStatus("Looking up product…", "busy");
   els.btnLookup.disabled = true;
 
@@ -312,6 +323,26 @@ async function lookupBarcode(code) {
   } finally {
     els.btnLookup.disabled = false;
   }
+}
+
+async function uploadPhotos(itemId) {
+  let item = null;
+  const total = state.draftPhotos.length;
+
+  for (let i = 0; i < total; i++) {
+    els.btnSave.textContent = `Uploading photo ${i + 1}/${total}…`;
+
+    let file = state.draftPhotos[i].file;
+    if (window.ScouterImage) {
+      file = await window.ScouterImage.compressPhoto(file);
+    }
+
+    const form = new FormData();
+    form.append("photos", file);
+    item = (await api(`/api/scouter/items/${itemId}/photos`, { method: "POST", body: form })).item;
+  }
+
+  return item;
 }
 
 async function saveCapture() {
@@ -346,12 +377,7 @@ async function saveCapture() {
     }
 
     if (state.draftPhotos.length) {
-      els.btnSave.textContent = "Uploading photos…";
-      const form = new FormData();
-      for (const p of state.draftPhotos) {
-        form.append("photos", p.file);
-      }
-      item = (await api(`/api/scouter/items/${item.id}/photos`, { method: "POST", body: form })).item;
+      item = await uploadPhotos(item.id);
     }
 
     await loadItems();
@@ -419,6 +445,7 @@ async function startScanner() {
         if (codes.length) {
           const code = codes[0].rawValue;
           await stopScanner();
+          els.barcodeInput.value = code;
           await lookupBarcode(code);
           showToast(`Barcode · ${code}`);
           return;
@@ -456,7 +483,15 @@ function bindEvents() {
 
   els.btnScan.addEventListener("click", () => startScanner());
   els.btnScanClose.addEventListener("click", () => stopScanner());
-  els.btnLookup.addEventListener("click", () => lookupBarcode(state.barcode || prompt("Enter barcode:") || ""));
+  els.btnLookup.addEventListener("click", () => lookupBarcode(els.barcodeInput.value));
+  els.barcodeInput.addEventListener("input", () => {
+    state.barcode = els.barcodeInput.value.trim();
+    els.fieldBarcode.value = state.barcode;
+    updateSaveState();
+  });
+  els.barcodeInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") lookupBarcode(els.barcodeInput.value);
+  });
   els.btnManual.addEventListener("click", () => {
     els.manualRow.classList.remove("hidden");
     els.manualTitle.focus();
