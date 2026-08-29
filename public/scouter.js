@@ -7,23 +7,30 @@ const CATEGORIES = [
 ];
 
 const catMap = Object.fromEntries(CATEGORIES.map((c) => [c.value, c]));
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const state = {
   items: [],
   draftPhotos: [],
   scanner: null,
   scannerActive: false,
+  selectedCategory: "other",
 };
 
 const els = {
+  hudBg: document.getElementById("hud-bg"),
   collectionView: document.getElementById("view-collection"),
   captureView: document.getElementById("view-capture"),
   collectionEmpty: document.getElementById("collection-empty"),
   collectionHubs: document.getElementById("collection-hubs"),
   totalCount: document.getElementById("total-count"),
+  statusMode: document.getElementById("status-mode"),
+  statusClock: document.getElementById("status-clock"),
+  statusLink: document.getElementById("status-link"),
   photoGrid: document.getElementById("photo-grid"),
   photoCamera: document.getElementById("photo-camera"),
   photoGallery: document.getElementById("photo-gallery"),
+  scannerWrap: document.getElementById("scanner-wrap"),
   scannerBox: document.getElementById("scanner-box"),
   toggleScanner: document.getElementById("toggle-scanner"),
   barcodeInput: document.getElementById("barcode-input"),
@@ -31,13 +38,17 @@ const els = {
   lookupResult: document.getElementById("lookup-result"),
   titleInput: document.getElementById("title-input"),
   qtyInput: document.getElementById("qty-input"),
+  qtyMinus: document.getElementById("qty-minus"),
+  qtyPlus: document.getElementById("qty-plus"),
   categoryInput: document.getElementById("category-input"),
+  categoryChips: document.getElementById("category-chips"),
   notesInput: document.getElementById("notes-input"),
   saveBtn: document.getElementById("save-btn"),
   detailSheet: document.getElementById("detail-sheet"),
   detailContent: document.getElementById("detail-content"),
   detailClose: document.getElementById("detail-close"),
   toast: document.getElementById("toast"),
+  flash: document.getElementById("flash"),
 };
 
 function showToast(msg) {
@@ -45,6 +56,15 @@ function showToast(msg) {
   els.toast.classList.remove("hidden");
   clearTimeout(showToast.t);
   showToast.t = setTimeout(() => els.toast.classList.add("hidden"), 2600);
+}
+
+function scanFlash() {
+  if (reducedMotion) return;
+  els.flash.classList.remove("hidden");
+  els.flash.style.animation = "none";
+  void els.flash.offsetWidth;
+  els.flash.style.animation = "";
+  setTimeout(() => els.flash.classList.add("hidden"), 350);
 }
 
 async function api(path, opts = {}) {
@@ -72,37 +92,65 @@ function holoCardHtml(item, cat) {
   const title = item.title || "Unidentified";
   const meta = item.barcode ? `×${item.quantity} · ${item.barcode}` : `×${item.quantity}`;
   return `
-    <button class="holo-card" data-id="${item.id}" type="button" style="--card-core:${cat.core}">
-      <div class="holo-card__frame">${thumb}</div>
-      <div class="holo-card__body">
-        <div class="holo-card__title">${escapeHtml(title)}</div>
-        <div class="holo-card__meta">${escapeHtml(meta)}</div>
+    <button class="holo-card" data-id="${item.id}" type="button"
+      style="--card-core:${cat.core};--card-hi:${cat.hi}">
+      <div class="holo-card__tilt">
+        <div class="holo-card__frame">
+          <div class="holo-card__brackets"><span></span><span></span><span></span><span></span></div>
+          ${thumb}
+        </div>
+        <div class="holo-card__body">
+          <div class="holo-card__title">${escapeHtml(title)}</div>
+          <div class="holo-card__meta">${escapeHtml(meta)}</div>
+        </div>
       </div>
     </button>`;
 }
 
+function bindCardTilt(card) {
+  if (reducedMotion) return;
+  const tilt = card.querySelector(".holo-card__tilt");
+  if (!tilt) return;
+
+  card.addEventListener("pointermove", (e) => {
+    const r = card.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width - 0.5;
+    const py = (e.clientY - r.top) / r.height - 0.5;
+    tilt.style.transform = `perspective(900px) rotateX(${(-py * 16).toFixed(2)}deg) rotateY(${(px * 16).toFixed(2)}deg) translateZ(12px)`;
+  });
+  card.addEventListener("pointerleave", () => {
+    tilt.style.transform = "perspective(900px) rotateX(0) rotateY(0) translateZ(0)";
+  });
+}
+
 function renderCollection() {
   const count = state.items.length;
-  els.totalCount.textContent = `${count} scan${count === 1 ? "" : "s"}`;
+  els.totalCount.textContent = String(count).padStart(2, "0");
+  els.totalCount.classList.remove("count-pop");
+  void els.totalCount.offsetWidth;
+  els.totalCount.classList.add("count-pop");
+
   els.collectionEmpty.classList.toggle("hidden", count > 0);
   els.collectionHubs.innerHTML = "";
 
   for (const cat of CATEGORIES) {
     const items = state.items.filter((i) => i.category === cat.value);
     const section = document.createElement("section");
-    section.className = "hub-section";
+    section.className = "hub-section v-panel v-cut";
+    section.style.setProperty("--hub-core", cat.core);
     section.innerHTML = `
       <div class="hub-section__head">
-        <div class="hub-section__icon" style="background:${cat.hi}22;box-shadow:inset 0 0 0 1.5px ${cat.core},0 0 20px -8px ${cat.core}">${cat.icon}</div>
+        <div class="hub-section__icon" style="background:${cat.hi}22;box-shadow:inset 0 0 0 1.5px ${cat.core},0 0 24px -8px ${cat.core}">${cat.icon}</div>
         <div>
-          <div class="hub-section__label">Category</div>
+          <div class="v-label">Category hub</div>
           <div class="hub-section__title">${cat.label}</div>
         </div>
-        <div class="hub-section__count" style="color:${items.length ? cat.hi : "var(--lo)"}">${String(items.length).padStart(2, "0")}</div>
+        <div class="hub-section__count" style="color:${items.length ? cat.hi : "var(--lo)"};text-shadow:${items.length ? `0 0 16px ${cat.core}` : "none"}">${String(items.length).padStart(2, "0")}</div>
       </div>
-      <div class="holo-scroll">${items.length ? items.map((i) => holoCardHtml(i, cat)).join("") : `<div style="color:var(--lo);font-size:0.8rem;padding:8px 4px">No items yet</div>`}</div>
+      <div class="holo-scroll">${items.length ? items.map((i) => holoCardHtml(i, cat)).join("") : `<div class="v-label" style="padding:8px 4px">Awaiting scans</div>`}</div>
     `;
     section.querySelectorAll(".holo-card").forEach((btn) => {
+      bindCardTilt(btn);
       btn.addEventListener("click", () => openDetail(btn.dataset.id));
     });
     els.collectionHubs.appendChild(section);
@@ -113,9 +161,26 @@ function renderDraftPhotos() {
   els.photoGrid.innerHTML = state.draftPhotos
     .map(
       (p, i) =>
-        `<div class="photo-thumb"><img src="${p.previewUrl}" alt="Draft ${i + 1}" /></div>`,
+        `<div class="photo-thumb" style="animation-delay:${i * 0.04}s"><img src="${p.previewUrl}" alt="Draft ${i + 1}" /></div>`,
     )
     .join("");
+}
+
+function setCategory(value) {
+  state.selectedCategory = value;
+  els.categoryInput.value = value;
+  els.categoryChips.querySelectorAll(".chip").forEach((chip) => {
+    chip.classList.toggle("chip--active", chip.dataset.value === value);
+  });
+}
+
+function renderCategoryChips() {
+  els.categoryChips.innerHTML = CATEGORIES.map(
+    (c) => `<button type="button" class="chip${c.value === state.selectedCategory ? " chip--active" : ""}" data-value="${c.value}">${c.label}</button>`,
+  ).join("");
+  els.categoryChips.querySelectorAll(".chip").forEach((chip) => {
+    chip.addEventListener("click", () => setCategory(chip.dataset.value));
+  });
 }
 
 function resetCapture() {
@@ -125,7 +190,7 @@ function resetCapture() {
   els.barcodeInput.value = "";
   els.titleInput.value = "";
   els.qtyInput.value = "1";
-  els.categoryInput.value = "other";
+  setCategory("other");
   els.notesInput.value = "";
   els.lookupResult.classList.add("hidden");
   els.lookupResult.classList.remove("lookup-result--found");
@@ -137,6 +202,7 @@ function addFiles(fileList) {
     state.draftPhotos.push({ file, previewUrl: URL.createObjectURL(file) });
   }
   renderDraftPhotos();
+  if (state.draftPhotos.length) showToast(`${state.draftPhotos.length} photo(s) loaded`);
 }
 
 async function loadItems() {
@@ -150,12 +216,13 @@ async function stopScanner() {
   try {
     await state.scanner.stop();
     await state.scanner.clear();
-  } catch { /* already stopped */ }
+  } catch { /* stopped */ }
   state.scanner = null;
   state.scannerActive = false;
-  els.scannerBox.classList.add("hidden");
+  els.scannerWrap.classList.add("hidden");
   els.scannerBox.innerHTML = "";
-  els.toggleScanner.textContent = "Start camera scanner";
+  els.scannerWrap.classList.remove("scanner-wrap--locked");
+  els.toggleScanner.textContent = "Activate reticle scanner";
 }
 
 async function startScanner() {
@@ -168,9 +235,9 @@ async function startScanner() {
     return;
   }
 
-  els.scannerBox.classList.remove("hidden");
+  els.scannerWrap.classList.remove("hidden");
   els.scannerBox.innerHTML = '<div id="qr-reader"></div>';
-  els.toggleScanner.textContent = "Stop camera scanner";
+  els.toggleScanner.textContent = "Disengage scanner";
 
   state.scanner = new Html5Qrcode("qr-reader", {
     formatsToSupport: [
@@ -184,10 +251,12 @@ async function startScanner() {
 
   await state.scanner.start(
     { facingMode: "environment" },
-    { fps: 10, qrbox: { width: 260, height: 140 } },
+    { fps: 12, qrbox: { width: 260, height: 140 } },
     (code) => {
+      els.scannerWrap.classList.add("scanner-wrap--locked");
       els.barcodeInput.value = code;
-      showToast(`Scanned ${code}`);
+      scanFlash();
+      showToast(`Lock · ${code}`);
       stopScanner();
       lookupProduct();
     },
@@ -201,21 +270,21 @@ function applyLookup(result) {
   if (result.found && result.product) {
     els.lookupResult.classList.add("lookup-result--found");
     if (!els.titleInput.value) els.titleInput.value = result.product.title || "";
-    els.lookupResult.textContent = `Matched via ${result.product.lookupSource}. Edit title if needed.`;
+    els.lookupResult.textContent = `IDENTIFIED · ${result.product.lookupSource}`;
   } else {
     els.lookupResult.classList.remove("lookup-result--found");
-    els.lookupResult.textContent = "No catalog match — add a title manually.";
+    els.lookupResult.textContent = "NO CATALOG MATCH · enter title manually";
   }
 }
 
 async function lookupProduct() {
   const code = els.barcodeInput.value.trim();
   if (!code) {
-    showToast("Enter or scan a barcode first");
+    showToast("Scan or enter a barcode");
     return;
   }
   els.lookupBtn.disabled = true;
-  els.lookupBtn.textContent = "Looking up…";
+  els.lookupBtn.textContent = "Scanning catalogs…";
   try {
     applyLookup(await api(`/api/scouter/barcode/${encodeURIComponent(code)}`));
   } catch (e) {
@@ -231,12 +300,12 @@ async function saveCapture() {
   const hasBarcode = els.barcodeInput.value.trim();
   const hasTitle = els.titleInput.value.trim();
   if (!hasPhoto && !hasBarcode && !hasTitle) {
-    showToast("Add a photo, barcode, or title");
+    showToast("Add photo, barcode, or title");
     return;
   }
 
   els.saveBtn.disabled = true;
-  els.saveBtn.textContent = "Saving…";
+  els.saveBtn.textContent = "Committing…";
   try {
     let { item } = await api("/api/scouter/items", {
       method: "POST",
@@ -245,7 +314,7 @@ async function saveCapture() {
         title: hasTitle || null,
         barcode: hasBarcode || null,
         quantity: Number(els.qtyInput.value) || 1,
-        category: els.categoryInput.value,
+        category: state.selectedCategory,
         notes: els.notesInput.value.trim() || null,
       }),
     });
@@ -260,9 +329,6 @@ async function saveCapture() {
         }),
       });
       item = identified.item;
-      if (identified.lookup?.found && !els.titleInput.value.trim()) {
-        els.titleInput.value = item.title || "";
-      }
     }
 
     if (state.draftPhotos.length) {
@@ -271,15 +337,16 @@ async function saveCapture() {
       item = (await api(`/api/scouter/items/${item.id}/photos`, { method: "POST", body: form })).item;
     }
 
+    scanFlash();
     await loadItems();
     resetCapture();
     navigate("collection");
-    showToast("Saved to collection");
+    showToast("Committed to collection");
   } catch (e) {
     showToast(e.message);
   } finally {
     els.saveBtn.disabled = false;
-    els.saveBtn.textContent = "Save to collection";
+    els.saveBtn.textContent = "Commit to collection";
   }
 }
 
@@ -289,22 +356,22 @@ function openDetail(id) {
   const cat = catMap[item.category] || catMap.other;
   const photos = item.photos.length
     ? item.photos.map((p) => `<img src="${p.url}" alt="" />`).join("")
-    : `<div style="color:var(--lo);font-size:0.85rem">No photos</div>`;
+    : `<div class="v-label">No photos</div>`;
 
   els.detailContent.innerHTML = `
-    <h2 style="margin:0 0 4px;font-size:1.1rem">${escapeHtml(item.title || "Unidentified")}</h2>
-    <div style="font-family:var(--mono);font-size:0.7rem;color:var(--lo);letter-spacing:0.12em">${cat.label.toUpperCase()}</div>
+    <div class="v-label">${cat.label.toUpperCase()}</div>
+    <h2 class="v-readout v-readout--sm" style="margin:6px 0 0">${escapeHtml(item.title || "UNIDENTIFIED")}</h2>
     <div class="detail-photos">${photos}</div>
-    <div class="detail-row"><span>Quantity</span><span>${item.quantity}</span></div>
+    <div class="detail-row"><span>Qty</span><span>${item.quantity}</span></div>
     <div class="detail-row"><span>Barcode</span><span>${escapeHtml(item.barcode || "—")}</span></div>
     <div class="detail-row"><span>Notes</span><span>${escapeHtml(item.notes || "—")}</span></div>
-    <button type="button" class="btn btn--danger btn--block" id="delete-item">Delete scan</button>
+    <button type="button" class="btn btn--danger btn--block btn--lift" id="delete-item">Purge scan</button>
   `;
   document.getElementById("delete-item").addEventListener("click", async () => {
     await api(`/api/scouter/items/${id}`, { method: "DELETE" });
     els.detailSheet.close();
     await loadItems();
-    showToast("Deleted");
+    showToast("Scan purged");
   });
   els.detailSheet.showModal();
 }
@@ -315,6 +382,7 @@ function navigate(view) {
   els.collectionView.hidden = !isCollection;
   els.captureView.classList.toggle("view--active", !isCollection);
   els.captureView.hidden = isCollection;
+  els.statusMode.textContent = isCollection ? "COLLECTION" : "CAPTURE";
   document.querySelectorAll(".tabbar__btn").forEach((btn) => {
     const active = btn.dataset.nav === view;
     btn.classList.toggle("tabbar__btn--active", active);
@@ -323,13 +391,54 @@ function navigate(view) {
   if (isCollection) stopScanner();
 }
 
-// Init category select
+function initHudParallax() {
+  if (reducedMotion) return;
+  window.addEventListener("pointermove", (e) => {
+    const px = (e.clientX / window.innerWidth) * 100;
+    const py = (e.clientY / window.innerHeight) * 100;
+    els.hudBg.style.setProperty("--px", `${px}%`);
+    els.hudBg.style.setProperty("--py", `${py}%`);
+    els.hudBg.style.transform = `translate(${(px - 50) * 0.012}px, ${(py - 50) * 0.012}px)`;
+  }, { passive: true });
+}
+
+function initClock() {
+  const tick = () => {
+    const d = new Date();
+    els.statusClock.textContent = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  };
+  tick();
+  setInterval(tick, 30_000);
+}
+
+async function checkLink() {
+  try {
+    await api("/api/health");
+    els.statusLink.textContent = "ONLINE";
+    els.statusLink.style.color = "var(--green-hi)";
+  } catch {
+    els.statusLink.textContent = "OFFLINE";
+    els.statusLink.style.color = "var(--bad)";
+  }
+}
+
 for (const cat of CATEGORIES) {
   const opt = document.createElement("option");
   opt.value = cat.value;
   opt.textContent = cat.label;
   els.categoryInput.appendChild(opt);
 }
+renderCategoryChips();
+initHudParallax();
+initClock();
+checkLink();
+
+els.qtyMinus.addEventListener("click", () => {
+  els.qtyInput.value = String(Math.max(1, Number(els.qtyInput.value) - 1));
+});
+els.qtyPlus.addEventListener("click", () => {
+  els.qtyInput.value = String(Math.max(1, Number(els.qtyInput.value) + 1));
+});
 
 els.photoCamera.addEventListener("change", (e) => {
   addFiles(e.target.files);
