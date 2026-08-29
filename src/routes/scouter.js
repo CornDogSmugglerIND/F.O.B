@@ -3,12 +3,15 @@ import multer from "multer";
 import { randomUUID } from "node:crypto";
 import { lookupBarcode } from "../lookup.js";
 import {
+  addInlinePhotoToItem,
   addPhotoToItem,
   createScoutItem,
   deleteScoutItem,
+  findPhoto,
   getScoutItem,
   getUploadsDir,
   listScoutItems,
+  replaceAllItems,
   updateScoutItem,
 } from "../store.js";
 
@@ -73,6 +76,56 @@ export function scouterRouter() {
     }
   });
 
+  router.get("/photos/:photoId", async (req, res, next) => {
+    try {
+      const found = await findPhoto(req.params.photoId);
+      if (!found?.photo.dataUrl) {
+        return res.status(404).json({ error: "Photo not found" });
+      }
+      const match = found.photo.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (!match) return res.status(404).json({ error: "Photo not found" });
+      const buf = Buffer.from(match[2], "base64");
+      res.setHeader("Content-Type", match[1]);
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.send(buf);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.put("/items/sync", async (req, res, next) => {
+    try {
+      const items = req.body?.items;
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: "items array required" });
+      }
+      await replaceAllItems(items);
+      res.json({ items: await listScoutItems() });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post("/items/:id/photos/data", async (req, res, next) => {
+    try {
+      const item = await getScoutItem(req.params.id);
+      if (!item) return res.status(404).json({ error: "Item not found" });
+
+      const dataUrl = req.body?.dataUrl;
+      if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) {
+        return res.status(400).json({ error: "dataUrl must be a data:image/ URI" });
+      }
+      if (dataUrl.length > 900_000) {
+        return res.status(413).json({ error: "Photo too large after compression" });
+      }
+
+      const updated = await addInlinePhotoToItem(item.id, dataUrl);
+      res.json({ item: updated });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.post("/items/:id/photos", upload.array("photos", 20), async (req, res, next) => {
     try {
       const item = await getScoutItem(req.params.id);
@@ -84,6 +137,7 @@ export function scouterRouter() {
           id: randomUUID(),
           filename: file.filename,
           url: `/uploads/${file.filename}`,
+          dataUrl: null,
           createdAt: new Date().toISOString(),
         };
         current = /** @type {typeof item} */ (await addPhotoToItem(current.id, photo));

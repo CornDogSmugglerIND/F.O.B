@@ -1,3 +1,5 @@
+const LS_KEY = "scouter-items-v1";
+
 const CATEGORIES = [
   { value: "pokemon_sealed", label: "Pokemon Sealed" },
   { value: "graded_slabs", label: "Graded Slabs" },
@@ -7,7 +9,7 @@ const CATEGORIES = [
 ];
 
 const catMap = Object.fromEntries(CATEGORIES.map((c) => [c.value, c]));
-const MAX_PHOTOS = 12;
+const MAX_PHOTOS = 8;
 
 const state = {
   items: [],
@@ -28,7 +30,6 @@ const els = {
   viewCollection: $("viewCollection"),
   photoGrid: $("photoGrid"),
   photoDrop: $("photoDrop"),
-  photoCountLbl: $("photoCountLbl"),
   btnCamera: $("btnCamera"),
   btnGallery: $("btnGallery"),
   inputCamera: $("inputCamera"),
@@ -41,12 +42,9 @@ const els = {
   btnManualOk: $("btnManualOk"),
   btnScan: $("btnScan"),
   btnLookup: $("btnLookup"),
-  fieldBarcode: $("fieldBarcode"),
-  fieldTitle: $("fieldTitle"),
   qtyVal: $("qtyVal"),
   qtyMinus: $("qtyMinus"),
   qtyPlus: $("qtyPlus"),
-  fieldCategory: $("fieldCategory"),
   categoryChips: $("categoryChips"),
   fieldNotes: $("fieldNotes"),
   btnSave: $("btnSave"),
@@ -65,17 +63,26 @@ function showToast(msg, type = "ok") {
   showToast.t = setTimeout(() => els.toast.classList.remove("show"), 3200);
 }
 
-function setIdentifyStatus(msg, kind = "") {
+function setStatus(msg, kind = "") {
   els.identifyStatus.textContent = msg;
-  els.identifyStatus.className = `status-strip${kind ? ` ${kind}` : ""}`;
+  els.identifyStatus.className = `status${kind ? ` ${kind}` : ""}`;
 }
 
-function setCategory(value) {
-  state.category = value;
-  els.fieldCategory.value = value;
-  els.categoryChips.querySelectorAll(".m-chip").forEach((chip) => {
-    chip.classList.toggle("on", chip.dataset.value === value);
-  });
+function loadLocalItems() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalItems(items) {
+  localStorage.setItem(LS_KEY, JSON.stringify(items));
+}
+
+function photoSrc(photo) {
+  return photo?.dataUrl || photo?.url || "";
 }
 
 async function api(path, opts = {}) {
@@ -83,7 +90,7 @@ async function api(path, opts = {}) {
   try {
     res = await fetch(path, opts);
   } catch {
-    throw new Error("Network error — check connection and refresh");
+    throw new Error("Network unavailable");
   }
 
   if (!res.ok) {
@@ -92,12 +99,9 @@ async function api(path, opts = {}) {
     try {
       body = JSON.parse(text);
     } catch {
-      /* plain text error from gateway */
+      /* plain text */
     }
-    if (res.status === 413 || text.includes("PAYLOAD_TOO_LARGE") || text.includes("Too Large")) {
-      throw new Error("Photo too large — try one photo at a time");
-    }
-    throw new Error(body.error || text.slice(0, 120) || `Request failed (${res.status})`);
+    throw new Error(body.error || text.slice(0, 100) || `Request failed (${res.status})`);
   }
 
   if (res.status === 204) return null;
@@ -120,22 +124,23 @@ function updateSaveState() {
   els.btnSave.disabled = !canSave;
 }
 
-function renderPhotoGrid() {
-  const count = state.draftPhotos.length;
-  els.photoCountLbl.textContent = `${count} added`;
-  els.photoDrop.classList.toggle("hidden", count > 0 && count >= MAX_PHOTOS);
+function setCategory(value) {
+  state.category = value;
+  els.categoryChips.querySelectorAll(".chip").forEach((chip) => {
+    chip.classList.toggle("on", chip.dataset.value === value);
+  });
+}
 
+function renderPhotoGrid() {
   els.photoGrid.innerHTML = state.draftPhotos
     .map(
       (p, i) => `
-      <div class="photo-thumb" data-idx="${i}">
-        <img src="${p.previewUrl}" alt="" />
-        <button type="button" class="rm" data-rm="${i}" aria-label="Remove">×</button>
+      <div class="thumb">
+        <img src="${p.dataUrl}" alt="" />
+        <button type="button" data-rm="${i}" aria-label="Remove">×</button>
       </div>`,
     )
     .join("");
-
-  els.photoGrid.classList.toggle("hidden", count === 0);
 
   els.photoGrid.querySelectorAll("[data-rm]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -146,8 +151,6 @@ function renderPhotoGrid() {
 }
 
 function removePhoto(idx) {
-  const p = state.draftPhotos[idx];
-  if (p) URL.revokeObjectURL(p.previewUrl);
   state.draftPhotos.splice(idx, 1);
   renderPhotoGrid();
   updateSaveState();
@@ -157,50 +160,42 @@ async function addFiles(fileList) {
   const isImage = window.ScouterImage?.isImageFile ?? ((f) => f.type?.startsWith("image/"));
   const incoming = [...(fileList ?? [])].filter(isImage);
   if (!incoming.length) {
-    showToast("No images selected — iPhone HEIC is supported", "err");
+    showToast("No images found — try JPEG or HEIC", "err");
     return;
   }
 
   const room = MAX_PHOTOS - state.draftPhotos.length;
   if (room <= 0) {
-    showToast(`Max ${MAX_PHOTOS} photos`, "err");
+    showToast(`Max ${MAX_PHOTOS} photos per item`, "err");
     return;
   }
 
   const batch = incoming.slice(0, room);
-  setIdentifyStatus("Processing photos…", "busy");
+  setStatus("Processing photos…", "busy");
 
   try {
-    const compressed = window.ScouterImage
-      ? await window.ScouterImage.compressPhotos(batch)
-      : batch;
-
-    for (let i = 0; i < batch.length; i++) {
-      const file = compressed[i];
-      state.draftPhotos.push({ file, previewUrl: URL.createObjectURL(file) });
+    const compressed = await window.ScouterImage.compressPhotos(batch);
+    for (const file of compressed) {
+      const dataUrl = await window.ScouterImage.fileToDataUrl(file);
+      state.draftPhotos.push({ dataUrl, file });
     }
-
     renderPhotoGrid();
     updateSaveState();
-    const kb = Math.round(compressed.reduce((n, f) => n + f.size, 0) / 1024);
-    setIdentifyStatus(`${state.draftPhotos.length} photo(s) ready · ~${kb} KB`, "ok");
-    showToast(`${batch.length} photo(s) added`);
+    setStatus(`${state.draftPhotos.length} photo(s) ready on this device`, "ok");
+    showToast("Photos added");
   } catch (e) {
-    setIdentifyStatus(e.message, "err");
+    setStatus(e.message, "err");
     showToast(e.message, "err");
   }
 }
 
 function renderCollection() {
   const count = state.items.length;
-  els.statCount.textContent = String(count).padStart(2, "0");
+  els.statCount.textContent = String(count);
 
   if (!count) {
-    els.collectionRoot.innerHTML = `
-      <div class="coll-empty m-panel v-cut">
-        <div class="v-readout v-emit-gold">No items yet</div>
-        <p>Capture photos or scan a barcode,<br/>then commit to collection.</p>
-      </div>`;
+    els.collectionRoot.innerHTML =
+      '<div class="empty card">Nothing saved yet.<br/>Add an item on the Capture tab.</div>';
     return;
   }
 
@@ -211,55 +206,43 @@ function renderCollection() {
     if (!items.length) continue;
 
     const section = document.createElement("section");
-    section.className = "hub-section m-panel v-cut open";
+    section.className = "card group open";
     section.innerHTML = `
-      <div class="hub-head">
-        <span class="hub-name">${cat.label}</span>
-        <span class="hub-count">${items.length}</span>
+      <div class="group-head">
+        <h3>${cat.label}</h3>
+        <span>${items.length}</span>
       </div>
-      <div class="hub-items"></div>`;
+      <div class="group-items"></div>`;
 
-    const list = section.querySelector(".hub-items");
+    const list = section.querySelector(".group-items");
     for (const item of items) {
-      const thumb = item.photos[0]
-        ? `<img class="item-thumb" src="${item.photos[0].url}" alt="" />`
-        : `<div class="item-thumb item-thumb-empty">NO IMG</div>`;
-      const title = item.title || "Unidentified";
-      const meta = [
-        `×${item.quantity}`,
-        item.barcode || null,
-        new Date(item.createdAt).toLocaleDateString(),
-      ]
-        .filter(Boolean)
-        .join(" · ");
+      const src = photoSrc(item.photos[0]);
+      const thumb = src
+        ? `<img src="${src}" alt="" />`
+        : `<div class="no-img">No photo</div>`;
+      const title = item.title || "Untitled item";
+      const meta = [`×${item.quantity}`, item.barcode].filter(Boolean).join(" · ");
 
-      const card = document.createElement("div");
-      card.className = "item-card v-node";
-      card.innerHTML = `
+      const row = document.createElement("div");
+      row.className = "item";
+      row.innerHTML = `
         ${thumb}
-        <div class="item-info">
-          <div class="item-title">${escapeHtml(title)}</div>
-          <div class="item-meta">${escapeHtml(meta)}</div>
+        <div class="item-main">
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(meta)}</span>
         </div>
-        <button type="button" class="item-del" data-del="${item.id}" aria-label="Delete">×</button>`;
-      list.appendChild(card);
+        <button type="button" class="item-del" data-del="${item.id}">×</button>`;
+      list.appendChild(row);
     }
 
-    section.querySelector(".hub-head").addEventListener("click", () => {
+    section.querySelector(".group-head").addEventListener("click", () => {
       section.classList.toggle("open");
     });
 
     section.querySelectorAll("[data-del]").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
+      btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        if (!confirm("Delete this item?")) return;
-        try {
-          await api(`/api/scouter/items/${btn.dataset.del}`, { method: "DELETE" });
-          await loadItems();
-          showToast("Item deleted");
-        } catch (err) {
-          showToast(err.message, "err");
-        }
+        deleteItem(btn.dataset.del);
       });
     });
 
@@ -267,130 +250,142 @@ function renderCollection() {
   }
 }
 
-async function loadItems() {
-  const data = await api("/api/scouter/items");
-  state.items = data.items;
+function loadItems() {
+  state.items = loadLocalItems().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   renderCollection();
 }
 
+function deleteItem(id) {
+  if (!confirm("Delete this item from this phone?")) return;
+  state.items = state.items.filter((i) => i.id !== id);
+  saveLocalItems(state.items);
+  renderCollection();
+  showToast("Deleted");
+}
+
 function resetCapture() {
-  state.draftPhotos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
   state.draftPhotos = [];
   state.qty = 1;
   state.category = "other";
   state.title = "";
   state.barcode = "";
   els.qtyVal.textContent = "1";
-  els.fieldCategory.value = "other";
-  setCategory("other");
   els.fieldNotes.value = "";
-  els.fieldBarcode.value = "";
-  els.fieldTitle.value = "";
   els.barcodeInput.value = "";
   els.manualTitle.value = "";
   els.manualRow.classList.add("hidden");
+  setCategory("other");
   renderPhotoGrid();
-  setIdentifyStatus("Add photos or scan a barcode to begin");
+  setStatus("Add a photo, barcode, or title to save");
   updateSaveState();
 }
 
 async function lookupBarcode(code) {
   const trimmed = code.trim();
   if (!trimmed) {
-    showToast("Enter or scan a barcode", "err");
+    showToast("Enter a barcode first", "err");
     return;
   }
 
   state.barcode = trimmed;
-  els.fieldBarcode.value = trimmed;
   els.barcodeInput.value = trimmed;
-  setIdentifyStatus("Looking up product…", "busy");
+  setStatus("Looking up barcode…", "busy");
   els.btnLookup.disabled = true;
 
   try {
     const result = await api(`/api/scouter/barcode/${encodeURIComponent(trimmed)}`);
-    if (result.found && result.product) {
-      state.title = result.product.title || state.title;
-      els.fieldTitle.value = state.title;
-      setIdentifyStatus(`Identified · ${result.product.lookupSource || "catalog"}`, "ok");
+    if (result.found && result.product?.title) {
+      state.title = result.product.title;
+      setStatus(`Found: ${result.product.title}`, "ok");
     } else {
-      setIdentifyStatus("No catalog match — enter title manually", "err");
+      setStatus("Not in catalog — add a title manually", "err");
       els.manualRow.classList.remove("hidden");
     }
     updateSaveState();
-  } catch (e) {
-    setIdentifyStatus(e.message, "err");
-    showToast(e.message, "err");
+  } catch {
+    setStatus("Lookup offline — add title manually", "err");
+    els.manualRow.classList.remove("hidden");
   } finally {
     els.btnLookup.disabled = false;
   }
-}
-
-async function uploadPhotos(itemId) {
-  let item = null;
-  const total = state.draftPhotos.length;
-
-  for (let i = 0; i < total; i++) {
-    els.btnSave.textContent = `Uploading photo ${i + 1}/${total}…`;
-
-    let file = state.draftPhotos[i].file;
-    if (window.ScouterImage) {
-      file = await window.ScouterImage.compressPhoto(file);
-    }
-
-    const form = new FormData();
-    form.append("photos", file);
-    item = (await api(`/api/scouter/items/${itemId}/photos`, { method: "POST", body: form })).item;
-  }
-
-  return item;
 }
 
 async function saveCapture() {
   if (els.btnSave.disabled) return;
 
   els.btnSave.disabled = true;
-  els.btnSave.textContent = "Committing…";
+  els.btnSave.textContent = "Saving…";
 
   try {
-    let { item } = await api("/api/scouter/items", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: state.title.trim() || null,
-        barcode: state.barcode.trim() || null,
-        quantity: state.qty,
-        category: state.category,
-        notes: els.fieldNotes.value.trim() || null,
-      }),
-    });
+    const now = new Date().toISOString();
+    const item = {
+      id: crypto.randomUUID(),
+      createdAt: now,
+      updatedAt: now,
+      title: state.title.trim() || null,
+      barcode: state.barcode.trim() || null,
+      quantity: state.qty,
+      category: state.category,
+      notes: els.fieldNotes.value.trim() || null,
+      photos: state.draftPhotos.map((p) => ({
+        id: crypto.randomUUID(),
+        dataUrl: p.dataUrl,
+        url: p.dataUrl,
+        createdAt: now,
+      })),
+    };
 
-    if (state.barcode.trim()) {
-      const identified = await api(`/api/scouter/items/${item.id}/identify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          barcode: state.barcode.trim(),
-          title: state.title.trim() || null,
-        }),
-      });
-      item = identified.item;
+    state.items.unshift(item);
+    saveLocalItems(state.items);
+
+    // Best-effort server sync (barcode identify + backup); never block local save
+    try {
+      let remote = (
+        await api("/api/scouter/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: item.title,
+            barcode: item.barcode,
+            quantity: item.quantity,
+            category: item.category,
+            notes: item.notes,
+          }),
+        })
+      ).item;
+
+      if (item.barcode) {
+        remote = (
+          await api(`/api/scouter/items/${remote.id}/identify`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ barcode: item.barcode, title: item.title }),
+          })
+        ).item;
+        if (remote.title) item.title = remote.title;
+      }
+
+      for (const photo of item.photos) {
+        await api(`/api/scouter/items/${remote.id}/photos/data`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl: photo.dataUrl }),
+        });
+      }
+    } catch {
+      /* local save already succeeded */
     }
 
-    if (state.draftPhotos.length) {
-      item = await uploadPhotos(item.id);
-    }
-
-    await loadItems();
+    loadItems();
     resetCapture();
     navigate("collection");
-    showToast("Committed to collection");
+    showToast("Saved on this phone");
   } catch (e) {
     showToast(e.message, "err");
-    setIdentifyStatus(e.message, "err");
+    setStatus(e.message, "err");
   } finally {
     els.btnSave.disabled = false;
-    els.btnSave.textContent = "Commit to collection";
+    els.btnSave.textContent = "Save item";
     updateSaveState();
   }
 }
@@ -400,7 +395,7 @@ function navigate(view) {
   els.viewCapture.classList.toggle("active", !isCollection);
   els.viewCollection.classList.toggle("active", isCollection);
   els.saveBar.classList.toggle("hidden", isCollection);
-  document.querySelectorAll(".nav-tab").forEach((tab) => {
+  document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.view === view);
   });
   if (isCollection) stopScanner();
@@ -412,7 +407,7 @@ async function stopScanner() {
     state.scanLoop = null;
   }
   if (state.scanner) {
-    state.scanner.stop();
+    state.scanner.getTracks().forEach((t) => t.stop());
     state.scanner = null;
   }
   els.scanOverlay.classList.remove("open");
@@ -421,7 +416,7 @@ async function stopScanner() {
 
 async function startScanner() {
   if (!("BarcodeDetector" in window)) {
-    showToast("Barcode scan needs Safari 17+ or Chrome", "err");
+    showToast("Barcode scan needs iOS 17+ or Chrome", "err");
     els.manualRow.classList.remove("hidden");
     return;
   }
@@ -433,11 +428,11 @@ async function startScanner() {
     });
     els.scanVideo.srcObject = stream;
     els.scanOverlay.classList.add("open");
+    state.scanner = stream;
 
     const detector = new BarcodeDetector({
       formats: ["upc_a", "upc_e", "ean_13", "ean_8", "code_128"],
     });
-    state.scanner = stream;
 
     const tick = async () => {
       if (!state.scanner) return;
@@ -448,7 +443,6 @@ async function startScanner() {
           await stopScanner();
           els.barcodeInput.value = code;
           await lookupBarcode(code);
-          showToast(`Barcode · ${code}`);
           return;
         }
       } catch {
@@ -464,32 +458,19 @@ async function startScanner() {
 }
 
 function initCategories() {
-  els.fieldCategory.innerHTML = CATEGORIES.map(
-    (c) => `<option value="${c.value}">${c.label}</option>`,
-  ).join("");
   els.categoryChips.innerHTML = CATEGORIES.map(
-    (c) => `<button type="button" class="m-chip${c.value === state.category ? " on" : ""}" data-value="${c.value}">${c.label}</button>`,
+    (c) =>
+      `<button type="button" class="chip${c.value === state.category ? " on" : ""}" data-value="${c.value}">${c.label}</button>`,
   ).join("");
-  els.categoryChips.querySelectorAll(".m-chip").forEach((chip) => {
+  els.categoryChips.querySelectorAll(".chip").forEach((chip) => {
     chip.addEventListener("click", () => setCategory(chip.dataset.value));
   });
-  setCategory(state.category);
 }
 
 function bindEvents() {
   els.btnCamera.addEventListener("click", () => els.inputCamera.click());
   els.btnGallery.addEventListener("click", () => els.inputGallery.click());
   els.photoDrop.addEventListener("click", () => els.inputGallery.click());
-  els.photoDrop.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    els.photoDrop.classList.add("drag");
-  });
-  els.photoDrop.addEventListener("dragleave", () => els.photoDrop.classList.remove("drag"));
-  els.photoDrop.addEventListener("drop", (e) => {
-    e.preventDefault();
-    els.photoDrop.classList.remove("drag");
-    addFiles(e.dataTransfer.files);
-  });
   els.inputCamera.addEventListener("change", (e) => {
     addFiles(e.target.files);
     e.target.value = "";
@@ -504,21 +485,17 @@ function bindEvents() {
   els.btnLookup.addEventListener("click", () => lookupBarcode(els.barcodeInput.value));
   els.barcodeInput.addEventListener("input", () => {
     state.barcode = els.barcodeInput.value.trim();
-    els.fieldBarcode.value = state.barcode;
     updateSaveState();
   });
-  els.barcodeInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") lookupBarcode(els.barcodeInput.value);
-  });
+
   els.btnManual.addEventListener("click", () => {
     els.manualRow.classList.remove("hidden");
     els.manualTitle.focus();
   });
   els.btnManualOk.addEventListener("click", () => {
     state.title = els.manualTitle.value.trim();
-    els.fieldTitle.value = state.title;
     if (state.title) {
-      setIdentifyStatus(`Manual · ${state.title}`, "ok");
+      setStatus(`Title: ${state.title}`, "ok");
       updateSaveState();
     }
   });
@@ -531,28 +508,19 @@ function bindEvents() {
     state.qty += 1;
     els.qtyVal.textContent = String(state.qty);
   });
-  els.fieldCategory.addEventListener("change", () => setCategory(els.fieldCategory.value));
 
   els.btnSave.addEventListener("click", saveCapture);
 
-  document.querySelectorAll(".nav-tab").forEach((tab) => {
+  document.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", () => navigate(tab.dataset.view));
   });
 }
 
-async function init() {
+function init() {
   initCategories();
   bindEvents();
-  renderPhotoGrid();
+  loadItems();
   updateSaveState();
-
-  try {
-    await api("/api/health");
-  } catch {
-    showToast("API offline — refresh the page", "err");
-  }
-
-  loadItems().catch((e) => showToast(e.message, "err"));
 }
 
 init();
