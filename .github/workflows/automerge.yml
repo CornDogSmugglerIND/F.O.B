@@ -1,0 +1,101 @@
+name: Auto Merge
+
+# Automatic: merge cursor/* PRs when CI is green.
+# If Claude PR Review ran successfully, require it too.
+# If Claude is not configured yet (review skipped), CI alone is enough.
+on:
+  workflow_run:
+    workflows: ["CI", "Claude PR Review", "Claude CI Fix"]
+    types: [completed]
+
+jobs:
+  automerge:
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.pull_requests[0]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: automerge-pr-${{ github.event.workflow_run.pull_requests[0].number }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const prs = run.pull_requests;
+            if (!prs?.length) return;
+
+            const branch = run.head_branch;
+            if (!branch.startsWith('cursor/')) {
+              core.info(`Skip: ${branch} is not a cursor/* branch`);
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const prNumber = prs[0].number;
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+
+            if (pr.draft) {
+              core.info('Skip: draft PR');
+              return;
+            }
+            if (pr.merged) {
+              core.info('Already merged');
+              return;
+            }
+
+            const { data: checks } = await github.rest.checks.listForRef({
+              owner,
+              repo,
+              ref: pr.head.sha,
+              filter: 'latest'
+            });
+
+            const runs = checks.check_runs.filter(c =>
+              c.name !== 'automerge' &&
+              !c.name.startsWith('Auto Merge')
+            );
+
+            if (runs.some(c => c.status !== 'completed')) {
+              core.info('Skip: checks still running');
+              return;
+            }
+
+            const failed = runs.filter(c =>
+              c.conclusion !== 'success' &&
+              c.conclusion !== 'skipped' &&
+              c.conclusion !== 'neutral'
+            );
+            if (failed.length) {
+              core.info(`Skip: failed checks — ${failed.map(c => c.name).join(', ')}`);
+              return;
+            }
+
+            const ciRuns = runs.filter(c => c.name.startsWith('test'));
+            if (!ciRuns.length || ciRuns.some(c => c.conclusion !== 'success')) {
+              core.info('Skip: CI matrix not all green yet');
+              return;
+            }
+
+            const reviewRuns = runs.filter(c => c.name === 'review');
+            const reviewFailed = reviewRuns.some(c =>
+              c.conclusion !== 'success' &&
+              c.conclusion !== 'skipped' &&
+              c.conclusion !== 'neutral'
+            );
+            if (reviewFailed) {
+              core.info('Skip: Claude PR Review failed');
+              return;
+            }
+
+            await github.rest.pulls.merge({
+              owner,
+              repo,
+              pull_number: prNumber,
+              merge_method: 'squash'
+            });
+
+            core.info(`Merged PR #${prNumber} (${branch})`);
