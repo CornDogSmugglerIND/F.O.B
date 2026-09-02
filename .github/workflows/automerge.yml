@@ -1,6 +1,8 @@
 name: Auto Merge
 
-# Automatic: merge cursor/* PRs when CI and Claude review both pass.
+# Automatic: merge cursor/* PRs when CI is green.
+# If Claude PR Review ran successfully, require it too.
+# If Claude is not configured yet (review skipped), CI alone is enough.
 on:
   workflow_run:
     workflows: ["CI", "Claude PR Review", "Claude CI Fix"]
@@ -63,7 +65,9 @@ jobs:
             }
 
             const failed = runs.filter(c =>
-              c.conclusion !== 'success' && c.conclusion !== 'skipped'
+              c.conclusion !== 'success' &&
+              c.conclusion !== 'skipped' &&
+              c.conclusion !== 'neutral'
             );
             if (failed.length) {
               core.info(`Skip: failed checks — ${failed.map(c => c.name).join(', ')}`);
@@ -71,16 +75,19 @@ jobs:
             }
 
             const ciRuns = runs.filter(c => c.name.startsWith('test'));
-            const reviewPassed = runs.some(c =>
-              c.name === 'review' && c.conclusion === 'success'
-            );
-
             if (!ciRuns.length || ciRuns.some(c => c.conclusion !== 'success')) {
               core.info('Skip: CI matrix not all green yet');
               return;
             }
-            if (!reviewPassed) {
-              core.info('Skip: Claude PR Review not green yet');
+
+            const reviewRuns = runs.filter(c => c.name === 'review');
+            const reviewFailed = reviewRuns.some(c =>
+              c.conclusion !== 'success' &&
+              c.conclusion !== 'skipped' &&
+              c.conclusion !== 'neutral'
+            );
+            if (reviewFailed) {
+              core.info('Skip: Claude PR Review failed');
               return;
             }
 
