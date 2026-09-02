@@ -70,13 +70,13 @@ jobs:
               return;
             }
 
-            const ciPassed = runs.some(c => c.name.startsWith('test') && c.conclusion === 'success');
+            const ciRuns = runs.filter(c => c.name.startsWith('test'));
             const reviewPassed = runs.some(c =>
               c.name === 'review' && c.conclusion === 'success'
             );
 
-            if (!ciPassed) {
-              core.info('Skip: CI not green yet');
+            if (!ciRuns.length || ciRuns.some(c => c.conclusion !== 'success')) {
+              core.info('Skip: CI matrix not all green yet');
               return;
             }
             if (!reviewPassed) {
