@@ -22,18 +22,21 @@ jobs:
       !startsWith(github.event.workflow_run.head_branch, 'claude-auto-fix-ci-')
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    continue-on-error: true
     steps:
       - name: Check Claude is configured
         id: config
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RAW_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          if [ -z "$ANTHROPIC_API_KEY" ]; then
+          KEY=$(printf '%s' "$RAW_KEY" | tr -d '\r\n')
+          if [ -z "$KEY" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Skipping CI auto-fix — add ANTHROPIC_API_KEY and install https://github.com/apps/claude"
-          else
-            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping CI auto-fix — ANTHROPIC_API_KEY missing"
+            exit 0
           fi
+          echo "ANTHROPIC_API_KEY=$KEY" >> "$GITHUB_ENV"
+          echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v6
         if: steps.config.outputs.configured == 'true'
@@ -107,5 +110,5 @@ jobs:
             Base branch: ${{ github.event.workflow_run.head_branch }}
 
             Run `npm test` to verify fixes before pushing.
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          anthropic_api_key: ${{ env.ANTHROPIC_API_KEY }}
           claude_args: "--max-turns 15 --allowedTools 'Edit,MultiEdit,Write,Read,Glob,Grep,LS,Bash(git:*),Bash(npm:*),Bash(node:*),Bash(npx:*),Bash(gh:*)'"
