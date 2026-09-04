@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Listing Copy — CornDogSmuggler</title>
+  <style>
+    :root {
+      --bg: #0e1114;
+      --panel: #1a2229;
+      --text: #e8ecef;
+      --muted: #8b98a5;
+      --btn: #2f6fed;
+      --btn-ok: #1f8a4c;
+      --border: #2a3540;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      padding-bottom: 48px;
+    }
+    h1 {
+      font-size: 1.15rem;
+      margin: 0 0 4px;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 0 0 20px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .preview {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.95rem;
+      line-height: 1.35;
+      margin-bottom: 12px;
+      max-height: 160px;
+      overflow: auto;
+    }
+    button.copy {
+      display: block;
+      width: 100%;
+      min-height: 56px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--btn);
+      color: #fff;
+      font-size: 1.15rem;
+      font-weight: 700;
+      padding: 14px 16px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button.copy.ok {
+      background: var(--btn-ok);
+    }
+    button.copy:active {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <h1>Destined Rivals ETB</h1>
+  <p class="sub">Tap a button — it’s on your clipboard. No selecting text.</p>
+
+  <div class="card">
+    <div class="label">Title</div>
+    <div class="preview" id="titlePreview"></div>
+    <button class="copy" type="button" data-copy="title">Copy Title</button>
+  </div>
+
+  <div class="card">
+    <div class="label">Price</div>
+    <div class="preview" id="pricePreview"></div>
+    <button class="copy" type="button" data-copy="price">Copy Price</button>
+  </div>
+
+  <div class="card">
+    <div class="label">Description</div>
+    <div class="preview" id="descPreview"></div>
+    <button class="copy" type="button" data-copy="description">Copy Description</button>
+  </div>
+
+  <script>
+    const LISTING = {
+      title: "Pokemon Destined Rivals Elite Trainer Box ETB New/Factory Sealed",
+      price: "124.99",
+      description: `Pokemon TCG Scarlet & Violet Destined Rivals Elite Trainer Box — New/Factory Sealed
+
+Factory sealed ETB. Ships in original packaging.
+
+Game: Pokemon TCG
+Set: Scarlet & Violet — Destined Rivals (SV10)
+Product: Elite Trainer Box (ETB)
+Condition: New/Factory Sealed
+Language: English
+Manufacturer: The Pokemon Company.
+
+Contents (standard ETB): 9 Destined Rivals booster packs, sleeves, energy, dice, markers, player's guide, box + dividers, TCG Live code.
+
+CornDogSmuggler Coalition — Operating To Marine Corps Standards.`
+    };
+
+    document.getElementById("titlePreview").textContent = LISTING.title;
+    document.getElementById("pricePreview").textContent = LISTING.price;
+    document.getElementById("descPreview").textContent = LISTING.description;
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (_) {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return ok;
+      }
+    }
+
+    document.querySelectorAll("button.copy").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const key = btn.getAttribute("data-copy");
+        const ok = await copyText(LISTING[key]);
+        const prev = btn.textContent;
+        btn.textContent = ok ? "Copied" : "Copy failed — try again";
+        btn.classList.toggle("ok", ok);
+        setTimeout(() => {
+          btn.textContent = prev;
+          btn.classList.remove("ok");
+        }, 1500);
+      });
+    });
+  </script>
+</body>
+</html>
