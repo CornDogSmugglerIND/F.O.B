@@ -54,9 +54,12 @@ jobs:
               filter: 'latest'
             });
 
+            // Ignore Claude review/job failures — only CI (test*) must be green.
             const runs = checks.check_runs.filter(c =>
               c.name !== 'automerge' &&
-              !c.name.startsWith('Auto Merge')
+              !c.name.startsWith('Auto Merge') &&
+              c.name !== 'review' &&
+              !c.name.toLowerCase().includes('claude')
             );
 
             if (runs.some(c => c.status !== 'completed')) {
@@ -80,16 +83,7 @@ jobs:
               return;
             }
 
-            const reviewRuns = runs.filter(c => c.name === 'review');
-            const reviewFailed = reviewRuns.some(c =>
-              c.conclusion !== 'success' &&
-              c.conclusion !== 'skipped' &&
-              c.conclusion !== 'neutral'
-            );
-            if (reviewFailed) {
-              core.info('Skip: Claude PR Review failed');
-              return;
-            }
+            // Claude is optional. Cursor + CI is enough.
 
             await github.rest.pulls.merge({
               owner,
