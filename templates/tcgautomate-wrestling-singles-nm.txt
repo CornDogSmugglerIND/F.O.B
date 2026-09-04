@@ -1,0 +1,30 @@
+TCGAutomate Template — Wrestling Singles NM
+CornDogSmuggler Coalition
+
+=== TEMPLATE NAME ===
+Wrestling Singles NM
+
+=== TITLE (one line) ===
+{{name}} {{year}} {{setName}} #{{number}} {{finish}} {{auto}} {{memorabilia}} NM
+
+=== DESCRIPTION ===
+{{name}} {{year}} {{setName}} #{{number}} — {{finish}} {{auto}} {{memorabilia}}, Near Mint
+
+Raw card, never graded. Ships sleeved + toploadered.
+
+Sport: Wrestling
+Set/Brand: {{setName}}
+Year: {{year}}
+Card #: {{number}}
+Parallel: {{finish}}
+Autographed: {{auto}}
+Memorabilia: {{memorabilia}}
+Condition: Near Mint
+Language: English
+
+CornDogSmuggler Coalition — Operating To Marine Corps Standards.
+
+=== NOTES ===
+- Ends NM (not NM Single)
+- Parallel = {{finish}}; if blank in a batch, try {{variant}}
+- Empty auto/memorabilia fields should drop out
