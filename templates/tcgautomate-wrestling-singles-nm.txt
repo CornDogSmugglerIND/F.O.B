@@ -28,3 +28,5 @@ CornDogSmuggler Coalition — Operating To Marine Corps Standards.
 - Ends NM (not NM Single)
 - Parallel = {{finish}}; if blank in a batch, try {{variant}}
 - Empty auto/memorabilia fields should drop out
+
+# Claude reconnect check 2026-09-05T18:30:54Z
