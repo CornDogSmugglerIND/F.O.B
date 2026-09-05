@@ -24,15 +24,8 @@
       padding: 16px;
       padding-bottom: 48px;
     }
-    h1 {
-      font-size: 1.15rem;
-      margin: 0 0 4px;
-    }
-    .sub {
-      color: var(--muted);
-      font-size: 0.9rem;
-      margin: 0 0 20px;
-    }
+    h1 { font-size: 1.15rem; margin: 0 0 4px; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin: 0 0 20px; }
     .card {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -53,7 +46,7 @@
       font-size: 0.95rem;
       line-height: 1.35;
       margin-bottom: 12px;
-      max-height: 160px;
+      max-height: 180px;
       overflow: auto;
     }
     button.copy {
@@ -68,38 +61,50 @@
       font-weight: 700;
       padding: 14px 16px;
       -webkit-tap-highlight-color: transparent;
+      margin-bottom: 8px;
     }
-    button.copy.ok {
-      background: var(--btn-ok);
+    button.copy.ok { background: var(--btn-ok); }
+    button.copy:active { opacity: 0.85; }
+    #fallback { display: none; margin-top: 8px; }
+    #fallback.show { display: block; }
+    #fallbackBox {
+      width: 100%;
+      min-height: 120px;
+      background: #0b0e11;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.95rem;
+      line-height: 1.35;
     }
-    button.copy:active {
-      opacity: 0.85;
-    }
+    .hint { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
   </style>
 </head>
 <body>
-<<<<<<< HEAD
   <h1>Pitch Black — Pick Your Card</h1>
-=======
-  <h1>Morpeko ex Pitch Black SIR</h1>
->>>>>>> origin/main
-  <p class="sub">Tap a button — it’s on your clipboard. No selecting text.</p>
+  <p class="sub">Open ONLY this site: f-o-b.vercel.app — buttons work here.</p>
 
   <div class="card">
     <div class="label">Title</div>
     <div class="preview" id="titlePreview"></div>
-    <button class="copy" type="button" data-copy="title">Copy Title</button>
+    <button class="copy" type="button" id="copyTitle">Copy Title</button>
   </div>
 
   <div class="card">
     <div class="label">Description</div>
     <div class="preview" id="descPreview"></div>
-    <button class="copy" type="button" data-copy="description">Copy Description</button>
+    <button class="copy" type="button" id="copyDesc">Copy Description</button>
+  </div>
+
+  <div class="card" id="fallback">
+    <div class="label">Manual copy (iPhone fallback)</div>
+    <textarea id="fallbackBox" readonly></textarea>
+    <p class="hint">Tap the box → Select All → Copy</p>
   </div>
 
   <script>
     const LISTING = {
-<<<<<<< HEAD
       title: "Pokemon Pitch Black - Pick Your Card NM",
       description: `Pokemon Pitch Black — Pick Your Card, Near Mint
 
@@ -120,60 +125,70 @@ Primeape 043/084 — qty 1
 Sizzlipede 009/084 — qty 1
 Litwick 036/084 — qty 1
 Seaking 014/084 — qty 1
-=======
-      title: "Morpeko ex Pitch Black 117/084 Special Illustration Rare SIR NM Single",
-      price: "94.99",
-      description: `Morpeko ex Pitch Black 117/084 — Special Illustration Rare, Near Mint
-
-English Pokemon TCG single. Raw, ungraded. Ships sleeved + toploadered.
-
-Game: Pokemon TCG
-Set: Pitch Black (PBL)
-Card #: 117/084
-Rarity: Special Illustration Rare (SIR)
-Finish: Holo / Full Art
-Condition: Near Mint
-Language: English
->>>>>>> origin/main
 
 CornDogSmuggler Coalition — Operating To Marine Corps Standards.`
     };
 
     document.getElementById("titlePreview").textContent = LISTING.title;
-    document.getElementById("pricePreview").textContent = LISTING.price;
     document.getElementById("descPreview").textContent = LISTING.description;
 
-    async function copyText(text) {
-      try {
-        await navigator.clipboard.writeText(text);
-        return true;
-      } catch (_) {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.setAttribute("readonly", "");
-        ta.style.position = "fixed";
-        ta.style.left = "-9999px";
-        document.body.appendChild(ta);
-        ta.select();
-        ta.setSelectionRange(0, ta.value.length);
-        const ok = document.execCommand("copy");
-        document.body.removeChild(ta);
-        return ok;
-      }
+    const fallback = document.getElementById("fallback");
+    const fallbackBox = document.getElementById("fallbackBox");
+
+    function showFallback(text) {
+      fallback.classList.add("show");
+      fallbackBox.value = text;
+      fallbackBox.focus();
+      fallbackBox.setSelectionRange(0, text.length);
     }
 
-    document.querySelectorAll("button.copy").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const key = btn.getAttribute("data-copy");
-        const ok = await copyText(LISTING[key]);
-        const prev = btn.textContent;
-        btn.textContent = ok ? "Copied" : "Copy failed — try again";
-        btn.classList.toggle("ok", ok);
+    async function copyText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (_) {}
+      }
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.readOnly = true;
+      ta.style.position = "absolute";
+      ta.style.top = "0";
+      ta.style.left = "0";
+      ta.style.width = "1px";
+      ta.style.height = "1px";
+      ta.style.opacity = "0.01";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.setSelectionRange(0, text.length);
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (_) { ok = false; }
+      document.body.removeChild(ta);
+      return ok;
+    }
+
+    async function handleCopy(btn, text) {
+      const ok = await copyText(text);
+      const prev = btn.textContent;
+      if (ok) {
+        btn.textContent = "Copied";
+        btn.classList.add("ok");
         setTimeout(() => {
           btn.textContent = prev;
           btn.classList.remove("ok");
         }, 1500);
-      });
+      } else {
+        btn.textContent = "Use box below";
+        showFallback(text);
+        setTimeout(() => { btn.textContent = prev; }, 2000);
+      }
+    }
+
+    document.getElementById("copyTitle").addEventListener("click", () => {
+      handleCopy(document.getElementById("copyTitle"), LISTING.title);
+    });
+    document.getElementById("copyDesc").addEventListener("click", () => {
+      handleCopy(document.getElementById("copyDesc"), LISTING.description);
     });
   </script>
 </body>
