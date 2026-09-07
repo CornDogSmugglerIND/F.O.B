@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>BA Terms</title>
+  <style>
+    :root {
+      --bg: #0e1114;
+      --panel: #1a2229;
+      --text: #e8ecef;
+      --muted: #8b98a5;
+      --accent: #2f6fed;
+      --done: #1f8a4c;
+      --border: #2a3540;
+      --input: #12171c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 12px 12px 80px;
+      line-height: 1.4;
+    }
+    header { margin-bottom: 12px; }
+    h1 { font-size: 1.15rem; margin: 0 0 4px; font-weight: 600; }
+    .sub { color: var(--muted); font-size: 0.88rem; margin: 0; }
+    .progress {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .bar {
+      flex: 1;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .bar > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--done);
+      transition: width .2s ease;
+    }
+    .count {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 10px 0 12px;
+      margin: 0 -12px;
+      padding-left: 12px;
+      padding-right: 12px;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      flex: 0 0 auto;
+      min-width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-weight: 600;
+      position: relative;
+    }
+    .tab.active {
+      background: var(--accent);
+      border-color: transparent;
+      color: #fff;
+    }
+    .tab.done::after {
+      content: "";
+      position: absolute;
+      right: 5px;
+      top: 5px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--done);
+    }
+    .tab.active.done::after { background: #fff; }
+    .panel {
+      display: none;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .panel.active { display: block; }
+    .term-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 0 0 14px;
+    }
+    .block { margin-bottom: 14px; }
+    .label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .box {
+      background: var(--input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.92rem;
+    }
+    .source-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .source-row .box {
+      flex: 1;
+      word-break: break-all;
+      font-size: 0.82rem;
+      color: #9eb0c2;
+    }
+    button.copy {
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      padding: 0 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    textarea {
+      width: 100%;
+      min-height: 88px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--input);
+      color: var(--text);
+      padding: 10px;
+      font: inherit;
+      font-size: 0.92rem;
+      resize: vertical;
+    }
+    textarea:focus { outline: none; border-color: var(--accent); }
+    textarea::placeholder { color: #5c6a78; }
+    .done-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .done-row input {
+      width: 22px;
+      height: 22px;
+      accent-color: var(--done);
+    }
+    .nav {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .nav button {
+      flex: 1;
+      min-height: 48px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+    .nav button.primary {
+      background: var(--accent);
+      border-color: transparent;
+      color: #fff;
+    }
+    .foot {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .foot button {
+      flex: 1;
+      min-height: 44px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>BA terms</h1>
+    <p class="sub">Tap a number. Rewrite each part in your words. Checks save on this phone.</p>
+    <div class="progress">
+      <div class="bar"><span id="barFill"></span></div>
+      <div class="count"><span id="doneCount">0</span>/15</div>
+    </div>
+  </header>
+
+  <div class="tabs" id="tabs" role="tablist" aria-label="Terms"></div>
+  <div id="panels"></div>
+
+  <div class="nav">
+    <button type="button" id="prevBtn">Prev</button>
+    <button type="button" class="primary" id="nextBtn">Next</button>
+  </div>
+  <div class="foot">
+    <button type="button" id="resetBtn">Reset</button>
+    <button type="button" id="copyBtn">Copy my notes</button>
+  </div>
+
+  <script>
+    const TERMS = [
+      {
+        id: "business-analytics",
+        title: "1. Business Analytics",
+        definition: "Using stats and tech to process and visualize data so you find patterns and make better business decisions.",
+        source: "https://www.ibm.com/think/topics/business-analytics",
+        example: "Pull eBay sold comps + your sell-through rates to decide which Pokémon sets to buy more of this week."
+      },
+      {
+        id: "artificial-intelligence",
+        title: "2. Artificial Intelligence",
+        definition: "Computer systems that do tasks that normally need human thinking, like learning patterns or making recommendations.",
+        source: "https://www.ibm.com/think/topics/artificial-intelligence",
+        example: "eBay recommends similar listings to buyers based on what they already viewed."
+      },
+      {
+        id: "data-mining",
+        title: "3. Data Mining",
+        definition: "Digging through large datasets to find patterns or relationships that weren’t obvious at first.",
+        source: "https://csrc.nist.gov/glossary/term/data_mining",
+        example: "Looking across months of sales and noticing graded SIRs sell faster on weekends than raw commons."
+      },
+      {
+        id: "descriptive-analytics",
+        title: "4. Descriptive Analytics",
+        definition: "Analytics that explain what already happened using past data (reports, charts, summaries).",
+        source: "https://www.ibm.com/think/topics/business-analytics",
+        example: "Last month’s report: total revenue, top 10 cards sold, average days-to-sell."
+      },
+      {
+        id: "predictive-analytics",
+        title: "5. Predictive Analytics",
+        definition: "Using past data and models to estimate what is likely to happen next.",
+        source: "https://www.ibm.com/think/topics/business-analytics",
+        example: "Based on past set demand, forecast which ETBs will move before the next restock."
+      },
+      {
+        id: "prescriptive-analytics",
+        title: "6. Prescriptive Analytics",
+        definition: "Analytics that recommend what you should do to get a better outcome.",
+        source: "https://www.techtarget.com/data-technologies/tip/Descriptive-vs-prescriptive-vs-predictive-analytics-explained",
+        example: "A process says price this chase card at a certain auction start, or buy these SKUs and skip those, based on margin and sell speed."
+      },
+      {
+        id: "big-data",
+        title: "7. Big Data",
+        definition: "Very large datasets with high volume, velocity, and variety that need special tools to handle.",
+        source: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.1500-1r2.pdf",
+        example: "Marketplace data with millions of listings, constant price changes, photos, text, and sales history is too big for one spreadsheet."
+      },
+      {
+        id: "data-query",
+        title: "8. Data Query",
+        definition: "A request that pulls specific information out of a database or dataset.",
+        source: "https://www.oracle.com/database/what-is-a-database/",
+        example: "Filter inventory to show only NM wrestling cards listed over 30 days with 0 watchers."
+      },
+      {
+        id: "data-dashboard",
+        title: "9. Data Dashboard",
+        definition: "A visual screen of key metrics and charts in one place so you can monitor performance quickly.",
+        source: "https://www.tableau.com/visualization/what-is-a-dashboard",
+        example: "One screen with today’s sales, fees, top movers, and aged inventory."
+      },
+      {
+        id: "operational-decision",
+        title: "10. Operational Decision",
+        definition: "A short-term, day-to-day decision about running the business.",
+        source: "Use textbook if possible. Backup: https://www.ibm.com/think/topics/decision-management",
+        example: "Choosing shipping method today, accepting an offer, or picking which 20 cards to list tonight."
+      },
+      {
+        id: "optimization-model",
+        title: "11. Optimization Model",
+        definition: "A math model that finds the best choice under limits, like max profit or min cost with constraints.",
+        source: "https://www.ibm.com/think/topics/prescriptive-analytics",
+        example: "With limited cash and space, figure out which mix of sealed + singles maximizes expected profit this month."
+      },
+      {
+        id: "simulation",
+        title: "12. Simulation",
+        definition: "Testing what-if outcomes in a model before risking real money or time.",
+        source: "https://www.ibm.com/think/topics/simulation",
+        example: "Simulate auction vs BIN pricing on a chase card many times to see which usually nets more after fees."
+      },
+      {
+        id: "utility-theory",
+        title: "13. Utility Theory",
+        definition: "A decision idea where people pick the option with the highest value/satisfaction under uncertainty, not always the highest raw dollars.",
+        source: "https://www.britannica.com/topic/utility-economics",
+        example: "Skip a risky raw-to-grade gamble even if expected value looks high, because losing that cash hurts more right now."
+      },
+      {
+        id: "data-security",
+        title: "14. Data Security",
+        definition: "Protecting data from unauthorized access, use, disclosure, change, or destruction.",
+        source: "https://csrc.nist.gov/glossary/term/data_security",
+        example: "Keep eBay/PayPal logins locked down, don’t share buyer info, back up inventory files safely."
+      },
+      {
+        id: "strategic-decision",
+        title: "15. Strategic Decision",
+        definition: "A long-term, big-picture decision that shapes the direction of the business.",
+        source: "Use textbook if possible. Backup: https://hbr.org/2007/11/a-leaders-framework-for-decision-making",
+        example: "Deciding to expand from Pokémon singles into wrestling cards or add Double Holo as a second channel for the year."
+      }
+    ];
+
+    const KEY = "ba-terms-v1";
+    const tabsEl = document.getElementById("tabs");
+    const panelsEl = document.getElementById("panels");
+    const barFill = document.getElementById("barFill");
+    const doneCount = document.getElementById("doneCount");
+    let index = 0;
+
+    function load() {
+      try { return JSON.parse(localStorage.getItem(KEY) || "{}"); }
+      catch { return {}; }
+    }
+    function save(state) { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+    function getState() {
+      const state = load();
+      for (const t of TERMS) {
+        const panel = document.getElementById("panel-" + t.id);
+        if (!panel) continue;
+        state[t.id] = {
+          done: panel.querySelector(".done-box").checked,
+          def: panel.querySelector(".my-def").value,
+          ex: panel.querySelector(".my-ex").value
+        };
+      }
+      return state;
+    }
+
+    function updateProgress(state) {
+      const n = TERMS.filter((t) => state[t.id]?.done).length;
+      doneCount.textContent = String(n);
+      barFill.style.width = (n / TERMS.length) * 100 + "%";
+      [...tabsEl.children].forEach((btn, i) => {
+        btn.classList.toggle("done", !!state[TERMS[i].id]?.done);
+      });
+    }
+
+    function show(i) {
+      index = Math.max(0, Math.min(TERMS.length - 1, i));
+      [...tabsEl.children].forEach((b, n) => b.classList.toggle("active", n === index));
+      [...panelsEl.children].forEach((p, n) => p.classList.toggle("active", n === index));
+      tabsEl.children[index]?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+    }
+
+    function build() {
+      const state = load();
+      TERMS.forEach((t, i) => {
+        const tab = document.createElement("button");
+        tab.type = "button";
+        tab.className = "tab" + (state[t.id]?.done ? " done" : "");
+        tab.textContent = String(i + 1);
+        tab.setAttribute("aria-label", t.title);
+        tab.addEventListener("click", () => show(i));
+        tabsEl.appendChild(tab);
+
+        const s = state[t.id] || {};
+        const panel = document.createElement("section");
+        panel.className = "panel";
+        panel.id = "panel-" + t.id;
+        panel.innerHTML = `
+          <h2 class="term-title">${t.title}</h2>
+          <div class="block">
+            <div class="label">Definition (research)</div>
+            <div class="box">${t.definition}</div>
+          </div>
+          <div class="block">
+            <div class="label">Your definition</div>
+            <textarea class="my-def" placeholder="Rewrite in your own words…">${s.def || ""}</textarea>
+          </div>
+          <div class="block">
+            <div class="label">Source</div>
+            <div class="source-row">
+              <div class="box source-text">${t.source}</div>
+              <button type="button" class="copy" data-copy="${t.source.replace(/"/g, "&quot;")}">Copy</button>
+            </div>
+          </div>
+          <div class="block">
+            <div class="label">Example (research)</div>
+            <div class="box">${t.example}</div>
+          </div>
+          <div class="block">
+            <div class="label">Your example</div>
+            <textarea class="my-ex" placeholder="Rewrite in your own words…">${s.ex || ""}</textarea>
+          </div>
+          <label class="done-row">
+            <input class="done-box" type="checkbox" ${s.done ? "checked" : ""} />
+            <span>Done with this term</span>
+          </label>
+        `;
+        panelsEl.appendChild(panel);
+      });
+
+      panelsEl.addEventListener("click", async (e) => {
+        const btn = e.target.closest("button.copy");
+        if (!btn) return;
+        const text = btn.getAttribute("data-copy") || "";
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = "Copied";
+          setTimeout(() => { btn.textContent = "Copy"; }, 1000);
+        } catch {
+          prompt("Copy source:", text);
+        }
+      });
+
+      panelsEl.addEventListener("input", () => {
+        const state = getState();
+        save(state);
+        updateProgress(state);
+      });
+      panelsEl.addEventListener("change", () => {
+        const state = getState();
+        save(state);
+        updateProgress(state);
+      });
+
+      updateProgress(state);
+      show(0);
+    }
+
+    document.getElementById("prevBtn").addEventListener("click", () => show(index - 1));
+    document.getElementById("nextBtn").addEventListener("click", () => show(index + 1));
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      if (!confirm("Clear all checks and your notes?")) return;
+      localStorage.removeItem(KEY);
+      location.reload();
+    });
+    document.getElementById("copyBtn").addEventListener("click", async () => {
+      const state = getState();
+      const parts = TERMS.map((t, i) => {
+        const s = state[t.id] || {};
+        return `${i + 1}. ${t.title.replace(/^\d+\.\s*/, "")}\nDefinition: ${s.def || "(not written)"}\nSource: ${t.source}\nExample: ${s.ex || "(not written)"}`;
+      });
+      const text = parts.join("\n\n");
+      try {
+        await navigator.clipboard.writeText(text);
+        const btn = document.getElementById("copyBtn");
+        const old = btn.textContent;
+        btn.textContent = "Copied";
+        setTimeout(() => { btn.textContent = old; }, 1200);
+      } catch {
+        prompt("Copy notes:", text);
+      }
+    });
+
+    build();
+  </script>
+</body>
+</html>
