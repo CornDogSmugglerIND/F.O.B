@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>BA Paper Checklist</title>
+  <style>
+    :root {
+      --bg: #0e1114;
+      --panel: #1a2229;
+      --text: #e8ecef;
+      --muted: #8b98a5;
+      --accent: #2f6fed;
+      --done: #1f8a4c;
+      --border: #2a3540;
+      --input: #12171c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      padding-bottom: 64px;
+      line-height: 1.4;
+    }
+    header {
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    h1 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 0 0 6px;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 0 0 12px;
+    }
+    .progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .bar {
+      flex: 1;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .bar > span {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: var(--done);
+      transition: width 0.2s ease;
+    }
+    .count {
+      font-size: 0.85rem;
+      color: var(--muted);
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    h2 {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      margin: 22px 0 10px;
+      font-weight: 600;
+    }
+    .item {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+      transition: border-color 0.15s ease, opacity 0.15s ease;
+    }
+    .item.checked {
+      border-color: #2a5a3d;
+      opacity: 0.72;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+      margin-top: 1px;
+      flex-shrink: 0;
+      accent-color: var(--done);
+    }
+    .body { flex: 1; min-width: 0; }
+    .title {
+      font-size: 0.98rem;
+      font-weight: 560;
+      margin: 0 0 6px;
+    }
+    .item.checked .title {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+    ul {
+      margin: 0 0 8px;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    li { margin-bottom: 3px; }
+    textarea {
+      width: 100%;
+      min-height: 72px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--input);
+      color: var(--text);
+      padding: 10px;
+      font: inherit;
+      font-size: 0.92rem;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    textarea::placeholder { color: #5c6a78; }
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+    }
+    button {
+      flex: 1;
+      min-height: 48px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+    button.primary {
+      background: var(--accent);
+      border-color: transparent;
+      color: #fff;
+    }
+    button:active { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>BA paper checklist</h1>
+    <p class="sub">Check each section off as you write it. Notes save on this phone.</p>
+    <div class="progress-wrap">
+      <div class="bar" aria-hidden="true"><span id="barFill"></span></div>
+      <div class="count"><span id="doneCount">0</span>/<span id="totalCount">0</span></div>
+    </div>
+  </header>
+
+  <h2>Setup</h2>
+  <div class="item" data-id="title">
+    <div class="row">
+      <input type="checkbox" />
+      <div class="body">
+        <p class="title">Title block</p>
+        <ul>
+          <li>Title: Business Analytics: Companies and Career Roles</li>
+          <li>Your name / class / date</li>
+        </ul>
+        <textarea placeholder="Your note…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="item" data-id="intro">
+    <div class="row">
+      <input type="checkbox" />
+      <div class="body">
+        <p class="title">Introduction (3–5 sentences)</p>
+        <ul>
+          <li>Analytics = using data to make decisions</li>
+          <li>Companies: Google Analytics + Tableau</li>
+          <li>Jobs: E-commerce Analyst + Business Analyst</li>
+          <li>One of each ties to online reselling</li>
+        </ul>
+        <textarea placeholder="Draft your intro here…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <h2>Part 1 — Companies</h2>
+  <div class="item" data-id="ga">
+    <div class="row">
+      <input type="checkbox" />
+      <div class="body">
+        <p class="title">Google Analytics (reselling angle)</p>
+        <ul>
+          <li>Tracks traffic, sources, clicks, conversions</li>
+          <li>Helps sellers see what converts vs just gets views</li>
+          <li>Useful for storefront / marketplace decisions</li>
+        </ul>
+        <textarea placeholder="Write this section in your words…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="item" data-id="tableau">
+    <div class="row">
+      <input type="checkbox" />
+      <div class="body">
+        <p class="title">Tableau</p>
+        <ul>
+          <li>Turns data into dashboards/charts</li>
+          <li>Self-service BI / visual reports</li>
+          <li>Example: companies track CX / performance faster</li>
+        </ul>
+        <textarea placeholder="Write this section in your words…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="item" data-id="compare">
+    <div class="row">
+      <input type="checkbox" />
+      <div class="body">
+        <p class="title">Compare the two</p>
+        <ul>
+          <li>GA = tracks online behavior</li>
+          <li>Tableau = visualizes / explores data</li>
+          <li>Same goal (better decisions), different tools</li>
+        </ul>
+        <textarea placeholder="Write your comparison…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <h2>Part 2 — Jobs</h2>
+  <div class="item" data-id="ecom">
+    <div class="row">
+      <input type="checkbox" />
+      <div class="body">
+        <p class="title">Job 1: E-commerce Analyst (reselling angle)</p>
+        <ul>
+          <li>Does: sales, traffic, pricing, inventory insights</li>
+          <li>Industries: retail, eBay/Amazon, collectibles</li>
+          <li>K: business/marketing know-how</li>
+          <li>S: Excel, Google Analytics, dashboards</li>
+          <li>A: spot trends, explain numbers, act fast</li>
+        </ul>
+        <textarea placeholder="Cover all 6 prompt points…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="item" data-id="ba">
+    <div class="row">
+      <input type="checkbox" />
+      <div class="body">
+        <p class="title">Job 2: Business Analyst</p>
+        <ul>
+          <li>Does: bridge business + data, improve processes</li>
+          <li>Industries: finance, healthcare, tech, retail, gov</li>
+          <li>K: often bachelor’s in business/related</li>
+          <li>S: Excel, SQL, Tableau/Power BI</li>
+          <li>A: communication, problem-solving, organize</li>
+        </ul>
+        <textarea placeholder="Cover all 6 prompt points…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <h2>Wrap-up</h2>
+  <div class="item" data-id="conclusion">
+    <div class="row">
+      <input type="checkbox" />
+      <div class="body">
+        <p class="title">Conclusion (3–5 sentences)</p>
+        <ul>
+          <li>Tools help understand customers/performance</li>
+          <li>These jobs turn data into action</li>
+          <li>For online selling: better list / price / promote</li>
+        </ul>
+        <textarea placeholder="Draft your conclusion…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="item" data-id="refs">
+    <div class="row">
+      <input type="checkbox" />
+      <div class="body">
+        <p class="title">References</p>
+        <ul>
+          <li>https://analytics.google.com</li>
+          <li>https://www.tableau.com</li>
+          <li>Indeed / Glassdoor job posts you actually used</li>
+        </ul>
+        <textarea placeholder="Paste final citation list…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="button" id="resetBtn">Reset</button>
+    <button type="button" class="primary" id="copyBtn">Copy all notes</button>
+  </div>
+
+  <script>
+    const KEY = "ba-paper-checklist-v1";
+    const items = [...document.querySelectorAll(".item")];
+    const doneCount = document.getElementById("doneCount");
+    const totalCount = document.getElementById("totalCount");
+    const barFill = document.getElementById("barFill");
+
+    totalCount.textContent = String(items.length);
+
+    function load() {
+      try {
+        return JSON.parse(localStorage.getItem(KEY) || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function save(state) {
+      localStorage.setItem(KEY, JSON.stringify(state));
+    }
+
+    function readState() {
+      const state = {};
+      for (const item of items) {
+        const id = item.dataset.id;
+        const checked = item.querySelector('input[type="checkbox"]').checked;
+        const note = item.querySelector("textarea").value;
+        state[id] = { checked, note };
+        item.classList.toggle("checked", checked);
+      }
+      return state;
+    }
+
+    function applyState(state) {
+      for (const item of items) {
+        const id = item.dataset.id;
+        const data = state[id] || { checked: false, note: "" };
+        item.querySelector('input[type="checkbox"]').checked = !!data.checked;
+        item.querySelector("textarea").value = data.note || "";
+        item.classList.toggle("checked", !!data.checked);
+      }
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const done = items.filter((i) => i.querySelector('input[type="checkbox"]').checked).length;
+      doneCount.textContent = String(done);
+      barFill.style.width = `${(done / items.length) * 100}%`;
+    }
+
+    function persist() {
+      save(readState());
+      updateProgress();
+    }
+
+    applyState(load());
+
+    for (const item of items) {
+      item.querySelector('input[type="checkbox"]').addEventListener("change", persist);
+      item.querySelector("textarea").addEventListener("input", persist);
+    }
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      if (!confirm("Clear all checks and notes?")) return;
+      localStorage.removeItem(KEY);
+      applyState({});
+    });
+
+    document.getElementById("copyBtn").addEventListener("click", async () => {
+      const parts = [];
+      for (const item of items) {
+        const title = item.querySelector(".title").textContent.trim();
+        const checked = item.querySelector('input[type="checkbox"]').checked ? "[x]" : "[ ]";
+        const note = item.querySelector("textarea").value.trim();
+        parts.push(`${checked} ${title}` + (note ? `\n${note}` : ""));
+      }
+      const text = parts.join("\n\n");
+      try {
+        await navigator.clipboard.writeText(text);
+        const btn = document.getElementById("copyBtn");
+        const old = btn.textContent;
+        btn.textContent = "Copied";
+        setTimeout(() => { btn.textContent = old; }, 1200);
+      } catch {
+        prompt("Copy this:", text);
+      }
+    });
+  </script>
+</body>
+</html>
