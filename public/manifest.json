@@ -1,8 +1,8 @@
 {
-  "name": "Scouter",
-  "short_name": "Scouter",
-  "description": "Portable intake scanner — barcode, photos, collection",
-  "start_url": "/",
+  "name": "Coalition H.U.D",
+  "short_name": "H.U.D",
+  "description": "Coalition mobile command — intake scanner and listing tools (no Base44)",
+  "start_url": "/hud.html",
   "display": "standalone",
   "background_color": "#04070C",
   "theme_color": "#04070C",

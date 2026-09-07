@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#04070C" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Coalition H.U.D</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/scouter.css?v=12" />
+  <link rel="stylesheet" href="/hud-app.css?v=12" />
+</head>
+<body class="hud-body">
+  <div class="ambient" aria-hidden="true">
+    <div class="ambient-orb ambient-orb-1"></div>
+    <div class="ambient-orb ambient-orb-2"></div>
+  </div>
+
+  <header class="hud-header">
+    <div class="hud-brand">CornDogSmuggler · Coalition</div>
+    <div class="hud-header-row">
+      <h1 id="hudTitle">H.U.D</h1>
+      <div class="hud-live v-label" id="hudLive">Local</div>
+    </div>
+  </header>
+
+  <main class="hud-main">
+    <!-- HOME -->
+    <section class="hud-panel active" data-panel="home" id="panel-home">
+      <p class="hud-lead">Base44 is out. This is the replacement shell. Bottom tabs always get you out.</p>
+      <div class="hud-stats">
+        <div class="v-panel v-cut-sm hud-stat"><div class="n" id="statItems">00</div><div class="l">Items</div></div>
+        <div class="v-panel v-cut-sm hud-stat"><div class="n" id="statPhotos">00</div><div class="l">Photos</div></div>
+        <div class="v-panel v-cut-sm hud-stat"><div class="n" id="statReady">00</div><div class="l">Checks OK</div></div>
+      </div>
+      <div class="v-panel v-cut hud-card">
+        <div class="v-label">Quick actions</div>
+        <div class="hud-actions">
+          <button type="button" class="m-btn m-btn-primary" data-go="scan">New scan</button>
+          <button type="button" class="m-btn" data-go="rail">Open rail</button>
+          <button type="button" class="m-btn" data-go="list">Listing engine</button>
+        </div>
+      </div>
+      <div class="v-panel v-cut hud-card">
+        <div class="v-label">Feature health</div>
+        <ul class="check-list" id="homeChecks"></ul>
+      </div>
+    </section>
+
+    <!-- SCAN -->
+    <section class="hud-panel" data-panel="scan" id="panel-scan">
+      <div class="v-panel v-cut hud-card">
+        <div class="panel-head"><h2 class="panel-title">Photos</h2><span class="v-label" id="scanPhotoCount">0 / 8</span></div>
+        <div class="photo-scroll no-scrollbar" id="scanPhotoGrid"></div>
+        <div class="m-btn-row">
+          <button type="button" class="m-btn" id="scanCamera">Camera</button>
+          <button type="button" class="m-btn" id="scanGallery">Gallery</button>
+        </div>
+        <p class="hint">Multi-photo on. Add up to 8. Tap X on a thumb to remove.</p>
+      </div>
+
+      <div class="v-panel v-cut hud-card">
+        <div class="panel-head"><h2 class="panel-title">Details</h2></div>
+        <label class="field-label v-label">Title</label>
+        <input class="m-input" id="scanTitle" placeholder="Card or product title" />
+        <label class="field-label v-label">Barcode</label>
+        <div class="row-gap">
+          <input class="m-input" id="scanBarcode" placeholder="UPC / barcode" />
+          <button type="button" class="m-btn" id="scanLookup">Lookup</button>
+        </div>
+        <label class="field-label v-label">Qty</label>
+        <div class="qty-row">
+          <button type="button" class="m-btn" id="scanQtyMinus">−</button>
+          <div class="v-readout" id="scanQty">1</div>
+          <button type="button" class="m-btn" id="scanQtyPlus">+</button>
+        </div>
+        <label class="field-label v-label">Category</label>
+        <div class="chip-row" id="scanCats"></div>
+        <label class="field-label v-label">Notes</label>
+        <textarea class="m-input" id="scanNotes" rows="3" placeholder="Condition, variant, etc."></textarea>
+        <button type="button" class="m-btn m-btn-primary m-btn-cut-wide" id="scanSave">Save to rail</button>
+        <div class="status-strip" id="scanStatus">Ready</div>
+      </div>
+
+      <input type="file" id="scanCamInput" accept="image/*" capture="environment" multiple hidden />
+      <input type="file" id="scanGalInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" multiple hidden />
+    </section>
+
+    <!-- RAIL / INVENTORY -->
+    <section class="hud-panel" data-panel="rail" id="panel-rail">
+      <div class="rail-tools">
+        <input type="search" class="m-input" id="railSearch" placeholder="Filter rail" />
+        <button type="button" class="m-btn" id="railExport">Export</button>
+        <button type="button" class="m-btn" id="railImport">Import</button>
+        <input type="file" id="railImportFile" accept="application/json,.json" hidden />
+      </div>
+      <div id="railRoot"></div>
+    </section>
+
+    <!-- LISTING ENGINE -->
+    <section class="hud-panel" data-panel="list" id="panel-list">
+      <div class="v-panel v-cut hud-card">
+        <div class="v-label">Listing engine</div>
+        <h2 class="panel-title" style="margin:8px 0">eBay / marketplace</h2>
+        <p class="hud-lead">One-tap listing copy works now. Full eBay engine + Triple Threat hooks come next — not Base44 Claude.</p>
+        <a class="m-btn m-btn-primary" style="display:block;text-align:center;text-decoration:none;margin-top:12px" href="/listing-copy.html">Open listing copy</a>
+      </div>
+      <div class="v-panel v-cut hud-card">
+        <div class="v-label">Engine checklist</div>
+        <ul class="check-list" id="listChecks"></ul>
+      </div>
+      <div class="v-panel v-cut hud-card">
+        <div class="v-label">Draft from rail</div>
+        <select class="m-input" id="listPick"><option value="">Pick an intake item…</option></select>
+        <button type="button" class="m-btn m-btn-primary m-btn-cut-wide" id="listDraft" style="margin-top:10px">Build draft title</button>
+        <div class="draft-box" id="listDraftOut">No draft yet.</div>
+        <button type="button" class="m-btn m-btn-cut-wide" id="listCopyDraft" style="margin-top:8px">Copy draft</button>
+      </div>
+    </section>
+
+    <!-- MORE / SETTINGS / CHECKS -->
+    <section class="hud-panel" data-panel="more" id="panel-more">
+      <div class="v-panel v-cut hud-card">
+        <div class="v-label">App checks</div>
+        <p class="hint">Tap each row after you verify it on your phone.</p>
+        <ul class="check-list interactive" id="moreChecks"></ul>
+      </div>
+      <div class="v-panel v-cut hud-card">
+        <div class="v-label">Data</div>
+        <button type="button" class="m-btn m-btn-cut-wide" id="moreExport">Export full backup</button>
+        <button type="button" class="m-btn m-btn-cut-wide" id="moreClear" style="margin-top:8px">Clear local rail</button>
+      </div>
+      <div class="v-panel v-cut hud-card">
+        <div class="v-label">Links</div>
+        <a class="link-row" href="/">Legacy Scouter page</a>
+        <a class="link-row" href="/listing-copy.html">Listing copy page</a>
+      </div>
+    </section>
+  </main>
+
+  <nav class="hud-nav" aria-label="H.U.D tabs">
+    <button type="button" class="hud-tab active" data-go="home"><span>Home</span></button>
+    <button type="button" class="hud-tab" data-go="scan"><span>Scan</span></button>
+    <button type="button" class="hud-tab" data-go="rail"><span>Rail</span></button>
+    <button type="button" class="hud-tab" data-go="list"><span>List</span></button>
+    <button type="button" class="hud-tab" data-go="more"><span>More</span></button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+  <script src="/lib/image.js?v=12"></script>
+  <script src="/hud-app.js?v=12"></script>
+</body>
+</html>

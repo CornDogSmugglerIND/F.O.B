@@ -46,9 +46,23 @@ test("GET / serves Scouter frontend", async () => {
   try {
     const res = await fetch(`${baseUrl}/`);
     const html = await res.text();
-    assert.match(html, /Scouter · Coalition/);
+    assert.match(html, /Coalition H\.U\.D/);
     assert.match(html, /Start intake/);
-    assert.match(html, /scouter\.css\?v=10/);
+    assert.match(html, /scouter\.css\?v=11/);
+  } finally {
+    await close();
+  }
+});
+
+test("GET /hud.html serves Coalition H.U.D shell", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const res = await fetch(`${baseUrl}/hud.html`);
+    const html = await res.text();
+    assert.equal(res.status, 200);
+    assert.match(html, /Coalition H\.U\.D/);
+    assert.match(html, /hud-app\.js/);
+    assert.match(html, /data-go="scan"/);
   } finally {
     await close();
   }

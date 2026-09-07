@@ -298,7 +298,10 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
 }
 .intake-bar .v-readout { font-size: 22px; margin-left: auto; }
 
-.rail-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.rail-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.rail-toolbar .rail-search { flex: 1 1 140px; min-width: 120px; }
+.hud-top-link { margin-bottom: 10px; }
+.hud-top-link a { color: var(--gold-hi); text-decoration: none; }
 .rail-search { flex: 1; position: relative; }
 .rail-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-lo); pointer-events: none; }
 .rail-search input {

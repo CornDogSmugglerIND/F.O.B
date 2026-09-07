@@ -74,6 +74,9 @@ const els = {
   railToolbar: $("railToolbar"),
   railFilter: $("railFilter"),
   btnNewScan: $("btnNewScan"),
+  btnExport: $("btnExport"),
+  btnImport: $("btnImport"),
+  importFile: $("importFile"),
   pageHero: $("pageHero"),
   pageEyebrow: $("pageEyebrow"),
   pageSub: $("pageSub"),
@@ -465,14 +468,63 @@ function navigate(view) {
     stopScanner();
   } else {
     els.pageTitle.textContent = "New scan";
-    els.pageEyebrow.textContent = "Rail · Mobile intake";
+    els.pageEyebrow.textContent = "H.U.D · Mobile intake";
     els.pageSub.textContent =
-      "Capture photos and barcodes on this device. Items stay on your phone until Command Core sync.";
+      "Capture photos and barcodes on this device. Saved on your phone — no Base44 required.";
   }
 
   document.querySelectorAll(".nav-tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.view === view);
   });
+}
+
+function exportInventory() {
+  const items = loadLocalItems();
+  const payload = {
+    app: "coalition-hud-scouter",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    items,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `coalition-intake-${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${items.length} items`);
+}
+
+function importInventoryFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(String(reader.result || ""));
+      const incoming = Array.isArray(parsed) ? parsed : parsed.items;
+      if (!Array.isArray(incoming)) throw new Error("Invalid backup file");
+      const existing = loadLocalItems();
+      const byId = new Map(existing.map((it) => [it.id, it]));
+      let added = 0;
+      for (const it of incoming) {
+        if (!it || !it.id) continue;
+        if (!byId.has(it.id)) {
+          byId.set(it.id, it);
+          added += 1;
+        }
+      }
+      const merged = [...byId.values()];
+      saveLocalItems(merged);
+      loadItems();
+      renderCollection();
+      showToast(`Imported ${added} new · ${merged.length} total`);
+    } catch (e) {
+      showToast(e.message || "Import failed", "err");
+    }
+  };
+  reader.onerror = () => showToast("Could not read file", "err");
+  reader.readAsText(file);
 }
 
 async function stopScanner() {
@@ -725,6 +777,13 @@ function bindEvents() {
   els.btnSave.addEventListener("click", saveCapture);
 
   els.btnNewScan?.addEventListener("click", () => navigate("capture"));
+  els.btnExport?.addEventListener("click", exportInventory);
+  els.btnImport?.addEventListener("click", () => els.importFile?.click());
+  els.importFile?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) importInventoryFile(file);
+    e.target.value = "";
+  });
   els.railFilter?.addEventListener("input", () => {
     state.filterQuery = els.railFilter.value;
     renderCollection();
@@ -741,6 +800,8 @@ function init() {
   bindEvents();
   loadItems();
   updateSaveState();
+  const view = new URLSearchParams(location.search).get("view");
+  if (view === "collection" || view === "capture") navigate(view);
 }
 
 init();
