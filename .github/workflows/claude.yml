@@ -51,6 +51,8 @@ jobs:
         if: steps.config.outputs.configured == 'true'
         with:
           anthropic_api_key: ${{ env.ANTHROPIC_API_KEY }}
+          # Cursor cloud agents open issues/comments as cursor[bot]; without this, Claude refuses to run.
+          allowed_bots: "cursor"
           claude_args: |
             --max-turns 20
             --allowedTools "Edit,MultiEdit,Write,Read,Glob,Grep,LS,Bash(npm:*),Bash(node:*),Bash(gh:*)"
