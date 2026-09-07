@@ -1,0 +1,100 @@
+/* Thin VISOR extras for Command Core tabs — builds on scouter.css */
+
+.cmd-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cmd-stat {
+  padding: 14px 10px;
+  text-align: center;
+}
+
+.cmd-stat-n {
+  margin-top: 8px;
+  font-size: 26px;
+}
+
+.qa-list {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.qa-list li {
+  position: relative;
+  padding: 10px 12px 10px 28px;
+  font-size: 13px;
+  color: var(--text-mid);
+  clip-path: polygon(6px 0%, 100% 0%, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0% 100%, 0% 6px);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.qa-list li::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+}
+
+.qa-list li.ok::before {
+  background: var(--emerald);
+  box-shadow: 0 0 10px rgba(43, 217, 192, 0.55);
+}
+
+.qa-list li.warn::before {
+  background: var(--gold);
+  box-shadow: 0 0 10px rgba(255, 180, 61, 0.45);
+}
+
+.ready-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  cursor: pointer;
+}
+
+.ready-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold);
+}
+
+a.m-btn {
+  text-decoration: none;
+}
+
+.bottom-nav .nav-tab {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  padding: 0 2px;
+}
+
+.bottom-nav .nav-tab-icon {
+  width: 36px;
+  height: 30px;
+}
+
+.holo-scroll:empty::after {
+  content: "Nothing here yet";
+  display: block;
+  padding: 18px 8px;
+  font-size: 13px;
+  color: var(--text-lo);
+}
+
+@media (max-width: 380px) {
+  .cmd-stats {
+    grid-template-columns: 1fr;
+  }
+}
