@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0e1114" />
+  <title>Trio Setup — Tonight</title>
+  <style>
+    :root {
+      --bg: #0e1114;
+      --panel: #1a2229;
+      --text: #e8ecef;
+      --muted: #8b98a5;
+      --accent: #c9a227;
+      --accent-text: #0e1114;
+      --done: #1f8a4c;
+      --border: #2a3540;
+      --warn: #b45309;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      padding: 16px;
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      line-height: 1.45;
+    }
+    .wrap { max-width: 440px; margin: 0 auto; }
+    .eyebrow {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 0 0 6px;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 8px; font-weight: 700; }
+    .sub { color: var(--muted); font-size: 0.95rem; margin: 0 0 16px; }
+    .progress-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+    .bar { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: var(--done); width: 0%; transition: width 0.2s ease; }
+    .count { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 16px;
+      min-height: 280px;
+    }
+    .step-num {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .card h2 { font-size: 1.15rem; margin: 0 0 10px; font-weight: 700; }
+    .card p { margin: 0 0 12px; color: var(--text); font-size: 1rem; }
+    .card ul { margin: 0 0 14px; padding-left: 1.15rem; color: var(--text); }
+    .card li { margin-bottom: 8px; }
+    .hint {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,0.25);
+      border-radius: 10px;
+      border-left: 3px solid var(--warn);
+    }
+    .link-box {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      align-items: stretch;
+    }
+    .link-box input {
+      flex: 1;
+      min-width: 0;
+      background: #12171c;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 12px;
+      font-size: 0.85rem;
+    }
+    .copy-btn, .nav-btn, .done-btn {
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 12px 14px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .copy-btn {
+      background: #2a3540;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .copy-btn.ok { background: var(--done); }
+    .nav {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .nav-btn { background: #2a3540; color: var(--text); }
+    .nav-btn:disabled { opacity: 0.35; }
+    .done-btn { background: var(--accent); color: var(--accent-text); }
+    .done-btn:disabled { opacity: 0.35; }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(20px + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(120%);
+      background: var(--done);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: transform 0.2s ease;
+      z-index: 20;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .finish {
+      text-align: center;
+      padding: 24px 8px;
+    }
+    .finish h2 { margin-bottom: 10px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="eyebrow">Cursor + Claude + GitHub</p>
+    <h1>Tonight setup</h1>
+    <p class="sub">One step at a time. Do this at your desktop. Cursor will verify before saying it’s good.</p>
+
+    <div class="progress-wrap">
+      <div class="bar"><span id="bar"></span></div>
+      <div class="count" id="count">1 / 5</div>
+    </div>
+
+    <div class="card" id="card"></div>
+
+    <div class="nav" id="nav">
+      <button type="button" class="nav-btn" id="backBtn">Back</button>
+      <button type="button" class="done-btn" id="nextBtn">Done — Next</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Copied</div>
+
+  <script>
+    const STEPS = [
+      {
+        title: "Open Cloud Agents MCP",
+        body: "On your computer, open Cursor Agents and add Composio so THIS cloud agent can talk out.",
+        bullets: [
+          "Go to cursor.com/agents",
+          "Tap the + next to the prompt bar",
+          "MCP Servers → Add MCP",
+          "Add this URL, then finish sign-in / API key if asked"
+        ],
+        copy: "https://connect.composio.dev/mcp",
+        copyLabel: "Composio MCP URL",
+        hint: "Must be on Cloud Agents MCP — not only Claude. Desktop-only plugins do not reach this cloud box."
+      },
+      {
+        title: "Confirm Claude Cowork Triple Threat",
+        body: "In Claude Cowork, make sure the Composio connector that talks to Cursor is connected.",
+        bullets: [
+          "Open Claude Desktop → Cowork",
+          "Customize → Connectors",
+          "Triple Threat / Composio should be connected",
+          "If Cursor is not linked, connect Cursor and paste your Cursor API key when asked"
+        ],
+        copy: "https://connect.composio.dev/mcp",
+        copyLabel: "Same Composio URL for Cowork if needed",
+        hint: "Cowork needs Cursor linked. That is how Claude can see this cloud agent."
+      },
+      {
+        title: "Ask Claude to ping Cursor",
+        body: "In Cowork, paste this exact ask:",
+        bullets: [
+          "List my Cursor cloud agents for the F.O.B repo",
+          "You should see one named like Cursor+Claude+GitHub",
+          "If it lists that agent, say so out loud / leave it on screen"
+        ],
+        copy: "List my Cursor cloud agents for CornDogSmugglerIND/F.O.B. Confirm you can see the running agent named Cursor+Claude+GitHub.",
+        copyLabel: "Paste into Cowork",
+        hint: "If Claude cannot list the agent, stop and tell Cursor. Do not skip ahead."
+      },
+      {
+        title: "Claude answers the product map on GitHub",
+        body: "Paste the issue into Cowork and tell it to reply ON THE ISSUE.",
+        bullets: [
+          "Open the issue link",
+          "Tell Cowork: answer all 7 questions as a comment on this GitHub issue",
+          "Wait until the comment appears on GitHub"
+        ],
+        copy: "https://github.com/CornDogSmugglerIND/F.O.B/issues/24",
+        copyLabel: "Issue #24",
+        hint: "This is the shared board. Cursor will read Claude’s comment from GitHub — no desktop needed later."
+      },
+      {
+        title: "Message Cursor: check now",
+        body: "Come back to this Cursor chat and send exactly:",
+        bullets: [
+          "I'm home. Check now.",
+          "Cursor will run pass/fail tests",
+          "Only if those pass will Cursor say comms are proven",
+          "Then we rebuild Scouter / leave Base44 — not before"
+        ],
+        copy: "I'm home. Check now.",
+        copyLabel: "Send to Cursor",
+        hint: "If Cursor says fail, stay at the desk. Do not leave until it passes or you decide to stop."
+      }
+    ];
+
+    let i = 0;
+    const card = document.getElementById("card");
+    const bar = document.getElementById("bar");
+    const count = document.getElementById("count");
+    const backBtn = document.getElementById("backBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const toast = document.getElementById("toast");
+    const nav = document.getElementById("nav");
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(showToast.t);
+      showToast.t = setTimeout(() => toast.classList.remove("show"), 1600);
+    }
+
+    async function copyText(text, btn) {
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.classList.add("ok");
+        btn.textContent = "Copied";
+        showToast("Copied");
+        setTimeout(() => {
+          btn.classList.remove("ok");
+          btn.textContent = "Copy";
+        }, 1200);
+      } catch {
+        showToast("Long-press the box to copy");
+      }
+    }
+
+    function render() {
+      if (i >= STEPS.length) {
+        card.innerHTML = `
+          <div class="finish">
+            <h2>Your part is queued</h2>
+            <p>Message Cursor: <strong>I'm home. Check now.</strong></p>
+            <p class="sub">Do not leave the desk until Cursor reports pass or fail.</p>
+          </div>`;
+        nav.classList.add("hidden");
+        bar.style.width = "100%";
+        count.textContent = `${STEPS.length} / ${STEPS.length}`;
+        return;
+      }
+
+      const s = STEPS[i];
+      card.innerHTML = `
+        <div class="step-num">Step ${i + 1} of ${STEPS.length}</div>
+        <h2>${s.title}</h2>
+        <p>${s.body}</p>
+        <ul>${s.bullets.map((b) => `<li>${b}</li>`).join("")}</ul>
+        ${s.hint ? `<p class="hint">${s.hint}</p>` : ""}
+        <label class="eyebrow" style="display:block;margin-bottom:6px">${s.copyLabel}</label>
+        <div class="link-box">
+          <input id="copyVal" readonly value="${s.copy.replaceAll('"', "&quot;")}" />
+          <button type="button" class="copy-btn" id="copyBtn">Copy</button>
+        </div>
+      `;
+
+      document.getElementById("copyBtn").onclick = () =>
+        copyText(s.copy, document.getElementById("copyBtn"));
+
+      backBtn.disabled = i === 0;
+      nextBtn.textContent = i === STEPS.length - 1 ? "Finish" : "Done — Next";
+      bar.style.width = `${((i) / STEPS.length) * 100}%`;
+      count.textContent = `${i + 1} / ${STEPS.length}`;
+      nav.classList.remove("hidden");
+    }
+
+    backBtn.onclick = () => {
+      if (i > 0) {
+        i -= 1;
+        render();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    };
+    nextBtn.onclick = () => {
+      i += 1;
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    render();
+  </script>
+</body>
+</html>
