@@ -76,8 +76,9 @@ test("GET /trio-setup.html serves tonight checklist", async () => {
     assert.equal(res.status, 200);
     assert.match(html, /Tonight setup/);
     assert.match(html, /connect\.composio\.dev\/mcp/);
-    assert.match(html, /issues\/24/);
-    assert.match(html, /I'm home\. Check now\./);
+    assert.match(html, /What is going on/);
+    assert.match(html, /composio done/);
+    assert.match(html, /Add MCP/);
   } finally {
     await close();
   }

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Desk helper for Triple Threat proof (Cursor + Claude + GitHub).
-# Run on Sawyer's desktop: bash <(curl -fsSL https://f-o-b.vercel.app/desk-trio.sh)
+# Until PR #41 is merged to main, use the branch copy (production is outdated):
+#   bash <(curl -fsSL https://raw.githubusercontent.com/CornDogSmugglerIND/F.O.B/cursor/trio-composio-cloud-mcp-f396/public/desk-trio.sh)
+# After merge: bash <(curl -fsSL https://f-o-b.vercel.app/desk-trio.sh)
 # Or from repo: bash scripts/desk-trio.sh
 set -euo pipefail
 
@@ -16,35 +18,41 @@ OPEN() {
 }
 
 cat <<'EOF'
-=== Trio proof — desk steps ===
-Gates Cursor will check:
-  1) This cloud agent sees Composio tools
-  2) Real product-map comment on GitHub issue #24
+=== Trio proof — what is going on ===
 
-Opening the tabs you need now...
+Gate 2 DONE: Claude already answered GitHub #24.
+Gate 1 BLOCKED: this cloud agent still has no Composio tools.
+
+That junk "query data" tab was connect.composio.dev/mcp —
+NOT a website. Close it. Never open that URL in Safari/Chrome.
+Paste it only into Cursor's Add MCP → URL field.
+
+Opening real pages only...
 EOF
 
-OPEN "https://cursor.com/en-US/install-mcp?name=composio&config=eyJ1cmwiOiJodHRwczovL2Nvbm5lY3QuY29tcG9zaW8uZGV2L21jcCJ9"
+OPEN "https://cursor.com/dashboard/integrations"
 OPEN "https://app.composio.dev"
 OPEN "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396"
-OPEN "https://github.com/CornDogSmugglerIND/F.O.B/issues/24"
-OPEN "https://github.com/CornDogSmugglerIND/F.O.B/settings/secrets/actions"
-OPEN "https://f-o-b.vercel.app/trio-setup.html"
 
 cat <<'EOF'
 
-Do in order:
-1) Finish Composio install / OAuth.
-2) From app.composio.dev → AI Clients, copy API key.
-   On Cloud Agents MCP, set header: x-consumer-api-key = <that key>
-   (or + menu on cursor.com/agents → MCP Servers → Add MCP)
-3) Preferred: Claude Cowork comments answers on issue #24.
-   Backup: run:  claude setup-token
-           add GitHub secret CLAUDE_CODE_OAUTH_TOKEN
-           comment @claude on issue #24
-4) Message the Cursor agent exactly:
+Clicks:
 
-I'm home. Check now.
+1) Tab: cursor.com/dashboard/integrations
+   Sign in as Sawyer.
+   Add / configure MCP for Cloud Agents → HTTP
+   Name: composio
+   URL:  https://connect.composio.dev/mcp
+   Header: x-consumer-api-key = (from app.composio.dev → Install / AI Clients)
+   Enable / Save
 
-Phone checklist: https://f-o-b.vercel.app/trio-setup.html
+2) Backup if Integrations page looks empty:
+   Agents chat → + left of message box → MCP Servers → Add MCP → HTTP
+   Same URL + same header.
+
+3) Reply in the agents chat:
+
+composio done
+
+If stuck, tell Cursor what the Integrations page shows.
 EOF
