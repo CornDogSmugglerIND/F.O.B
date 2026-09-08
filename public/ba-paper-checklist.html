@@ -3,314 +3,490 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#d8dee8" />
   <title>BA Paper Checklist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0e1114;
-      --panel: #1a2229;
-      --text: #e8ecef;
-      --muted: #8b98a5;
-      --accent: #2f6fed;
-      --done: #1f8a4c;
-      --border: #2a3540;
-      --input: #12171c;
+      --paper: #d8dee8;
+      --paper-deep: #c5cdd9;
+      --sheet: rgba(248, 250, 252, 0.72);
+      --ink: #182433;
+      --muted: #5a6a7c;
+      --rule: rgba(24, 36, 51, 0.14);
+      --teal: #0f6e6a;
+      --teal-deep: #0a524f;
+      --done: #1a7a58;
+      --focus: #1f6f8b;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
+
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      font-family: -apple-system, system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      padding: 16px;
-      padding-bottom: 64px;
-      line-height: 1.4;
+      min-height: 100dvh;
+      font-family: "Figtree", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(120% 80% at 10% -10%, #eef3f8 0%, transparent 55%),
+        radial-gradient(90% 70% at 100% 0%, #c9d5c8 0%, transparent 45%),
+        linear-gradient(165deg, #d8dee8 0%, #cfd6e2 42%, #bcc8d4 100%);
+      line-height: 1.45;
+      padding: 20px 16px calc(28px + var(--safe-bottom));
     }
-    header {
-      margin-bottom: 18px;
-      padding-bottom: 14px;
-      border-bottom: 1px solid var(--border);
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.35;
+      background-image:
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 27px,
+          rgba(24, 36, 51, 0.035) 27px,
+          rgba(24, 36, 51, 0.035) 28px
+        );
+      z-index: 0;
     }
-    h1 {
-      font-size: 1.2rem;
-      font-weight: 600;
-      margin: 0 0 6px;
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 42rem;
+      margin: 0 auto;
     }
-    .sub {
+
+    header.hero {
+      margin-bottom: 1.5rem;
+      animation: rise 0.55s ease both;
+    }
+
+    .brand {
+      font-family: "Fraunces", serif;
+      font-optical-sizing: auto;
+      font-size: clamp(2rem, 8vw, 2.6rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      margin: 0 0 0.55rem;
+      color: var(--ink);
+    }
+
+    .lede {
+      margin: 0 0 1.15rem;
+      max-width: 28ch;
+      font-size: 1.02rem;
       color: var(--muted);
-      font-size: 0.9rem;
-      margin: 0 0 12px;
+      font-weight: 500;
     }
-    .progress-wrap {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+
+    .progress {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.55rem 0.85rem;
+      align-items: end;
+      padding: 0.85rem 0 0;
+      border-top: 1px solid var(--rule);
     }
+
+    .progress-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .count {
+      font-family: "Fraunces", serif;
+      font-size: 1.35rem;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: var(--teal-deep);
+      line-height: 1;
+    }
+
     .bar {
-      flex: 1;
-      height: 6px;
-      background: var(--border);
-      border-radius: 3px;
+      grid-column: 1 / -1;
+      height: 3px;
+      background: rgba(24, 36, 51, 0.12);
       overflow: hidden;
     }
+
     .bar > span {
       display: block;
       height: 100%;
       width: 0%;
-      background: var(--done);
-      transition: width 0.2s ease;
+      background: linear-gradient(90deg, var(--teal), #2a9b7a);
+      transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
     }
-    .count {
-      font-size: 0.85rem;
-      color: var(--muted);
-      white-space: nowrap;
-      font-variant-numeric: tabular-nums;
+
+    .section {
+      margin-top: 1.75rem;
+      animation: rise 0.6s ease both;
     }
-    h2 {
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--muted);
-      margin: 22px 0 10px;
-      font-weight: 600;
+
+    .section:nth-of-type(1) { animation-delay: 0.04s; }
+    .section:nth-of-type(2) { animation-delay: 0.08s; }
+    .section:nth-of-type(3) { animation-delay: 0.12s; }
+    .section:nth-of-type(4) { animation-delay: 0.16s; }
+
+    .section h2 {
+      font-family: "Fraunces", serif;
+      font-size: 1.05rem;
+      font-weight: 500;
+      margin: 0 0 0.85rem;
+      color: var(--teal-deep);
+      letter-spacing: -0.01em;
     }
+
     .item {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 10px;
-      transition: border-color 0.15s ease, opacity 0.15s ease;
+      position: relative;
+      padding: 1rem 0 1.1rem 0;
+      border-bottom: 1px solid var(--rule);
+      transition: opacity 0.25s ease;
     }
+
+    .item:last-child { border-bottom: none; }
+
     .item.checked {
-      border-color: #2a5a3d;
-      opacity: 0.72;
+      opacity: 0.58;
     }
-    .row {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-    }
-    input[type="checkbox"] {
-      width: 22px;
-      height: 22px;
-      margin-top: 1px;
-      flex-shrink: 0;
-      accent-color: var(--done);
-    }
-    .body { flex: 1; min-width: 0; }
-    .title {
-      font-size: 0.98rem;
-      font-weight: 560;
-      margin: 0 0 6px;
-    }
+
     .item.checked .title {
       text-decoration: line-through;
+      text-decoration-thickness: 1.5px;
       color: var(--muted);
     }
-    ul {
-      margin: 0 0 8px;
-      padding-left: 18px;
-      color: var(--muted);
-      font-size: 0.88rem;
+
+    .row {
+      display: flex;
+      gap: 0.85rem;
+      align-items: flex-start;
     }
-    li { margin-bottom: 3px; }
-    textarea {
+
+    .check {
+      position: relative;
+      flex-shrink: 0;
+      width: 1.55rem;
+      height: 1.55rem;
+      margin-top: 0.12rem;
+    }
+
+    .check input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      margin: 0;
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    .check span {
+      display: grid;
+      place-items: center;
       width: 100%;
-      min-height: 72px;
-      resize: vertical;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--input);
-      color: var(--text);
-      padding: 10px;
-      font: inherit;
+      height: 100%;
+      border: 1.5px solid rgba(15, 110, 106, 0.55);
+      background: rgba(248, 250, 252, 0.55);
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .check span::after {
+      content: "";
+      width: 0.42rem;
+      height: 0.72rem;
+      border-right: 2px solid #fff;
+      border-bottom: 2px solid #fff;
+      transform: rotate(40deg) scale(0);
+      margin-top: -0.15rem;
+      transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .check input:checked + span {
+      background: var(--done);
+      border-color: var(--done);
+      transform: scale(1.04);
+    }
+
+    .check input:checked + span::after {
+      transform: rotate(40deg) scale(1);
+    }
+
+    .check input:focus-visible + span {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    .body { flex: 1; min-width: 0; }
+
+    .title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 0 0 0.45rem;
+      letter-spacing: -0.015em;
+      transition: color 0.2s ease;
+    }
+
+    ul {
+      margin: 0 0 0.75rem;
+      padding-left: 1.05rem;
+      color: var(--muted);
       font-size: 0.92rem;
     }
+
+    li { margin-bottom: 0.2rem; }
+    li::marker { color: var(--teal); }
+
+    textarea {
+      width: 100%;
+      min-height: 4.75rem;
+      resize: vertical;
+      border: none;
+      border-bottom: 1.5px solid rgba(15, 110, 106, 0.28);
+      border-radius: 0;
+      background:
+        linear-gradient(transparent 27px, rgba(24, 36, 51, 0.06) 28px) 0 0 / 100% 28px,
+        transparent;
+      color: var(--ink);
+      padding: 0.15rem 0.1rem 0.55rem;
+      font: inherit;
+      font-size: 0.98rem;
+      line-height: 28px;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
     textarea:focus {
       outline: none;
-      border-color: var(--accent);
+      border-bottom-color: var(--teal);
+      background-color: rgba(248, 250, 252, 0.45);
     }
-    textarea::placeholder { color: #5c6a78; }
+
+    textarea::placeholder { color: #8492a3; }
+
     .actions {
       display: flex;
-      gap: 8px;
-      margin-top: 20px;
+      gap: 0.65rem;
+      margin-top: 1.75rem;
+      position: sticky;
+      bottom: calc(0.65rem + var(--safe-bottom));
+      z-index: 3;
+      animation: rise 0.65s ease both;
+      animation-delay: 0.2s;
     }
+
     button {
       flex: 1;
-      min-height: 48px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--panel);
-      color: var(--text);
-      font-size: 0.95rem;
-      font-weight: 500;
+      min-height: 3.15rem;
+      border: 1.5px solid rgba(24, 36, 51, 0.18);
+      background: rgba(248, 250, 252, 0.82);
+      backdrop-filter: blur(10px);
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.98rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
     }
+
     button.primary {
-      background: var(--accent);
-      border-color: transparent;
-      color: #fff;
+      background: var(--teal);
+      border-color: var(--teal);
+      color: #f4faf9;
     }
-    button:active { opacity: 0.85; }
+
+    button:active { transform: scale(0.985); }
+    button.primary:active { background: var(--teal-deep); }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>BA paper checklist</h1>
-    <p class="sub">Check each section off as you write it. Notes save on this phone.</p>
-    <div class="progress-wrap">
-      <div class="bar" aria-hidden="true"><span id="barFill"></span></div>
-      <div class="count"><span id="doneCount">0</span>/<span id="totalCount">0</span></div>
-    </div>
-  </header>
-
-  <h2>Setup</h2>
-  <div class="item" data-id="title">
-    <div class="row">
-      <input type="checkbox" />
-      <div class="body">
-        <p class="title">Title block</p>
-        <ul>
-          <li>Title: Business Analytics: Companies and Career Roles</li>
-          <li>Your name / class / date</li>
-        </ul>
-        <textarea placeholder="Your note…"></textarea>
+  <div class="wrap">
+    <header class="hero">
+      <h1 class="brand">BA Paper</h1>
+      <p class="lede">Check each section as you write it. Notes stay on this phone.</p>
+      <div class="progress" aria-live="polite">
+        <div class="progress-label">Progress</div>
+        <div class="count"><span id="doneCount">0</span>/<span id="totalCount">0</span></div>
+        <div class="bar" aria-hidden="true"><span id="barFill"></span></div>
       </div>
-    </div>
-  </div>
+    </header>
 
-  <div class="item" data-id="intro">
-    <div class="row">
-      <input type="checkbox" />
-      <div class="body">
-        <p class="title">Introduction (3–5 sentences)</p>
-        <ul>
-          <li>Analytics = using data to make decisions</li>
-          <li>Companies: Google Analytics + Tableau</li>
-          <li>Jobs: E-commerce Analyst + Business Analyst</li>
-          <li>One of each ties to online reselling</li>
-        </ul>
-        <textarea placeholder="Draft your intro here…"></textarea>
+    <section class="section">
+      <h2>Setup</h2>
+      <div class="item" data-id="title">
+        <div class="row">
+          <label class="check"><input type="checkbox" /><span></span></label>
+          <div class="body">
+            <p class="title">Title block</p>
+            <ul>
+              <li>Title: Business Analytics: Companies and Career Roles</li>
+              <li>Your name / class / date</li>
+            </ul>
+            <textarea placeholder="Your note…"></textarea>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <h2>Part 1 — Companies</h2>
-  <div class="item" data-id="ga">
-    <div class="row">
-      <input type="checkbox" />
-      <div class="body">
-        <p class="title">Google Analytics (reselling angle)</p>
-        <ul>
-          <li>Tracks traffic, sources, clicks, conversions</li>
-          <li>Helps sellers see what converts vs just gets views</li>
-          <li>Useful for storefront / marketplace decisions</li>
-        </ul>
-        <textarea placeholder="Write this section in your words…"></textarea>
+      <div class="item" data-id="intro">
+        <div class="row">
+          <label class="check"><input type="checkbox" /><span></span></label>
+          <div class="body">
+            <p class="title">Introduction (3–5 sentences)</p>
+            <ul>
+              <li>Analytics = using data to make decisions</li>
+              <li>Companies: Google Analytics + Tableau</li>
+              <li>Jobs: E-commerce Analyst + Business Analyst</li>
+              <li>One of each ties to online reselling</li>
+            </ul>
+            <textarea placeholder="Draft your intro here…"></textarea>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <div class="item" data-id="tableau">
-    <div class="row">
-      <input type="checkbox" />
-      <div class="body">
-        <p class="title">Tableau</p>
-        <ul>
-          <li>Turns data into dashboards/charts</li>
-          <li>Self-service BI / visual reports</li>
-          <li>Example: companies track CX / performance faster</li>
-        </ul>
-        <textarea placeholder="Write this section in your words…"></textarea>
+    <section class="section">
+      <h2>Part 1 — Companies</h2>
+      <div class="item" data-id="ga">
+        <div class="row">
+          <label class="check"><input type="checkbox" /><span></span></label>
+          <div class="body">
+            <p class="title">Google Analytics (reselling angle)</p>
+            <ul>
+              <li>Tracks traffic, sources, clicks, conversions</li>
+              <li>Helps sellers see what converts vs just gets views</li>
+              <li>Useful for storefront / marketplace decisions</li>
+            </ul>
+            <textarea placeholder="Write this section in your words…"></textarea>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <div class="item" data-id="compare">
-    <div class="row">
-      <input type="checkbox" />
-      <div class="body">
-        <p class="title">Compare the two</p>
-        <ul>
-          <li>GA = tracks online behavior</li>
-          <li>Tableau = visualizes / explores data</li>
-          <li>Same goal (better decisions), different tools</li>
-        </ul>
-        <textarea placeholder="Write your comparison…"></textarea>
+      <div class="item" data-id="tableau">
+        <div class="row">
+          <label class="check"><input type="checkbox" /><span></span></label>
+          <div class="body">
+            <p class="title">Tableau</p>
+            <ul>
+              <li>Turns data into dashboards/charts</li>
+              <li>Self-service BI / visual reports</li>
+              <li>Example: companies track CX / performance faster</li>
+            </ul>
+            <textarea placeholder="Write this section in your words…"></textarea>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <h2>Part 2 — Jobs</h2>
-  <div class="item" data-id="ecom">
-    <div class="row">
-      <input type="checkbox" />
-      <div class="body">
-        <p class="title">Job 1: E-commerce Analyst (reselling angle)</p>
-        <ul>
-          <li>Does: sales, traffic, pricing, inventory insights</li>
-          <li>Industries: retail, eBay/Amazon, collectibles</li>
-          <li>K: business/marketing know-how</li>
-          <li>S: Excel, Google Analytics, dashboards</li>
-          <li>A: spot trends, explain numbers, act fast</li>
-        </ul>
-        <textarea placeholder="Cover all 6 prompt points…"></textarea>
+      <div class="item" data-id="compare">
+        <div class="row">
+          <label class="check"><input type="checkbox" /><span></span></label>
+          <div class="body">
+            <p class="title">Compare the two</p>
+            <ul>
+              <li>GA = tracks online behavior</li>
+              <li>Tableau = visualizes / explores data</li>
+              <li>Same goal (better decisions), different tools</li>
+            </ul>
+            <textarea placeholder="Write your comparison…"></textarea>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <div class="item" data-id="ba">
-    <div class="row">
-      <input type="checkbox" />
-      <div class="body">
-        <p class="title">Job 2: Business Analyst</p>
-        <ul>
-          <li>Does: bridge business + data, improve processes</li>
-          <li>Industries: finance, healthcare, tech, retail, gov</li>
-          <li>K: often bachelor’s in business/related</li>
-          <li>S: Excel, SQL, Tableau/Power BI</li>
-          <li>A: communication, problem-solving, organize</li>
-        </ul>
-        <textarea placeholder="Cover all 6 prompt points…"></textarea>
+    <section class="section">
+      <h2>Part 2 — Jobs</h2>
+      <div class="item" data-id="ecom">
+        <div class="row">
+          <label class="check"><input type="checkbox" /><span></span></label>
+          <div class="body">
+            <p class="title">Job 1: E-commerce Analyst (reselling angle)</p>
+            <ul>
+              <li>Does: sales, traffic, pricing, inventory insights</li>
+              <li>Industries: retail, eBay/Amazon, collectibles</li>
+              <li>K: business/marketing know-how</li>
+              <li>S: Excel, Google Analytics, dashboards</li>
+              <li>A: spot trends, explain numbers, act fast</li>
+            </ul>
+            <textarea placeholder="Cover all 6 prompt points…"></textarea>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <h2>Wrap-up</h2>
-  <div class="item" data-id="conclusion">
-    <div class="row">
-      <input type="checkbox" />
-      <div class="body">
-        <p class="title">Conclusion (3–5 sentences)</p>
-        <ul>
-          <li>Tools help understand customers/performance</li>
-          <li>These jobs turn data into action</li>
-          <li>For online selling: better list / price / promote</li>
-        </ul>
-        <textarea placeholder="Draft your conclusion…"></textarea>
+      <div class="item" data-id="ba">
+        <div class="row">
+          <label class="check"><input type="checkbox" /><span></span></label>
+          <div class="body">
+            <p class="title">Job 2: Business Analyst</p>
+            <ul>
+              <li>Does: bridge business + data, improve processes</li>
+              <li>Industries: finance, healthcare, tech, retail, gov</li>
+              <li>K: often bachelor’s in business/related</li>
+              <li>S: Excel, SQL, Tableau/Power BI</li>
+              <li>A: communication, problem-solving, organize</li>
+            </ul>
+            <textarea placeholder="Cover all 6 prompt points…"></textarea>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <div class="item" data-id="refs">
-    <div class="row">
-      <input type="checkbox" />
-      <div class="body">
-        <p class="title">References</p>
-        <ul>
-          <li>https://analytics.google.com</li>
-          <li>https://www.tableau.com</li>
-          <li>Indeed / Glassdoor job posts you actually used</li>
-        </ul>
-        <textarea placeholder="Paste final citation list…"></textarea>
+    <section class="section">
+      <h2>Wrap-up</h2>
+      <div class="item" data-id="conclusion">
+        <div class="row">
+          <label class="check"><input type="checkbox" /><span></span></label>
+          <div class="body">
+            <p class="title">Conclusion (3–5 sentences)</p>
+            <ul>
+              <li>Tools help understand customers/performance</li>
+              <li>These jobs turn data into action</li>
+              <li>For online selling: better list / price / promote</li>
+            </ul>
+            <textarea placeholder="Draft your conclusion…"></textarea>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <div class="actions">
-    <button type="button" id="resetBtn">Reset</button>
-    <button type="button" class="primary" id="copyBtn">Copy all notes</button>
+      <div class="item" data-id="refs">
+        <div class="row">
+          <label class="check"><input type="checkbox" /><span></span></label>
+          <div class="body">
+            <p class="title">References</p>
+            <ul>
+              <li>https://analytics.google.com</li>
+              <li>https://www.tableau.com</li>
+              <li>Indeed / Glassdoor job posts you actually used</li>
+            </ul>
+            <textarea placeholder="Paste final citation list…"></textarea>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button type="button" id="resetBtn">Reset</button>
+      <button type="button" class="primary" id="copyBtn">Copy all notes</button>
+    </div>
   </div>
 
   <script>

@@ -85,6 +85,21 @@ test("GET /trio-setup.html serves tonight checklist", async () => {
   }
 });
 
+test("GET /ba-paper-checklist.html serves BA paper checklist", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const res = await fetch(`${baseUrl}/ba-paper-checklist.html`);
+    const html = await res.text();
+    assert.equal(res.status, 200);
+    assert.match(html, /BA Paper/);
+    assert.match(html, /ba-paper-checklist-v1/);
+    assert.match(html, /Fraunces/);
+    assert.match(html, /Copy all notes/);
+  } finally {
+    await close();
+  }
+});
+
 test("Scouter API creates and lists items with quantity and category", async () => {
   const { baseUrl, close } = await startServer();
   try {
