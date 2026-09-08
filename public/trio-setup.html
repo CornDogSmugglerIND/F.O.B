@@ -170,14 +170,14 @@
         title: "Open Cloud Agents MCP",
         body: "On your computer, add Composio to Cloud Agents so THIS cloud box can see Composio tools.",
         bullets: [
-          "Go to cursor.com/agents (desktop browser)",
-          "Open the MCP dropdown (next to the prompt)",
-          "Add personal MCP → type HTTP",
-          "Paste the URL below, then finish OAuth when Cursor asks"
+          "Go to cursor.com/agents (desktop browser, signed in)",
+          "Click the + to the left of the prompt bar (next to the model picker)",
+          "Hover MCP Servers → Add MCP → custom HTTP",
+          "Paste the URL below, then finish OAuth"
         ],
         copy: "https://connect.composio.dev/mcp",
         copyLabel: "Composio MCP URL",
-        hint: "Cloud Agents MCP only. Repo mcp.json / IDE MCP / Claude-only connectors do not count for this cloud agent."
+        hint: "There is no separate “MCP dropdown” anymore — it’s inside +. Alt path: cursor.com/dashboard/integrations → Add MCP. Repo mcp.json / IDE-only / Claude-only do not count."
       },
       {
         title: "Confirm Claude Cowork Triple Threat",
@@ -227,7 +227,7 @@
         ],
         copy: "I'm home. Check now.",
         copyLabel: "Send to Cursor",
-        hint: "Agent link if you lost the chat: https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396 — stay at the desk until pass or you stop."
+        hint: "Chat: https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396 — after OAuth, send check-now here so tools can reload. Stay at the desk until pass or you stop."
       }
     ];
 
