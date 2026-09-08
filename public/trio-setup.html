@@ -142,6 +142,12 @@
     <p class="eyebrow">Cursor + Claude + GitHub</p>
     <h1>Tonight setup</h1>
     <p class="sub">One step at a time. Do this at your desktop. Cursor will verify before saying it’s good.</p>
+    <div class="hint" id="gates" style="margin-bottom:16px">
+      <strong>Pass only when both are true:</strong><br />
+      1) This cloud agent can see Composio tools<br />
+      2) A real product-map comment lands on GitHub issue #24<br />
+      Until then: not all-good. No app rebuild.
+    </div>
 
     <div class="progress-wrap">
       <div class="bar"><span id="bar"></span></div>
@@ -162,16 +168,16 @@
     const STEPS = [
       {
         title: "Open Cloud Agents MCP",
-        body: "On your computer, open Cursor Agents and add Composio so THIS cloud agent can talk out.",
+        body: "On your computer, add Composio to Cloud Agents so THIS cloud box can see Composio tools.",
         bullets: [
-          "Go to cursor.com/agents",
-          "Tap the + next to the prompt bar",
-          "MCP Servers → Add MCP",
-          "Add this URL, then finish sign-in / API key if asked"
+          "Go to cursor.com/agents (desktop browser)",
+          "Open the MCP dropdown (next to the prompt)",
+          "Add personal MCP → type HTTP",
+          "Paste the URL below, then finish OAuth when Cursor asks"
         ],
         copy: "https://connect.composio.dev/mcp",
         copyLabel: "Composio MCP URL",
-        hint: "Must be on Cloud Agents MCP — not only Claude. Desktop-only plugins do not reach this cloud box."
+        hint: "Cloud Agents MCP only. Repo mcp.json / IDE MCP / Claude-only connectors do not count for this cloud agent."
       },
       {
         title: "Confirm Claude Cowork Triple Threat",
@@ -192,7 +198,7 @@
         bullets: [
           "List my Cursor cloud agents for the F.O.B repo",
           "You should see one named like Cursor+Claude+GitHub",
-          "If it lists that agent, say so out loud / leave it on screen"
+          "If it lists that agent, leave that on screen"
         ],
         copy: "List my Cursor cloud agents for CornDogSmugglerIND/F.O.B. Confirm you can see the running agent named Cursor+Claude+GitHub.",
         copyLabel: "Paste into Cowork",
@@ -200,15 +206,15 @@
       },
       {
         title: "Claude answers the product map on GitHub",
-        body: "Paste the issue into Cowork and tell it to reply ON THE ISSUE.",
+        body: "Use Claude Cowork — not the GitHub @claude bot. Tell Cowork to reply ON the issue.",
         bullets: [
-          "Open the issue link",
-          "Tell Cowork: answer all 7 questions as a comment on this GitHub issue",
-          "Wait until the comment appears on GitHub"
+          "Open issue #24 (link below)",
+          "Tell Cowork: answer all 7 questions as a GitHub comment on this issue",
+          "Refresh GitHub until a real product-map comment appears"
         ],
         copy: "https://github.com/CornDogSmugglerIND/F.O.B/issues/24",
         copyLabel: "Issue #24",
-        hint: "This is the shared board. Cursor will read Claude’s comment from GitHub — no desktop needed later."
+        hint: "GitHub @claude on #27 already failed (Anthropic key/billing wall). That does not count. Need a real Cowork answer on #24."
       },
       {
         title: "Message Cursor: check now",
@@ -221,7 +227,7 @@
         ],
         copy: "I'm home. Check now.",
         copyLabel: "Send to Cursor",
-        hint: "If Cursor says fail, stay at the desk. Do not leave until it passes or you decide to stop."
+        hint: "Agent link if you lost the chat: https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396 — stay at the desk until pass or you stop."
       }
     ];
 
