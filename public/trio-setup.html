@@ -143,11 +143,10 @@
     <h1>Tonight setup</h1>
     <p class="sub">One step at a time. Do this at your desktop. Cursor will verify before saying it’s good.</p>
     <div class="hint" id="gates" style="margin-bottom:16px">
-      <strong>Pass only when both are true:</strong><br />
-      1) This cloud agent can see Composio tools — still FAIL<br />
-      2) Real product-map on GitHub issue #24 — PASS<br />
-      Until both pass: not all-good. No app rebuild.<br />
-      Cowork listing this agent does <em>not</em> count for gate 1.
+      <strong>Straight status:</strong><br />
+      ✅ Claude product map on GitHub #24 — done<br />
+      ❌ Composio tools on THIS cloud chat — not done yet<br />
+      Until ❌ flips: not all-good. No app rebuild.
     </div>
 
     <div class="progress-wrap">
@@ -168,68 +167,56 @@
   <script>
     const STEPS = [
       {
-        title: "Add Composio to THIS cloud agent",
-        body: "Gate 1 is the only blocker left. Desktop “Install MCP” and Claude Cowork Triple Threat do NOT give THIS cloud box Composio tools. Add MCP on the Cloud Agents chat itself.",
+        title: "What is going on (read this)",
+        body: "Claude already answered GitHub #24. The only blocker: THIS cloud chat still cannot see Composio tools. That is a Cursor setting on this chat — not a website you browse.",
         bullets: [
-          "Open THIS chat: cursor.com/agents → Cursor+Claude+GitHub (bc-01a060ac…)",
-          "Click + left of the prompt → MCP Servers → Add MCP → HTTP",
-          "URL: https://connect.composio.dev/mcp",
-          "Header: x-consumer-api-key = key from app.composio.dev → AI Clients (OAuth alone often 401s)",
-          "Save. Do not stop at desktop Cursor Settings MCP — that is a different box."
+          "If a tab showed weird query/json text: that was connect.composio.dev/mcp — close it. It is not a page.",
+          "Do NOT paste that URL into Safari/Chrome. Paste it only into Cursor’s Add MCP form.",
+          "Desktop Cursor Settings MCP and Claude Cowork Triple Threat are separate. They do not finish this gate."
         ],
         copy: "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396",
-        copyLabel: "Open THIS cloud agent chat",
-        hint: "Desk helper: bash <(curl -fsSL https://f-o-b.vercel.app/desk-trio.sh). After the header is saved on Cloud Agents MCP, reply: composio done — or I'm home. Check now."
+        copyLabel: "Open THIS cloud chat (real page)",
+        hint: "Next step is clicks on that chat page. If you get lost, reply here with what you see on screen."
       },
       {
-        title: "Confirm Claude Cowork Triple Threat",
-        body: "In Claude Cowork, make sure the Composio connector that talks to Cursor is connected.",
+        title: "Add Composio on THIS chat page",
+        body: "Stay on the Cursor Agents chat named Cursor+Claude+GitHub. Use the + next to the message box — not a random Install link.",
         bullets: [
-          "Open Claude Desktop → Cowork",
-          "Customize → Connectors",
-          "Triple Threat / Composio should be connected",
-          "If Cursor is not linked, connect Cursor and paste your Cursor API key when asked"
+          "Bottom of the page: message box. Click + to the LEFT of it",
+          "MCP Servers → Add MCP → HTTP",
+          "Name: composio",
+          "URL field (inside that form only): https://connect.composio.dev/mcp",
+          "Add header x-consumer-api-key = key from app.composio.dev → AI Clients → Save"
         ],
         copy: "https://connect.composio.dev/mcp",
-        copyLabel: "Same Composio URL for Cowork if needed",
-        hint: "Cowork needs Cursor linked. That is how Claude can see this cloud agent."
+        copyLabel: "Copy MCP URL (paste in Add MCP form only)",
+        hint: "If there is no + button, tell Cursor what you see instead. Do not open the copied URL in a browser."
       },
       {
-        title: "Ask Claude to ping Cursor",
-        body: "In Cowork, paste this exact ask:",
+        title: "Get the Composio API key",
+        body: "You need the key that goes in the header. This tab is a normal website.",
         bullets: [
-          "List my Cursor cloud agents for the F.O.B repo",
-          "You should see one named like Cursor+Claude+GitHub",
-          "If it lists that agent, leave that on screen"
+          "Open app.composio.dev and sign in",
+          "Go to AI Clients",
+          "Copy the API key",
+          "Paste it as the x-consumer-api-key header value on the Add MCP form from the previous step"
         ],
-        copy: "List my Cursor cloud agents for CornDogSmugglerIND/F.O.B. Confirm you can see the running agent named Cursor+Claude+GitHub.",
-        copyLabel: "Paste into Cowork",
-        hint: "If Claude cannot list the agent, stop and tell Cursor. Do not skip ahead."
+        copy: "https://app.composio.dev",
+        copyLabel: "Open Composio (real page)",
+        hint: "If AI Clients is missing, say so — we will find the key location together."
       },
       {
-        title: "Claude answers the product map on GitHub",
-        body: "Already PASS — CornDogSmugglerCoalition7 posted the map + Scouter correction + Sawyer verbatim on #24. Skip unless you need to re-read.",
+        title: "Tell Cursor you finished",
+        body: "After Save/Connect on the Add MCP form, come back to this chat and send one short message.",
         bullets: [
-          "Open #24 to confirm the three Cowork comments are still there",
-          "Authoritative Scouter definition = Sawyer’s verbatim quote comment",
-          "Only reopen this if those comments disappear"
+          "Type: composio done",
+          "Or: I'm home. Check now.",
+          "Cursor will re-check tools. Only then is trio proven.",
+          "No Scouter rebuild until that check passes"
         ],
-        copy: "https://github.com/CornDogSmugglerIND/F.O.B/issues/24",
-        copyLabel: "Issue #24 (already answered)",
-        hint: "Gate 2 is done. Your remaining job is Cloud Agents Composio MCP (step 1)."
-      },
-      {
-        title: "Message Cursor: check now",
-        body: "Come back to this Cursor chat and send exactly:",
-        bullets: [
-          "I'm home. Check now.",
-          "Cursor will run pass/fail tests",
-          "Only if those pass will Cursor say comms are proven",
-          "Then we rebuild Scouter / leave Base44 — not before"
-        ],
-        copy: "I'm home. Check now.",
-        copyLabel: "Send to Cursor",
-        hint: "Chat: https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396 — after OAuth, send check-now here so tools can reload. Stay at the desk until pass or you stop."
+        copy: "composio done",
+        copyLabel: "Copy message to send here",
+        hint: "Issue #24 product map is already PASS. You are only finishing the Composio-on-this-agent gate."
       }
     ];
 

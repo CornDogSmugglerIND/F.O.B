@@ -16,37 +16,48 @@ OPEN() {
 }
 
 cat <<'EOF'
-=== Trio proof — desk steps ===
-Gates Cursor will check:
-  1) This cloud agent sees Composio tools  ← STILL FAIL (only blocker)
-  2) Real product-map on GitHub issue #24 ← PASS
+=== Trio proof — what is going on ===
 
-IMPORTANT: Desktop Install MCP / Cowork Triple Threat ≠ gate 1.
-You must add Composio on the Cloud Agents chat (+ → MCP Servers).
+Goal: prove Cursor + Claude + GitHub can talk.
+Gate 2 DONE (Claude already answered GitHub #24).
+Gate 1 BLOCKED: THIS cloud agent still cannot see Composio tools.
 
-Opening the tabs you need now...
+What went wrong earlier:
+  https://connect.composio.dev/mcp is NOT a website.
+  Opening it in Safari/Chrome shows junk / query-looking text.
+  Do NOT paste that URL into a browser address bar.
+  Paste it only into Cursor's "Add MCP → HTTP → URL" field.
+
+Opening only real pages now (no MCP endpoint)...
 EOF
 
 OPEN "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396"
 OPEN "https://app.composio.dev"
-OPEN "https://connect.composio.dev/mcp"
-OPEN "https://github.com/CornDogSmugglerIND/F.O.B/issues/24"
 OPEN "https://f-o-b.vercel.app/trio-setup.html"
 
 cat <<'EOF'
 
-Do in order (gate 2 already done — skip #24 unless you want to re-read):
-1) On THIS cloud agent chat page (already opened):
-   + (left of prompt) → MCP Servers → Add MCP → HTTP
-   URL: https://connect.composio.dev/mcp
-2) app.composio.dev → AI Clients → copy API key
-   Set header on that MCP: x-consumer-api-key = <that key>
-   Save. Desktop Cursor Settings MCP does not count.
-3) Message this Cursor agent exactly:
+Do these clicks (nothing else):
+
+1) Browser tab that just opened: cursor.com/agents/... 
+   Sign in as Sawyer if asked.
+   You should see THIS chat: Cursor+Claude+GitHub
+
+2) On that page, find the message box at the bottom.
+   Click the + button to the LEFT of that box.
+   Choose: MCP Servers → Add MCP → HTTP
+
+3) In the Add MCP form (this is where the URL goes — NOT Safari):
+   Name: composio
+   URL:  https://connect.composio.dev/mcp
+   Header name:  x-consumer-api-key
+   Header value: (from the app.composio.dev tab → AI Clients → copy key)
+   Save / Connect
+
+4) Come back to that same chat and type exactly:
 
 composio done
 
-   (or: I'm home. Check now.)
-
-Phone checklist: https://f-o-b.vercel.app/trio-setup.html
+If you do not see a + next to the prompt, tell me what you DO see
+(screenshot description is fine). Do not open random Install links.
 EOF
