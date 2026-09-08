@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 # Desk helper for Triple Threat proof (Cursor + Claude + GitHub).
-# Until PR #41 is merged to main, use the branch copy (production is outdated):
-#   bash <(curl -fsSL https://raw.githubusercontent.com/CornDogSmugglerIND/F.O.B/cursor/trio-composio-cloud-mcp-f396/public/desk-trio.sh)
 # After merge: bash <(curl -fsSL https://f-o-b.vercel.app/desk-trio.sh)
 # Or from repo: bash scripts/desk-trio.sh
 set -euo pipefail
@@ -23,36 +21,37 @@ cat <<'EOF'
 Gate 2 DONE: Claude already answered GitHub #24.
 Gate 1 BLOCKED: this cloud agent still has no Composio tools.
 
-That junk "query data" tab was connect.composio.dev/mcp —
-NOT a website. Close it. Never open that URL in Safari/Chrome.
-Paste it only into Cursor's Add MCP → URL field.
+IMPORTANT (corrected):
+  Cloud Agents do NOT read .cursor/mcp.json (that is desktop only).
+  Do NOT use the generic connect.composio.dev/mcp URL unless Triple
+  Threat shows that. Copy the Triple Threat server URL from Composio —
+  it often looks like https://mcp.composio.dev/... with a key in it.
+  Paste that into Cursor's MCP dropdown — never open it as a webpage.
 
 Opening real pages only...
 EOF
 
-OPEN "https://cursor.com/dashboard/integrations"
 OPEN "https://app.composio.dev"
+OPEN "https://cursor.com/agents"
 OPEN "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396"
 
 cat <<'EOF'
 
 Clicks:
 
-1) Tab: cursor.com/dashboard/integrations
-   Sign in as Sawyer.
-   Add / configure MCP for Cloud Agents → HTTP
-   Name: composio
-   URL:  https://connect.composio.dev/mcp
-   Header: x-consumer-api-key = (from app.composio.dev → Install / AI Clients)
-   Enable / Save
+1) Composio tab (app.composio.dev)
+   Find MCP servers → the one named **Triple Threat**
+   Copy its server URL (mcp.composio.dev/... with key — not a Safari page)
 
-2) Backup if Integrations page looks empty:
-   Agents chat → + left of message box → MCP Servers → Add MCP → HTTP
-   Same URL + same header.
+2) Cursor Agents tab (cursor.com/agents)
+   Sign in as Sawyer
+   MCP dropdown at the TOP → Add server → paste that URL → HTTP → Save/Enable
 
-3) Reply in the agents chat:
+3) Come back to THIS chat and type:
 
 composio done
 
-If stuck, tell Cursor what the Integrations page shows.
+   (or: list your available tools)
+
+If Triple Threat is missing in Composio, tell Cursor what MCP servers you DO see.
 EOF
