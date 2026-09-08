@@ -18,33 +18,35 @@ OPEN() {
 cat <<'EOF'
 === Trio proof — desk steps ===
 Gates Cursor will check:
-  1) This cloud agent sees Composio tools
-  2) Real product-map comment on GitHub issue #24
+  1) This cloud agent sees Composio tools  ← STILL FAIL (only blocker)
+  2) Real product-map on GitHub issue #24 ← PASS
+
+IMPORTANT: Desktop Install MCP / Cowork Triple Threat ≠ gate 1.
+You must add Composio on the Cloud Agents chat (+ → MCP Servers).
 
 Opening the tabs you need now...
 EOF
 
-OPEN "https://cursor.com/en-US/install-mcp?name=composio&config=eyJ1cmwiOiJodHRwczovL2Nvbm5lY3QuY29tcG9zaW8uZGV2L21jcCJ9"
-OPEN "https://app.composio.dev"
 OPEN "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396"
+OPEN "https://app.composio.dev"
+OPEN "https://connect.composio.dev/mcp"
 OPEN "https://github.com/CornDogSmugglerIND/F.O.B/issues/24"
-OPEN "https://github.com/CornDogSmugglerIND/F.O.B/settings/secrets/actions"
 OPEN "https://f-o-b.vercel.app/trio-setup.html"
 
 cat <<'EOF'
 
-Do in order:
-1) Finish Composio install / OAuth.
-2) From app.composio.dev → AI Clients, copy API key.
-   On Cloud Agents MCP, set header: x-consumer-api-key = <that key>
-   (or + menu on cursor.com/agents → MCP Servers → Add MCP)
-3) Preferred: Claude Cowork comments answers on issue #24.
-   Backup: run:  claude setup-token
-           add GitHub secret CLAUDE_CODE_OAUTH_TOKEN
-           comment @claude on issue #24
-4) Message the Cursor agent exactly:
+Do in order (gate 2 already done — skip #24 unless you want to re-read):
+1) On THIS cloud agent chat page (already opened):
+   + (left of prompt) → MCP Servers → Add MCP → HTTP
+   URL: https://connect.composio.dev/mcp
+2) app.composio.dev → AI Clients → copy API key
+   Set header on that MCP: x-consumer-api-key = <that key>
+   Save. Desktop Cursor Settings MCP does not count.
+3) Message this Cursor agent exactly:
 
-I'm home. Check now.
+composio done
+
+   (or: I'm home. Check now.)
 
 Phone checklist: https://f-o-b.vercel.app/trio-setup.html
 EOF

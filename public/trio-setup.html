@@ -144,9 +144,10 @@
     <p class="sub">One step at a time. Do this at your desktop. Cursor will verify before saying it’s good.</p>
     <div class="hint" id="gates" style="margin-bottom:16px">
       <strong>Pass only when both are true:</strong><br />
-      1) This cloud agent can see Composio tools<br />
-      2) A real product-map comment lands on GitHub issue #24<br />
-      Until then: not all-good. No app rebuild.
+      1) This cloud agent can see Composio tools — still FAIL<br />
+      2) Real product-map on GitHub issue #24 — PASS<br />
+      Until both pass: not all-good. No app rebuild.<br />
+      Cowork listing this agent does <em>not</em> count for gate 1.
     </div>
 
     <div class="progress-wrap">
@@ -167,17 +168,18 @@
   <script>
     const STEPS = [
       {
-        title: "Open Cloud Agents MCP",
-        body: "On your computer, add Composio so THIS cloud box can see Composio tools. Composio usually needs your API key — OAuth alone often 401s.",
+        title: "Add Composio to THIS cloud agent",
+        body: "Gate 1 is the only blocker left. Desktop “Install MCP” and Claude Cowork Triple Threat do NOT give THIS cloud box Composio tools. Add MCP on the Cloud Agents chat itself.",
         bullets: [
-          "Fastest: open the Install link below (Add to Cursor)",
-          "Or: cursor.com/agents → + (left of prompt) → MCP Servers → Add MCP → HTTP",
+          "Open THIS chat: cursor.com/agents → Cursor+Claude+GitHub (bc-01a060ac…)",
+          "Click + left of the prompt → MCP Servers → Add MCP → HTTP",
           "URL: https://connect.composio.dev/mcp",
-          "Set header x-consumer-api-key = your key from app.composio.dev → AI Clients"
+          "Header: x-consumer-api-key = key from app.composio.dev → AI Clients (OAuth alone often 401s)",
+          "Save. Do not stop at desktop Cursor Settings MCP — that is a different box."
         ],
-        copy: "https://cursor.com/en-US/install-mcp?name=composio&config=eyJ1cmwiOiJodHRwczovL2Nvbm5lY3QuY29tcG9zaW8uZGV2L21jcCJ9",
-        copyLabel: "Install Composio in Cursor (deeplink)",
-        hint: "Desktop one-shot: bash <(curl -fsSL https://f-o-b.vercel.app/desk-trio.sh) — opens the tabs. Alt: cursor.com/dashboard/integrations. After connect, message I'm home. Check now."
+        copy: "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396",
+        copyLabel: "Open THIS cloud agent chat",
+        hint: "Desk helper: bash <(curl -fsSL https://f-o-b.vercel.app/desk-trio.sh). After the header is saved on Cloud Agents MCP, reply: composio done — or I'm home. Check now."
       },
       {
         title: "Confirm Claude Cowork Triple Threat",
