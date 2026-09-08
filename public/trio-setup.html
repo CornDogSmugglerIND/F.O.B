@@ -168,29 +168,29 @@
     const STEPS = [
       {
         title: "What is going on (read this)",
-        body: "Claude already answered GitHub #24. The only blocker: THIS cloud chat still cannot see Composio tools. That is a Cursor setting on this chat — not a website you browse.",
+        body: "Claude already answered GitHub #24. The only blocker: Cloud Agents still have no Composio MCP enabled for your Cursor account. That is a Cursor dashboard setting — not a website you browse.",
         bullets: [
           "If a tab showed weird query/json text: that was connect.composio.dev/mcp — close it. It is not a page.",
           "Do NOT paste that URL into Safari/Chrome. Paste it only into Cursor’s Add MCP form.",
           "Desktop Cursor Settings MCP and Claude Cowork Triple Threat are separate. They do not finish this gate."
         ],
-        copy: "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396",
-        copyLabel: "Open THIS cloud chat (real page)",
-        hint: "Next step is clicks on that chat page. If you get lost, reply here with what you see on screen."
+        copy: "https://cursor.com/dashboard/integrations",
+        copyLabel: "Open Cloud Agents MCP page (real)",
+        hint: "Official path: Dashboard → Integrations & MCP. Backup: agents chat → + → MCP Servers."
       },
       {
-        title: "Add Composio on THIS chat page",
-        body: "Stay on the Cursor Agents chat named Cursor+Claude+GitHub. Use the + next to the message box — not a random Install link.",
+        title: "Add Composio for Cloud Agents",
+        body: "Easiest: use the Integrations page (normal website). Backup: MCP dropdown on cursor.com/agents.",
         bullets: [
-          "Bottom of the page: message box. Click + to the LEFT of it",
-          "MCP Servers → Add MCP → HTTP",
+          "Open cursor.com/dashboard/integrations (Integrations & MCP)",
+          "Add custom MCP → HTTP (not SSE, not desktop Install)",
           "Name: composio",
-          "URL field (inside that form only): https://connect.composio.dev/mcp",
-          "Add header x-consumer-api-key = key from app.composio.dev → AI Clients → Save"
+          "URL field in that form only: https://connect.composio.dev/mcp",
+          "Header x-consumer-api-key = key from app.composio.dev → AI Clients → Enable/Save"
         ],
         copy: "https://connect.composio.dev/mcp",
         copyLabel: "Copy MCP URL (paste in Add MCP form only)",
-        hint: "If there is no + button, tell Cursor what you see instead. Do not open the copied URL in a browser."
+        hint: "Backup UI: cursor.com/agents → + left of prompt → MCP Servers → Add MCP → HTTP. Do not open the copied URL in a browser."
       },
       {
         title: "Get the Composio API key",

@@ -18,46 +18,39 @@ OPEN() {
 cat <<'EOF'
 === Trio proof — what is going on ===
 
-Goal: prove Cursor + Claude + GitHub can talk.
-Gate 2 DONE (Claude already answered GitHub #24).
-Gate 1 BLOCKED: THIS cloud agent still cannot see Composio tools.
+Gate 2 DONE: Claude already answered GitHub #24.
+Gate 1 BLOCKED: this cloud agent still has no Composio tools.
 
-What went wrong earlier:
-  https://connect.composio.dev/mcp is NOT a website.
-  Opening it in Safari/Chrome shows junk / query-looking text.
-  Do NOT paste that URL into a browser address bar.
-  Paste it only into Cursor's "Add MCP → HTTP → URL" field.
+That junk "query data" tab was connect.composio.dev/mcp —
+NOT a website. Close it. Never open that URL in Safari/Chrome.
+Paste it only into Cursor's Add MCP → URL field.
 
-Opening only real pages now (no MCP endpoint)...
+Opening real pages only...
 EOF
 
-OPEN "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396"
+OPEN "https://cursor.com/dashboard/integrations"
 OPEN "https://app.composio.dev"
-OPEN "https://f-o-b.vercel.app/trio-setup.html"
+OPEN "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396"
 
 cat <<'EOF'
 
-Do these clicks (nothing else):
+Clicks:
 
-1) Browser tab that just opened: cursor.com/agents/... 
-   Sign in as Sawyer if asked.
-   You should see THIS chat: Cursor+Claude+GitHub
-
-2) On that page, find the message box at the bottom.
-   Click the + button to the LEFT of that box.
-   Choose: MCP Servers → Add MCP → HTTP
-
-3) In the Add MCP form (this is where the URL goes — NOT Safari):
+1) Tab: cursor.com/dashboard/integrations
+   Sign in as Sawyer.
+   Add / configure MCP for Cloud Agents → HTTP
    Name: composio
    URL:  https://connect.composio.dev/mcp
-   Header name:  x-consumer-api-key
-   Header value: (from the app.composio.dev tab → AI Clients → copy key)
-   Save / Connect
+   Header: x-consumer-api-key = (from app.composio.dev → AI Clients)
+   Enable / Save
 
-4) Come back to that same chat and type exactly:
+2) Backup if Integrations page looks empty:
+   Agents chat → + left of message box → MCP Servers → Add MCP → HTTP
+   Same URL + same header.
+
+3) Reply in the agents chat:
 
 composio done
 
-If you do not see a + next to the prompt, tell me what you DO see
-(screenshot description is fine). Do not open random Install links.
+If stuck, tell Cursor what the Integrations page shows.
 EOF
