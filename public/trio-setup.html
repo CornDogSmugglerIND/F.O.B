@@ -206,15 +206,15 @@
       },
       {
         title: "Claude answers the product map on GitHub",
-        body: "Use Claude Cowork — not the GitHub @claude bot. Tell Cowork to reply ON the issue.",
+        body: "Best: Claude Cowork comments on issue #24. Backup: GitHub @claude after you add CLAUDE_CODE_OAUTH_TOKEN.",
         bullets: [
-          "Open issue #24 (link below)",
-          "Tell Cowork: answer all 7 questions as a GitHub comment on this issue",
-          "Refresh GitHub until a real product-map comment appears"
+          "Preferred: open #24, tell Cowork to answer all 7 questions as a GitHub comment",
+          "Backup: run `claude setup-token`, add GitHub secret CLAUDE_CODE_OAUTH_TOKEN, then comment @claude on #24",
+          "Refresh until a real product-map comment appears (not an error stub)"
         ],
         copy: "https://github.com/CornDogSmugglerIND/F.O.B/issues/24",
         copyLabel: "Issue #24",
-        hint: "GitHub @claude on #27 already failed (Anthropic key/billing wall). That does not count. Need a real Cowork answer on #24."
+        hint: "Console ANTHROPIC_API_KEY is failing. OAuth token from setup-token is the GitHub backup. See also issue #33."
       },
       {
         title: "Message Cursor: check now",
