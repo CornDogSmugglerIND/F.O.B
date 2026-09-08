@@ -4,14 +4,10 @@ CornDogSmuggler Coalition
 === TEMPLATE NAME ===
 Pokemon Pick Your Card NM
 
-=== TITLE (one line) ===
+=== TITLE (paste into TCG Automate) ===
 Pokemon TCG {{setName}} Singles NM - Pick Your Card
 
-=== TITLE EXAMPLES ===
-Pokemon TCG Pitch Black Singles NM - Pick Your Card
-Pokemon TCG Destined Rivals Singles NM - Pick Your Card
-
-=== DESCRIPTION ===
+=== DESCRIPTION (paste into TCG Automate) ===
 Pick your card from this Pokemon TCG {{setName}} Near Mint singles listing.
 
 Choose the exact card from the dropdown. Every option is a raw English {{setName}} single, Near Mint, shipped sleeved and toploaded.
@@ -26,26 +22,16 @@ Language: English
 Finish: As listed per variation
 Graded: No
 
-Available cards in this listing:
----
-{{cardName}} {{number}}
-Type: {{type}} | HP: {{hp}} | {{stage}}
-{{attackOrAbilityLines}}
-Qty: {{qty}}
-
----
-{{cardName}} {{number}}
-Type: {{type}} | HP: {{hp}} | {{stage}}
-{{attackOrAbilityLines}}
-Qty: {{qty}}
-
-(repeat one --- block per variation)
+Available cards are in the dropdown — each option shows the card name and number. That selection is the exact card you receive.
 
 CornDogSmuggler Coalition — Operating To Marine Corps Standards.
 
-=== NOTES ===
-- Title front-loads search phrases: Pokemon TCG + set + Singles + NM + Pick Your Card
-- Keep title readable English — no keyword soup
-- Card names live in description + eBay variations (not the parent title)
-- Fill Item Specifics: Game, Set, Condition, Language, Graded = No
-- Swap {{setName}} once; paste a --- block for every variation
+=== HOW THIS WORKS ===
+- TCG Automate fills {{setName}} (and other tokens) from the batch.
+- It does NOT loop every variation into the description text.
+- The card list buyers pick from is the eBay variation dropdown TCG Automate builds in the CSV.
+- Do not paste notes, "repeat", or fake card blocks into the description field.
+
+=== IF YOU WANT EVERY CARD NAMED IN THE DESCRIPTION BODY ===
+That is separate from this template — TCG Automate has no "list all variations" token.
+Say the word and we can build a generator that dumps the batch card list into the description before upload (better for search / AI shopping).
