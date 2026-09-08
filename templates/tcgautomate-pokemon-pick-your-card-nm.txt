@@ -1,0 +1,51 @@
+TCGAutomate Template — Pokemon Pick Your Card NM
+CornDogSmuggler Coalition
+
+=== TEMPLATE NAME ===
+Pokemon Pick Your Card NM
+
+=== TITLE (one line) ===
+Pokemon TCG {{setName}} Singles NM - Pick Your Card
+
+=== TITLE EXAMPLES ===
+Pokemon TCG Pitch Black Singles NM - Pick Your Card
+Pokemon TCG Destined Rivals Singles NM - Pick Your Card
+
+=== DESCRIPTION ===
+Pick your card from this Pokemon TCG {{setName}} Near Mint singles listing.
+
+Choose the exact card from the dropdown. Every option is a raw English {{setName}} single, Near Mint, shipped sleeved and toploaded.
+
+This listing is for one card per purchase. Want more than one? Order each card separately from the dropdown.
+
+Game: Pokemon TCG
+Set: {{setName}}
+Card Type: Singles
+Condition: Near Mint (NM)
+Language: English
+Finish: As listed per variation
+Graded: No
+
+Available cards in this listing:
+---
+{{cardName}} {{number}}
+Type: {{type}} | HP: {{hp}} | {{stage}}
+{{attackOrAbilityLines}}
+Qty: {{qty}}
+
+---
+{{cardName}} {{number}}
+Type: {{type}} | HP: {{hp}} | {{stage}}
+{{attackOrAbilityLines}}
+Qty: {{qty}}
+
+(repeat one --- block per variation)
+
+CornDogSmuggler Coalition — Operating To Marine Corps Standards.
+
+=== NOTES ===
+- Title front-loads search phrases: Pokemon TCG + set + Singles + NM + Pick Your Card
+- Keep title readable English — no keyword soup
+- Card names live in description + eBay variations (not the parent title)
+- Fill Item Specifics: Game, Set, Condition, Language, Graded = No
+- Swap {{setName}} once; paste a --- block for every variation
