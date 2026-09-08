@@ -78,6 +78,9 @@ test("GET /trio-setup.html serves tonight checklist", async () => {
     assert.match(html, /connect\.composio\.dev\/mcp/);
     assert.match(html, /issues\/24/);
     assert.match(html, /I'm home\. Check now\./);
+    assert.match(html, /URLSearchParams\(location\.search\)\.get\("step"\)/);
+    assert.match(html, /position:\s*sticky/);
+    assert.match(html, /function syncUrl/);
   } finally {
     await close();
   }
