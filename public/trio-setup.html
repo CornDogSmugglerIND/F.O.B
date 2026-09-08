@@ -109,10 +109,15 @@
       grid-template-columns: 1fr 1.4fr;
       gap: 10px;
       margin-top: 16px;
+      position: sticky;
+      bottom: calc(8px + env(safe-area-inset-bottom));
+      z-index: 5;
+      padding: 8px 0;
+      background: linear-gradient(to top, var(--bg) 70%, transparent);
     }
-    .nav-btn { background: #2a3540; color: var(--text); }
+    .nav-btn { background: #2a3540; color: var(--text); min-height: 48px; }
     .nav-btn:disabled { opacity: 0.35; }
-    .done-btn { background: var(--accent); color: var(--accent-text); }
+    .done-btn { background: var(--accent); color: var(--accent-text); min-height: 48px; }
     .done-btn:disabled { opacity: 0.35; }
     .toast {
       position: fixed;
@@ -231,7 +236,8 @@
       }
     ];
 
-    let i = 0;
+    let i = Math.max(0, Math.min(STEPS.length, Number(new URLSearchParams(location.search).get("step") || 1) - 1));
+    if (Number.isNaN(i)) i = 0;
     const card = document.getElementById("card");
     const bar = document.getElementById("bar");
     const count = document.getElementById("count");
@@ -239,6 +245,13 @@
     const nextBtn = document.getElementById("nextBtn");
     const toast = document.getElementById("toast");
     const nav = document.getElementById("nav");
+
+    function syncUrl() {
+      const step = Math.min(i + 1, STEPS.length + 1);
+      const url = new URL(location.href);
+      url.searchParams.set("step", String(step));
+      history.replaceState(null, "", url);
+    }
 
     function showToast(msg) {
       toast.textContent = msg;
@@ -250,19 +263,37 @@
     async function copyText(text, btn) {
       try {
         await navigator.clipboard.writeText(text);
-        btn.classList.add("ok");
-        btn.textContent = "Copied";
+        if (btn) {
+          btn.classList.add("ok");
+          btn.textContent = "Copied";
+          setTimeout(() => {
+            btn.classList.remove("ok");
+            btn.textContent = "Copy";
+          }, 1200);
+        }
         showToast("Copied");
-        setTimeout(() => {
-          btn.classList.remove("ok");
-          btn.textContent = "Copy";
-        }, 1200);
       } catch {
         showToast("Long-press the box to copy");
       }
     }
 
+    function go(delta) {
+      const next = i + delta;
+      if (next < 0) return;
+      i = next;
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (delta > 0 && i >= STEPS.length) {
+        window.open(
+          "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396",
+          "_blank",
+          "noopener"
+        );
+      }
+    }
+
     function render() {
+      syncUrl();
       if (i >= STEPS.length) {
         const agentUrl = "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396";
         const checkMsg = "I'm home. Check now.";
@@ -284,7 +315,7 @@
         bar.style.width = "100%";
         count.textContent = `${STEPS.length} / ${STEPS.length}`;
         const btn = document.getElementById("copyBtn");
-        btn.onclick = () => copyText(checkMsg, btn);
+        btn.addEventListener("click", () => copyText(checkMsg, btn));
         copyText(checkMsg, btn);
         return;
       }
@@ -303,35 +334,24 @@
         </div>
       `;
 
-      document.getElementById("copyBtn").onclick = () =>
-        copyText(s.copy, document.getElementById("copyBtn"));
+      document.getElementById("copyBtn").addEventListener("click", () =>
+        copyText(s.copy, document.getElementById("copyBtn")));
 
       backBtn.disabled = i === 0;
       nextBtn.textContent = i === STEPS.length - 1 ? "Finish" : "Done — Next";
-      bar.style.width = `${((i) / STEPS.length) * 100}%`;
+      bar.style.width = `${(i / STEPS.length) * 100}%`;
       count.textContent = `${i + 1} / ${STEPS.length}`;
       nav.classList.remove("hidden");
     }
 
-    backBtn.onclick = () => {
-      if (i > 0) {
-        i -= 1;
-        render();
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-    };
-    nextBtn.onclick = () => {
-      i += 1;
-      render();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      if (i >= STEPS.length) {
-        window.open(
-          "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396",
-          "_blank",
-          "noopener"
-        );
-      }
-    };
+    backBtn.addEventListener("click", () => go(-1));
+    nextBtn.addEventListener("click", () => go(1));
+    document.addEventListener("keydown", (e) => {
+      const tag = (e.target && e.target.tagName) || "";
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON" || tag === "A") return;
+      if (e.key === "ArrowRight") go(1);
+      if (e.key === "ArrowLeft") go(-1);
+    });
 
     render();
   </script>
