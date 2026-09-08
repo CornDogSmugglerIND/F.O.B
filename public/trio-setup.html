@@ -168,16 +168,16 @@
     const STEPS = [
       {
         title: "Open Cloud Agents MCP",
-        body: "On your computer, add Composio to Cloud Agents so THIS cloud box can see Composio tools.",
+        body: "On your computer, add Composio so THIS cloud box can see Composio tools. Composio usually needs your API key — OAuth alone often 401s.",
         bullets: [
-          "Go to cursor.com/agents (desktop browser, signed in)",
-          "Click the + to the left of the prompt bar (next to the model picker)",
-          "Hover MCP Servers → Add MCP → custom HTTP",
-          "Paste the URL below, then finish OAuth"
+          "Fastest: open the Install link below (Add to Cursor)",
+          "Or: cursor.com/agents → + (left of prompt) → MCP Servers → Add MCP → HTTP",
+          "URL: https://connect.composio.dev/mcp",
+          "Set header x-consumer-api-key = your key from app.composio.dev → AI Clients"
         ],
-        copy: "https://connect.composio.dev/mcp",
-        copyLabel: "Composio MCP URL",
-        hint: "There is no separate “MCP dropdown” anymore — it’s inside +. Alt path: cursor.com/dashboard/integrations → Add MCP. Repo mcp.json / IDE-only / Claude-only do not count."
+        copy: "https://cursor.com/en-US/install-mcp?name=composio&config=eyJ1cmwiOiJodHRwczovL2Nvbm5lY3QuY29tcG9zaW8uZGV2L21jcCJ9",
+        copyLabel: "Install Composio in Cursor (deeplink)",
+        hint: "Alt: cursor.com/dashboard/integrations → Add MCP. Repo mcp.json alone does not reach this cloud agent. After connect, message I'm home. Check now."
       },
       {
         title: "Confirm Claude Cowork Triple Threat",
