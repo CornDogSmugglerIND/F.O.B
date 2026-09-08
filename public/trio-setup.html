@@ -186,7 +186,7 @@
           "Add custom MCP → HTTP (not SSE, not desktop Install)",
           "Name: composio",
           "URL field in that form only: https://connect.composio.dev/mcp",
-          "Header x-consumer-api-key = key from app.composio.dev → AI Clients → Enable/Save"
+          "Header x-consumer-api-key = key from app.composio.dev → Install (or AI Clients) → Enable/Save"
         ],
         copy: "https://connect.composio.dev/mcp",
         copyLabel: "Copy MCP URL (paste in Add MCP form only)",
@@ -197,13 +197,14 @@
         body: "You need the key that goes in the header. This tab is a normal website.",
         bullets: [
           "Open app.composio.dev and sign in",
-          "Go to AI Clients",
-          "Copy the API key",
-          "Paste it as the x-consumer-api-key header value on the Add MCP form from the previous step"
+          "Sidebar: Install (sometimes still labeled AI Clients / For You)",
+          "Open your client or MCP URL / generic client",
+          "Copy Your API Key (often starts with ck_ — not a random project ak_ key if that fails)",
+          "Paste it as x-consumer-api-key on the Cursor Add MCP form"
         ],
         copy: "https://app.composio.dev",
         copyLabel: "Open Composio (real page)",
-        hint: "If AI Clients is missing, say so — we will find the key location together."
+        hint: "If you cannot find any API key box, reply here with what the sidebar shows."
       },
       {
         title: "Tell Cursor you finished",
