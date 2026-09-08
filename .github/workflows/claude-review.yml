@@ -1,7 +1,7 @@
 name: Claude PR Review
 
 # Automatic Claude review on every PR.
-# Auth key is trimmed (trailing newlines break Anthropic).
+# Auth: ANTHROPIC_API_KEY OR CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`).
 # Job never blocks the pipeline if Claude itself errors.
 on:
   pull_request:
@@ -21,25 +21,54 @@ jobs:
         id: config
         env:
           RAW_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RAW_OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           KEY=$(printf '%s' "$RAW_KEY" | tr -d '\r\n')
-          if [ -z "$KEY" ]; then
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Skipping Claude review — ANTHROPIC_API_KEY missing"
+          OAUTH=$(printf '%s' "$RAW_OAUTH" | tr -d '\r\n')
+          if [ -n "$KEY" ]; then
+            echo "ANTHROPIC_API_KEY=$KEY" >> "$GITHUB_ENV"
+            echo "auth=api_key" >> "$GITHUB_OUTPUT"
+            echo "configured=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "ANTHROPIC_API_KEY=$KEY" >> "$GITHUB_ENV"
-          echo "configured=true" >> "$GITHUB_OUTPUT"
+          if [ -n "$OAUTH" ]; then
+            echo "CLAUDE_CODE_OAUTH_TOKEN=$OAUTH" >> "$GITHUB_ENV"
+            echo "auth=oauth" >> "$GITHUB_OUTPUT"
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "configured=false" >> "$GITHUB_OUTPUT"
+          echo "auth=none" >> "$GITHUB_OUTPUT"
+          echo "::notice::Skipping Claude review — need ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN"
 
       - uses: actions/checkout@v6
         if: steps.config.outputs.configured == 'true'
         with:
           fetch-depth: 1
 
-      - uses: anthropics/claude-code-action@v1
-        if: steps.config.outputs.configured == 'true'
+      - name: Claude via API key
+        if: steps.config.outputs.auth == 'api_key'
+        uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ env.ANTHROPIC_API_KEY }}
+          track_progress: true
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request for Scouter / F.O.B (Node/Express, vanilla JS).
+
+            Focus on correctness, security, tests, and regressions.
+            If you find fixable issues, push commits. Otherwise leave a short review comment.
+          claude_args: |
+            --max-turns 15
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Edit,MultiEdit,Write,Read,Glob,Grep,LS,Bash(npm:*),Bash(node:*)"
+
+      - name: Claude via OAuth token
+        if: steps.config.outputs.auth == 'oauth'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ env.CLAUDE_CODE_OAUTH_TOKEN }}
           track_progress: true
           prompt: |
             REPO: ${{ github.repository }}

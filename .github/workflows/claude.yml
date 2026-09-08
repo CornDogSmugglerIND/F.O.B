@@ -1,6 +1,7 @@
 name: Claude Code
 
 # Interactive: comment @claude on an issue or PR.
+# Auth: ANTHROPIC_API_KEY (Console) OR CLAUDE_CODE_OAUTH_TOKEN (claude setup-token).
 on:
   issue_comment:
     types: [created]
@@ -32,26 +33,47 @@ jobs:
         id: config
         env:
           RAW_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RAW_OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           KEY=$(printf '%s' "$RAW_KEY" | tr -d '\r\n')
-          if [ -z "$KEY" ]; then
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Skipping — ANTHROPIC_API_KEY missing"
+          OAUTH=$(printf '%s' "$RAW_OAUTH" | tr -d '\r\n')
+          if [ -n "$KEY" ]; then
+            echo "ANTHROPIC_API_KEY=$KEY" >> "$GITHUB_ENV"
+            echo "auth=api_key" >> "$GITHUB_OUTPUT"
+            echo "configured=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "ANTHROPIC_API_KEY=$KEY" >> "$GITHUB_ENV"
-          echo "configured=true" >> "$GITHUB_OUTPUT"
+          if [ -n "$OAUTH" ]; then
+            echo "CLAUDE_CODE_OAUTH_TOKEN=$OAUTH" >> "$GITHUB_ENV"
+            echo "auth=oauth" >> "$GITHUB_OUTPUT"
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "configured=false" >> "$GITHUB_OUTPUT"
+          echo "auth=none" >> "$GITHUB_OUTPUT"
+          echo "::notice::Skipping — need ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN"
 
       - uses: actions/checkout@v6
         if: steps.config.outputs.configured == 'true'
         with:
           fetch-depth: 1
 
-      - uses: anthropics/claude-code-action@v1
-        if: steps.config.outputs.configured == 'true'
+      - name: Claude via API key
+        if: steps.config.outputs.auth == 'api_key'
+        uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ env.ANTHROPIC_API_KEY }}
           # Cursor cloud agents open issues/comments as cursor[bot]; without this, Claude refuses to run.
+          allowed_bots: "cursor"
+          claude_args: |
+            --max-turns 20
+            --allowedTools "Edit,MultiEdit,Write,Read,Glob,Grep,LS,Bash(npm:*),Bash(node:*),Bash(gh:*)"
+
+      - name: Claude via OAuth token
+        if: steps.config.outputs.auth == 'oauth'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ env.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: "cursor"
           claude_args: |
             --max-turns 20
