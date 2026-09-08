@@ -21,17 +21,17 @@ cat <<'EOF'
 Gate 2 DONE: Claude already answered GitHub #24.
 Gate 1 BLOCKED: this cloud agent still has no Composio tools.
 
-IMPORTANT (corrected):
-  Cloud Agents do NOT read .cursor/mcp.json (that is desktop only).
-  Do NOT use the generic connect.composio.dev/mcp URL unless Triple
-  Threat shows that. Copy the Triple Threat server URL from Composio —
-  it often looks like https://mcp.composio.dev/... with a key in it.
-  Paste that into Cursor's MCP dropdown — never open it as a webpage.
+WRONG page: Auth Configs (Cursor toolkit API key rows).
+  Do NOT create anything there for this gate.
+
+RIGHT page: Sessions (or API Keys) → copy the MCP URL
+  (often https://mcp.composio.dev/...). Paste into Cursor Agents
+  MCP dropdown. Never open that URL in the browser.
 
 Opening real pages only...
 EOF
 
-OPEN "https://app.composio.dev"
+OPEN "https://dashboard.composio.dev"
 OPEN "https://cursor.com/agents"
 OPEN "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396"
 
@@ -39,19 +39,15 @@ cat <<'EOF'
 
 Clicks:
 
-1) Composio tab (app.composio.dev)
-   Find MCP servers → the one named **Triple Threat**
-   Copy its server URL (mcp.composio.dev/... with key — not a Safari page)
+1) Composio dashboard → left sidebar → **Sessions**
+   (skip Auth Configs)
+   Open/create a session → copy MCP URL (mcp.composio.dev/...)
+   If no MCP URL on Sessions, try sidebar **API Keys** and tell Cursor what you see.
 
-2) Cursor Agents tab (cursor.com/agents)
-   Sign in as Sawyer
-   MCP dropdown at the TOP → Add server → paste that URL → HTTP → Save/Enable
+2) cursor.com/agents → MCP dropdown at the TOP → Add server
+   Paste that URL → HTTP → Save/Enable
 
-3) Come back to THIS chat and type:
+3) Reply in this chat:
 
 composio done
-
-   (or: list your available tools)
-
-If Triple Threat is missing in Composio, tell Cursor what MCP servers you DO see.
 EOF

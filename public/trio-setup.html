@@ -168,42 +168,41 @@
     const STEPS = [
       {
         title: "What is going on (read this)",
-        body: "Claude already answered GitHub #24. Last gate: THIS cloud agent must see Composio tools. That comes from Cursor’s web MCP dropdown — not from any repo file, and not from desktop .cursor/mcp.json.",
+        body: "Claude already answered GitHub #24. Last gate: THIS cloud agent must see Composio tools via Cursor’s Agents MCP dropdown. Auth Configs is the wrong Composio page.",
         bullets: [
-          "Repo config will never fix this. Cloud Agents ignore .cursor/mcp.json.",
-          "Do not open MCP URLs in Safari/Chrome — they look like junk query text.",
-          "Cowork Triple Threat working ≠ this cloud box has Composio tools yet."
+          "If you are on Auth Configs (Cursor API Key rows): leave. Do not Create there.",
+          "Repo .cursor/mcp.json will never fix Cloud Agents.",
+          "Do not open MCP URLs in the browser — they look like junk."
         ],
-        copy: "https://app.composio.dev",
-        copyLabel: "Open Composio (real page)",
-        hint: "Next: copy the Triple Threat server URL from Composio, then paste it into Cursor Agents MCP."
+        copy: "https://dashboard.composio.dev",
+        copyLabel: "Open Composio dashboard",
+        hint: "Next: sidebar → Sessions → copy MCP URL."
       },
       {
-        title: "Copy the Triple Threat MCP URL",
-        body: "In Composio, open the MCP server named Triple Threat and copy its server URL. It often looks like https://mcp.composio.dev/... with a key in the URL.",
+        title: "Copy MCP URL from Sessions",
+        body: "In Composio, open Sessions (left sidebar). Copy the session MCP URL — often https://mcp.composio.dev/... Do not browse that URL.",
         bullets: [
-          "app.composio.dev → MCP servers (or Install / connectors)",
-          "Open the one named Triple Threat",
-          "Copy the server URL (mcp.composio.dev/... — not a webpage to browse)",
-          "If you only see connect.composio.dev/mcp, say so — we will use that with a header instead"
+          "dashboard.composio.dev → left sidebar → Sessions",
+          "Open or create a session",
+          "Copy the MCP URL (mcp.composio.dev/...)",
+          "If Sessions has no MCP URL: open API Keys and screenshot / describe what you see"
         ],
-        copy: "https://app.composio.dev",
+        copy: "https://dashboard.composio.dev",
         copyLabel: "Open Composio again",
-        hint: "Paste a screenshot description or the URL host (redact the key) if you are unsure which field to copy."
+        hint: "Skip Auth Configs. That Cursor toolkit row is not the Cloud Agents MCP URL."
       },
       {
         title: "Paste into Cursor Agents MCP dropdown",
-        body: "On cursor.com/agents, use the MCP dropdown at the TOP of the page. Add server → paste the Triple Threat URL → HTTP → Save/Enable.",
+        body: "On cursor.com/agents, use the MCP dropdown at the TOP. Add server → paste the Sessions MCP URL → HTTP → Save/Enable.",
         bullets: [
           "Open https://cursor.com/agents (sign in as Sawyer)",
           "MCP dropdown at the TOP → Add server",
-          "Paste the Triple Threat URL into the URL field only",
-          "Transport: HTTP → Save / Enable",
-          "Team/account level — applies to cloud agents, not a per-branch file"
+          "Paste the Sessions MCP URL into the URL field only",
+          "Transport: HTTP → Save / Enable"
         ],
         copy: "https://cursor.com/agents",
-        copyLabel: "Open Cursor Agents (real page)",
-        hint: "Backup: dashboard → Integrations & MCP. Still paste the Triple Threat URL there — do not invent a generic connect URL unless that is what Triple Threat shows."
+        copyLabel: "Open Cursor Agents",
+        hint: "Backup: cursor.com/dashboard/integrations — same URL paste."
       },
       {
         title: "Tell Cursor to verify",
@@ -211,12 +210,12 @@
         bullets: [
           "Type: composio done",
           "Or: list your available tools",
-          "Cursor must see a Composio namespace before saying all-good",
+          "Cursor must see a Composio namespace before all-good",
           "No Scouter rebuild until that check passes"
         ],
-        copy: "list your available tools",
+        copy: "composio done",
         copyLabel: "Copy verify message",
-        hint: "Issue #24 product map is already PASS. This step only closes the Composio-on-cloud-agent gate."
+        hint: "#24 product map already PASS. This closes Composio-on-cloud-agent only."
       }
     ];
 

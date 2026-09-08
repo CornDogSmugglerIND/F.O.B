@@ -75,10 +75,11 @@ test("GET /trio-setup.html serves tonight checklist", async () => {
     const html = await res.text();
     assert.equal(res.status, 200);
     assert.match(html, /Tonight setup/);
-    assert.match(html, /Triple Threat/);
+    assert.match(html, /Sessions/);
+    assert.match(html, /Auth Configs/);
     assert.match(html, /mcp\.composio\.dev/);
     assert.match(html, /MCP dropdown/);
-    assert.match(html, /list your available tools/);
+    assert.match(html, /composio done/);
   } finally {
     await close();
   }
