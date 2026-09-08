@@ -41,7 +41,7 @@ Clicks:
    Add / configure MCP for Cloud Agents → HTTP
    Name: composio
    URL:  https://connect.composio.dev/mcp
-   Header: x-consumer-api-key = (from app.composio.dev → AI Clients)
+   Header: x-consumer-api-key = (from app.composio.dev → Install / AI Clients)
    Enable / Save
 
 2) Backup if Integrations page looks empty:
