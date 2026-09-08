@@ -93,8 +93,8 @@ test("GET /ba-paper-checklist.html serves BA paper checklist", async () => {
     assert.equal(res.status, 200);
     assert.match(html, /BA Paper/);
     assert.match(html, /ba-paper-checklist-v1/);
-    assert.match(html, /Fraunces/);
-    assert.match(html, /Copy all notes/);
+    assert.match(html, /Syne/);
+    assert.match(html, /Copy notes/);
   } finally {
     await close();
   }
