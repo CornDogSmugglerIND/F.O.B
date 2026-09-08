@@ -168,56 +168,55 @@
     const STEPS = [
       {
         title: "What is going on (read this)",
-        body: "Claude already answered GitHub #24. The only blocker: Cloud Agents still have no Composio MCP enabled for your Cursor account. That is a Cursor dashboard setting — not a website you browse.",
+        body: "Claude already answered GitHub #24. Last gate: THIS cloud agent must see Composio tools. That comes from Cursor’s web MCP dropdown — not from any repo file, and not from desktop .cursor/mcp.json.",
         bullets: [
-          "If a tab showed weird query/json text: that was connect.composio.dev/mcp — close it. It is not a page.",
-          "Do NOT paste that URL into Safari/Chrome. Paste it only into Cursor’s Add MCP form.",
-          "Desktop Cursor Settings MCP and Claude Cowork Triple Threat are separate. They do not finish this gate."
-        ],
-        copy: "https://cursor.com/dashboard/integrations",
-        copyLabel: "Open Cloud Agents MCP page (real)",
-        hint: "Official path: Dashboard → Integrations & MCP. Backup: agents chat → + → MCP Servers."
-      },
-      {
-        title: "Add Composio for Cloud Agents",
-        body: "Easiest: use the Integrations page (normal website). Backup: MCP dropdown on cursor.com/agents.",
-        bullets: [
-          "Open cursor.com/dashboard/integrations (Integrations & MCP)",
-          "Add custom MCP → HTTP (not SSE, not desktop Install)",
-          "Name: composio",
-          "URL field in that form only: https://connect.composio.dev/mcp",
-          "Header x-consumer-api-key = key from app.composio.dev → Install (or AI Clients) → Enable/Save"
-        ],
-        copy: "https://connect.composio.dev/mcp",
-        copyLabel: "Copy MCP URL (paste in Add MCP form only)",
-        hint: "Backup UI: cursor.com/agents → + left of prompt → MCP Servers → Add MCP → HTTP. Do not open the copied URL in a browser."
-      },
-      {
-        title: "Get the Composio API key",
-        body: "You need the key that goes in the header. This tab is a normal website.",
-        bullets: [
-          "Open app.composio.dev and sign in",
-          "Sidebar: Install (sometimes still labeled AI Clients / For You)",
-          "Open your client or MCP URL / generic client",
-          "Copy Your API Key (often starts with ck_ — not a random project ak_ key if that fails)",
-          "Paste it as x-consumer-api-key on the Cursor Add MCP form"
+          "Repo config will never fix this. Cloud Agents ignore .cursor/mcp.json.",
+          "Do not open MCP URLs in Safari/Chrome — they look like junk query text.",
+          "Cowork Triple Threat working ≠ this cloud box has Composio tools yet."
         ],
         copy: "https://app.composio.dev",
         copyLabel: "Open Composio (real page)",
-        hint: "If you cannot find any API key box, reply here with what the sidebar shows."
+        hint: "Next: copy the Triple Threat server URL from Composio, then paste it into Cursor Agents MCP."
       },
       {
-        title: "Tell Cursor you finished",
-        body: "After Save/Connect on the Add MCP form, come back to this chat and send one short message.",
+        title: "Copy the Triple Threat MCP URL",
+        body: "In Composio, open the MCP server named Triple Threat and copy its server URL. It often looks like https://mcp.composio.dev/... with a key in the URL.",
+        bullets: [
+          "app.composio.dev → MCP servers (or Install / connectors)",
+          "Open the one named Triple Threat",
+          "Copy the server URL (mcp.composio.dev/... — not a webpage to browse)",
+          "If you only see connect.composio.dev/mcp, say so — we will use that with a header instead"
+        ],
+        copy: "https://app.composio.dev",
+        copyLabel: "Open Composio again",
+        hint: "Paste a screenshot description or the URL host (redact the key) if you are unsure which field to copy."
+      },
+      {
+        title: "Paste into Cursor Agents MCP dropdown",
+        body: "On cursor.com/agents, use the MCP dropdown at the TOP of the page. Add server → paste the Triple Threat URL → HTTP → Save/Enable.",
+        bullets: [
+          "Open https://cursor.com/agents (sign in as Sawyer)",
+          "MCP dropdown at the TOP → Add server",
+          "Paste the Triple Threat URL into the URL field only",
+          "Transport: HTTP → Save / Enable",
+          "Team/account level — applies to cloud agents, not a per-branch file"
+        ],
+        copy: "https://cursor.com/agents",
+        copyLabel: "Open Cursor Agents (real page)",
+        hint: "Backup: dashboard → Integrations & MCP. Still paste the Triple Threat URL there — do not invent a generic connect URL unless that is what Triple Threat shows."
+      },
+      {
+        title: "Tell Cursor to verify",
+        body: "After Save/Enable, come back to this chat and send one short message.",
         bullets: [
           "Type: composio done",
-          "Or: I'm home. Check now.",
-          "Cursor will re-check tools. Only then is trio proven.",
+          "Or: list your available tools",
+          "Cursor must see a Composio namespace before saying all-good",
           "No Scouter rebuild until that check passes"
         ],
-        copy: "composio done",
-        copyLabel: "Copy message to send here",
-        hint: "Issue #24 product map is already PASS. You are only finishing the Composio-on-this-agent gate."
+        copy: "list your available tools",
+        copyLabel: "Copy verify message",
+        hint: "Issue #24 product map is already PASS. This step only closes the Composio-on-cloud-agent gate."
       }
     ];
 
