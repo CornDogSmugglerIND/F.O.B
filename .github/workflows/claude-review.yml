@@ -1,7 +1,7 @@
 name: Claude PR Review
 
 # Automatic Claude review on every PR.
-# Auth: ANTHROPIC_API_KEY OR CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`).
+# Auth: CLAUDE_CODE_OAUTH_TOKEN (claude setup-token). API key only if CLAUDE_FORCE_API_KEY=true.
 # Job never blocks the pipeline if Claude itself errors.
 on:
   pull_request:
@@ -20,26 +20,33 @@ jobs:
       - name: Check Claude is configured
         id: config
         env:
-          RAW_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           RAW_OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          FORCE_API: ${{ secrets.CLAUDE_FORCE_API_KEY }}
+          RAW_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          KEY=$(printf '%s' "$RAW_KEY" | tr -d '\r\n')
-          OAUTH=$(printf '%s' "$RAW_OAUTH" | tr -d '\r\n')
-          if [ -n "$KEY" ]; then
-            echo "ANTHROPIC_API_KEY=$KEY" >> "$GITHUB_ENV"
-            echo "auth=api_key" >> "$GITHUB_OUTPUT"
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          OAUTH=$(printf '%s' "$RAW_OAUTH" | tr -d '
+')
+          FORCE=$(printf '%s' "$FORCE_API" | tr -d '
+' | tr '[:upper:]' '[:lower:]')
+          KEY=$(printf '%s' "$RAW_KEY" | tr -d '
+')
+          # OAuth first. Console API key is known-broken (is_error/billing) unless forced.
           if [ -n "$OAUTH" ]; then
             echo "CLAUDE_CODE_OAUTH_TOKEN=$OAUTH" >> "$GITHUB_ENV"
             echo "auth=oauth" >> "$GITHUB_OUTPUT"
             echo "configured=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          if [ "$FORCE" = "true" ] && [ -n "$KEY" ]; then
+            echo "ANTHROPIC_API_KEY=$KEY" >> "$GITHUB_ENV"
+            echo "auth=api_key" >> "$GITHUB_OUTPUT"
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           echo "configured=false" >> "$GITHUB_OUTPUT"
           echo "auth=none" >> "$GITHUB_OUTPUT"
-          echo "::notice::Skipping Claude review — need ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN"
+          echo "::notice::Skipping — add CLAUDE_CODE_OAUTH_TOKEN (claude setup-token). API key disabled unless CLAUDE_FORCE_API_KEY=true."
+
 
       - uses: actions/checkout@v6
         if: steps.config.outputs.configured == 'true'
