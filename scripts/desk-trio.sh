@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Desk helper for Triple Threat proof (Cursor + Claude + GitHub).
-# Run on Sawyer's desktop: bash <(curl -fsSL https://f-o-b.vercel.app/desk-trio.sh)
+# Until PR #41 is merged to main, use the branch copy (production is outdated):
+#   bash <(curl -fsSL https://raw.githubusercontent.com/CornDogSmugglerIND/F.O.B/cursor/trio-composio-cloud-mcp-f396/public/desk-trio.sh)
+# After merge: bash <(curl -fsSL https://f-o-b.vercel.app/desk-trio.sh)
 # Or from repo: bash scripts/desk-trio.sh
 set -euo pipefail
 
