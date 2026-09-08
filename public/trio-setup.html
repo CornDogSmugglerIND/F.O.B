@@ -111,7 +111,7 @@
       margin-top: 16px;
       position: sticky;
       bottom: calc(8px + env(safe-area-inset-bottom));
-      z-index: 5;
+      z-index: 10;
       padding: 8px 0;
       background: linear-gradient(to top, var(--bg) 70%, transparent);
     }
@@ -132,6 +132,7 @@
       font-weight: 600;
       transition: transform 0.2s ease;
       z-index: 20;
+      pointer-events: none;
     }
     .toast.show { transform: translateX(-50%) translateY(0); }
     .finish {
