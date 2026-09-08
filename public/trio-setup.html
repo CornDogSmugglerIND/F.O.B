@@ -264,15 +264,28 @@
 
     function render() {
       if (i >= STEPS.length) {
+        const agentUrl = "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396";
+        const checkMsg = "I'm home. Check now.";
         card.innerHTML = `
           <div class="finish">
-            <h2>Your part is queued</h2>
-            <p>Message Cursor: <strong>I'm home. Check now.</strong></p>
-            <p class="sub">Do not leave the desk until Cursor reports pass or fail.</p>
+            <h2>Tell Cursor to check</h2>
+            <p>Message is copied. Open the agent chat and paste/send it.</p>
+            <div class="link-box" style="max-width:100%;margin:14px auto">
+              <input id="copyVal" readonly value="${checkMsg}" />
+              <button type="button" class="copy-btn" id="copyBtn">Copy</button>
+            </div>
+            <p style="margin:14px 0 0">
+              <a class="done-btn" id="openAgent" href="${agentUrl}" target="_blank" rel="noopener"
+                 style="display:inline-block;text-decoration:none">Open Cursor agent</a>
+            </p>
+            <p class="sub">Stay at the desk until Cursor reports pass or fail.</p>
           </div>`;
         nav.classList.add("hidden");
         bar.style.width = "100%";
         count.textContent = `${STEPS.length} / ${STEPS.length}`;
+        const btn = document.getElementById("copyBtn");
+        btn.onclick = () => copyText(checkMsg, btn);
+        copyText(checkMsg, btn);
         return;
       }
 
@@ -311,6 +324,13 @@
       i += 1;
       render();
       window.scrollTo({ top: 0, behavior: "smooth" });
+      if (i >= STEPS.length) {
+        window.open(
+          "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396",
+          "_blank",
+          "noopener"
+        );
+      }
     };
 
     render();
