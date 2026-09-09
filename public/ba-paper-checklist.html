@@ -5,23 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#d8dee8" />
+  <meta name="theme-color" content="#16352c" />
   <title>BA Paper Checklist</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --paper: #d8dee8;
-      --paper-deep: #c5cdd9;
-      --sheet: rgba(248, 250, 252, 0.72);
-      --ink: #182433;
-      --muted: #5a6a7c;
-      --rule: rgba(24, 36, 51, 0.14);
-      --teal: #0f6e6a;
-      --teal-deep: #0a524f;
-      --done: #1a7a58;
-      --focus: #1f6f8b;
+      --forest: #16352c;
+      --forest-mid: #1f4a3c;
+      --mark: #c8f542;
+      --ink: #101418;
+      --mute: #4d5a63;
+      --sheet: #eceff2;
+      --line: rgba(16, 20, 24, 0.12);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
@@ -30,141 +27,154 @@
     body {
       margin: 0;
       min-height: 100dvh;
-      font-family: "Figtree", sans-serif;
+      font-family: "Public Sans", sans-serif;
       color: var(--ink);
       background:
-        radial-gradient(120% 80% at 10% -10%, #eef3f8 0%, transparent 55%),
-        radial-gradient(90% 70% at 100% 0%, #c9d5c8 0%, transparent 45%),
-        linear-gradient(165deg, #d8dee8 0%, #cfd6e2 42%, #bcc8d4 100%);
-      line-height: 1.45;
-      padding: 20px 16px calc(28px + var(--safe-bottom));
+        radial-gradient(ellipse 90% 50% at 80% -10%, rgba(200, 245, 66, 0.18), transparent 50%),
+        linear-gradient(180deg, #cfd5db 0%, #e8ebef 38%, #eceff2 100%);
+      line-height: 1.4;
     }
 
-    body::before {
+    .hero {
+      background:
+        linear-gradient(135deg, rgba(200, 245, 66, 0.12) 0%, transparent 42%),
+        linear-gradient(160deg, var(--forest) 0%, #0f2821 100%);
+      color: #f3f6f4;
+      padding: 1.6rem 1.15rem 1.35rem;
+      position: relative;
+      overflow: hidden;
+      animation: drop 0.5s ease both;
+    }
+
+    .hero::after {
       content: "";
-      position: fixed;
-      inset: 0;
+      position: absolute;
+      right: -18%;
+      top: -30%;
+      width: 70%;
+      height: 160%;
+      background: repeating-linear-gradient(
+        -18deg,
+        transparent,
+        transparent 10px,
+        rgba(200, 245, 66, 0.045) 10px,
+        rgba(200, 245, 66, 0.045) 11px
+      );
       pointer-events: none;
-      opacity: 0.35;
-      background-image:
-        repeating-linear-gradient(
-          0deg,
-          transparent,
-          transparent 27px,
-          rgba(24, 36, 51, 0.035) 27px,
-          rgba(24, 36, 51, 0.035) 28px
-        );
-      z-index: 0;
     }
 
-    .wrap {
+    .hero-inner {
       position: relative;
       z-index: 1;
       max-width: 42rem;
       margin: 0 auto;
     }
 
-    header.hero {
-      margin-bottom: 1.5rem;
-      animation: rise 0.55s ease both;
-    }
-
     .brand {
-      font-family: "Fraunces", serif;
-      font-optical-sizing: auto;
-      font-size: clamp(2rem, 8vw, 2.6rem);
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      line-height: 1.05;
-      margin: 0 0 0.55rem;
-      color: var(--ink);
+      font-family: "Syne", sans-serif;
+      font-weight: 800;
+      font-size: clamp(2.6rem, 12vw, 3.4rem);
+      line-height: 0.9;
+      letter-spacing: -0.045em;
+      margin: 0 0 0.7rem;
+      text-transform: uppercase;
     }
 
     .lede {
-      margin: 0 0 1.15rem;
-      max-width: 28ch;
-      font-size: 1.02rem;
-      color: var(--muted);
+      margin: 0;
+      max-width: 22ch;
+      font-size: 1rem;
       font-weight: 500;
+      color: rgba(243, 246, 244, 0.78);
     }
 
-    .progress {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 0.55rem 0.85rem;
-      align-items: end;
-      padding: 0.85rem 0 0;
-      border-top: 1px solid var(--rule);
+    .score {
+      margin-top: 1.35rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+      border-top: 1px solid rgba(200, 245, 66, 0.28);
+      padding-top: 0.9rem;
     }
 
-    .progress-label {
-      font-size: 0.72rem;
+    .score-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--muted);
       font-weight: 600;
+      color: rgba(243, 246, 244, 0.55);
     }
 
-    .count {
-      font-family: "Fraunces", serif;
-      font-size: 1.35rem;
-      font-weight: 500;
+    .score-num {
+      font-family: "Syne", sans-serif;
+      font-weight: 800;
+      font-size: 2.4rem;
+      line-height: 0.85;
+      letter-spacing: -0.04em;
+      color: var(--mark);
       font-variant-numeric: tabular-nums;
-      color: var(--teal-deep);
-      line-height: 1;
     }
 
-    .bar {
-      grid-column: 1 / -1;
-      height: 3px;
-      background: rgba(24, 36, 51, 0.12);
+    .track {
+      margin-top: 0.7rem;
+      height: 4px;
+      background: rgba(243, 246, 244, 0.12);
       overflow: hidden;
     }
 
-    .bar > span {
+    .track > span {
       display: block;
       height: 100%;
       width: 0%;
-      background: linear-gradient(90deg, var(--teal), #2a9b7a);
+      background: var(--mark);
       transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
-    .section {
-      margin-top: 1.75rem;
-      animation: rise 0.6s ease both;
+    .wrap {
+      max-width: 42rem;
+      margin: 0 auto;
+      padding: 0 0 calc(1.5rem + var(--safe-bottom));
     }
 
-    .section:nth-of-type(1) { animation-delay: 0.04s; }
-    .section:nth-of-type(2) { animation-delay: 0.08s; }
-    .section:nth-of-type(3) { animation-delay: 0.12s; }
-    .section:nth-of-type(4) { animation-delay: 0.16s; }
+    .section {
+      padding: 1.35rem 1.15rem 0.25rem;
+      animation: rise 0.55s ease both;
+    }
+
+    .section:nth-of-type(1) { animation-delay: 0.05s; }
+    .section:nth-of-type(2) { animation-delay: 0.1s; }
+    .section:nth-of-type(3) { animation-delay: 0.15s; }
+    .section:nth-of-type(4) { animation-delay: 0.2s; }
 
     .section h2 {
-      font-family: "Fraunces", serif;
-      font-size: 1.05rem;
-      font-weight: 500;
-      margin: 0 0 0.85rem;
-      color: var(--teal-deep);
-      letter-spacing: -0.01em;
+      font-family: "Syne", sans-serif;
+      font-weight: 700;
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin: 0 0 0.65rem;
+      color: var(--forest-mid);
     }
 
     .item {
-      position: relative;
-      padding: 1rem 0 1.1rem 0;
-      border-bottom: 1px solid var(--rule);
-      transition: opacity 0.25s ease;
+      background: rgba(255, 255, 255, 0.55);
+      border-left: 4px solid transparent;
+      padding: 1rem 1rem 1.05rem 0.85rem;
+      margin: 0 -1.15rem 0.55rem;
+      transition: border-color 0.2s ease, background 0.2s ease, opacity 0.2s ease;
     }
 
-    .item:last-child { border-bottom: none; }
-
     .item.checked {
-      opacity: 0.58;
+      border-left-color: var(--mark);
+      background: rgba(200, 245, 66, 0.12);
+      opacity: 0.78;
     }
 
     .item.checked .title {
       text-decoration: line-through;
-      text-decoration-thickness: 1.5px;
-      color: var(--muted);
+      text-decoration-thickness: 2px;
+      color: var(--mute);
     }
 
     .row {
@@ -175,10 +185,10 @@
 
     .check {
       position: relative;
+      width: 1.7rem;
+      height: 1.7rem;
       flex-shrink: 0;
-      width: 1.55rem;
-      height: 1.55rem;
-      margin-top: 0.12rem;
+      margin-top: 0.05rem;
     }
 
     .check input {
@@ -190,125 +200,126 @@
       z-index: 2;
     }
 
-    .check span {
+    .check i {
       display: grid;
       place-items: center;
       width: 100%;
       height: 100%;
-      border: 1.5px solid rgba(15, 110, 106, 0.55);
-      background: rgba(248, 250, 252, 0.55);
-      transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+      border: 2px solid var(--forest);
+      background: #fff;
+      transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
     }
 
-    .check span::after {
+    .check i::after {
       content: "";
-      width: 0.42rem;
-      height: 0.72rem;
-      border-right: 2px solid #fff;
-      border-bottom: 2px solid #fff;
+      width: 0.4rem;
+      height: 0.75rem;
+      border-right: 2.5px solid var(--ink);
+      border-bottom: 2.5px solid var(--ink);
       transform: rotate(40deg) scale(0);
-      margin-top: -0.15rem;
-      transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+      margin-top: -0.12rem;
+      transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
-    .check input:checked + span {
-      background: var(--done);
-      border-color: var(--done);
-      transform: scale(1.04);
+    .check input:checked + i {
+      background: var(--mark);
+      border-color: var(--mark);
+      transform: scale(1.06);
     }
 
-    .check input:checked + span::after {
+    .check input:checked + i::after {
       transform: rotate(40deg) scale(1);
     }
 
-    .check input:focus-visible + span {
-      outline: 2px solid var(--focus);
+    .check input:focus-visible + i {
+      outline: 2px solid var(--forest);
       outline-offset: 2px;
     }
 
     .body { flex: 1; min-width: 0; }
 
     .title {
-      font-size: 1.05rem;
-      font-weight: 600;
-      margin: 0 0 0.45rem;
-      letter-spacing: -0.015em;
+      font-family: "Syne", sans-serif;
+      font-weight: 700;
+      font-size: 1.08rem;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.4rem;
       transition: color 0.2s ease;
     }
 
     ul {
-      margin: 0 0 0.75rem;
+      margin: 0 0 0.7rem;
       padding-left: 1.05rem;
-      color: var(--muted);
-      font-size: 0.92rem;
+      color: var(--mute);
+      font-size: 0.9rem;
     }
 
-    li { margin-bottom: 0.2rem; }
-    li::marker { color: var(--teal); }
+    li { margin-bottom: 0.18rem; }
 
     textarea {
       width: 100%;
-      min-height: 4.75rem;
+      min-height: 4.5rem;
       resize: vertical;
-      border: none;
-      border-bottom: 1.5px solid rgba(15, 110, 106, 0.28);
-      border-radius: 0;
-      background:
-        linear-gradient(transparent 27px, rgba(24, 36, 51, 0.06) 28px) 0 0 / 100% 28px,
-        transparent;
+      border: 0;
+      border-bottom: 2px solid rgba(22, 53, 44, 0.25);
+      background: transparent;
       color: var(--ink);
-      padding: 0.15rem 0.1rem 0.55rem;
+      padding: 0.35rem 0;
       font: inherit;
       font-size: 0.98rem;
-      line-height: 28px;
-      transition: border-color 0.2s ease, background-color 0.2s ease;
+      transition: border-color 0.2s ease, background 0.2s ease;
     }
 
     textarea:focus {
       outline: none;
-      border-bottom-color: var(--teal);
-      background-color: rgba(248, 250, 252, 0.45);
+      border-bottom-color: var(--forest);
+      background: rgba(255, 255, 255, 0.35);
     }
 
-    textarea::placeholder { color: #8492a3; }
+    textarea::placeholder { color: #8a969f; }
 
     .actions {
       display: flex;
-      gap: 0.65rem;
-      margin-top: 1.75rem;
+      gap: 0.55rem;
+      padding: 1rem 1.15rem 0;
       position: sticky;
-      bottom: calc(0.65rem + var(--safe-bottom));
-      z-index: 3;
-      animation: rise 0.65s ease both;
-      animation-delay: 0.2s;
+      bottom: calc(0.55rem + var(--safe-bottom));
+      z-index: 5;
+      animation: rise 0.6s ease both;
+      animation-delay: 0.22s;
     }
 
     button {
       flex: 1;
-      min-height: 3.15rem;
-      border: 1.5px solid rgba(24, 36, 51, 0.18);
-      background: rgba(248, 250, 252, 0.82);
-      backdrop-filter: blur(10px);
-      color: var(--ink);
-      font: inherit;
-      font-size: 0.98rem;
-      font-weight: 600;
+      min-height: 3.2rem;
+      border: 2px solid var(--forest);
+      background: rgba(236, 239, 242, 0.92);
+      backdrop-filter: blur(8px);
+      color: var(--forest);
+      font-family: "Syne", sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
       letter-spacing: -0.01em;
+      text-transform: uppercase;
       cursor: pointer;
-      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+      transition: transform 0.12s ease, background 0.12s ease;
     }
 
     button.primary {
-      background: var(--teal);
-      border-color: var(--teal);
-      color: #f4faf9;
+      background: var(--mark);
+      border-color: var(--mark);
+      color: var(--ink);
     }
 
-    button:active { transform: scale(0.985); }
-    button.primary:active { background: var(--teal-deep); }
+    button:active { transform: scale(0.98); }
+
+    @keyframes drop {
+      from { opacity: 0; transform: translateY(-12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
     @keyframes rise {
-      from { opacity: 0; transform: translateY(10px); }
+      from { opacity: 0; transform: translateY(12px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
@@ -321,22 +332,26 @@
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header class="hero">
+  <header class="hero">
+    <div class="hero-inner">
       <h1 class="brand">BA Paper</h1>
-      <p class="lede">Check each section as you write it. Notes stay on this phone.</p>
-      <div class="progress" aria-live="polite">
-        <div class="progress-label">Progress</div>
-        <div class="count"><span id="doneCount">0</span>/<span id="totalCount">0</span></div>
-        <div class="bar" aria-hidden="true"><span id="barFill"></span></div>
+      <p class="lede">Knock out each section. Notes stay on this phone.</p>
+      <div class="score" aria-live="polite">
+        <div>
+          <div class="score-label">Done</div>
+          <div class="track" aria-hidden="true"><span id="barFill"></span></div>
+        </div>
+        <div class="score-num"><span id="doneCount">0</span>/<span id="totalCount">0</span></div>
       </div>
-    </header>
+    </div>
+  </header>
 
+  <div class="wrap">
     <section class="section">
       <h2>Setup</h2>
       <div class="item" data-id="title">
         <div class="row">
-          <label class="check"><input type="checkbox" /><span></span></label>
+          <label class="check"><input type="checkbox" /><i></i></label>
           <div class="body">
             <p class="title">Title block</p>
             <ul>
@@ -350,7 +365,7 @@
 
       <div class="item" data-id="intro">
         <div class="row">
-          <label class="check"><input type="checkbox" /><span></span></label>
+          <label class="check"><input type="checkbox" /><i></i></label>
           <div class="body">
             <p class="title">Introduction (3–5 sentences)</p>
             <ul>
@@ -369,7 +384,7 @@
       <h2>Part 1 — Companies</h2>
       <div class="item" data-id="ga">
         <div class="row">
-          <label class="check"><input type="checkbox" /><span></span></label>
+          <label class="check"><input type="checkbox" /><i></i></label>
           <div class="body">
             <p class="title">Google Analytics (reselling angle)</p>
             <ul>
@@ -384,7 +399,7 @@
 
       <div class="item" data-id="tableau">
         <div class="row">
-          <label class="check"><input type="checkbox" /><span></span></label>
+          <label class="check"><input type="checkbox" /><i></i></label>
           <div class="body">
             <p class="title">Tableau</p>
             <ul>
@@ -399,7 +414,7 @@
 
       <div class="item" data-id="compare">
         <div class="row">
-          <label class="check"><input type="checkbox" /><span></span></label>
+          <label class="check"><input type="checkbox" /><i></i></label>
           <div class="body">
             <p class="title">Compare the two</p>
             <ul>
@@ -417,7 +432,7 @@
       <h2>Part 2 — Jobs</h2>
       <div class="item" data-id="ecom">
         <div class="row">
-          <label class="check"><input type="checkbox" /><span></span></label>
+          <label class="check"><input type="checkbox" /><i></i></label>
           <div class="body">
             <p class="title">Job 1: E-commerce Analyst (reselling angle)</p>
             <ul>
@@ -434,7 +449,7 @@
 
       <div class="item" data-id="ba">
         <div class="row">
-          <label class="check"><input type="checkbox" /><span></span></label>
+          <label class="check"><input type="checkbox" /><i></i></label>
           <div class="body">
             <p class="title">Job 2: Business Analyst</p>
             <ul>
@@ -454,7 +469,7 @@
       <h2>Wrap-up</h2>
       <div class="item" data-id="conclusion">
         <div class="row">
-          <label class="check"><input type="checkbox" /><span></span></label>
+          <label class="check"><input type="checkbox" /><i></i></label>
           <div class="body">
             <p class="title">Conclusion (3–5 sentences)</p>
             <ul>
@@ -469,7 +484,7 @@
 
       <div class="item" data-id="refs">
         <div class="row">
-          <label class="check"><input type="checkbox" /><span></span></label>
+          <label class="check"><input type="checkbox" /><i></i></label>
           <div class="body">
             <p class="title">References</p>
             <ul>
@@ -485,7 +500,7 @@
 
     <div class="actions">
       <button type="button" id="resetBtn">Reset</button>
-      <button type="button" class="primary" id="copyBtn">Copy all notes</button>
+      <button type="button" class="primary" id="copyBtn">Copy notes</button>
     </div>
   </div>
 
