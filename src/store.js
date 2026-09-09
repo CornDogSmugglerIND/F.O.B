@@ -10,7 +10,7 @@ let dataRoot = process.env.VERCEL
 let ready = false;
 
 /** @typedef {{ id: string, filename: string | null, url: string, dataUrl: string | null, createdAt: string }} Photo */
-/** @typedef {{ id: string, createdAt: string, updatedAt: string, title: string | null, barcode: string | null, quantity: number, category: string, brand: string | null, description: string | null, lookupSource: string | null, notes: string | null, photos: Photo[] }} ScoutItem */
+/** @typedef {{ id: string, createdAt: string, updatedAt: string, title: string | null, barcode: string | null, quantity: number, category: string, brand: string | null, description: string | null, lookupSource: string | null, notes: string | null, staged: boolean, photos: Photo[] }} ScoutItem */
 
 function itemsFile() {
   return join(dataRoot, "scouter.json");
@@ -79,6 +79,7 @@ export async function createScoutItem(partial = {}) {
     description: partial.description ?? null,
     lookupSource: partial.lookupSource ?? null,
     notes: partial.notes ?? null,
+    staged: Boolean(partial.staged),
     photos: [],
   };
   const items = await readItems();
@@ -100,6 +101,7 @@ export async function updateScoutItem(id, patch) {
     createdAt: current.createdAt,
     updatedAt: new Date().toISOString(),
     quantity: patch.quantity != null ? Math.max(1, Number(patch.quantity) || 1) : current.quantity,
+    staged: patch.staged != null ? Boolean(patch.staged) : Boolean(current.staged),
     photos: patch.photos ?? current.photos,
   };
   items[index] = next;

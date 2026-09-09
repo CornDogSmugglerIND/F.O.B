@@ -10,13 +10,13 @@ const CATEGORIES = [
 
 const catMap = Object.fromEntries(CATEGORIES.map((c) => [c.value, c]));
 
-/** Category hub colors — from Coalition ScanIntake.jsx CAT_HUBS */
+/** Category hub colors — amber-gold only (no cyan/blue). */
 const CAT_HUBS = {
-  pokemon_sealed: { core: "#FFB43D", hi: "#FFD98A", sub: "Sealed" },
-  graded_slabs: { core: "#2BD9C0", hi: "#8FF6E8", sub: "Graded" },
-  raw_cards: { core: "#4FA8D8", hi: "#BFE9FF", sub: "Raw" },
-  sports_cards: { core: "#2E6F91", hi: "#7FD4FF", sub: "Sports" },
-  other: { core: "#4FC3F7", hi: "#A8E4FF", sub: "Other" },
+  pokemon_sealed: { core: "#E8B04B", hi: "#FFD98A", sub: "Sealed" },
+  graded_slabs: { core: "#C9922F", hi: "#E8B04B", sub: "Graded" },
+  raw_cards: { core: "#D4A84A", hi: "#FFE0A0", sub: "Raw" },
+  sports_cards: { core: "#B8862E", hi: "#E8B04B", sub: "Sports" },
+  other: { core: "#A67C2A", hi: "#D4A84A", sub: "Other" },
 };
 
 const MAX_PHOTOS = 8;
@@ -25,24 +25,24 @@ const VIEWS = ["command", "intake", "scan", "list", "systems"];
 
 const VIEW_COPY = {
   command: {
-    eyebrow: "Coalition · Command Core",
-    title: "Command",
-    sub: "VISOR glass. Same look as Base44 Command Core. Every tab escapes.",
+    eyebrow: "Coalition H.U.D",
+    title: "Overview",
+    sub: "Dark tactical VISOR. Amber-gold only. Scouter is the phone intake tab.",
   },
   intake: {
-    eyebrow: "H.U.D · Collection rail",
-    title: "Intake",
-    sub: "Category hubs and holo cards. Filter, open, delete. Saved on this phone.",
+    eyebrow: "H.U.D · Scouter rail",
+    title: "Sift",
+    sub: "Everything currently in Scouter. Review, correct, stage. Not a listing screen.",
   },
   scan: {
-    eyebrow: "H.U.D · Mobile intake",
-    title: "New scan",
-    sub: "Capture photos and barcodes on this device. Multi-photo. Always can leave.",
+    eyebrow: "H.U.D · Scouter",
+    title: "Scouter",
+    sub: "Handheld intake: take or dump photos → identify → sift → stage. Does not list.",
   },
   list: {
-    eyebrow: "H.U.D · Listing engine",
-    title: "List",
-    sub: "Phone listing tools now. Full eBay + Triple Threat next — not Base44 Claude.",
+    eyebrow: "H.U.D · Staged",
+    title: "Staged",
+    sub: "Batch ready for desktop pipeline. Listing engine runs on desktop — not here.",
   },
   systems: {
     eyebrow: "H.U.D · Systems",
@@ -52,7 +52,7 @@ const VIEW_COPY = {
 };
 
 const state = {
-  view: "command",
+  view: "scan",
   items: [],
   draftPhotos: [],
   qty: 1,
@@ -95,7 +95,7 @@ const els = {
   qtyPlus: $("qtyPlus"),
   categoryChips: $("categoryChips"),
   fieldNotes: $("fieldNotes"),
-  readyToList: $("readyToList"),
+  stagedFlag: $("stagedFlag"),
   btnSave: $("btnSave"),
   saveBar: $("saveBar"),
   collectionRoot: $("collectionRoot"),
@@ -140,7 +140,13 @@ function setStatus(msg, kind = "") {
 function loadLocalItems() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const items = raw ? JSON.parse(raw) : [];
+    // Migrate legacy readyToList → staged (Scouter stages; desktop lists)
+    return items.map((item) => {
+      if (typeof item.staged === "boolean") return item;
+      const { readyToList, ...rest } = item;
+      return { ...rest, staged: Boolean(readyToList) };
+    });
   } catch {
     return [];
   }
@@ -297,7 +303,7 @@ function renderCollection() {
   if (!count) {
     els.collectionRoot.innerHTML = `
       <div class="coll-empty-state">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2E6F91" stroke-width="1.4" style="opacity:0.7;filter:drop-shadow(0 0 14px #7FD4FF)"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E8B04B" stroke-width="1.4" style="opacity:0.7;filter:drop-shadow(0 0 14px #FFD98A)"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         <div class="v-label" style="margin-top:16px;font-size:12px">Intake empty</div>
         <p>Scan a barcode or drop a photo to bring inventory in.</p>
       </div>`;
@@ -371,7 +377,7 @@ function resetCapture() {
   els.barcodeInput.value = "";
   els.manualTitle.value = "";
   els.manualRow.classList.add("hidden");
-  if (els.readyToList) els.readyToList.checked = false;
+  if (els.stagedFlag) els.stagedFlag.checked = false;
   setCategory("other");
   renderPhotoGrid();
   setStatus("Add a photo, barcode, or title to start intake");
@@ -384,10 +390,10 @@ function pad2(n) {
 
 function renderCommand() {
   const photoTotal = state.items.reduce((n, i) => n + (i.photos?.length || 0), 0);
-  const ready = state.items.filter((i) => i.readyToList).length;
+  const staged = state.items.filter((i) => i.staged).length;
   els.cmdItems.textContent = pad2(state.items.length);
   els.cmdPhotos.textContent = pad2(photoTotal);
-  els.cmdReady.textContent = pad2(ready);
+  els.cmdReady.textContent = pad2(staged);
   els.statCount.textContent = pad2(state.items.length);
   if (els.systemsNote) {
     els.systemsNote.textContent = `${state.items.length} local records · shared store (${LS_KEY})`;
@@ -405,13 +411,13 @@ function renderCommand() {
 }
 
 function renderListRail() {
-  const ready = state.items.filter((i) => i.readyToList);
-  els.listReadyLbl.textContent = pad2(ready.length);
-  if (!ready.length) {
+  const staged = state.items.filter((i) => i.staged);
+  els.listReadyLbl.textContent = pad2(staged.length);
+  if (!staged.length) {
     els.listRail.innerHTML = "";
     return;
   }
-  els.listRail.innerHTML = ready
+  els.listRail.innerHTML = staged
     .map((it) => holoCardHtml(it, CAT_HUBS[it.category] || CAT_HUBS.other))
     .join("");
   bindHoloClicks(els.listRail);
@@ -423,7 +429,7 @@ function bindHoloClicks(root) {
       const item = state.items.find((i) => i.id === btn.dataset.item);
       if (!item) return;
       const title = item.title || "Untitled";
-      const meta = [`Qty ${item.quantity}`, item.barcode, item.readyToList ? "Ready" : null]
+      const meta = [`Qty ${item.quantity}`, item.barcode, item.staged ? "Staged" : null]
         .filter(Boolean)
         .join(" · ");
       if (confirm(`${title}\n${meta}\n\nDelete this item from your phone?`)) {
@@ -480,7 +486,7 @@ async function saveCapture() {
       quantity: state.qty,
       category: state.category,
       notes: els.fieldNotes.value.trim() || null,
-      readyToList: Boolean(els.readyToList?.checked),
+      staged: Boolean(els.stagedFlag?.checked),
       photos: state.draftPhotos.map((p) => ({
         id: crypto.randomUUID(),
         dataUrl: p.dataUrl,
@@ -910,7 +916,7 @@ function bindEvents() {
   });
 
   window.addEventListener("hashchange", () => {
-    const name = (location.hash || "#command").replace("#", "");
+    const name = (location.hash || "#scan").replace("#", "");
     if (VIEWS.includes(name) && name !== state.view) navigate(name);
   });
 }
@@ -923,9 +929,17 @@ function init() {
   updateSaveState();
   const fromHash = (location.hash || "").replace("#", "");
   const fromQuery = new URLSearchParams(location.search).get("view");
-  const legacy = { collection: "intake", capture: "scan", home: "command", rail: "intake" };
-  const raw = fromHash || fromQuery || "command";
-  navigate(legacy[raw] || (VIEWS.includes(raw) ? raw : "command"));
+  const legacy = {
+    collection: "intake",
+    capture: "scan",
+    home: "scan",
+    rail: "intake",
+    scouter: "scan",
+    stage: "list",
+    ready: "list",
+  };
+  const raw = fromHash || fromQuery || "scan";
+  navigate(legacy[raw] || (VIEWS.includes(raw) ? raw : "scan"));
 }
 
 init();

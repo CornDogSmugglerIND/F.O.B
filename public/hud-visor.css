@@ -1,4 +1,4 @@
-/* Thin VISOR extras for Command Core tabs — builds on scouter.css */
+/* Thin VISOR extras for Coalition H.U.D tabs — builds on scouter.css */
 
 .cmd-stats {
   display: grid;
@@ -47,8 +47,8 @@
 }
 
 .qa-list li.ok::before {
-  background: var(--emerald);
-  box-shadow: 0 0 10px rgba(43, 217, 192, 0.55);
+  background: var(--ok);
+  box-shadow: 0 0 10px rgba(111, 191, 115, 0.45);
 }
 
 .qa-list li.warn::before {

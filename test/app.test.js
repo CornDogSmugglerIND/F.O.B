@@ -48,7 +48,7 @@ test("GET / serves Scouter frontend", async () => {
     const html = await res.text();
     assert.match(html, /Coalition H\.U\.D/);
     assert.match(html, /Start intake/);
-    assert.match(html, /scouter\.css\?v=13/);
+    assert.match(html, /scouter\.css\?v=14/);
   } finally {
     await close();
   }
@@ -63,6 +63,10 @@ test("GET /hud.html serves Coalition H.U.D shell", async () => {
     assert.match(html, /Coalition H\.U\.D/);
     assert.match(html, /hud-visor\.js/);
     assert.match(html, /data-go="scan"/);
+    assert.match(html, /Scouter/);
+    assert.match(html, /stagedFlag/);
+    assert.doesNotMatch(html, /Command Core/);
+    assert.doesNotMatch(html, /readyToList/);
   } finally {
     await close();
   }
@@ -123,12 +127,14 @@ test("Scouter API creates and lists items with quantity and category", async () 
         barcode: "123456789012",
         quantity: 3,
         category: "raw_cards",
+        staged: true,
       }),
     });
     assert.equal(createRes.status, 201);
     const created = await createRes.json();
     assert.equal(created.item.quantity, 3);
     assert.equal(created.item.category, "raw_cards");
+    assert.equal(created.item.staged, true);
 
     const listRes = await fetch(`${baseUrl}/api/scouter/items`);
     const list = await listRes.json();
