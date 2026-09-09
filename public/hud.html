@@ -13,8 +13,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/scouter.css?v=15" />
-  <link rel="stylesheet" href="/hud-visor.css?v=15" />
+  <link rel="stylesheet" href="/scouter.css?v=16" />
+  <link rel="stylesheet" href="/hud-visor.css?v=16" />
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -121,10 +121,12 @@
         <div class="v-panel v-cut panel-block">
           <div class="panel-head">
             <h2 class="panel-title">Identify</h2>
+            <span class="v-label" id="identifyPhaseLbl">IDLE</span>
           </div>
+          <p class="hero-sub" style="margin-bottom:12px">Run this step and watch the result. Scan/dump photos first, then identify.</p>
           <div class="m-btn-row-3">
             <button type="button" class="m-btn" id="btnScan">Scan</button>
-            <button type="button" class="m-btn" id="btnLookup">Lookup</button>
+            <button type="button" class="m-btn m-btn-primary" id="btnLookup">Run identify</button>
             <button type="button" class="m-btn" id="btnManual">Manual</button>
           </div>
           <div class="field-stack">
@@ -138,7 +140,12 @@
               <button type="button" class="m-btn" id="btnManualOk">Set</button>
             </div>
           </div>
-          <div class="status-strip" id="identifyStatus">Add a photo, barcode, or title to start intake</div>
+          <div class="identify-result hidden" id="identifyResult" aria-live="polite">
+            <div class="v-label" style="font-size:9px">Result</div>
+            <div class="identify-result-title" id="identifyResultTitle">—</div>
+            <div class="identify-result-meta v-label" id="identifyResultMeta"></div>
+          </div>
+          <div class="status-strip" id="identifyStatus">Add a photo, barcode, or title — then Run identify</div>
         </div>
 
         <div class="v-panel v-cut panel-block">
@@ -174,10 +181,12 @@
           <div class="panel-head">
             <h2 class="panel-title">Desktop handoff</h2>
           </div>
-          <p class="hero-sub" style="margin-bottom:14px">Scouter stages inventory. Listing engine, eBay, and channel routing run on desktop — not on this phone tab.</p>
+          <p class="hero-sub" style="margin-bottom:14px">Export the staged batch for desktop pipeline. Matches iCloud flow: Scouter → stage → desktop (Batches / Inventory).</p>
           <div class="m-btn-row">
-            <a class="m-btn" href="/listing-copy.html">Listing Copy (desktop tool)</a>
+            <button type="button" class="m-btn m-btn-primary" id="btnExportStaged">Export staged batch</button>
+            <a class="m-btn" href="/listing-copy.html">Listing Copy</a>
           </div>
+          <div class="status-strip" id="handoffNote" style="margin-top:14px">No staged items yet</div>
         </div>
         <div class="v-panel v-cut panel-block">
           <div class="panel-head">
@@ -190,10 +199,10 @@
           <div class="panel-head"><h2 class="panel-title">Pipeline status</h2></div>
           <ul class="qa-list">
             <li class="ok">Scouter stage flag — live</li>
-            <li class="ok">Local sift / review — live</li>
+            <li class="ok">Identify run-and-watch — live</li>
+            <li class="ok">Staged batch export — live</li>
             <li class="warn">Desktop listing engine — next</li>
             <li class="warn">eBay / Double Holo / CollX routing — next</li>
-            <li class="warn">Durable cloud sync — later</li>
           </ul>
         </div>
       </section>
@@ -287,8 +296,8 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="/lib/html5-qrcode.min.js?v=15"></script>
-  <script src="/lib/image.js?v=15"></script>
-  <script src="/hud-visor.js?v=15"></script>
+  <script src="/lib/html5-qrcode.min.js?v=16"></script>
+  <script src="/lib/image.js?v=16"></script>
+  <script src="/hud-visor.js?v=16"></script>
 </body>
 </html>

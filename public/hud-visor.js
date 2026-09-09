@@ -96,6 +96,12 @@ const els = {
   categoryChips: $("categoryChips"),
   fieldNotes: $("fieldNotes"),
   stagedFlag: $("stagedFlag"),
+  identifyPhaseLbl: $("identifyPhaseLbl"),
+  identifyResult: $("identifyResult"),
+  identifyResultTitle: $("identifyResultTitle"),
+  identifyResultMeta: $("identifyResultMeta"),
+  btnExportStaged: $("btnExportStaged"),
+  handoffNote: $("handoffNote"),
   btnSave: $("btnSave"),
   saveBar: $("saveBar"),
   collectionRoot: $("collectionRoot"),
@@ -197,6 +203,38 @@ function updateSaveState() {
     state.barcode.trim().length > 0 ||
     state.title.trim().length > 0;
   els.btnSave.disabled = !canSave;
+  if (!els.btnSave.disabled) {
+    els.btnSave.textContent = els.stagedFlag?.checked ? "Save & stage" : "Save to Scouter";
+  }
+}
+
+function setIdentifyPhase(phase, detail = "") {
+  const labels = {
+    idle: "IDLE",
+    running: "RUNNING",
+    ok: "MATCH",
+    fail: "NO MATCH",
+    manual: "MANUAL",
+  };
+  if (els.identifyPhaseLbl) els.identifyPhaseLbl.textContent = labels[phase] || phase;
+  if (!els.identifyResult) return;
+  if (phase === "idle" || phase === "running") {
+    els.identifyResult.classList.add("hidden");
+    return;
+  }
+  els.identifyResult.classList.remove("hidden");
+  if (els.identifyResultTitle) {
+    els.identifyResultTitle.textContent = state.title || detail || "—";
+  }
+  if (els.identifyResultMeta) {
+    const bits = [
+      state.barcode ? `BC ${state.barcode}` : null,
+      phase === "ok" ? "catalog hit" : null,
+      phase === "manual" ? "manual title" : null,
+      phase === "fail" ? "needs title" : null,
+    ].filter(Boolean);
+    els.identifyResultMeta.textContent = bits.join(" · ");
+  }
 }
 
 function setCategory(value) {
@@ -383,7 +421,8 @@ function resetCapture() {
   if (els.stagedFlag) els.stagedFlag.checked = false;
   setCategory("other");
   renderPhotoGrid();
-  setStatus("Add a photo, barcode, or title to start intake");
+  setIdentifyPhase("idle");
+  setStatus("Add a photo, barcode, or title — then Run identify");
   updateSaveState();
 }
 
@@ -416,6 +455,12 @@ function renderCommand() {
 function renderListRail() {
   const staged = state.items.filter((i) => i.staged);
   els.listReadyLbl.textContent = pad2(staged.length);
+  if (els.handoffNote) {
+    els.handoffNote.textContent = staged.length
+      ? `${staged.length} staged — export batch for desktop (Batches / Inventory)`
+      : "No staged items yet — stage from Scouter or Sift";
+  }
+  if (els.btnExportStaged) els.btnExportStaged.disabled = staged.length === 0;
   if (!staged.length) {
     els.listRail.innerHTML = "";
     return;
@@ -424,6 +469,40 @@ function renderListRail() {
     .map((it) => holoCardHtml(it, CAT_HUBS[it.category] || CAT_HUBS.other))
     .join("");
   bindHoloClicks(els.listRail);
+}
+
+function exportStagedBatch() {
+  const staged = loadLocalItems().filter((i) => i.staged);
+  if (!staged.length) {
+    showToast("Nothing staged to export", "err");
+    return;
+  }
+  const payload = {
+    app: "coalition-hud-scouter",
+    kind: "staged-batch-handoff",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    handoff: {
+      from: "scouter",
+      to: "desktop-pipeline",
+      icloudFolders: ["1.INTAKE", "Batches", "Inventory"],
+      note: "Staged inventory only. Listing engine runs on desktop.",
+    },
+    count: staged.length,
+    items: staged,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  a.href = url;
+  a.download = `coalition-staged-batch-${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${staged.length} staged for desktop`);
+  if (els.handoffNote) {
+    els.handoffNote.textContent = `Last export: ${staged.length} items · ${stamp}`;
+  }
 }
 
 function setItemStaged(id, staged) {
@@ -462,30 +541,40 @@ function bindHoloClicks(root) {
 async function lookupBarcode(code) {
   const trimmed = code.trim();
   if (!trimmed) {
-    showToast("Enter a barcode first", "err");
+    showToast("Scan or enter a barcode first", "err");
+    setIdentifyPhase("fail", "No barcode");
+    setStatus("Need a barcode or manual title to identify", "err");
     return;
   }
 
   state.barcode = trimmed;
   els.barcodeInput.value = trimmed;
-  setStatus("Looking up barcode…", "busy");
+  setIdentifyPhase("running");
+  setStatus("Identify running — watching catalog…", "busy");
   els.btnLookup.disabled = true;
+  els.btnLookup.textContent = "Running…";
 
   try {
     const result = await api(`/api/scouter/barcode/${encodeURIComponent(trimmed)}`);
     if (result.found && result.product?.title) {
       state.title = result.product.title;
-      setStatus(`Found: ${result.product.title}`, "ok");
+      setIdentifyPhase("ok");
+      setStatus(`Identified: ${result.product.title}`, "ok");
+      showToast("Identify match");
     } else {
-      setStatus("Not in catalog — add a title manually", "err");
+      setIdentifyPhase("fail");
+      setStatus("No catalog match — set a title manually", "err");
       els.manualRow.classList.remove("hidden");
+      showToast("No match — manual title", "err");
     }
     updateSaveState();
   } catch {
-    setStatus("Lookup offline — add title manually", "err");
+    setIdentifyPhase("fail");
+    setStatus("Identify offline — set a title manually", "err");
     els.manualRow.classList.remove("hidden");
   } finally {
     els.btnLookup.disabled = false;
+    els.btnLookup.textContent = "Run identify";
   }
 }
 
@@ -870,7 +959,8 @@ function bindEvents() {
   els.btnScanClose.addEventListener("click", () => stopScanner());
   els.btnLookup.addEventListener("click", async () => {
     if (!els.barcodeInput.value.trim() && state.draftPhotos.length) {
-      setStatus("Checking photos for barcode…", "busy");
+      setIdentifyPhase("running");
+      setStatus("Pulling barcode from photos…", "busy");
       const fromPhoto = await scanBarcodeFromPhotos();
       if (fromPhoto) {
         els.barcodeInput.value = fromPhoto;
@@ -878,7 +968,7 @@ function bindEvents() {
         updateSaveState();
       }
     }
-    lookupBarcode(els.barcodeInput.value);
+    await lookupBarcode(els.barcodeInput.value);
   });
   els.barcodeInput.addEventListener("input", () => {
     state.barcode = els.barcodeInput.value.trim();
@@ -892,7 +982,8 @@ function bindEvents() {
   els.btnManualOk.addEventListener("click", () => {
     state.title = els.manualTitle.value.trim();
     if (state.title) {
-      setStatus(`Title: ${state.title}`, "ok");
+      setIdentifyPhase("manual");
+      setStatus(`Title set: ${state.title}`, "ok");
       updateSaveState();
     }
   });
@@ -906,10 +997,13 @@ function bindEvents() {
     els.qtyVal.textContent = String(state.qty);
   });
 
+  els.stagedFlag?.addEventListener("change", () => updateSaveState());
+
   els.btnSave.addEventListener("click", saveCapture);
 
   els.btnNewScan?.addEventListener("click", () => navigate("scan"));
   els.btnExport?.addEventListener("click", exportInventory);
+  els.btnExportStaged?.addEventListener("click", exportStagedBatch);
   els.btnImport?.addEventListener("click", () => els.importFile?.click());
   els.btnWipe?.addEventListener("click", () => {
     if (!confirm("Wipe all local HUD / Scouter intake data on this phone?")) return;

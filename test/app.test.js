@@ -66,6 +66,8 @@ test("GET /hud.html serves Coalition H.U.D shell", async () => {
     assert.match(html, /data-go="scan"/);
     assert.match(html, /Scouter/);
     assert.match(html, /stagedFlag/);
+    assert.match(html, /Run identify/);
+    assert.match(html, /Export staged batch/);
     assert.doesNotMatch(html, /Command Core/);
     assert.doesNotMatch(html, /readyToList/);
   } finally {
@@ -140,6 +142,11 @@ test("Scouter API creates and lists items with quantity and category", async () 
     const listRes = await fetch(`${baseUrl}/api/scouter/items`);
     const list = await listRes.json();
     assert.equal(list.items.length, 1);
+
+    const stagedRes = await fetch(`${baseUrl}/api/scouter/items?staged=1`);
+    const staged = await stagedRes.json();
+    assert.equal(staged.items.length, 1);
+    assert.equal(staged.items[0].staged, true);
   } finally {
     await close();
   }
