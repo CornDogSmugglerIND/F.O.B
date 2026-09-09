@@ -530,6 +530,7 @@ async function saveCapture() {
             quantity: item.quantity,
             category: item.category,
             notes: item.notes,
+            staged: item.staged,
           }),
         })
       ).item;

@@ -48,7 +48,8 @@ test("GET / serves Scouter frontend", async () => {
     const html = await res.text();
     assert.match(html, /Coalition H\.U\.D/);
     assert.match(html, /Start intake/);
-    assert.match(html, /scouter\.css\?v=14/);
+    assert.match(html, /scouter\.css\?v=15/);
+    assert.match(html, /stagedFlag/);
   } finally {
     await close();
   }

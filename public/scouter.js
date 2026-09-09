@@ -61,6 +61,7 @@ const els = {
   qtyPlus: $("qtyPlus"),
   categoryChips: $("categoryChips"),
   fieldNotes: $("fieldNotes"),
+  stagedFlag: $("stagedFlag"),
   btnSave: $("btnSave"),
   saveBar: $("saveBar"),
   collectionRoot: $("collectionRoot"),
@@ -238,13 +239,16 @@ function holoCardHtml(item, hub) {
   const face = src
     ? `<img src="${src}" alt="" />`
     : `<div class="holo-card-empty">NO IMG</div>`;
+  const badge = item.staged
+    ? `<span class="holo-card-sub" style="color:var(--gold-hi)">STAGED</span>`
+    : `<span class="holo-card-sub" style="color:${hub.hi}">${escapeHtml(sub)}</span>`;
   return `
     <div class="holo-card-wrap">
       <button type="button" class="holo-card" data-item="${item.id}" style="box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), inset 0 0 0 1px ${hub.core}55, 0 18px 40px -16px rgba(0,0,0,0.95)">
         ${face}
         <span class="holo-card-plate">
           <span class="holo-card-title">${title}</span>
-          <span class="holo-card-sub" style="color:${hub.hi}">${escapeHtml(sub)}</span>
+          ${badge}
         </span>
       </button>
     </div>`;
@@ -307,8 +311,17 @@ function renderCollection() {
         const item = state.items.find((i) => i.id === btn.dataset.item);
         if (!item) return;
         const title = item.title || "Untitled";
-        const meta = [`Qty ${item.quantity}`, item.barcode].filter(Boolean).join(" · ");
-        if (confirm(`${title}\n${meta}\n\nDelete this item from your phone?`)) {
+        const meta = [`Qty ${item.quantity}`, item.barcode, item.staged ? "Staged" : "Not staged"]
+          .filter(Boolean)
+          .join(" · ");
+        const nextStaged = !item.staged;
+        if (
+          confirm(
+            `${title}\n${meta}\n\n${nextStaged ? "Stage for desktop pipeline?" : "Unstage this item?"}\n\nCancel = delete options`,
+          )
+        ) {
+          setItemStaged(item.id, nextStaged);
+        } else if (confirm(`Delete ${title} from this phone?`)) {
           deleteItem(item.id);
         }
       });
@@ -324,11 +337,20 @@ function loadItems() {
 }
 
 function deleteItem(id) {
-  if (!confirm("Delete this item from this phone?")) return;
   state.items = state.items.filter((i) => i.id !== id);
   saveLocalItems(state.items);
   renderCollection();
   showToast("Deleted");
+}
+
+function setItemStaged(id, staged) {
+  const item = state.items.find((i) => i.id === id);
+  if (!item) return;
+  item.staged = Boolean(staged);
+  item.updatedAt = new Date().toISOString();
+  saveLocalItems(state.items);
+  renderCollection();
+  showToast(item.staged ? "Staged for desktop" : "Unstaged");
 }
 
 function resetCapture() {
@@ -342,6 +364,7 @@ function resetCapture() {
   els.barcodeInput.value = "";
   els.manualTitle.value = "";
   els.manualRow.classList.add("hidden");
+  if (els.stagedFlag) els.stagedFlag.checked = false;
   setCategory("other");
   renderPhotoGrid();
   setStatus("Add a photo, barcode, or title to start intake");
@@ -395,6 +418,7 @@ async function saveCapture() {
       quantity: state.qty,
       category: state.category,
       notes: els.fieldNotes.value.trim() || null,
+      staged: Boolean(els.stagedFlag?.checked),
       photos: state.draftPhotos.map((p) => ({
         id: crypto.randomUUID(),
         dataUrl: p.dataUrl,
@@ -418,6 +442,7 @@ async function saveCapture() {
             quantity: item.quantity,
             category: item.category,
             notes: item.notes,
+            staged: item.staged,
           }),
         })
       ).item;
