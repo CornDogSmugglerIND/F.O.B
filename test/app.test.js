@@ -162,3 +162,50 @@ test("barcode lookup returns structured response", async () => {
     await close();
   }
 });
+
+test("GET /api/channels/status reports channel config skeleton", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const res = await fetch(`${baseUrl}/api/channels/status`);
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(body.canonical, "hud");
+    assert.equal(body.channels.length, 3);
+    assert.ok(body.channels.every((c) => typeof c.configured === "boolean"));
+  } finally {
+    await close();
+  }
+});
+
+test("POST /api/channels/sale subtracts qty on canonical inventory", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const createRes = await fetch(`${baseUrl}/api/scouter/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Sync Card",
+        quantity: 2,
+        category: "raw_cards",
+        channels: {
+          ebay: { listingId: "ebay-1", price: 10, status: "active" },
+          misprint: { listingId: "mp-1", price: 10, status: "active" },
+        },
+      }),
+    });
+    const { item } = await createRes.json();
+
+    const saleRes = await fetch(`${baseUrl}/api/channels/sale`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId: item.id, channel: "ebay", quantitySold: 1 }),
+    });
+    assert.equal(saleRes.status, 200);
+    const sale = await saleRes.json();
+    assert.equal(sale.item.quantity, 1);
+    assert.equal(sale.item.lastSaleChannel, "ebay");
+    assert.ok(Array.isArray(sale.fanout));
+  } finally {
+    await close();
+  }
+});
