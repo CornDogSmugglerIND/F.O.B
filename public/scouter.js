@@ -425,6 +425,12 @@ async function lookupBarcode(code) {
 }
 
 async function saveCapture() {
+  // Re-sync from DOM so a typed barcode always counts even if an input event was missed
+  if (els.barcodeInput) state.barcode = els.barcodeInput.value.trim();
+  if (els.manualTitle && els.manualTitle.value.trim()) {
+    state.title = els.manualTitle.value.trim();
+  }
+  updateSaveState();
   if (els.btnSave.disabled) return;
 
   els.btnSave.disabled = true;
@@ -450,56 +456,76 @@ async function saveCapture() {
       })),
     };
 
+    if (!item.title && !item.barcode && !item.photos.length) {
+      throw new Error("Add a photo, barcode, or title first");
+    }
+
     state.items.unshift(item);
     saveLocalItems(state.items);
 
-    // Best-effort server sync (barcode identify + backup); never block local save
-    try {
-      let remote = (
-        await api("/api/scouter/items", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: item.title,
-            barcode: item.barcode,
-            quantity: item.quantity,
-            category: item.category,
-            notes: item.notes,
-            staged: item.staged,
-          }),
-        })
-      ).item;
-
-      if (item.barcode) {
-        remote = (
-          await api(`/api/scouter/items/${remote.id}/identify`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ barcode: item.barcode, title: item.title }),
-          })
-        ).item;
-        if (remote.title) item.title = remote.title;
-      }
-
-      for (const photo of item.photos) {
-        await api(`/api/scouter/items/${remote.id}/photos/data`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dataUrl: photo.dataUrl }),
-        });
-      }
-    } catch {
-      /* local save already succeeded */
-    }
-
+    // Finish local UX immediately — never wait on network for rail handoff
     loadItems();
     resetCapture();
     navigate("collection");
     showToast(item.staged ? "Staged on rail" : "Saved to rail");
+    els.btnSave.disabled = false;
+    els.btnSave.textContent = "Add to rail";
+    updateSaveState();
+
+    // Best-effort server sync in background (barcode identify + backup)
+    void (async () => {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      try {
+        let remote = (
+          await api("/api/scouter/items", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: item.title,
+              barcode: item.barcode,
+              quantity: item.quantity,
+              category: item.category,
+              notes: item.notes,
+              staged: item.staged,
+            }),
+            signal: ctrl.signal,
+          })
+        ).item;
+
+        if (item.barcode) {
+          remote = (
+            await api(`/api/scouter/items/${remote.id}/identify`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ barcode: item.barcode, title: item.title }),
+              signal: ctrl.signal,
+            })
+          ).item;
+          if (remote.title) {
+            item.title = remote.title;
+            saveLocalItems(state.items);
+            loadItems();
+          }
+        }
+
+        for (const photo of item.photos) {
+          await api(`/api/scouter/items/${remote.id}/photos/data`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dataUrl: photo.dataUrl }),
+            signal: ctrl.signal,
+          });
+        }
+      } catch {
+        /* local save already succeeded */
+      } finally {
+        clearTimeout(timer);
+      }
+    })();
   } catch (e) {
     showToast(e.message, "err");
     setStatus(e.message, "err");
-  } finally {
     els.btnSave.disabled = false;
     els.btnSave.textContent = "Add to rail";
     updateSaveState();
@@ -508,8 +534,8 @@ async function saveCapture() {
 
 function navigate(view) {
   const isCollection = view === "collection";
-  els.viewCapture.classList.toggle("active", !isCollection);
-  els.viewCollection.classList.toggle("active", isCollection);
+  els.viewCapture?.classList.toggle("active", !isCollection);
+  els.viewCollection?.classList.toggle("active", isCollection);
   els.saveBar?.classList.toggle("hidden", true);
   els.pageHero?.classList.toggle("hidden", true);
   els.intakeBar?.classList.toggle("hidden", true);
@@ -526,6 +552,9 @@ function navigate(view) {
   document.querySelectorAll(".nav-tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.view === view);
   });
+  // Keep URL hash in sync for phone back/forward
+  const hash = isCollection ? "#collection" : "#capture";
+  if (location.hash !== hash) history.replaceState(null, "", hash);
 }
 
 function exportInventory() {

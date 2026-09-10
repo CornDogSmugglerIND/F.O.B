@@ -855,3 +855,15 @@ body.handheld {
   .hh-vf-frame { max-height: 38dvh; }
   .hh-act { min-height: 60px; }
 }
+
+/* Keep capture file inputs out of the hit-test path */
+#inputCamera,
+#inputGallery,
+#importFile {
+  position: fixed !important;
+  left: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
