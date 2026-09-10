@@ -1,7 +1,8 @@
 /**
  * Channel adapters.
  * eBay: live Sell Inventory API (needs secrets).
- * Double Holo / Misprint: stubs until API contracts are confirmed.
+ * Misprint: live client once MISPRINT_API_BASE is known (keys can be present earlier).
+ * Double Holo: stub until API contract confirmed.
  */
 
 import { getChannelStatuses } from "./config.js";
@@ -10,6 +11,11 @@ import {
   publishEbayListing,
   updateEbayPriceQuantity,
 } from "./ebay.js";
+import {
+  endMisprintAsk,
+  publishMisprintListing,
+  updateMisprintAsk,
+} from "./misprint.js";
 
 function notReady(channelId) {
   const status = getChannelStatuses().find((c) => c.id === channelId);
@@ -45,6 +51,12 @@ export async function setChannelPrice(channelId, payload, opts = {}) {
       opts,
     );
   }
+  if (channelId === "misprint") {
+    return updateMisprintAsk(
+      { listingId: payload.listingId, price: payload.price, quantity: payload.quantity },
+      opts,
+    );
+  }
   throw new Error(`${channelId}: setChannelPrice not wired yet`);
 }
 
@@ -69,6 +81,15 @@ export async function syncChannelQuantity(channelId, payload, opts = {}) {
       opts,
     );
   }
+  if (channelId === "misprint") {
+    if (payload.endIfZero && Number(payload.quantity) <= 0) {
+      return endMisprintAsk({ listingId: payload.listingId }, opts);
+    }
+    return updateMisprintAsk(
+      { listingId: payload.listingId, quantity: payload.quantity },
+      opts,
+    );
+  }
   throw new Error(`${channelId}: syncChannelQuantity not wired yet`);
 }
 
@@ -81,6 +102,9 @@ export async function publishListing(channelId, item, opts = {}) {
   assertChannelConfigured(channelId);
   if (channelId === "ebay") {
     return publishEbayListing(item, opts);
+  }
+  if (channelId === "misprint") {
+    return publishMisprintListing(item, opts);
   }
   throw new Error(`${channelId}: publishListing not wired yet`);
 }

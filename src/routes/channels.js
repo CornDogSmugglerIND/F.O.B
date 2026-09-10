@@ -3,6 +3,7 @@ import { getCanonicalInventory, getChannelStatuses } from "../channels/config.js
 import { applySale } from "../channels/sync.js";
 import { publishListing } from "../channels/adapters.js";
 import { probeEbay } from "../channels/ebay.js";
+import { probeMisprint } from "../channels/misprint.js";
 import { getScoutItem, updateScoutItem } from "../store.js";
 
 export function channelsRouter() {
@@ -27,6 +28,20 @@ export function channelsRouter() {
       }
       if (err.code === "EBAY_AUTH_FAILED") {
         return res.status(502).json({ ok: false, error: err.message, code: err.code });
+      }
+      next(err);
+    }
+  });
+
+  /** Misprint probe — never returns secret values. */
+  router.get("/misprint/probe", async (_req, res, next) => {
+    try {
+      const result = await probeMisprint();
+      const status = result.ok ? 200 : result.code === "MISPRINT_BASE_REQUIRED" ? 503 : 502;
+      res.status(status).json(result);
+    } catch (err) {
+      if (err.code === "CHANNEL_NOT_CONFIGURED") {
+        return res.status(503).json({ ok: false, error: err.message, code: err.code });
       }
       next(err);
     }
@@ -70,6 +85,13 @@ export function channelsRouter() {
       }
       if (err.code === "EBAY_API_ERROR" || err.code === "EBAY_AUTH_FAILED") {
         return res.status(502).json({ error: err.message, code: err.code, details: err.details });
+      }
+      if (err.code === "MISPRINT_BASE_REQUIRED" || err.code === "MISPRINT_API_ERROR") {
+        return res.status(err.code === "MISPRINT_BASE_REQUIRED" ? 503 : 502).json({
+          error: err.message,
+          code: err.code,
+          details: err.details,
+        });
       }
       next(err);
     }
