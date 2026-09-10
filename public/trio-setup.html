@@ -3,325 +3,116 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#0e1114" />
-  <title>Trio Setup — Tonight</title>
+  <meta name="theme-color" content="#0a0b0d" />
+  <title>Triple Threat — Wire Status</title>
   <style>
     :root {
-      --bg: #0e1114;
-      --panel: #1a2229;
-      --text: #e8ecef;
-      --muted: #8b98a5;
-      --accent: #c9a227;
-      --accent-text: #0e1114;
-      --done: #1f8a4c;
-      --border: #2a3540;
-      --warn: #b45309;
+      --bg: #0a0b0d;
+      --panel: #14161a;
+      --text: #f5f0e8;
+      --muted: #9a9186;
+      --gold: #e8b04b;
+      --ok: #6fbf73;
+      --bad: #ff4d6d;
+      --border: #2a2e35;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: -apple-system, system-ui, sans-serif;
+      font-family: "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100dvh;
-      padding: 16px;
-      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      padding: 20px 16px 40px;
       line-height: 1.45;
     }
-    .wrap { max-width: 440px; margin: 0 auto; }
+    .wrap { max-width: 520px; margin: 0 auto; }
     .eyebrow {
       font-size: 0.72rem;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin: 0 0 6px;
+      letter-spacing: 0.1em;
+      color: var(--gold);
+      margin: 0 0 8px;
     }
-    h1 { font-size: 1.35rem; margin: 0 0 8px; font-weight: 700; }
-    .sub { color: var(--muted); font-size: 0.95rem; margin: 0 0 16px; }
-    .progress-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-    .bar { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
-    .bar > span { display: block; height: 100%; background: var(--done); width: 0%; transition: width 0.2s ease; }
-    .count { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-
+    h1 { font-size: 1.45rem; margin: 0 0 10px; }
+    .sub { color: var(--muted); margin: 0 0 20px; }
     .card {
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 18px 16px;
-      min-height: 280px;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
     }
-    .step-num {
+    .card h2 { font-size: 1.05rem; margin: 0 0 10px; }
+    .card p, .card li { font-size: 0.95rem; margin: 0 0 8px; }
+    .card ul { margin: 0; padding-left: 1.2rem; }
+    .tag {
       display: inline-block;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 700;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 8px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-bottom: 10px;
     }
-    .card h2 { font-size: 1.15rem; margin: 0 0 10px; font-weight: 700; }
-    .card p { margin: 0 0 12px; color: var(--text); font-size: 1rem; }
-    .card ul { margin: 0 0 14px; padding-left: 1.15rem; color: var(--text); }
-    .card li { margin-bottom: 8px; }
-    .hint {
-      font-size: 0.88rem;
-      color: var(--muted);
-      margin: 0 0 14px;
-      padding: 10px 12px;
-      background: rgba(0,0,0,0.25);
-      border-radius: 10px;
-      border-left: 3px solid var(--warn);
+    .tag.ok { background: rgba(111,191,115,0.15); color: var(--ok); }
+    .tag.bad { background: rgba(255,77,109,0.15); color: var(--bad); }
+    .tag.warn { background: rgba(232,176,75,0.15); color: var(--gold); }
+    a { color: var(--gold); }
+    code {
+      font-family: ui-monospace, monospace;
+      font-size: 0.85em;
+      background: #0e1014;
+      padding: 1px 5px;
+      border-radius: 4px;
     }
-    .link-box {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-      align-items: stretch;
-    }
-    .link-box input {
-      flex: 1;
-      min-width: 0;
-      background: #12171c;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text);
-      padding: 12px;
-      font-size: 0.85rem;
-    }
-    .copy-btn, .nav-btn, .done-btn {
-      border: none;
-      border-radius: 10px;
-      font-weight: 700;
-      font-size: 0.95rem;
-      padding: 12px 14px;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .copy-btn {
-      background: #2a3540;
-      color: var(--text);
-      white-space: nowrap;
-    }
-    .copy-btn.ok { background: var(--done); }
-    .nav {
-      display: grid;
-      grid-template-columns: 1fr 1.4fr;
-      gap: 10px;
-      margin-top: 16px;
-    }
-    .nav-btn { background: #2a3540; color: var(--text); }
-    .nav-btn:disabled { opacity: 0.35; }
-    .done-btn { background: var(--accent); color: var(--accent-text); }
-    .done-btn:disabled { opacity: 0.35; }
-    .toast {
-      position: fixed;
-      left: 50%;
-      bottom: calc(20px + env(safe-area-inset-bottom));
-      transform: translateX(-50%) translateY(120%);
-      background: var(--done);
-      color: #fff;
-      padding: 10px 16px;
-      border-radius: 999px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      transition: transform 0.2s ease;
-      z-index: 20;
-    }
-    .toast.show { transform: translateX(-50%) translateY(0); }
-    .finish {
-      text-align: center;
-      padding: 24px 8px;
-    }
-    .finish h2 { margin-bottom: 10px; }
-    .hidden { display: none !important; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <p class="eyebrow">Cursor + Claude + GitHub</p>
-    <h1>Tonight setup</h1>
-    <p class="sub">One step at a time. Do this at your desktop. Cursor will verify before saying it’s good.</p>
-    <div class="hint" id="gates" style="margin-bottom:16px">
-      <strong>Straight status:</strong><br />
-      ✅ Claude product map on GitHub #24 — done<br />
-      ❌ Composio tools on THIS cloud chat — not done yet<br />
-      Until ❌ flips: not all-good. No app rebuild.
+    <p class="eyebrow">Cursor ↔ Claude ↔ GitHub</p>
+    <h1>Triple Threat — the real wire</h1>
+    <p class="sub">No more fake “Cowork watch.” Here’s what actually works and what was broken.</p>
+
+    <div class="card">
+      <span class="tag bad">Root cause</span>
+      <h2>Why Claude went silent</h2>
+      <ul>
+        <li><strong>Cowork never auto-wakes.</strong> The one <code>TRIO_OK</code> reply was Sawyer telling Cowork at the desk to answer #24 — not GitHub magic.</li>
+        <li>Cursor’s <code>@claude</code> pings <em>do</em> fire <strong>Claude Code Action</strong> (different product).</li>
+        <li>Those Action runs died with <code>401 User does not have write access</code> because Cursor posts as <code>CornDogSmugglerCoalition7</code> (read-only).</li>
+        <li><code>continue-on-error: true</code> made GitHub show green while Claude never replied.</li>
+      </ul>
     </div>
 
-    <div class="progress-wrap">
-      <div class="bar"><span id="bar"></span></div>
-      <div class="count" id="count">1 / 5</div>
+    <div class="card">
+      <span class="tag ok">Fix (in PR)</span>
+      <h2>GitHub leg that actually replies</h2>
+      <ul>
+        <li>Workflow passes job <code>GITHUB_TOKEN</code> so Claude skips the App OIDC exchange that was 401’ing.</li>
+        <li>Allows <code>CornDogSmugglerCoalition7</code> via <code>allowed_non_write_users</code> (Anthropic’s documented path for read-only triggers).</li>
+        <li>Failures are real failures (no silent <code>continue-on-error</code>).</li>
+        <li>After this merges to <code>main</code>: Cursor <code>@claude</code> on #24 → Action replies on the issue (as <code>github-actions[bot]</code>). No app bouncing.</li>
+      </ul>
     </div>
 
-    <div class="card" id="card"></div>
+    <div class="card">
+      <span class="tag warn">Roles</span>
+      <h2>Who is who</h2>
+      <ul>
+        <li><strong>Cursor Cloud</strong> — builds; posts/reads GitHub via Composio as Coalition7.</li>
+        <li><strong>Claude Code Action</strong> — GitHub-native Claude that auto-replies to <code>@claude</code> (the wire).</li>
+        <li><strong>Claude Cowork</strong> — desk design partner. Useful when you’re at the Mac. Not an auto-watch.</li>
+      </ul>
+    </div>
 
-    <div class="nav" id="nav">
-      <button type="button" class="nav-btn" id="backBtn">Back</button>
-      <button type="button" class="done-btn" id="nextBtn">Done — Next</button>
+    <div class="card">
+      <span class="tag ok">Status check</span>
+      <h2>Issue #24</h2>
+      <p><a href="https://github.com/CornDogSmugglerIND/F.O.B/issues/24">github.com/CornDogSmugglerIND/F.O.B/issues/24</a></p>
+      <p>After the wire-fix PR is on <code>main</code>, Cursor will ping <code>@claude</code> once. Expect a bot reply — not silence.</p>
     </div>
   </div>
-
-  <div class="toast" id="toast">Copied</div>
-
-  <script>
-    const STEPS = [
-      {
-        title: "What is going on (read this)",
-        body: "Claude already answered GitHub #24. Last gate: THIS cloud agent must see Composio tools via Cursor’s Agents MCP dropdown. Auth Configs is the wrong Composio page.",
-        bullets: [
-          "If you are on Auth Configs (Cursor API Key rows): leave. Do not Create there.",
-          "Repo .cursor/mcp.json will never fix Cloud Agents.",
-          "Do not open MCP URLs in the browser — they look like junk."
-        ],
-        copy: "https://dashboard.composio.dev",
-        copyLabel: "Open Composio dashboard",
-        hint: "Next: sidebar → Sessions → copy MCP URL."
-      },
-      {
-        title: "Copy MCP URL from Sessions",
-        body: "In Composio, open Sessions (left sidebar). Copy the session MCP URL — often https://mcp.composio.dev/... Do not browse that URL.",
-        bullets: [
-          "dashboard.composio.dev → left sidebar → Sessions",
-          "Open or create a session",
-          "Copy the MCP URL (mcp.composio.dev/...)",
-          "If Sessions has no MCP URL: open API Keys and screenshot / describe what you see"
-        ],
-        copy: "https://dashboard.composio.dev",
-        copyLabel: "Open Composio again",
-        hint: "Skip Auth Configs. That Cursor toolkit row is not the Cloud Agents MCP URL."
-      },
-      {
-        title: "Paste into Cursor Agents MCP dropdown",
-        body: "On cursor.com/agents, use the MCP dropdown at the TOP. Add server → paste the Sessions MCP URL → HTTP → Save/Enable.",
-        bullets: [
-          "Open https://cursor.com/agents (sign in as Sawyer)",
-          "MCP dropdown at the TOP → Add server",
-          "Paste the Sessions MCP URL into the URL field only",
-          "Transport: HTTP → Save / Enable"
-        ],
-        copy: "https://cursor.com/agents",
-        copyLabel: "Open Cursor Agents",
-        hint: "Backup: cursor.com/dashboard/integrations — same URL paste."
-      },
-      {
-        title: "Tell Cursor to verify",
-        body: "After Save/Enable, come back to this chat and send one short message.",
-        bullets: [
-          "Type: composio done",
-          "Or: list your available tools",
-          "Cursor must see a Composio namespace before all-good",
-          "No Scouter rebuild until that check passes"
-        ],
-        copy: "composio done",
-        copyLabel: "Copy verify message",
-        hint: "#24 product map already PASS. This closes Composio-on-cloud-agent only."
-      }
-    ];
-
-    let i = 0;
-    const card = document.getElementById("card");
-    const bar = document.getElementById("bar");
-    const count = document.getElementById("count");
-    const backBtn = document.getElementById("backBtn");
-    const nextBtn = document.getElementById("nextBtn");
-    const toast = document.getElementById("toast");
-    const nav = document.getElementById("nav");
-
-    function showToast(msg) {
-      toast.textContent = msg;
-      toast.classList.add("show");
-      clearTimeout(showToast.t);
-      showToast.t = setTimeout(() => toast.classList.remove("show"), 1600);
-    }
-
-    async function copyText(text, btn) {
-      try {
-        await navigator.clipboard.writeText(text);
-        btn.classList.add("ok");
-        btn.textContent = "Copied";
-        showToast("Copied");
-        setTimeout(() => {
-          btn.classList.remove("ok");
-          btn.textContent = "Copy";
-        }, 1200);
-      } catch {
-        showToast("Long-press the box to copy");
-      }
-    }
-
-    function render() {
-      if (i >= STEPS.length) {
-        const agentUrl = "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396";
-        const checkMsg = "I'm home. Check now.";
-        card.innerHTML = `
-          <div class="finish">
-            <h2>Tell Cursor to check</h2>
-            <p>Message is copied. Open the agent chat and paste/send it.</p>
-            <div class="link-box" style="max-width:100%;margin:14px auto">
-              <input id="copyVal" readonly value="${checkMsg}" />
-              <button type="button" class="copy-btn" id="copyBtn">Copy</button>
-            </div>
-            <p style="margin:14px 0 0">
-              <a class="done-btn" id="openAgent" href="${agentUrl}" target="_blank" rel="noopener"
-                 style="display:inline-block;text-decoration:none">Open Cursor agent</a>
-            </p>
-            <p class="sub">Stay at the desk until Cursor reports pass or fail.</p>
-          </div>`;
-        nav.classList.add("hidden");
-        bar.style.width = "100%";
-        count.textContent = `${STEPS.length} / ${STEPS.length}`;
-        const btn = document.getElementById("copyBtn");
-        btn.onclick = () => copyText(checkMsg, btn);
-        copyText(checkMsg, btn);
-        return;
-      }
-
-      const s = STEPS[i];
-      card.innerHTML = `
-        <div class="step-num">Step ${i + 1} of ${STEPS.length}</div>
-        <h2>${s.title}</h2>
-        <p>${s.body}</p>
-        <ul>${s.bullets.map((b) => `<li>${b}</li>`).join("")}</ul>
-        ${s.hint ? `<p class="hint">${s.hint}</p>` : ""}
-        <label class="eyebrow" style="display:block;margin-bottom:6px">${s.copyLabel}</label>
-        <div class="link-box">
-          <input id="copyVal" readonly value="${s.copy.replaceAll('"', "&quot;")}" />
-          <button type="button" class="copy-btn" id="copyBtn">Copy</button>
-        </div>
-      `;
-
-      document.getElementById("copyBtn").onclick = () =>
-        copyText(s.copy, document.getElementById("copyBtn"));
-
-      backBtn.disabled = i === 0;
-      nextBtn.textContent = i === STEPS.length - 1 ? "Finish" : "Done — Next";
-      bar.style.width = `${((i) / STEPS.length) * 100}%`;
-      count.textContent = `${i + 1} / ${STEPS.length}`;
-      nav.classList.remove("hidden");
-    }
-
-    backBtn.onclick = () => {
-      if (i > 0) {
-        i -= 1;
-        render();
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-    };
-    nextBtn.onclick = () => {
-      i += 1;
-      render();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      if (i >= STEPS.length) {
-        window.open(
-          "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396",
-          "_blank",
-          "noopener"
-        );
-      }
-    };
-
-    render();
-  </script>
 </body>
 </html>

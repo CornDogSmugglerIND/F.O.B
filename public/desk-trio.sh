@@ -1,53 +1,32 @@
 #!/usr/bin/env bash
-# Desk helper for Triple Threat proof (Cursor + Claude + GitHub).
+# Triple Threat — truthful wire status (Cursor + Claude Code Action + GitHub).
 # After merge: bash <(curl -fsSL https://f-o-b.vercel.app/desk-trio.sh)
 # Or from repo: bash scripts/desk-trio.sh
 set -euo pipefail
 
-OPEN() {
-  local url="$1"
-  if command -v open >/dev/null 2>&1; then
-    open "$url"
-  elif command -v xdg-open >/dev/null 2>&1; then
-    xdg-open "$url" >/dev/null 2>&1 || true
-  else
-    echo "Open: $url"
-  fi
-}
-
 cat <<'EOF'
-=== Trio proof — what is going on ===
+=== Triple Threat — what was broken ===
 
-Gate 2 DONE: Claude already answered GitHub #24.
-Gate 1 BLOCKED: this cloud agent still has no Composio tools.
+Cowork does NOT auto-wake on GitHub comments.
+TRIO_OK only happened when Sawyer told Cowork at the desk to reply.
 
-WRONG page: Auth Configs (Cursor toolkit API key rows).
-  Do NOT create anything there for this gate.
+Cursor @claude pings fire Claude Code Action, but they failed:
+  401 User does not have write access
+because Composio posts as CornDogSmugglerCoalition7 (read-only).
+continue-on-error hid the failure as "success".
 
-RIGHT page: Sessions (or API Keys) → copy the MCP URL
-  (often https://mcp.composio.dev/...). Paste into Cursor Agents
-  MCP dropdown. Never open that URL in the browser.
+=== Fix ===
 
-Opening real pages only...
-EOF
+PR: cursor/trio-wire-fix-f396
+- GITHUB_TOKEN for issue writes
+- allowed_non_write_users: CornDogSmugglerCoalition7
+- real failures visible
 
-OPEN "https://dashboard.composio.dev"
-OPEN "https://cursor.com/agents"
-OPEN "https://cursor.com/agents/bc-01a060ac-33ae-742d-85d0-f7658f3af396"
+After that merges to main: Cursor @claude on #24 → Action replies
+(as github-actions[bot] when using the workflow token).
 
-cat <<'EOF'
+Desktop Cowork is still fine for design talk — it is not the auto wire.
 
-Clicks:
-
-1) Composio dashboard → left sidebar → **Sessions**
-   (skip Auth Configs)
-   Open/create a session → copy MCP URL (mcp.composio.dev/...)
-   If no MCP URL on Sessions, try sidebar **API Keys** and tell Cursor what you see.
-
-2) cursor.com/agents → MCP dropdown at the TOP → Add server
-   Paste that URL → HTTP → Save/Enable
-
-3) Reply in this chat:
-
-composio done
+Status page: https://f-o-b.vercel.app/trio-setup.html
+Issue: https://github.com/CornDogSmugglerIND/F.O.B/issues/24
 EOF
