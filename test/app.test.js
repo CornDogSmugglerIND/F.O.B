@@ -50,7 +50,7 @@ test("GET / serves Scouter frontend", async () => {
     assert.match(html, /Add to rail/);
     assert.match(html, /SCOUTER/);
     assert.match(html, /hh-viewfinder/);
-    assert.match(html, /scouter\.css\?v=22/);
+    assert.match(html, /scouter.css?v=23/);
     assert.match(html, /stagedFlag/);
     assert.match(html, /CAPTURE/);
     assert.match(html, /SCAN/);
