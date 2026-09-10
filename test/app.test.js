@@ -47,9 +47,14 @@ test("GET / serves Scouter frontend", async () => {
     const res = await fetch(`${baseUrl}/`);
     const html = await res.text();
     assert.match(html, /Coalition H\.U\.D/);
-    assert.match(html, /Start intake/);
-    assert.match(html, /scouter\.css\?v=15/);
+    assert.match(html, /Add to rail/);
+    assert.match(html, /SCOUTER/);
+    assert.match(html, /hh-viewfinder/);
+    assert.match(html, /scouter\.css\?v=20/);
     assert.match(html, /stagedFlag/);
+    assert.doesNotMatch(html, /Drop a folder of scans/);
+    assert.doesNotMatch(html, />Export</);
+    assert.doesNotMatch(html, />Import</);
   } finally {
     await close();
   }
@@ -66,8 +71,9 @@ test("GET /hud.html serves Coalition H.U.D shell", async () => {
     assert.match(html, /data-go="scan"/);
     assert.match(html, /Scouter/);
     assert.match(html, /stagedFlag/);
-    assert.match(html, /Run identify/);
-    assert.match(html, /Export staged batch/);
+    assert.match(html, /hh-viewfinder/);
+    assert.match(html, /Export staged/);
+    assert.doesNotMatch(html, /Drop a folder of scans/);
     assert.doesNotMatch(html, /Command Core/);
     assert.doesNotMatch(html, /readyToList/);
   } finally {

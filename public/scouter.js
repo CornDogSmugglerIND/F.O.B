@@ -45,6 +45,7 @@ const els = {
   photoCountLbl: $("photoCountLbl"),
   pageTitle: $("pageTitle"),
   btnCamera: $("btnCamera"),
+  btnShutter: $("btnShutter"),
   btnGallery: $("btnGallery"),
   inputCamera: $("inputCamera"),
   inputGallery: $("inputGallery"),
@@ -75,12 +76,15 @@ const els = {
   railToolbar: $("railToolbar"),
   railFilter: $("railFilter"),
   btnNewScan: $("btnNewScan"),
+  btnRailNew: $("btnRailNew"),
   btnExport: $("btnExport"),
   btnImport: $("btnImport"),
   importFile: $("importFile"),
   pageHero: $("pageHero"),
   pageEyebrow: $("pageEyebrow"),
   pageSub: $("pageSub"),
+  viewfinderIdle: $("viewfinderIdle"),
+  viewfinderPreview: $("viewfinderPreview"),
 };
 
 function showToast(msg, type = "ok") {
@@ -163,8 +167,26 @@ function setCategory(value) {
   });
 }
 
+function updateViewfinder() {
+  const last = state.draftPhotos[state.draftPhotos.length - 1];
+  if (els.viewfinderPreview && els.viewfinderIdle) {
+    if (last?.dataUrl) {
+      els.viewfinderPreview.src = last.dataUrl;
+      els.viewfinderPreview.classList.remove("hidden");
+      els.viewfinderIdle.classList.add("hidden");
+    } else {
+      els.viewfinderPreview.removeAttribute("src");
+      els.viewfinderPreview.classList.add("hidden");
+      els.viewfinderIdle.classList.remove("hidden");
+    }
+  }
+}
+
 function renderPhotoGrid() {
-  els.photoCountLbl.textContent = `${state.draftPhotos.length} added`;
+  if (els.photoCountLbl) {
+    els.photoCountLbl.textContent = `${state.draftPhotos.length} photo${state.draftPhotos.length === 1 ? "" : "s"}`;
+  }
+  if (!els.photoGrid) return;
   els.photoGrid.innerHTML = state.draftPhotos
     .map(
       (p, i) => `
@@ -181,6 +203,7 @@ function renderPhotoGrid() {
       removePhoto(Number(btn.dataset.rm));
     });
   });
+  updateViewfinder();
 }
 
 function removePhoto(idx) {
@@ -265,7 +288,7 @@ function renderCollection() {
       <div class="coll-empty-state">
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E8B04B" stroke-width="1.4" style="opacity:0.7;filter:drop-shadow(0 0 14px #FFD98A)"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         <div class="v-label" style="margin-top:16px;font-size:12px">Intake empty</div>
-        <p>Scan a barcode or drop a photo to bring inventory in.</p>
+        <p>Capture or scan on Scout to fill the rail.</p>
       </div>`;
     return;
   }
@@ -360,14 +383,13 @@ function resetCapture() {
   state.title = "";
   state.barcode = "";
   els.qtyVal.textContent = "1";
-  els.fieldNotes.value = "";
+  if (els.fieldNotes) els.fieldNotes.value = "";
   els.barcodeInput.value = "";
   els.manualTitle.value = "";
-  els.manualRow.classList.add("hidden");
-  if (els.stagedFlag) els.stagedFlag.checked = false;
+  if (els.stagedFlag) els.stagedFlag.checked = true;
   setCategory("other");
   renderPhotoGrid();
-  setStatus("Add a photo, barcode, or title to start intake");
+  setStatus("Point camera · scan barcode · add item");
   updateSaveState();
 }
 
@@ -417,8 +439,8 @@ async function saveCapture() {
       barcode: state.barcode.trim() || null,
       quantity: state.qty,
       category: state.category,
-      notes: els.fieldNotes.value.trim() || null,
-      staged: Boolean(els.stagedFlag?.checked),
+      notes: (els.fieldNotes?.value || "").trim() || null,
+      staged: els.stagedFlag ? Boolean(els.stagedFlag.checked) : true,
       photos: state.draftPhotos.map((p) => ({
         id: crypto.randomUUID(),
         dataUrl: p.dataUrl,
@@ -472,13 +494,13 @@ async function saveCapture() {
     loadItems();
     resetCapture();
     navigate("collection");
-    showToast("Intake started — saved to collection");
+    showToast(item.staged ? "Staged on rail" : "Saved to rail");
   } catch (e) {
     showToast(e.message, "err");
     setStatus(e.message, "err");
   } finally {
     els.btnSave.disabled = false;
-    els.btnSave.textContent = "Start intake";
+    els.btnSave.textContent = "Add to rail";
     updateSaveState();
   }
 }
@@ -487,20 +509,17 @@ function navigate(view) {
   const isCollection = view === "collection";
   els.viewCapture.classList.toggle("active", !isCollection);
   els.viewCollection.classList.toggle("active", isCollection);
-  els.saveBar.classList.toggle("hidden", isCollection);
-  els.pageHero.classList.toggle("hidden", isCollection);
-  els.intakeBar.classList.toggle("hidden", !isCollection);
-  els.railToolbar.classList.toggle("hidden", !isCollection);
+  els.saveBar?.classList.toggle("hidden", true);
+  els.pageHero?.classList.toggle("hidden", true);
+  els.intakeBar?.classList.toggle("hidden", true);
+  els.railToolbar?.classList.toggle("hidden", true);
 
   if (isCollection) {
-    els.pageTitle.textContent = "Intake";
+    if (els.pageTitle) els.pageTitle.textContent = "Rail";
     renderCollection();
     stopScanner();
-  } else {
-    els.pageTitle.textContent = "New scan";
-    els.pageEyebrow.textContent = "H.U.D · Mobile intake";
-    els.pageSub.textContent =
-      "Capture photos and barcodes on this device. Saved on your phone — no Base44 required.";
+  } else if (els.pageTitle) {
+    els.pageTitle.textContent = "Scout";
   }
 
   document.querySelectorAll(".nav-tab").forEach((tab) => {
@@ -738,19 +757,27 @@ function bindDragOverlay() {
   });
 }
 
+function openCamera() {
+  els.inputCamera.click();
+}
+
 function bindEvents() {
-  els.btnCamera.addEventListener("click", () => els.inputCamera.click());
-  els.btnGallery.addEventListener("click", () => els.inputGallery.click());
-  els.photoDrop.addEventListener("click", (e) => {
+  els.btnCamera?.addEventListener("click", (e) => {
+    if (e.target.closest("[data-rm]")) return;
+    openCamera();
+  });
+  els.btnShutter?.addEventListener("click", openCamera);
+  els.btnGallery?.addEventListener("click", () => els.inputGallery.click());
+  els.photoDrop?.addEventListener("click", (e) => {
     if (e.target.closest("[data-rm]")) return;
     els.inputGallery.click();
   });
-  els.photoDrop.addEventListener("dragover", (e) => {
+  els.photoDrop?.addEventListener("dragover", (e) => {
     e.preventDefault();
     els.photoDrop.classList.add("drag");
   });
-  els.photoDrop.addEventListener("dragleave", () => els.photoDrop.classList.remove("drag"));
-  els.photoDrop.addEventListener("drop", (e) => {
+  els.photoDrop?.addEventListener("dragleave", () => els.photoDrop.classList.remove("drag"));
+  els.photoDrop?.addEventListener("drop", (e) => {
     e.preventDefault();
     els.photoDrop.classList.remove("drag");
     addFiles(e.dataTransfer.files);
@@ -782,16 +809,27 @@ function bindEvents() {
     state.barcode = els.barcodeInput.value.trim();
     updateSaveState();
   });
+  els.barcodeInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      lookupBarcode(els.barcodeInput.value);
+    }
+  });
 
-  els.btnManual.addEventListener("click", () => {
-    els.manualRow.classList.remove("hidden");
-    els.manualTitle.focus();
+  els.btnManual?.addEventListener("click", () => {
+    els.manualTitle?.focus();
   });
   els.btnManualOk.addEventListener("click", () => {
     state.title = els.manualTitle.value.trim();
     if (state.title) {
       setStatus(`Title: ${state.title}`, "ok");
       updateSaveState();
+    }
+  });
+  els.manualTitle?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      els.btnManualOk.click();
     }
   });
 
@@ -807,6 +845,7 @@ function bindEvents() {
   els.btnSave.addEventListener("click", saveCapture);
 
   els.btnNewScan?.addEventListener("click", () => navigate("capture"));
+  els.btnRailNew?.addEventListener("click", () => navigate("capture"));
   els.btnExport?.addEventListener("click", exportInventory);
   els.btnImport?.addEventListener("click", () => els.importFile?.click());
   els.importFile?.addEventListener("change", (e) => {
