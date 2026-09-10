@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Orbitron:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/scouter.css?v=20" />
+  <link rel="stylesheet" href="/scouter.css?v=21" />
 </head>
 <body class="handheld">
   <div class="ambient" aria-hidden="true">
@@ -25,7 +25,6 @@
   <div id="app" class="shell v-glass handheld-shell">
     <div class="v-sweep" aria-hidden="true"></div>
 
-    <!-- SCOUT: camera-first intake (Square/Shopify handheld) -->
     <section id="viewCapture" class="view active handheld-scout">
       <header class="hh-top">
         <div class="hh-brand">
@@ -95,7 +94,6 @@
 
       <button type="button" class="m-btn m-btn-primary m-btn-cut-wide hh-commit" id="btnSave" disabled>Add to rail</button>
 
-      <!-- secondary: gallery dump stays available, not the hero -->
       <button type="button" class="hh-gallery" id="btnGallery">Add from gallery</button>
       <input type="hidden" id="fieldNotes" value="" />
       <button type="button" class="hidden" id="btnManual" tabindex="-1" aria-hidden="true"></button>
@@ -113,7 +111,6 @@
       <input type="file" id="importFile" accept="application/json,.json" hidden />
     </section>
 
-    <!-- RAIL: sift / stage inventory -->
     <section id="viewCollection" class="view handheld-rail">
       <header class="hh-top">
         <div class="hh-brand">
@@ -164,8 +161,8 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="/lib/html5-qrcode.min.js?v=20"></script>
-  <script src="/lib/image.js?v=20"></script>
-  <script src="/scouter.js?v=20"></script>
+  <script src="/lib/html5-qrcode.min.js?v=21"></script>
+  <script src="/lib/image.js?v=21"></script>
+  <script src="/scouter.js?v=21"></script>
 </body>
 </html>

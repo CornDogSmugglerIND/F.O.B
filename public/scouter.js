@@ -95,6 +95,7 @@ function showToast(msg, type = "ok") {
 }
 
 function setStatus(msg, kind = "") {
+  if (!els.identifyStatus) return;
   els.identifyStatus.textContent = msg;
   els.identifyStatus.className = `status-strip${kind ? ` ${kind}` : ""}`;
 }
