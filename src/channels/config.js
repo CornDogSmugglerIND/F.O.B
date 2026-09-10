@@ -31,8 +31,11 @@ export function getChannelStatuses() {
     {
       id: "misprint",
       label: "Misprint",
+      // Keys alone mark "configured" for status; live calls also need MISPRINT_API_BASE.
       configured: present("MISPRINT_API_KEY") && present("MISPRINT_SELLER_ID"),
-      missing: ["MISPRINT_API_KEY", "MISPRINT_SELLER_ID"].filter((k) => !present(k)),
+      ready: present("MISPRINT_API_KEY") && present("MISPRINT_SELLER_ID") && present("MISPRINT_API_BASE"),
+      missing: ["MISPRINT_API_KEY", "MISPRINT_SELLER_ID", "MISPRINT_API_BASE"].filter((k) => !present(k)),
+      keysPresent: present("MISPRINT_API_KEY") && present("MISPRINT_SELLER_ID"),
     },
   ];
 }
