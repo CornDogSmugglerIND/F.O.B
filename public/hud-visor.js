@@ -12,11 +12,11 @@ const catMap = Object.fromEntries(CATEGORIES.map((c) => [c.value, c]));
 
 /** Category hub colors — amber-gold only (no cyan/blue). */
 const CAT_HUBS = {
-  pokemon_sealed: { core: "#E8B04B", hi: "#FFD98A", sub: "Sealed" },
-  graded_slabs: { core: "#C9922F", hi: "#E8B04B", sub: "Graded" },
-  raw_cards: { core: "#D4A84A", hi: "#FFE0A0", sub: "Raw" },
-  sports_cards: { core: "#B8862E", hi: "#E8B04B", sub: "Sports" },
-  other: { core: "#A67C2A", hi: "#D4A84A", sub: "Other" },
+  pokemon_sealed: { core: "#f5c518", hi: "#ffe566", sub: "Sealed" },
+  graded_slabs: { core: "#d4a017", hi: "#f5c518", sub: "Graded" },
+  raw_cards: { core: "#F0C020", hi: "#FFE0A0", sub: "Raw" },
+  sports_cards: { core: "#D4A017", hi: "#f5c518", sub: "Sports" },
+  other: { core: "#C99612", hi: "#F0C020", sub: "Other" },
 };
 
 const MAX_PHOTOS = 8;
@@ -368,7 +368,7 @@ function renderCollection() {
   if (!count) {
     els.collectionRoot.innerHTML = `
       <div class="coll-empty-state">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E8B04B" stroke-width="1.4" style="opacity:0.7;filter:drop-shadow(0 0 14px #FFD98A)"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="1.4" style="opacity:0.7;filter:drop-shadow(0 0 14px #ffe566)"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         <div class="v-label" style="margin-top:16px;font-size:12px">Intake empty</div>
         <p>Scan a barcode or drop a photo to bring inventory in.</p>
       </div>`;

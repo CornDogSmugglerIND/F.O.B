@@ -1,25 +1,25 @@
 /* Coalition VISOR MK II — validated, no broken braces */
 
 :root {
-  /* Coalition H.U.D VISOR — amber-gold only. No cyan/blue chrome. */
-  --base: #0a0b0d;
-  --panel: #14161a;
-  --text: #f5f0e8;
-  --text-mid: #b8b0a4;
-  --text-lo: #7a7268;
-  --text-label: #9a9186;
-  --gold: #e8b04b;
-  --gold-hi: #ffd98a;
-  --ok: #6fbf73;
+  /* Coalition H.U.D VISOR — clean black + sharp signal gold. No muddy brown, no cyan. */
+  --base: #050507;
+  --panel: #111114;
+  --text: #f4f4f5;
+  --text-mid: #a1a1aa;
+  --text-lo: #71717a;
+  --text-label: #a1a1aa;
+  --gold: #f5c518;
+  --gold-hi: #ffe566;
+  --ok: #4ade80;
   --danger: #ff4d6d;
   --radius: 16px;
   --cut: 13px;
   --cut-sm: 8px;
   --cut-lg: 22px;
-  --holo-gold: 232, 176, 75;
+  --holo-gold: 245, 197, 24;
   --shadow-float: 0 16px 40px -18px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.09);
   --shadow-raised: 0 22px 50px -20px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  --accent-glow: 0 0 0 3px rgba(232, 176, 75, 0.12);
+  --accent-glow: 0 0 0 3px rgba(245, 197, 24, 0.14);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -33,8 +33,8 @@ body {
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   background:
-    radial-gradient(1400px 700px at 50% -12%, rgba(232, 176, 75, 0.06), transparent 68%),
-    radial-gradient(900px 500px at 85% 100%, rgba(232, 176, 75, 0.03), transparent 65%),
+    radial-gradient(1400px 700px at 50% -12%, rgba(245, 197, 24, 0.07), transparent 68%),
+    radial-gradient(900px 500px at 85% 100%, rgba(245, 197, 24, 0.03), transparent 65%),
     var(--base);
   background-attachment: fixed;
 }
@@ -63,7 +63,7 @@ body {
 }
 .v-emit-gold { color: var(--gold-hi); text-shadow: 0 0 1px rgba(255,255,255,0.9), 0 0 14px rgba(var(--holo-gold),0.85), 0 0 38px rgba(var(--holo-gold),0.45); }
 .m-eyebrow { font-family: "Segoe UI", "Helvetica Neue", sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-lo); }
-.m-readout { font-family: "JetBrains Mono", monospace; color: var(--gold); font-variant-numeric: tabular-nums; text-shadow: 0 0 18px rgba(255,180,61,0.4); }
+.m-readout { font-family: "JetBrains Mono", monospace; color: var(--gold); font-variant-numeric: tabular-nums; text-shadow: 0 0 18px rgba(245, 197, 24,0.4); }
 
 /* ── Holo panel (v-panel) ── */
 .v-panel {
@@ -117,7 +117,7 @@ body {
   inset: 0 0 auto 0;
   height: 1px;
   border-radius: inherit;
-  background: linear-gradient(90deg, transparent, rgba(255,180,61,0.55), transparent);
+  background: linear-gradient(90deg, transparent, rgba(245, 197, 24,0.55), transparent);
   pointer-events: none;
 }
 
@@ -147,9 +147,9 @@ body {
 .m-btn:disabled { opacity: 0.38; cursor: not-allowed; }
 .m-btn-primary {
   color: var(--base);
-  background: linear-gradient(180deg, #ffd98a, #ffb43d);
+  background: linear-gradient(180deg, #ffe566, #f5c518 55%, #d4a017);
   font-weight: 700;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 0 30px -6px rgba(255,180,61,0.8);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 0 30px -6px rgba(245, 197, 24,0.8);
 }
 .m-btn-cut-wide { width: 100%; min-height: 50px; font-size: 14px; }
 
@@ -194,7 +194,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
 }
 .m-chip-on {
   color: var(--gold);
-  box-shadow: inset 0 0 0 1px rgba(255,180,61,0.6), inset 0 1px 0 rgba(255,255,255,0.16), 0 0 20px -8px rgba(255,180,61,0.7);
+  box-shadow: inset 0 0 0 1px rgba(245, 197, 24,0.6), inset 0 1px 0 rgba(255,255,255,0.16), 0 0 20px -8px rgba(245, 197, 24,0.7);
 }
 
 /* ── LCD ── */
@@ -203,8 +203,8 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
   background: linear-gradient(168deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.022) 46%, rgba(0,0,0,0.30) 100%);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.16),
-    inset 0 0 0 1px rgba(255,180,61,0.24),
-    inset 0 0 42px -18px rgba(255,180,61,0.55),
+    inset 0 0 0 1px rgba(245, 197, 24,0.24),
+    inset 0 0 42px -18px rgba(245, 197, 24,0.55),
     0 22px 60px -26px rgba(0,0,0,0.95);
 }
 
@@ -214,7 +214,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
   min-height: 100dvh;
   max-width: 480px;
   margin: 0 auto;
-  background: radial-gradient(130% 80% at 50% 0%, #0C1118 0%, var(--base) 60%, #010306 100%);
+  background: radial-gradient(130% 80% at 50% 0%, #0a0a0c 0%, var(--base) 60%, #010306 100%);
   padding-bottom: calc(88px + var(--safe-bottom));
   overflow-x: hidden;
 }
@@ -280,7 +280,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
   border-radius: 50%;
   filter: blur(60px);
 }
-.ambient-orb-1 { width: 280px; height: 280px; top: -60px; left: -40px; background: rgba(255,180,61,0.13); animation: drift1 12s ease-in-out infinite; }
+.ambient-orb-1 { width: 280px; height: 280px; top: -60px; left: -40px; background: rgba(245, 197, 24,0.13); animation: drift1 12s ease-in-out infinite; }
 .ambient-orb-2 { width: 220px; height: 220px; bottom: 10%; right: -50px; background: rgba(232,176,75,0.08); animation: drift2 15s ease-in-out infinite; }
 .ambient-orb-3 { width: 160px; height: 160px; top: 40%; left: 30%; background: rgba(255,224,138,0.08); animation: drift3 18s ease-in-out infinite; }
 @keyframes drift1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(20px, 30px); } }
@@ -423,7 +423,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
 .holo-card-plate {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
   padding: 6px 8px 7px;
-  background: linear-gradient(180deg, rgba(5,7,10,0) 0%, rgba(5,7,10,0.88) 42%, rgba(5,7,10,0.97) 100%);
+  background: linear-gradient(180deg, rgba(5,5,7,0) 0%, rgba(5,5,7,0.88) 42%, rgba(5,5,7,0.97) 100%);
 }
 .holo-card-title { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
 .holo-card-sub { font-family: "JetBrains Mono", monospace; font-size: 10px; margin-top: 2px; }
@@ -446,7 +446,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
   position: fixed; left: 50%; transform: translateX(-50%);
   bottom: calc(70px + var(--safe-bottom));
   width: 100%; max-width: 480px; padding: 0 12px 10px; z-index: 40;
-  background: linear-gradient(to top, rgba(4,7,12,0.98) 65%, transparent);
+  background: linear-gradient(to top, rgba(4,4,6,0.98) 65%, transparent);
 }
 
 .bottom-nav {
@@ -455,7 +455,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
   height: calc(70px + var(--safe-bottom));
   padding: 0 8px var(--safe-bottom);
   display: flex; gap: 4px; z-index: 50;
-  background: linear-gradient(180deg, rgba(10,16,24,0.90), rgba(4,7,12,0.97));
+  background: linear-gradient(180deg, rgba(8,8,10,0.90), rgba(4,4,6,0.97));
   -webkit-backdrop-filter: blur(22px) saturate(1.2);
   backdrop-filter: blur(22px) saturate(1.2);
   box-shadow: inset 0 1px rgba(var(--holo-gold),0.18), 0 -12px 30px rgba(0,0,0,0.6);
@@ -481,7 +481,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
 /* ── Overlays ── */
 .scan-overlay {
   position: fixed; inset: 0; z-index: 200;
-  background: rgba(4,7,12,0.97);
+  background: rgba(4,4,6,0.97);
   display: none; flex-direction: column;
 }
 .scan-overlay.open { display: flex; }
@@ -493,7 +493,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
 .drag-overlay {
   position: fixed; inset: 0; z-index: 250; display: none;
   align-items: center; justify-content: center;
-  background: rgba(4,7,12,0.88);
+  background: rgba(4,4,6,0.88);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   pointer-events: none;
@@ -730,10 +730,10 @@ body.handheld {
 .hh-act:active { transform: scale(0.97); }
 .hh-act-gold {
   color: var(--base);
-  background: linear-gradient(180deg, #ffd98a, #e8b04b 55%, #c9922f);
+  background: linear-gradient(180deg, #ffe566, #f5c518 55%, #d4a017);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 0 36px -8px rgba(255, 180, 61, 0.85);
+    0 0 36px -8px rgba(245, 197, 24, 0.85);
 }
 .hh-act-icon {
   font-size: 18px;
