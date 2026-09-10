@@ -10,7 +10,9 @@ let dataRoot = process.env.VERCEL
 let ready = false;
 
 /** @typedef {{ id: string, filename: string | null, url: string, dataUrl: string | null, createdAt: string }} Photo */
-/** @typedef {{ id: string, createdAt: string, updatedAt: string, title: string | null, barcode: string | null, quantity: number, category: string, brand: string | null, description: string | null, lookupSource: string | null, notes: string | null, photos: Photo[] }} ScoutItem */
+/** @typedef {{ listingId: string | null, price: number | null, status: string | null }} ChannelListing */
+/** @typedef {{ ebay?: ChannelListing, double_holo?: ChannelListing, misprint?: ChannelListing }} ChannelMap */
+/** @typedef {{ id: string, createdAt: string, updatedAt: string, title: string | null, barcode: string | null, quantity: number, category: string, brand: string | null, description: string | null, lookupSource: string | null, notes: string | null, staged: boolean, price: number | null, channels: ChannelMap, lastSaleAt: string | null, lastSaleChannel: string | null, lastSaleExternalId: string | null, photos: Photo[] }} ScoutItem */
 
 function itemsFile() {
   return join(dataRoot, "scouter.json");
@@ -79,6 +81,12 @@ export async function createScoutItem(partial = {}) {
     description: partial.description ?? null,
     lookupSource: partial.lookupSource ?? null,
     notes: partial.notes ?? null,
+    staged: Boolean(partial.staged),
+    price: partial.price != null ? Number(partial.price) : null,
+    channels: partial.channels ?? {},
+    lastSaleAt: partial.lastSaleAt ?? null,
+    lastSaleChannel: partial.lastSaleChannel ?? null,
+    lastSaleExternalId: partial.lastSaleExternalId ?? null,
     photos: [],
   };
   const items = await readItems();
@@ -99,7 +107,10 @@ export async function updateScoutItem(id, patch) {
     id: current.id,
     createdAt: current.createdAt,
     updatedAt: new Date().toISOString(),
-    quantity: patch.quantity != null ? Math.max(1, Number(patch.quantity) || 1) : current.quantity,
+    quantity: patch.quantity != null ? Math.max(0, Number(patch.quantity) || 0) : current.quantity,
+    staged: patch.staged != null ? Boolean(patch.staged) : Boolean(current.staged),
+    price: patch.price !== undefined ? (patch.price == null ? null : Number(patch.price)) : current.price ?? null,
+    channels: patch.channels !== undefined ? patch.channels : current.channels ?? {},
     photos: patch.photos ?? current.photos,
   };
   items[index] = next;

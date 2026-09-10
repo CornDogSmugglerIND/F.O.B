@@ -10,13 +10,13 @@ const CATEGORIES = [
 
 const catMap = Object.fromEntries(CATEGORIES.map((c) => [c.value, c]));
 
-/** Category hub colors — from Coalition ScanIntake.jsx CAT_HUBS */
+/** Category hub colors — amber-gold only (no cyan/blue). */
 const CAT_HUBS = {
-  pokemon_sealed: { core: "#FFB43D", hi: "#FFD98A", sub: "Sealed" },
-  graded_slabs: { core: "#2BD9C0", hi: "#8FF6E8", sub: "Graded" },
-  raw_cards: { core: "#4FA8D8", hi: "#BFE9FF", sub: "Raw" },
-  sports_cards: { core: "#2E6F91", hi: "#7FD4FF", sub: "Sports" },
-  other: { core: "#4FC3F7", hi: "#A8E4FF", sub: "Other" },
+  pokemon_sealed: { core: "#E8B04B", hi: "#FFD98A", sub: "Sealed" },
+  graded_slabs: { core: "#C9922F", hi: "#E8B04B", sub: "Graded" },
+  raw_cards: { core: "#D4A84A", hi: "#FFE0A0", sub: "Raw" },
+  sports_cards: { core: "#B8862E", hi: "#E8B04B", sub: "Sports" },
+  other: { core: "#A67C2A", hi: "#D4A84A", sub: "Other" },
 };
 
 const MAX_PHOTOS = 8;
@@ -25,24 +25,24 @@ const VIEWS = ["command", "intake", "scan", "list", "systems"];
 
 const VIEW_COPY = {
   command: {
-    eyebrow: "Coalition · Command Core",
-    title: "Command",
-    sub: "VISOR glass. Same look as Base44 Command Core. Every tab escapes.",
+    eyebrow: "Coalition H.U.D",
+    title: "Overview",
+    sub: "Dark tactical VISOR. Amber-gold only. Scouter is the phone intake tab.",
   },
   intake: {
-    eyebrow: "H.U.D · Collection rail",
-    title: "Intake",
-    sub: "Category hubs and holo cards. Filter, open, delete. Saved on this phone.",
+    eyebrow: "H.U.D · Scouter rail",
+    title: "Sift",
+    sub: "Everything currently in Scouter. Review, correct, stage. Not a listing screen.",
   },
   scan: {
-    eyebrow: "H.U.D · Mobile intake",
-    title: "New scan",
-    sub: "Capture photos and barcodes on this device. Multi-photo. Always can leave.",
+    eyebrow: "H.U.D · Scouter",
+    title: "Scouter",
+    sub: "Handheld intake: take or dump photos → identify → sift → stage. Does not list.",
   },
   list: {
-    eyebrow: "H.U.D · Listing engine",
-    title: "List",
-    sub: "Phone listing tools now. Full eBay + Triple Threat next — not Base44 Claude.",
+    eyebrow: "H.U.D · Staged",
+    title: "Staged",
+    sub: "Batch ready for desktop pipeline. Listing engine runs on desktop — not here.",
   },
   systems: {
     eyebrow: "H.U.D · Systems",
@@ -52,7 +52,7 @@ const VIEW_COPY = {
 };
 
 const state = {
-  view: "command",
+  view: "scan",
   items: [],
   draftPhotos: [],
   qty: 1,
@@ -95,7 +95,13 @@ const els = {
   qtyPlus: $("qtyPlus"),
   categoryChips: $("categoryChips"),
   fieldNotes: $("fieldNotes"),
-  readyToList: $("readyToList"),
+  stagedFlag: $("stagedFlag"),
+  identifyPhaseLbl: $("identifyPhaseLbl"),
+  identifyResult: $("identifyResult"),
+  identifyResultTitle: $("identifyResultTitle"),
+  identifyResultMeta: $("identifyResultMeta"),
+  btnExportStaged: $("btnExportStaged"),
+  handoffNote: $("handoffNote"),
   btnSave: $("btnSave"),
   saveBar: $("saveBar"),
   collectionRoot: $("collectionRoot"),
@@ -140,7 +146,13 @@ function setStatus(msg, kind = "") {
 function loadLocalItems() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const items = raw ? JSON.parse(raw) : [];
+    // Migrate legacy readyToList → staged (Scouter stages; desktop lists)
+    return items.map((item) => {
+      if (typeof item.staged === "boolean") return item;
+      const { readyToList, ...rest } = item;
+      return { ...rest, staged: Boolean(readyToList) };
+    });
   } catch {
     return [];
   }
@@ -191,6 +203,38 @@ function updateSaveState() {
     state.barcode.trim().length > 0 ||
     state.title.trim().length > 0;
   els.btnSave.disabled = !canSave;
+  if (!els.btnSave.disabled) {
+    els.btnSave.textContent = els.stagedFlag?.checked ? "Save & stage" : "Save to Scouter";
+  }
+}
+
+function setIdentifyPhase(phase, detail = "") {
+  const labels = {
+    idle: "IDLE",
+    running: "RUNNING",
+    ok: "MATCH",
+    fail: "NO MATCH",
+    manual: "MANUAL",
+  };
+  if (els.identifyPhaseLbl) els.identifyPhaseLbl.textContent = labels[phase] || phase;
+  if (!els.identifyResult) return;
+  if (phase === "idle" || phase === "running") {
+    els.identifyResult.classList.add("hidden");
+    return;
+  }
+  els.identifyResult.classList.remove("hidden");
+  if (els.identifyResultTitle) {
+    els.identifyResultTitle.textContent = state.title || detail || "—";
+  }
+  if (els.identifyResultMeta) {
+    const bits = [
+      state.barcode ? `BC ${state.barcode}` : null,
+      phase === "ok" ? "catalog hit" : null,
+      phase === "manual" ? "manual title" : null,
+      phase === "fail" ? "needs title" : null,
+    ].filter(Boolean);
+    els.identifyResultMeta.textContent = bits.join(" · ");
+  }
 }
 
 function setCategory(value) {
@@ -276,13 +320,16 @@ function holoCardHtml(item, hub) {
   const face = src
     ? `<img src="${src}" alt="" />`
     : `<div class="holo-card-empty">NO IMG</div>`;
+  const badge = item.staged
+    ? `<span class="holo-card-sub" style="color:var(--gold-hi)">STAGED</span>`
+    : `<span class="holo-card-sub" style="color:${hub.hi}">${escapeHtml(sub)}</span>`;
   return `
     <div class="holo-card-wrap">
       <button type="button" class="holo-card" data-item="${item.id}" style="box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), inset 0 0 0 1px ${hub.core}55, 0 18px 40px -16px rgba(0,0,0,0.95)">
         ${face}
         <span class="holo-card-plate">
           <span class="holo-card-title">${title}</span>
-          <span class="holo-card-sub" style="color:${hub.hi}">${escapeHtml(sub)}</span>
+          ${badge}
         </span>
       </button>
     </div>`;
@@ -297,7 +344,7 @@ function renderCollection() {
   if (!count) {
     els.collectionRoot.innerHTML = `
       <div class="coll-empty-state">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#2E6F91" stroke-width="1.4" style="opacity:0.7;filter:drop-shadow(0 0 14px #7FD4FF)"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E8B04B" stroke-width="1.4" style="opacity:0.7;filter:drop-shadow(0 0 14px #FFD98A)"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         <div class="v-label" style="margin-top:16px;font-size:12px">Intake empty</div>
         <p>Scan a barcode or drop a photo to bring inventory in.</p>
       </div>`;
@@ -371,10 +418,11 @@ function resetCapture() {
   els.barcodeInput.value = "";
   els.manualTitle.value = "";
   els.manualRow.classList.add("hidden");
-  if (els.readyToList) els.readyToList.checked = false;
+  if (els.stagedFlag) els.stagedFlag.checked = false;
   setCategory("other");
   renderPhotoGrid();
-  setStatus("Add a photo, barcode, or title to start intake");
+  setIdentifyPhase("idle");
+  setStatus("Add a photo, barcode, or title — then Run identify");
   updateSaveState();
 }
 
@@ -384,10 +432,10 @@ function pad2(n) {
 
 function renderCommand() {
   const photoTotal = state.items.reduce((n, i) => n + (i.photos?.length || 0), 0);
-  const ready = state.items.filter((i) => i.readyToList).length;
+  const staged = state.items.filter((i) => i.staged).length;
   els.cmdItems.textContent = pad2(state.items.length);
   els.cmdPhotos.textContent = pad2(photoTotal);
-  els.cmdReady.textContent = pad2(ready);
+  els.cmdReady.textContent = pad2(staged);
   els.statCount.textContent = pad2(state.items.length);
   if (els.systemsNote) {
     els.systemsNote.textContent = `${state.items.length} local records · shared store (${LS_KEY})`;
@@ -405,16 +453,66 @@ function renderCommand() {
 }
 
 function renderListRail() {
-  const ready = state.items.filter((i) => i.readyToList);
-  els.listReadyLbl.textContent = pad2(ready.length);
-  if (!ready.length) {
+  const staged = state.items.filter((i) => i.staged);
+  els.listReadyLbl.textContent = pad2(staged.length);
+  if (els.handoffNote) {
+    els.handoffNote.textContent = staged.length
+      ? `${staged.length} staged — export batch for desktop (Batches / Inventory)`
+      : "No staged items yet — stage from Scouter or Sift";
+  }
+  if (els.btnExportStaged) els.btnExportStaged.disabled = staged.length === 0;
+  if (!staged.length) {
     els.listRail.innerHTML = "";
     return;
   }
-  els.listRail.innerHTML = ready
+  els.listRail.innerHTML = staged
     .map((it) => holoCardHtml(it, CAT_HUBS[it.category] || CAT_HUBS.other))
     .join("");
   bindHoloClicks(els.listRail);
+}
+
+function exportStagedBatch() {
+  const staged = loadLocalItems().filter((i) => i.staged);
+  if (!staged.length) {
+    showToast("Nothing staged to export", "err");
+    return;
+  }
+  const payload = {
+    app: "coalition-hud-scouter",
+    kind: "staged-batch-handoff",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    handoff: {
+      from: "scouter",
+      to: "desktop-pipeline",
+      icloudFolders: ["1.INTAKE", "Batches", "Inventory"],
+      note: "Staged inventory only. Listing engine runs on desktop.",
+    },
+    count: staged.length,
+    items: staged,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  a.href = url;
+  a.download = `coalition-staged-batch-${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${staged.length} staged for desktop`);
+  if (els.handoffNote) {
+    els.handoffNote.textContent = `Last export: ${staged.length} items · ${stamp}`;
+  }
+}
+
+function setItemStaged(id, staged) {
+  const item = state.items.find((i) => i.id === id);
+  if (!item) return;
+  item.staged = Boolean(staged);
+  item.updatedAt = new Date().toISOString();
+  saveLocalItems(state.items);
+  loadItems();
+  showToast(item.staged ? "Staged for desktop" : "Unstaged");
 }
 
 function bindHoloClicks(root) {
@@ -423,10 +521,17 @@ function bindHoloClicks(root) {
       const item = state.items.find((i) => i.id === btn.dataset.item);
       if (!item) return;
       const title = item.title || "Untitled";
-      const meta = [`Qty ${item.quantity}`, item.barcode, item.readyToList ? "Ready" : null]
+      const meta = [`Qty ${item.quantity}`, item.barcode, item.staged ? "Staged" : "Not staged"]
         .filter(Boolean)
         .join(" · ");
-      if (confirm(`${title}\n${meta}\n\nDelete this item from your phone?`)) {
+      const nextStaged = !item.staged;
+      if (
+        confirm(
+          `${title}\n${meta}\n\n${nextStaged ? "Stage for desktop pipeline?" : "Unstage this item?"}\n\nCancel = delete options`,
+        )
+      ) {
+        setItemStaged(item.id, nextStaged);
+      } else if (confirm(`Delete ${title} from this phone?`)) {
         deleteItem(item.id);
       }
     });
@@ -436,30 +541,40 @@ function bindHoloClicks(root) {
 async function lookupBarcode(code) {
   const trimmed = code.trim();
   if (!trimmed) {
-    showToast("Enter a barcode first", "err");
+    showToast("Scan or enter a barcode first", "err");
+    setIdentifyPhase("fail", "No barcode");
+    setStatus("Need a barcode or manual title to identify", "err");
     return;
   }
 
   state.barcode = trimmed;
   els.barcodeInput.value = trimmed;
-  setStatus("Looking up barcode…", "busy");
+  setIdentifyPhase("running");
+  setStatus("Identify running — watching catalog…", "busy");
   els.btnLookup.disabled = true;
+  els.btnLookup.textContent = "Running…";
 
   try {
     const result = await api(`/api/scouter/barcode/${encodeURIComponent(trimmed)}`);
     if (result.found && result.product?.title) {
       state.title = result.product.title;
-      setStatus(`Found: ${result.product.title}`, "ok");
+      setIdentifyPhase("ok");
+      setStatus(`Identified: ${result.product.title}`, "ok");
+      showToast("Identify match");
     } else {
-      setStatus("Not in catalog — add a title manually", "err");
+      setIdentifyPhase("fail");
+      setStatus("No catalog match — set a title manually", "err");
       els.manualRow.classList.remove("hidden");
+      showToast("No match — manual title", "err");
     }
     updateSaveState();
   } catch {
-    setStatus("Lookup offline — add title manually", "err");
+    setIdentifyPhase("fail");
+    setStatus("Identify offline — set a title manually", "err");
     els.manualRow.classList.remove("hidden");
   } finally {
     els.btnLookup.disabled = false;
+    els.btnLookup.textContent = "Run identify";
   }
 }
 
@@ -480,7 +595,7 @@ async function saveCapture() {
       quantity: state.qty,
       category: state.category,
       notes: els.fieldNotes.value.trim() || null,
-      readyToList: Boolean(els.readyToList?.checked),
+      staged: Boolean(els.stagedFlag?.checked),
       photos: state.draftPhotos.map((p) => ({
         id: crypto.randomUUID(),
         dataUrl: p.dataUrl,
@@ -504,6 +619,7 @@ async function saveCapture() {
             quantity: item.quantity,
             category: item.category,
             notes: item.notes,
+            staged: item.staged,
           }),
         })
       ).item;
@@ -545,7 +661,7 @@ async function saveCapture() {
 }
 
 function navigate(view) {
-  const name = VIEWS.includes(view) ? view : "command";
+  const name = VIEWS.includes(view) ? view : "scan";
   state.view = name;
 
   const map = {
@@ -843,7 +959,8 @@ function bindEvents() {
   els.btnScanClose.addEventListener("click", () => stopScanner());
   els.btnLookup.addEventListener("click", async () => {
     if (!els.barcodeInput.value.trim() && state.draftPhotos.length) {
-      setStatus("Checking photos for barcode…", "busy");
+      setIdentifyPhase("running");
+      setStatus("Pulling barcode from photos…", "busy");
       const fromPhoto = await scanBarcodeFromPhotos();
       if (fromPhoto) {
         els.barcodeInput.value = fromPhoto;
@@ -851,7 +968,7 @@ function bindEvents() {
         updateSaveState();
       }
     }
-    lookupBarcode(els.barcodeInput.value);
+    await lookupBarcode(els.barcodeInput.value);
   });
   els.barcodeInput.addEventListener("input", () => {
     state.barcode = els.barcodeInput.value.trim();
@@ -865,7 +982,8 @@ function bindEvents() {
   els.btnManualOk.addEventListener("click", () => {
     state.title = els.manualTitle.value.trim();
     if (state.title) {
-      setStatus(`Title: ${state.title}`, "ok");
+      setIdentifyPhase("manual");
+      setStatus(`Title set: ${state.title}`, "ok");
       updateSaveState();
     }
   });
@@ -879,10 +997,13 @@ function bindEvents() {
     els.qtyVal.textContent = String(state.qty);
   });
 
+  els.stagedFlag?.addEventListener("change", () => updateSaveState());
+
   els.btnSave.addEventListener("click", saveCapture);
 
   els.btnNewScan?.addEventListener("click", () => navigate("scan"));
   els.btnExport?.addEventListener("click", exportInventory);
+  els.btnExportStaged?.addEventListener("click", exportStagedBatch);
   els.btnImport?.addEventListener("click", () => els.importFile?.click());
   els.btnWipe?.addEventListener("click", () => {
     if (!confirm("Wipe all local HUD / Scouter intake data on this phone?")) return;
@@ -910,7 +1031,7 @@ function bindEvents() {
   });
 
   window.addEventListener("hashchange", () => {
-    const name = (location.hash || "#command").replace("#", "");
+    const name = (location.hash || "#scan").replace("#", "");
     if (VIEWS.includes(name) && name !== state.view) navigate(name);
   });
 }
@@ -923,9 +1044,17 @@ function init() {
   updateSaveState();
   const fromHash = (location.hash || "").replace("#", "");
   const fromQuery = new URLSearchParams(location.search).get("view");
-  const legacy = { collection: "intake", capture: "scan", home: "command", rail: "intake" };
-  const raw = fromHash || fromQuery || "command";
-  navigate(legacy[raw] || (VIEWS.includes(raw) ? raw : "command"));
+  const legacy = {
+    collection: "intake",
+    capture: "scan",
+    home: "scan",
+    rail: "intake",
+    scouter: "scan",
+    stage: "list",
+    ready: "list",
+  };
+  const raw = fromHash || fromQuery || "scan";
+  navigate(legacy[raw] || (VIEWS.includes(raw) ? raw : "scan"));
 }
 
 init();

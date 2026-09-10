@@ -29,9 +29,13 @@ const upload = multer({
 export function scouterRouter() {
   const router = Router();
 
-  router.get("/items", async (_req, res, next) => {
+  router.get("/items", async (req, res, next) => {
     try {
-      res.json({ items: await listScoutItems() });
+      let items = await listScoutItems();
+      if (req.query.staged === "1" || req.query.staged === "true") {
+        items = items.filter((item) => item.staged);
+      }
+      res.json({ items });
     } catch (err) {
       next(err);
     }

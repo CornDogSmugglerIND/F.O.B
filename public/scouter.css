@@ -1,24 +1,25 @@
 /* Coalition VISOR MK II — validated, no broken braces */
 
 :root {
-  --base: #04070c;
-  --text: #ffffff;
-  --text-mid: #c9d8e2;
-  --text-lo: #6f8697;
-  --text-label: #8fa3ad;
-  --gold: #ffb43d;
+  /* Coalition H.U.D VISOR — amber-gold only. No cyan/blue chrome. */
+  --base: #0a0b0d;
+  --panel: #14161a;
+  --text: #f5f0e8;
+  --text-mid: #b8b0a4;
+  --text-lo: #7a7268;
+  --text-label: #9a9186;
+  --gold: #e8b04b;
   --gold-hi: #ffd98a;
-  --emerald: #2bd9c0;
+  --ok: #6fbf73;
   --danger: #ff4d6d;
   --radius: 16px;
   --cut: 13px;
   --cut-sm: 8px;
   --cut-lg: 22px;
-  --holo-gold: 255, 180, 61;
-  --holo-em: 79, 195, 247;
+  --holo-gold: 232, 176, 75;
   --shadow-float: 0 16px 40px -18px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.09);
   --shadow-raised: 0 22px 50px -20px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  --accent-glow: 0 0 0 3px rgba(255, 180, 61, 0.12);
+  --accent-glow: 0 0 0 3px rgba(232, 176, 75, 0.12);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -27,13 +28,13 @@
 html { -webkit-text-size-adjust: 100%; }
 
 body {
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: "Segoe UI", "Helvetica Neue", ui-sans-serif, system-ui, sans-serif;
   color: var(--text);
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   background:
-    radial-gradient(1400px 700px at 50% -12%, rgba(255, 180, 61, 0.045), transparent 68%),
-    radial-gradient(900px 500px at 85% 100%, rgba(43, 217, 192, 0.025), transparent 65%),
+    radial-gradient(1400px 700px at 50% -12%, rgba(232, 176, 75, 0.06), transparent 68%),
+    radial-gradient(900px 500px at 85% 100%, rgba(232, 176, 75, 0.03), transparent 65%),
     var(--base);
   background-attachment: fixed;
 }
@@ -52,7 +53,7 @@ body {
   text-transform: uppercase;
   color: var(--text-label);
 }
-.v-title { font-family: Inter, sans-serif; font-weight: 800; letter-spacing: -0.025em; color: #fff; }
+.v-title { font-family: "Segoe UI", "Helvetica Neue", sans-serif; font-weight: 800; letter-spacing: -0.025em; color: var(--text); }
 .v-readout {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
@@ -61,7 +62,7 @@ body {
   letter-spacing: -0.02em;
 }
 .v-emit-gold { color: var(--gold-hi); text-shadow: 0 0 1px rgba(255,255,255,0.9), 0 0 14px rgba(var(--holo-gold),0.85), 0 0 38px rgba(var(--holo-gold),0.45); }
-.m-eyebrow { font-family: Inter, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-lo); }
+.m-eyebrow { font-family: "Segoe UI", "Helvetica Neue", sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-lo); }
 .m-readout { font-family: "JetBrains Mono", monospace; color: var(--gold); font-variant-numeric: tabular-nums; text-shadow: 0 0 18px rgba(255,180,61,0.4); }
 
 /* ── Holo panel (v-panel) ── */
@@ -126,7 +127,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-family: Inter, sans-serif;
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
   font-size: 13px;
   font-weight: 600;
   padding: 11px 16px;
@@ -159,7 +160,7 @@ body {
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   color: #fff;
-  font-family: Inter, sans-serif;
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
   font-size: 14px;
   padding: 11px 14px;
   outline: none;
@@ -179,7 +180,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
 .m-chip {
   display: inline-flex;
   align-items: center;
-  font-family: Inter, sans-serif;
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
   font-size: 11px;
   font-weight: 600;
   padding: 6px 11px;
@@ -226,7 +227,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
   z-index: 42;
   background:
     radial-gradient(130% 100% at 50% 44%, transparent 72%, rgba(0,0,0,0.28) 100%),
-    linear-gradient(180deg, rgba(var(--holo-em),0.03), transparent 26%);
+    linear-gradient(180deg, rgba(var(--holo-gold),0.03), transparent 26%);
 }
 
 .v-glass::after {
@@ -254,7 +255,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
   left: 0;
   right: 0;
   height: 34%;
-  background: linear-gradient(180deg, transparent, rgba(var(--holo-em),0.055) 48%, transparent);
+  background: linear-gradient(180deg, transparent, rgba(var(--holo-gold),0.04) 48%, transparent);
   animation: v-sweepdown 7.5s cubic-bezier(0.55,0,0.45,1) infinite;
 }
 
@@ -307,7 +308,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
 .rail-search input {
   width: 100%;
   padding: 10px 12px 10px 32px;
-  font-family: Inter, sans-serif;
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
   font-size: 13px;
   color: #fff;
   outline: none;
@@ -401,7 +402,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
   background: rgba(255,255,255,0.04);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
 }
-.status-strip.ok { color: var(--emerald); box-shadow: inset 0 0 0 1px rgba(43,217,192,0.35); background: rgba(43,217,192,0.08); }
+.status-strip.ok { color: var(--ok); box-shadow: inset 0 0 0 1px rgba(111,191,115,0.35); background: rgba(111,191,115,0.08); }
 .status-strip.err { color: #ff8fa3; box-shadow: inset 0 0 0 1px rgba(255,77,109,0.35); background: rgba(255,77,109,0.08); }
 .status-strip.busy { color: var(--gold-hi); box-shadow: inset 0 0 0 1px rgba(var(--holo-gold),0.35); background: rgba(var(--holo-gold),0.08); }
 
@@ -438,7 +439,7 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
 .hub-count { font-family: "JetBrains Mono", monospace; font-size: 30px; font-weight: 800; text-align: right; flex-shrink: 0; }
 
 .coll-empty-state { text-align: center; padding: 48px 16px; }
-.coll-empty-state p { font-family: Inter, sans-serif; font-size: 14px; color: var(--text-mid); margin-top: 8px; line-height: 1.5; }
+.coll-empty-state p { font-family: "Segoe UI", "Helvetica Neue", sans-serif; font-size: 14px; color: var(--text-mid); margin-top: 8px; line-height: 1.5; }
 
 /* ── Save dock + nav ── */
 .save-dock {
@@ -511,8 +512,21 @@ textarea.m-input { resize: vertical; min-height: 72px; line-height: 1.45; }
   clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
-.toast.ok { background: rgba(43,217,192,0.12); box-shadow: inset 0 0 0 1px rgba(43,217,192,0.35); color: var(--emerald); }
+.toast.ok { background: rgba(111,191,115,0.12); box-shadow: inset 0 0 0 1px rgba(111,191,115,0.35); color: var(--ok); }
 .toast.err { background: rgba(255,77,109,0.12); box-shadow: inset 0 0 0 1px rgba(255,77,109,0.35); color: #ff8fa3; }
+
+.ready-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  cursor: pointer;
+}
+.ready-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold);
+}
 
 .hidden { display: none !important; }
 .no-scrollbar { scrollbar-width: none; }

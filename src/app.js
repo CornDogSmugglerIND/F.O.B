@@ -2,7 +2,9 @@ import express from "express";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { scouterRouter } from "./routes/scouter.js";
+import { channelsRouter } from "./routes/channels.js";
 import { getUploadsDir } from "./store.js";
+import { getChannelStatuses } from "./channels/config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -17,10 +19,12 @@ export function createApp() {
       status: "ok",
       service: "scouter",
       uptimeSeconds: Math.round((Date.now() - startedAt) / 1000),
+      channels: getChannelStatuses().map((c) => ({ id: c.id, configured: c.configured })),
     });
   });
 
   app.use("/api/scouter", scouterRouter());
+  app.use("/api/channels", channelsRouter());
   app.use("/uploads", express.static(getUploadsDir()));
   app.use(express.static(join(__dirname, "..", "public")));
 

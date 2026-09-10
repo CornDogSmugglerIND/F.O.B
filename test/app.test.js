@@ -48,7 +48,8 @@ test("GET / serves Scouter frontend", async () => {
     const html = await res.text();
     assert.match(html, /Coalition H\.U\.D/);
     assert.match(html, /Start intake/);
-    assert.match(html, /scouter\.css\?v=13/);
+    assert.match(html, /scouter\.css\?v=15/);
+    assert.match(html, /stagedFlag/);
   } finally {
     await close();
   }
@@ -63,6 +64,12 @@ test("GET /hud.html serves Coalition H.U.D shell", async () => {
     assert.match(html, /Coalition H\.U\.D/);
     assert.match(html, /hud-visor\.js/);
     assert.match(html, /data-go="scan"/);
+    assert.match(html, /Scouter/);
+    assert.match(html, /stagedFlag/);
+    assert.match(html, /Run identify/);
+    assert.match(html, /Export staged batch/);
+    assert.doesNotMatch(html, /Command Core/);
+    assert.doesNotMatch(html, /readyToList/);
   } finally {
     await close();
   }
@@ -123,16 +130,23 @@ test("Scouter API creates and lists items with quantity and category", async () 
         barcode: "123456789012",
         quantity: 3,
         category: "raw_cards",
+        staged: true,
       }),
     });
     assert.equal(createRes.status, 201);
     const created = await createRes.json();
     assert.equal(created.item.quantity, 3);
     assert.equal(created.item.category, "raw_cards");
+    assert.equal(created.item.staged, true);
 
     const listRes = await fetch(`${baseUrl}/api/scouter/items`);
     const list = await listRes.json();
     assert.equal(list.items.length, 1);
+
+    const stagedRes = await fetch(`${baseUrl}/api/scouter/items?staged=1`);
+    const staged = await stagedRes.json();
+    assert.equal(staged.items.length, 1);
+    assert.equal(staged.items[0].staged, true);
   } finally {
     await close();
   }
@@ -144,6 +158,53 @@ test("barcode lookup returns structured response", async () => {
     const res = await fetch(`${baseUrl}/api/scouter/barcode/abc`);
     const body = await res.json();
     assert.equal(body.found, false);
+  } finally {
+    await close();
+  }
+});
+
+test("GET /api/channels/status reports channel config skeleton", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const res = await fetch(`${baseUrl}/api/channels/status`);
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(body.canonical, "hud");
+    assert.equal(body.channels.length, 3);
+    assert.ok(body.channels.every((c) => typeof c.configured === "boolean"));
+  } finally {
+    await close();
+  }
+});
+
+test("POST /api/channels/sale subtracts qty on canonical inventory", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const createRes = await fetch(`${baseUrl}/api/scouter/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Sync Card",
+        quantity: 2,
+        category: "raw_cards",
+        channels: {
+          ebay: { listingId: "ebay-1", price: 10, status: "active" },
+          misprint: { listingId: "mp-1", price: 10, status: "active" },
+        },
+      }),
+    });
+    const { item } = await createRes.json();
+
+    const saleRes = await fetch(`${baseUrl}/api/channels/sale`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId: item.id, channel: "ebay", quantitySold: 1 }),
+    });
+    assert.equal(saleRes.status, 200);
+    const sale = await saleRes.json();
+    assert.equal(sale.item.quantity, 1);
+    assert.equal(sale.item.lastSaleChannel, "ebay");
+    assert.ok(Array.isArray(sale.fanout));
   } finally {
     await close();
   }

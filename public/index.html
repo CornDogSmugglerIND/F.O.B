@@ -8,12 +8,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <title>Coalition H.U.D · Intake</title>
+  <title>Coalition H.U.D · Scouter</title>
   <link rel="manifest" href="/manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/scouter.css?v=13" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/scouter.css?v=15" />
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -123,6 +123,10 @@
             <label class="m-eyebrow" for="fieldNotes">Notes</label>
             <textarea class="m-input w-full px-3 py-2.5" id="fieldNotes" placeholder="Optional notes…" rows="2"></textarea>
           </div>
+          <label class="ready-row">
+            <input type="checkbox" id="stagedFlag" />
+            <span class="m-eyebrow" style="letter-spacing:0.12em">Mark staged for desktop pipeline</span>
+          </label>
         </div>
       </section>
 
@@ -170,8 +174,8 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="/lib/html5-qrcode.min.js?v=13"></script>
-  <script src="/lib/image.js?v=13"></script>
-  <script src="/scouter.js?v=13"></script>
+  <script src="/lib/html5-qrcode.min.js?v=14"></script>
+  <script src="/lib/image.js?v=14"></script>
+  <script src="/scouter.js?v=14"></script>
 </body>
 </html>

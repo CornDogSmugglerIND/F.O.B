@@ -1,10 +1,10 @@
-/** Category hubs — aligned with Coalition Command Core intake. */
+/** Category hubs — amber-gold only (no cyan/blue Base44 chrome). */
 export const CATEGORIES = [
-  { value: "pokemon_sealed", label: "Pokemon Sealed", core: "#FFB43D", hi: "#FFD98A", icon: "📦" },
-  { value: "graded_slabs", label: "Graded Slabs", core: "#2BD9C0", hi: "#8FF6E8", icon: "🏆" },
-  { value: "raw_cards", label: "Raw Cards", core: "#4FA8D8", hi: "#BFE9FF", icon: "🃏" },
-  { value: "sports_cards", label: "Sports Cards", core: "#2E6F91", hi: "#7FD4FF", icon: "⚾" },
-  { value: "other", label: "Other", core: "#4FC3F7", hi: "#A8E4FF", icon: "📋" },
+  { value: "pokemon_sealed", label: "Pokemon Sealed", core: "#E8B04B", hi: "#FFD98A", icon: "📦" },
+  { value: "graded_slabs", label: "Graded Slabs", core: "#C9922F", hi: "#E8B04B", icon: "🏆" },
+  { value: "raw_cards", label: "Raw Cards", core: "#D4A84A", hi: "#FFE0A0", icon: "🃏" },
+  { value: "sports_cards", label: "Sports Cards", core: "#B8862E", hi: "#E8B04B", icon: "⚾" },
+  { value: "other", label: "Other", core: "#A67C2A", hi: "#D4A84A", icon: "📋" },
 ];
 
 export const CATEGORY_BY_VALUE = Object.fromEntries(CATEGORIES.map((c) => [c.value, c]));
