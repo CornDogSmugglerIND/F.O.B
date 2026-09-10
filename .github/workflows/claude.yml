@@ -1,7 +1,14 @@
 name: Claude Code
 
-# Interactive: comment @claude on an issue or PR.
-# Auth: CLAUDE_CODE_OAUTH_TOKEN (claude setup-token). API key only if CLAUDE_FORCE_API_KEY=true.
+# Triple Threat GitHub leg: @claude on an issue/PR → Claude Code Action replies.
+# Auth LLM: CLAUDE_CODE_OAUTH_TOKEN (claude setup-token).
+# Auth GitHub writes: workflow GITHUB_TOKEN (Claude App OIDC rejects read-only actors).
+#
+# Why github_token + allowed_non_write_users:
+# Cursor posts via Composio as CornDogSmugglerCoalition7 (public comment / read).
+# Anthropic's App token exchange requires the comment actor to have write — that
+# failed with 401. GITHUB_TOKEN has issues:write from this job; allow Coalition7
+# to trigger so the trio can talk without Sawyer manually opening Cowork.
 on:
   issue_comment:
     types: [created]
@@ -21,7 +28,6 @@ jobs:
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    continue-on-error: true
     permissions:
       contents: write
       pull-requests: write
@@ -39,7 +45,6 @@ jobs:
           OAUTH=$(printf '%s' "$RAW_OAUTH" | tr -d '\r\n')
           FORCE=$(printf '%s' "$FORCE_API" | tr -d '\r\n' | tr '[:upper:]' '[:lower:]')
           KEY=$(printf '%s' "$RAW_KEY" | tr -d '\r\n')
-          # OAuth first. Console API key is known-broken (is_error/billing) unless forced.
           if [ -n "$OAUTH" ]; then
             echo "CLAUDE_CODE_OAUTH_TOKEN=$OAUTH" >> "$GITHUB_ENV"
             echo "auth=oauth" >> "$GITHUB_OUTPUT"
@@ -54,10 +59,10 @@ jobs:
           fi
           echo "configured=false" >> "$GITHUB_OUTPUT"
           echo "auth=none" >> "$GITHUB_OUTPUT"
-          echo "::notice::Skipping — add CLAUDE_CODE_OAUTH_TOKEN (claude setup-token). API key disabled unless CLAUDE_FORCE_API_KEY=true."
+          echo "::error::Claude not configured — add CLAUDE_CODE_OAUTH_TOKEN secret (claude setup-token)."
+          exit 1
 
       - uses: actions/checkout@v6
-        if: steps.config.outputs.configured == 'true'
         with:
           fetch-depth: 1
 
@@ -66,7 +71,9 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ env.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           allowed_bots: "cursor"
+          allowed_non_write_users: "CornDogSmugglerCoalition7"
           claude_args: |
             --max-turns 20
             --allowedTools "Edit,MultiEdit,Write,Read,Glob,Grep,LS,Bash(npm:*),Bash(node:*),Bash(gh:*)"
@@ -76,7 +83,9 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ env.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           allowed_bots: "cursor"
+          allowed_non_write_users: "CornDogSmugglerCoalition7"
           claude_args: |
             --max-turns 20
             --allowedTools "Edit,MultiEdit,Write,Read,Glob,Grep,LS,Bash(npm:*),Bash(node:*),Bash(gh:*)"

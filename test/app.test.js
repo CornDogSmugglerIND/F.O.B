@@ -68,21 +68,33 @@ test("GET /hud.html serves Coalition H.U.D shell", async () => {
   }
 });
 
-test("GET /trio-setup.html serves tonight checklist", async () => {
+test("GET /trio-setup.html serves truthful wire status", async () => {
   const { baseUrl, close } = await startServer();
   try {
     const res = await fetch(`${baseUrl}/trio-setup.html`);
     const html = await res.text();
     assert.equal(res.status, 200);
-    assert.match(html, /Tonight setup/);
-    assert.match(html, /Sessions/);
-    assert.match(html, /Auth Configs/);
-    assert.match(html, /mcp\.composio\.dev/);
-    assert.match(html, /MCP dropdown/);
-    assert.match(html, /composio done/);
+    assert.match(html, /Triple Threat/);
+    assert.match(html, /Root cause/);
+    assert.match(html, /CornDogSmugglerCoalition7/);
+    assert.match(html, /allowed_non_write_users/);
+    assert.match(html, /GITHUB_TOKEN/);
+    assert.match(html, /continue-on-error/);
+    assert.match(html, /github-actions\[bot\]/);
   } finally {
     await close();
   }
+});
+
+test("claude.yml allows Coalition7 with workflow GITHUB_TOKEN", async () => {
+  const fs = await import("node:fs/promises");
+  const yml = await fs.readFile(
+    new URL("../.github/workflows/claude.yml", import.meta.url),
+    "utf8",
+  );
+  assert.match(yml, /github_token:\s*\$\{\{\s*secrets\.GITHUB_TOKEN\s*\}\}/);
+  assert.match(yml, /allowed_non_write_users:\s*"CornDogSmugglerCoalition7"/);
+  assert.doesNotMatch(yml, /continue-on-error:\s*true/);
 });
 
 test("GET /ba-paper-checklist.html serves BA paper checklist", async () => {
