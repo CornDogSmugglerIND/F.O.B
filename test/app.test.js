@@ -93,6 +93,22 @@ test("GET /trio-setup.html serves truthful wire status", async () => {
   }
 });
 
+test("GET /hud-status.html serves Coalition H.U.D build status", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const res = await fetch(`${baseUrl}/hud-status.html`);
+    const html = await res.text();
+    assert.equal(res.status, 200);
+    assert.match(html, /Coalition H\.U\.D/);
+    assert.match(html, /Build status/);
+    assert.match(html, /Source of truth/);
+    assert.match(html, /Scouter on phone/);
+    assert.match(html, /Misprint/);
+  } finally {
+    await close();
+  }
+});
+
 test("claude.yml allows Coalition7 with workflow GITHUB_TOKEN", async () => {
   const fs = await import("node:fs/promises");
   const yml = await fs.readFile(

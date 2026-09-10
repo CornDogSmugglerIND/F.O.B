@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0b0d" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Coalition H.U.D — Status</title>
+  <style>
+    :root {
+      --bg0: #0a0b0d;
+      --bg1: #12141a;
+      --panel: #161920;
+      --text: #f3efe6;
+      --muted: #9a9186;
+      --gold: #e8b04b;
+      --ok: #6fbf73;
+      --wait: #e8b04b;
+      --bad: #ff4d6d;
+      --border: #2a2e35;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      color: var(--text);
+      font-family: "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+      background:
+        radial-gradient(120% 80% at 50% -10%, rgba(232, 176, 75, 0.16), transparent 55%),
+        linear-gradient(180deg, #101218 0%, var(--bg0) 48%, #07080a 100%);
+      padding: 22px 16px 36px;
+      line-height: 1.4;
+    }
+    .wrap { max-width: 430px; margin: 0 auto; }
+    .brand {
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin: 0 0 6px;
+      font-weight: 700;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.55rem;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .stamp {
+      display: inline-block;
+      margin: 0 0 16px;
+      padding: 5px 10px;
+      border: 1px solid rgba(232, 176, 75, 0.35);
+      color: var(--gold);
+      border-radius: 999px;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .list {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: rgba(22, 25, 32, 0.92);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 78px 1fr;
+      gap: 10px;
+      padding: 13px 14px;
+      border-top: 1px solid var(--border);
+      align-items: start;
+    }
+    .row:first-child { border-top: 0; }
+    .tag {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding-top: 3px;
+    }
+    .tag.ok { color: var(--ok); }
+    .tag.wait { color: var(--wait); }
+    .tag.next { color: #8eb7ff; }
+    .body strong {
+      display: block;
+      font-size: 0.98rem;
+      margin-bottom: 3px;
+    }
+    .body span {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    .foot {
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    a { color: var(--gold); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="brand">Coalition H.U.D</p>
+    <h1>Build status</h1>
+    <p class="sub">Your resell workflow. Source of truth for inventory. Channels follow H.U.D — not the other way around.</p>
+    <div class="stamp">Updated Sep 10 · live</div>
+
+    <div class="list">
+      <div class="row">
+        <div class="tag ok">Live</div>
+        <div class="body">
+          <strong>Scouter on phone</strong>
+          <span>Amber VISOR · photos → identify → sift → stage. Opens to Scouter first.</span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="tag ok">Live</div>
+        <div class="body">
+          <strong>Agents talk on GitHub</strong>
+          <span>Cursor ↔ Claude on issue #24 works again. You stay in Cursor.</span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="tag ok">Live</div>
+        <div class="body">
+          <strong>eBay channel code</strong>
+          <span>Sell Inventory adapter in. Needs your eBay secrets to go live.</span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="tag wait">Partial</div>
+        <div class="body">
+          <strong>Misprint</strong>
+          <span>Your API key + seller ID are saved. Finishing the live list/edit hook next.</span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="tag next">Next</div>
+        <div class="body">
+          <strong>Double Holo · Shopify · auto sync</strong>
+          <span>Sale on one channel → qty updates everywhere. H.U.D stays canonical.</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="foot">
+      Open app: <a href="/hud.html">/hud.html</a>
+      · Scouter: <a href="/">/</a>
+      · This page: <a href="/hud-status.html">/hud-status.html</a>
+    </p>
+  </div>
+</body>
+</html>
