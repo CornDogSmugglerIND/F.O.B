@@ -79,7 +79,10 @@ const els = {
   photoCountLbl: $("photoCountLbl"),
   pageTitle: $("pageTitle"),
   btnCamera: $("btnCamera"),
+  btnShutter: $("btnShutter"),
   btnGallery: $("btnGallery"),
+  viewfinderIdle: $("viewfinderIdle"),
+  viewfinderPreview: $("viewfinderPreview"),
   inputCamera: $("inputCamera"),
   inputGallery: $("inputGallery"),
   identifyStatus: $("identifyStatus"),
@@ -204,7 +207,9 @@ function updateSaveState() {
     state.title.trim().length > 0;
   els.btnSave.disabled = !canSave;
   if (!els.btnSave.disabled) {
-    els.btnSave.textContent = els.stagedFlag?.checked ? "Save & stage" : "Save to Scouter";
+    els.btnSave.textContent = els.stagedFlag?.checked ? "Add & stage" : "Add to rail";
+  } else {
+    els.btnSave.textContent = "Add to rail";
   }
 }
 
@@ -244,8 +249,26 @@ function setCategory(value) {
   });
 }
 
+function updateViewfinder() {
+  const last = state.draftPhotos[state.draftPhotos.length - 1];
+  if (els.viewfinderPreview && els.viewfinderIdle) {
+    if (last?.dataUrl) {
+      els.viewfinderPreview.src = last.dataUrl;
+      els.viewfinderPreview.classList.remove("hidden");
+      els.viewfinderIdle.classList.add("hidden");
+    } else {
+      els.viewfinderPreview.removeAttribute("src");
+      els.viewfinderPreview.classList.add("hidden");
+      els.viewfinderIdle.classList.remove("hidden");
+    }
+  }
+}
+
 function renderPhotoGrid() {
-  els.photoCountLbl.textContent = `${state.draftPhotos.length} added`;
+  if (els.photoCountLbl) {
+    els.photoCountLbl.textContent = `${state.draftPhotos.length} photo${state.draftPhotos.length === 1 ? "" : "s"}`;
+  }
+  if (!els.photoGrid) return;
   els.photoGrid.innerHTML = state.draftPhotos
     .map(
       (p, i) => `
@@ -262,6 +285,7 @@ function renderPhotoGrid() {
       removePhoto(Number(btn.dataset.rm));
     });
   });
+  updateViewfinder();
 }
 
 function removePhoto(idx) {
@@ -414,15 +438,14 @@ function resetCapture() {
   state.title = "";
   state.barcode = "";
   els.qtyVal.textContent = "1";
-  els.fieldNotes.value = "";
+  if (els.fieldNotes) els.fieldNotes.value = "";
   els.barcodeInput.value = "";
   els.manualTitle.value = "";
-  els.manualRow.classList.add("hidden");
-  if (els.stagedFlag) els.stagedFlag.checked = false;
+  if (els.stagedFlag) els.stagedFlag.checked = true;
   setCategory("other");
   renderPhotoGrid();
   setIdentifyPhase("idle");
-  setStatus("Add a photo, barcode, or title — then Run identify");
+  setStatus("Point camera · scan barcode · add item");
   updateSaveState();
 }
 
@@ -574,7 +597,7 @@ async function lookupBarcode(code) {
     els.manualRow.classList.remove("hidden");
   } finally {
     els.btnLookup.disabled = false;
-    els.btnLookup.textContent = "Run identify";
+    els.btnLookup.textContent = "ID";
   }
 }
 
@@ -594,8 +617,8 @@ async function saveCapture() {
       barcode: state.barcode.trim() || null,
       quantity: state.qty,
       category: state.category,
-      notes: els.fieldNotes.value.trim() || null,
-      staged: Boolean(els.stagedFlag?.checked),
+      notes: (els.fieldNotes?.value || "").trim() || null,
+      staged: els.stagedFlag ? Boolean(els.stagedFlag.checked) : true,
       photos: state.draftPhotos.map((p) => ({
         id: crypto.randomUUID(),
         dataUrl: p.dataUrl,
@@ -649,20 +672,21 @@ async function saveCapture() {
     loadItems();
     resetCapture();
     navigate("intake");
-    showToast("Intake started — saved to collection");
+    showToast(item.staged ? "Staged on rail" : "Saved to rail");
   } catch (e) {
     showToast(e.message, "err");
     setStatus(e.message, "err");
   } finally {
     els.btnSave.disabled = false;
-    els.btnSave.textContent = "Start intake";
+    els.btnSave.textContent = "Add to rail";
     updateSaveState();
   }
 }
 
 function navigate(view) {
-  const name = VIEWS.includes(view) ? view : "scan";
-  state.view = name;
+  let show = VIEWS.includes(view) ? view : "scan";
+  if (show === "command" || show === "systems") show = show === "command" ? "scan" : "list";
+  state.view = show;
 
   const map = {
     command: els.viewCommand,
@@ -672,30 +696,30 @@ function navigate(view) {
     systems: els.viewSystems,
   };
   Object.entries(map).forEach(([key, el]) => {
-    el?.classList.toggle("active", key === name);
+    el?.classList.toggle("active", key === show);
   });
 
-  const copy = VIEW_COPY[name];
-  els.pageEyebrow.textContent = copy.eyebrow;
-  els.pageTitle.textContent = copy.title;
-  els.pageSub.textContent = copy.sub;
-  els.pageHero.classList.remove("hidden");
-  els.intakeBar.classList.toggle("hidden", name !== "intake");
-  els.saveBar.classList.toggle("hidden", name !== "scan");
+  const copy = VIEW_COPY[show] || VIEW_COPY.scan;
+  if (els.pageEyebrow) els.pageEyebrow.textContent = copy.eyebrow;
+  if (els.pageTitle) els.pageTitle.textContent = copy.title;
+  if (els.pageSub) els.pageSub.textContent = copy.sub;
+  els.pageHero?.classList.add("hidden");
+  els.intakeBar?.classList.add("hidden");
+  els.saveBar?.classList.add("hidden");
 
-  if (name !== "scan") stopScanner();
+  if (show !== "scan") stopScanner();
 
-  if (name === "command") renderCommand();
-  if (name === "intake") renderCollection();
-  if (name === "list") renderListRail();
-  if (name === "systems") renderCommand();
+  if (show === "intake") renderCollection();
+  if (show === "list") renderListRail();
+  if (show === "scan") renderCommand();
 
   document.querySelectorAll(".nav-tab").forEach((tab) => {
-    tab.classList.toggle("active", tab.dataset.view === name);
+    tab.classList.toggle("active", tab.dataset.view === show);
   });
 
-  const hash = `#${name}`;
-  if (location.hash !== hash) history.replaceState(null, "", hash);
+  if (location.hash.replace("#", "") !== show) {
+    history.replaceState(null, "", `#${show}`);
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -930,18 +954,23 @@ function bindDragOverlay() {
 }
 
 function bindEvents() {
-  els.btnCamera.addEventListener("click", () => els.inputCamera.click());
-  els.btnGallery.addEventListener("click", () => els.inputGallery.click());
-  els.photoDrop.addEventListener("click", (e) => {
+  const openCamera = () => els.inputCamera.click();
+  els.btnCamera?.addEventListener("click", (e) => {
+    if (e.target.closest("[data-rm]")) return;
+    openCamera();
+  });
+  els.btnShutter?.addEventListener("click", openCamera);
+  els.btnGallery?.addEventListener("click", () => els.inputGallery.click());
+  els.photoDrop?.addEventListener("click", (e) => {
     if (e.target.closest("[data-rm]")) return;
     els.inputGallery.click();
   });
-  els.photoDrop.addEventListener("dragover", (e) => {
+  els.photoDrop?.addEventListener("dragover", (e) => {
     e.preventDefault();
     els.photoDrop.classList.add("drag");
   });
-  els.photoDrop.addEventListener("dragleave", () => els.photoDrop.classList.remove("drag"));
-  els.photoDrop.addEventListener("drop", (e) => {
+  els.photoDrop?.addEventListener("dragleave", () => els.photoDrop?.classList.remove("drag"));
+  els.photoDrop?.addEventListener("drop", (e) => {
     e.preventDefault();
     els.photoDrop.classList.remove("drag");
     addFiles(e.dataTransfer.files);
@@ -974,10 +1003,15 @@ function bindEvents() {
     state.barcode = els.barcodeInput.value.trim();
     updateSaveState();
   });
+  els.barcodeInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      lookupBarcode(els.barcodeInput.value);
+    }
+  });
 
-  els.btnManual.addEventListener("click", () => {
-    els.manualRow.classList.remove("hidden");
-    els.manualTitle.focus();
+  els.btnManual?.addEventListener("click", () => {
+    els.manualTitle?.focus();
   });
   els.btnManualOk.addEventListener("click", () => {
     state.title = els.manualTitle.value.trim();

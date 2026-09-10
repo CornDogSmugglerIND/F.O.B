@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#04070C" />
+  <meta name="theme-color" content="#0A0B0D" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -12,249 +12,178 @@
   <link rel="manifest" href="/manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/scouter.css?v=17" />
-  <link rel="stylesheet" href="/hud-visor.css?v=17" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Orbitron:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/scouter.css?v=23" />
+  <link rel="stylesheet" href="/hud-visor.css?v=22" />
 </head>
-<body>
+<body class="handheld">
   <div class="ambient" aria-hidden="true">
     <div class="ambient-orb ambient-orb-1"></div>
     <div class="ambient-orb ambient-orb-2"></div>
     <div class="ambient-orb ambient-orb-3"></div>
   </div>
 
-  <div id="app" class="shell v-glass">
+  <div id="app" class="shell v-glass handheld-shell">
     <div class="v-sweep" aria-hidden="true"></div>
-    <div class="corner-brackets" aria-hidden="true">
-      <span class="corner corner-tl"></span>
-      <span class="corner corner-tr"></span>
-    </div>
 
-    <div class="intake-shell">
-      <div class="intake-bar v-panel v-cut-sm hidden" id="intakeBar">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFD98A" stroke-width="1.6"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-        <span class="v-label" style="font-size:9px">On rail</span>
-        <div class="v-readout v-emit-gold" id="statCount">00</div>
+    <div class="intake-shell" style="padding:0">
+      <div class="hidden" id="pageHero">
+        <span id="pageEyebrow"></span>
+        <span id="pageTitle"></span>
+        <span id="pageSub"></span>
       </div>
+      <div class="hidden" id="intakeBar"><span id="statCount">00</span></div>
 
-      <div class="page-hero" id="pageHero">
-        <div class="hero-eyebrow">
-          <svg class="hero-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7-6.3-4.6L5.7 21l2.3-7-6-4.6h7.6L12 2z"/></svg>
-          <span class="v-label" id="pageEyebrow">Coalition H.U.D · Scouter</span>
-        </div>
-        <h1 class="v-title" id="pageTitle" style="font-size:28px;line-height:1.05;margin-top:6px">Scouter</h1>
-        <p class="hero-sub" id="pageSub">Handheld intake: photos → identify → sift → stage. Listing is desktop.</p>
-        <div class="gold-rule"></div>
-      </div>
-
-      <!-- OVERVIEW -->
-      <section id="viewCommand" class="view">
-        <div class="cmd-stats">
-          <div class="v-panel v-cut-sm cmd-stat">
-            <div class="v-label" style="font-size:9px">Inventory</div>
-            <div class="v-readout v-emit-gold cmd-stat-n" id="cmdItems">00</div>
+      <!-- SIFT -->
+      <section id="viewIntake" class="view handheld-rail">
+        <header class="hh-top">
+          <div class="hh-brand">
+            <span class="hh-mark">RAIL</span>
+            <span class="hh-sub v-label">Sift · stage</span>
           </div>
-          <div class="v-panel v-cut-sm cmd-stat">
-            <div class="v-label" style="font-size:9px">Photos</div>
-            <div class="v-readout v-emit-gold cmd-stat-n" id="cmdPhotos">00</div>
-          </div>
-          <div class="v-panel v-cut-sm cmd-stat">
-            <div class="v-label" style="font-size:9px">Staged</div>
-            <div class="v-readout v-emit-gold cmd-stat-n" id="cmdReady">00</div>
-          </div>
-        </div>
-
-        <div class="v-panel v-cut panel-block">
-          <div class="panel-head">
-            <h2 class="panel-title">Quick actions</h2>
-          </div>
-          <div class="m-btn-row-3">
-            <button type="button" class="m-btn m-btn-primary" data-go="scan">Scouter</button>
-            <button type="button" class="m-btn" data-go="intake">Sift</button>
-            <button type="button" class="m-btn" data-go="list">Staged</button>
-          </div>
-        </div>
-
-        <div class="v-panel v-cut panel-block">
-          <div class="panel-head">
-            <h2 class="panel-title">Recent on rail</h2>
-            <button type="button" class="m-btn" data-go="intake" style="padding:8px 12px;font-size:12px">Open</button>
-          </div>
-          <div class="holo-scroll no-scrollbar v-stage" id="cmdRail"></div>
-        </div>
-      </section>
-
-      <!-- INTAKE -->
-      <section id="viewIntake" class="view">
-        <div class="rail-toolbar" id="railToolbar">
-          <div class="rail-search">
+          <button type="button" class="m-btn m-btn-primary" data-go="scan" style="padding:10px 14px;font-size:12px">New</button>
+        </header>
+        <div class="rail-toolbar" id="railToolbar" style="margin:0 14px 0">
+          <div class="rail-search hh-rail-search" style="margin:0;flex:1">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            <input type="search" id="railFilter" placeholder="Filter Scouter items" autocomplete="off" />
+            <input type="search" id="railFilter" placeholder="Filter rail" autocomplete="off" />
           </div>
-          <button type="button" class="m-btn m-btn-primary" id="btnNewScan">New capture</button>
+          <button type="button" class="m-btn m-btn-primary hidden" id="btnNewScan">New</button>
         </div>
-        <div id="collectionRoot"></div>
+        <div id="collectionRoot" style="padding:0 14px 18px"></div>
       </section>
 
-      <!-- SCOUTER (phone intake) -->
-      <section id="viewScan" class="view active">
-        <div class="v-panel v-cut panel-block">
-          <div class="panel-head">
-            <h2 class="panel-title">Photos</h2>
-            <span class="v-label" id="photoCountLbl">0 added</span>
+      <!-- SCOUTER — camera-first handheld -->
+      <section id="viewScan" class="view active handheld-scout">
+        <header class="hh-top">
+          <div class="hh-brand">
+            <span class="hh-mark">SCOUTER</span>
+            <span class="hh-sub v-label">Coalition H.U.D</span>
           </div>
-          <label class="photo-drop" id="photoDrop">
-            <input type="file" id="photoDropInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" multiple hidden />
-            <div class="photo-drop-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div class="hh-pip" aria-live="polite">
+            <span class="hh-pip-dot"></span>
+            <span class="v-readout v-emit-gold" id="cmdItems">00</span>
+          </div>
+        </header>
+
+        <button type="button" class="hh-viewfinder" id="btnCamera" aria-label="Take photo">
+          <div class="hh-vf-frame" id="viewfinderFace">
+            <div class="hh-reticle" aria-hidden="true">
+              <span class="hh-corner hh-tl"></span>
+              <span class="hh-corner hh-tr"></span>
+              <span class="hh-corner hh-bl"></span>
+              <span class="hh-corner hh-br"></span>
             </div>
-            <div class="photo-drop-title">Drop a folder of scans</div>
-            <div class="photo-drop-sub">or tap to browse · HEIC supported · multi-photo</div>
-          </label>
-          <div class="photo-scroll no-scrollbar" id="photoGrid"></div>
-          <div class="m-btn-row">
-            <button type="button" class="m-btn" id="btnCamera">Camera</button>
-            <button type="button" class="m-btn" id="btnGallery">Gallery</button>
+            <div class="hh-vf-idle" id="viewfinderIdle">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <span class="v-label">Tap to shoot</span>
+            </div>
+            <img id="viewfinderPreview" class="hh-vf-preview hidden" alt="" />
           </div>
+          <div class="hh-photo-strip no-scrollbar" id="photoGrid"></div>
+          <span class="hh-photo-count v-label" id="photoCountLbl">0 photos</span>
+        </button>
+
+        <div class="hh-actions">
+          <button type="button" class="hh-act hh-act-gold" id="btnShutter">
+            <span class="hh-act-icon" aria-hidden="true">●</span>
+            CAPTURE
+          </button>
+          <button type="button" class="hh-act" id="btnScan">
+            <span class="hh-act-icon" aria-hidden="true">▥</span>
+            SCAN
+          </button>
         </div>
 
-        <div class="v-panel v-cut panel-block">
-          <div class="panel-head">
-            <h2 class="panel-title">Identify</h2>
-            <span class="v-label" id="identifyPhaseLbl">IDLE</span>
+        <div class="hh-id">
+          <div class="hh-id-row">
+            <input class="m-input hh-barcode" id="barcodeInput" placeholder="UPC / EAN" inputmode="numeric" autocomplete="off" enterkeyhint="search" />
+            <button type="button" class="m-btn m-btn-primary hh-lookup" id="btnLookup">ID</button>
           </div>
-          <p class="hero-sub" style="margin-bottom:12px">Run this step and watch the result. Scan/dump photos first, then identify.</p>
-          <div class="m-btn-row-3">
-            <button type="button" class="m-btn" id="btnScan">Scan</button>
-            <button type="button" class="m-btn m-btn-primary" id="btnLookup">Run identify</button>
-            <button type="button" class="m-btn" id="btnManual">Manual</button>
-          </div>
-          <div class="field-stack">
-            <label class="m-eyebrow" for="barcodeInput">Barcode</label>
-            <input class="m-input w-full px-3 py-2.5" id="barcodeInput" placeholder="Scan or type UPC / EAN" inputmode="numeric" autocomplete="off" />
-          </div>
-          <div class="field-stack hidden" id="manualRow">
-            <label class="m-eyebrow" for="manualTitle">Product title</label>
-            <div class="m-btn-row">
-              <input class="m-input w-full px-3 py-2.5" id="manualTitle" placeholder="Enter manually" autocomplete="off" />
-              <button type="button" class="m-btn" id="btnManualOk">Set</button>
-            </div>
-          </div>
+          <div class="status-strip" id="identifyStatus">Point camera · scan barcode · add item</div>
           <div class="identify-result hidden" id="identifyResult" aria-live="polite">
             <div class="v-label" style="font-size:9px">Result</div>
             <div class="identify-result-title" id="identifyResultTitle">—</div>
             <div class="identify-result-meta v-label" id="identifyResultMeta"></div>
           </div>
-          <div class="status-strip" id="identifyStatus">Add a photo, barcode, or title — then Run identify</div>
+          <div class="hh-id-row hh-title-row" id="manualRow">
+            <input class="m-input" id="manualTitle" placeholder="Title (if lookup misses)" autocomplete="off" />
+            <button type="button" class="m-btn" id="btnManualOk">Set</button>
+          </div>
         </div>
 
-        <div class="v-panel v-cut panel-block">
-          <div class="panel-head">
-            <h2 class="panel-title">Item data</h2>
+        <div class="hh-meta">
+          <div class="qty-control">
+            <button type="button" class="qty-btn" id="qtyMinus" aria-label="Decrease qty">−</button>
+            <output class="qty-val" id="qtyVal">1</output>
+            <button type="button" class="qty-btn" id="qtyPlus" aria-label="Increase qty">+</button>
           </div>
-          <div class="field-stack">
-            <label class="m-eyebrow">Quantity</label>
-            <div class="qty-control">
-              <button type="button" class="qty-btn" id="qtyMinus">−</button>
-              <output class="qty-val" id="qtyVal">1</output>
-              <button type="button" class="qty-btn" id="qtyPlus">+</button>
-            </div>
-          </div>
-          <div class="field-stack">
-            <label class="m-eyebrow">Category</label>
-            <div class="chip-row" id="categoryChips"></div>
-          </div>
-          <div class="field-stack">
-            <label class="m-eyebrow" for="fieldNotes">Notes</label>
-            <textarea class="m-input w-full px-3 py-2.5" id="fieldNotes" placeholder="Optional notes…" rows="2"></textarea>
-          </div>
-          <label class="ready-row">
-            <input type="checkbox" id="stagedFlag" />
-            <span class="m-eyebrow" style="letter-spacing:0.12em">Mark staged for desktop pipeline</span>
-          </label>
+          <div class="chip-row no-scrollbar" id="categoryChips"></div>
         </div>
+
+        <label class="hh-stage">
+          <input type="checkbox" id="stagedFlag" checked />
+          <span>STAGE for desktop</span>
+        </label>
+
+        <button type="button" class="m-btn m-btn-primary m-btn-cut-wide hh-commit" id="btnSave" disabled>Add to rail</button>
+        <button type="button" class="hh-gallery" id="btnGallery">Add from gallery</button>
+        <input type="hidden" id="fieldNotes" value="" />
+        <button type="button" class="hidden" id="btnManual" tabindex="-1" aria-hidden="true"></button>
+        <span class="hidden" id="identifyPhaseLbl">IDLE</span>
+        <div class="hidden" id="photoDrop"></div>
       </section>
 
-      <!-- STAGED (desktop handoff — not phone listing) -->
-      <section id="viewList" class="view">
-        <div class="v-panel v-cut panel-block">
-          <div class="panel-head">
-            <h2 class="panel-title">Desktop handoff</h2>
+      <!-- STAGED -->
+      <section id="viewList" class="view handheld-rail">
+        <header class="hh-top" style="padding:0 14px">
+          <div class="hh-brand">
+            <span class="hh-mark" style="font-size:18px">STAGED</span>
+            <span class="hh-sub v-label">Desktop handoff</span>
           </div>
-          <p class="hero-sub" style="margin-bottom:14px">Export the staged batch for desktop pipeline. Matches iCloud flow: Scouter → stage → desktop (Batches / Inventory).</p>
-          <div class="m-btn-row">
-            <button type="button" class="m-btn m-btn-primary" id="btnExportStaged">Export staged batch</button>
-            <a class="m-btn" href="/listing-copy.html">Listing Copy</a>
-          </div>
-          <div class="status-strip" id="handoffNote" style="margin-top:14px">No staged items yet</div>
-        </div>
-        <div class="v-panel v-cut panel-block">
-          <div class="panel-head">
-            <h2 class="panel-title">Staged for desktop</h2>
-            <span class="v-label" id="listReadyLbl">00</span>
+          <span class="v-label" id="listReadyLbl">00</span>
+        </header>
+        <div style="padding:0 14px 18px">
+          <div class="v-panel v-cut panel-block">
+            <p class="hero-sub" style="margin-bottom:14px">Staged batch goes to desktop pipeline. Scouter does not list.</p>
+            <div class="m-btn-row">
+              <button type="button" class="m-btn m-btn-primary" id="btnExportStaged">Export staged</button>
+              <a class="m-btn" href="/listing-copy.html">Listing Copy</a>
+            </div>
+            <div class="status-strip" id="handoffNote" style="margin-top:14px">No staged items yet</div>
           </div>
           <div class="holo-scroll no-scrollbar v-stage" id="listRail"></div>
-        </div>
-        <div class="v-panel v-cut panel-block">
-          <div class="panel-head"><h2 class="panel-title">Pipeline status</h2></div>
-          <ul class="qa-list">
-            <li class="ok">Scouter stage flag — live</li>
-            <li class="ok">Identify run-and-watch — live</li>
-            <li class="ok">Staged batch export — live</li>
-            <li class="ok">Channel sync skeleton (eBay / Double Holo / Misprint) — live</li>
-            <li class="warn">Wire APIs after secrets + Claude dump — next</li>
-          </ul>
+          <details class="v-panel v-cut panel-block" style="margin-top:12px">
+            <summary class="v-label" style="cursor:pointer;padding:4px 0">Systems · backup</summary>
+            <div class="m-btn-row-3" style="margin-top:12px">
+              <button type="button" class="m-btn" id="btnExport">Export</button>
+              <button type="button" class="m-btn" id="btnImport">Import</button>
+              <button type="button" class="m-btn" id="btnWipe">Wipe</button>
+            </div>
+            <input type="file" id="importFile" accept="application/json,.json" hidden />
+            <div class="status-strip" id="systemsNote" style="margin-top:14px">Backup only — not primary intake</div>
+            <a class="hh-gallery" href="/hud-status.html" style="margin-top:10px;display:block">Build checklist</a>
+          </details>
         </div>
       </section>
 
-      <!-- SYSTEMS -->
-      <section id="viewSystems" class="view">
-        <div class="v-panel v-cut panel-block">
-          <div class="panel-head"><h2 class="panel-title">Feature QA</h2></div>
-          <ul class="qa-list">
-            <li class="ok">Bottom nav always escapable</li>
-            <li class="ok">Multi-photo capture</li>
-            <li class="ok">Camera + gallery</li>
-            <li class="ok">Barcode overlay</li>
-            <li class="ok">Intake hubs + holo cards</li>
-            <li class="ok">Local durable save</li>
-            <li class="ok">Export / import JSON</li>
-            <li class="warn">Cloud sync — later</li>
-          </ul>
-        </div>
-        <div class="v-panel v-cut panel-block">
-          <div class="panel-head"><h2 class="panel-title">Data</h2></div>
-          <div class="m-btn-row-3">
-            <button type="button" class="m-btn" id="btnExport">Export</button>
-            <button type="button" class="m-btn" id="btnImport">Import</button>
-            <button type="button" class="m-btn" id="btnWipe">Wipe</button>
-          </div>
-          <input type="file" id="importFile" accept="application/json,.json" hidden />
-          <div class="status-strip" id="systemsNote" style="margin-top:14px">Local store shared with Scouter</div>
-        </div>
-        <div class="v-panel v-cut panel-block">
-          <div class="panel-head"><h2 class="panel-title">Classic intake</h2></div>
-          <a class="m-btn m-btn-cut-wide" href="/">Open classic Scouter page</a>
-        </div>
+      <!-- hidden stubs so hud-visor.js keep working -->
+      <section id="viewCommand" class="view hidden" aria-hidden="true">
+        <span id="cmdPhotos">00</span>
+        <span id="cmdReady">00</span>
+        <div id="cmdRail"></div>
       </section>
+      <section id="viewSystems" class="view hidden" aria-hidden="true"></section>
     </div>
 
-    <div class="save-dock hidden" id="saveBar">
-      <button type="button" class="m-btn m-btn-primary m-btn-cut-wide" id="btnSave" disabled>Start intake</button>
-    </div>
+    <div class="save-dock hidden" id="saveBar"></div>
 
     <nav class="bottom-nav" aria-label="Primary">
-      <button type="button" class="nav-tab" data-view="command">
-        <span class="nav-tab-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1v-10.5z"/></svg>
-        </span>
-        Overview
-      </button>
       <button type="button" class="nav-tab" data-view="intake">
         <span class="nav-tab-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         </span>
-        Sift
+        Rail
       </button>
       <button type="button" class="nav-tab active" data-view="scan">
         <span class="nav-tab-icon">
@@ -267,12 +196,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
         </span>
         Staged
-      </button>
-      <button type="button" class="nav-tab" data-view="systems">
-        <span class="nav-tab-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
-        </span>
-        Systems
       </button>
     </nav>
   </div>
@@ -296,8 +219,8 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="/lib/html5-qrcode.min.js?v=17"></script>
-  <script src="/lib/image.js?v=17"></script>
-  <script src="/hud-visor.js?v=17"></script>
+  <script src="/lib/html5-qrcode.min.js?v=22"></script>
+  <script src="/lib/image.js?v=22"></script>
+  <script src="/hud-visor.js?v=22"></script>
 </body>
 </html>
