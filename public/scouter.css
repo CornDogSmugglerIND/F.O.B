@@ -624,8 +624,8 @@ body.handheld {
 .hh-vf-frame {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 5;
-  max-height: min(52dvh, 420px);
+  aspect-ratio: 1 / 1;
+  max-height: min(36dvh, 280px);
   overflow: hidden;
   clip-path: polygon(16px 0%, 100% 0%, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0% 100%, 0% 16px);
   background:
