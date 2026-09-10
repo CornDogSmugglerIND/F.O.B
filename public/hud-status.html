@@ -3,156 +3,194 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0b0d" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>Coalition H.U.D — Status</title>
+  <meta name="theme-color" content="#0a0b0d" />
+  <title>Coalition H.U.D — Checklist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg0: #0a0b0d;
-      --bg1: #12141a;
-      --panel: #161920;
+      --bg: #0a0b0d;
+      --sheet: #14161c;
       --text: #f3efe6;
-      --muted: #9a9186;
+      --mute: #9a9186;
       --gold: #e8b04b;
       --ok: #6fbf73;
-      --wait: #e8b04b;
-      --bad: #ff4d6d;
-      --border: #2a2e35;
+      --line: #2a2e35;
+      --now: #ff7a3d;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100dvh;
       color: var(--text);
-      font-family: "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+      font-family: "Public Sans", system-ui, sans-serif;
       background:
-        radial-gradient(120% 80% at 50% -10%, rgba(232, 176, 75, 0.16), transparent 55%),
-        linear-gradient(180deg, #101218 0%, var(--bg0) 48%, #07080a 100%);
-      padding: 22px 16px 36px;
-      line-height: 1.4;
+        radial-gradient(100% 60% at 50% 0%, rgba(232,176,75,0.14), transparent 55%),
+        var(--bg);
+      padding: 20px 14px 40px;
     }
-    .wrap { max-width: 430px; margin: 0 auto; }
+    .wrap { max-width: 420px; margin: 0 auto; }
     .brand {
-      font-size: 0.72rem;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--gold);
+      font-family: "Syne", sans-serif;
+      font-weight: 800;
+      font-size: 1.85rem;
+      letter-spacing: -0.03em;
+      line-height: 0.95;
       margin: 0 0 6px;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+    .title {
+      margin: 0 0 4px;
+      font-size: 1.15rem;
       font-weight: 700;
     }
-    h1 {
-      margin: 0 0 8px;
-      font-size: 1.55rem;
-      letter-spacing: -0.02em;
-    }
-    .sub {
+    .when {
       margin: 0 0 18px;
-      color: var(--muted);
-      font-size: 0.95rem;
+      color: var(--mute);
+      font-size: 0.85rem;
     }
-    .stamp {
-      display: inline-block;
-      margin: 0 0 16px;
-      padding: 5px 10px;
-      border: 1px solid rgba(232, 176, 75, 0.35);
-      color: var(--gold);
-      border-radius: 999px;
-      font-size: 0.72rem;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-    .list {
-      border: 1px solid var(--border);
+    ol {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      border: 1px solid var(--line);
       border-radius: 14px;
       overflow: hidden;
-      background: rgba(22, 25, 32, 0.92);
+      background: var(--sheet);
     }
-    .row {
+    li {
       display: grid;
-      grid-template-columns: 78px 1fr;
+      grid-template-columns: 42px 1fr;
       gap: 10px;
-      padding: 13px 14px;
-      border-top: 1px solid var(--border);
+      padding: 14px 14px 14px 12px;
+      border-top: 1px solid var(--line);
       align-items: start;
     }
-    .row:first-child { border-top: 0; }
-    .tag {
-      font-size: 0.68rem;
+    li:first-child { border-top: 0; }
+    .num {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-size: 0.8rem;
       font-weight: 800;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      padding-top: 3px;
+      margin-top: 1px;
+      border: 1.5px solid var(--line);
+      color: var(--mute);
     }
-    .tag.ok { color: var(--ok); }
-    .tag.wait { color: var(--wait); }
-    .tag.next { color: #8eb7ff; }
-    .body strong {
+    .copy strong {
       display: block;
       font-size: 0.98rem;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
-    .body span {
-      color: var(--muted);
-      font-size: 0.88rem;
+    .copy p {
+      margin: 0;
+      color: var(--mute);
+      font-size: 0.84rem;
+      line-height: 1.35;
+    }
+    li.done .num {
+      background: rgba(111,191,115,0.18);
+      border-color: var(--ok);
+      color: var(--ok);
+    }
+    li.done .num::after { content: "✓"; }
+    li.done .num span { display: none; }
+    li.done .copy strong {
+      text-decoration: line-through;
+      text-decoration-thickness: 2px;
+      color: #8a867e;
+    }
+    li.done .copy p { color: #6f6a63; }
+    li.now {
+      background: linear-gradient(90deg, rgba(255,122,61,0.14), transparent 70%);
+    }
+    li.now .num {
+      border-color: var(--now);
+      color: var(--now);
+      box-shadow: 0 0 0 3px rgba(255,122,61,0.15);
+    }
+    li.now .copy strong { color: #ffd3bf; }
+    .now-label {
+      display: inline-block;
+      margin-bottom: 4px;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--now);
     }
     .foot {
-      margin: 16px 0 0;
-      color: var(--muted);
-      font-size: 0.82rem;
+      margin: 14px 2px 0;
+      color: var(--mute);
+      font-size: 0.8rem;
     }
-    a { color: var(--gold); text-decoration: none; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <p class="brand">Coalition H.U.D</p>
-    <h1>Build status</h1>
-    <p class="sub">Your resell workflow. Source of truth for inventory. Channels follow H.U.D — not the other way around.</p>
-    <div class="stamp">Updated Sep 10 · live</div>
+    <p class="title">Build checklist</p>
+    <p class="when">Order is top → bottom. Done = crossed off. Orange = working now.</p>
 
-    <div class="list">
-      <div class="row">
-        <div class="tag ok">Live</div>
-        <div class="body">
-          <strong>Scouter on phone</strong>
-          <span>Amber VISOR · photos → identify → sift → stage. Opens to Scouter first.</span>
+    <ol>
+      <li class="done">
+        <div class="num"><span>1</span></div>
+        <div class="copy">
+          <strong>Scouter live on phone</strong>
+          <p>Photos → identify → sift → stage. Amber VISOR. H.U.D opens to Scouter.</p>
         </div>
-      </div>
-      <div class="row">
-        <div class="tag ok">Live</div>
-        <div class="body">
-          <strong>Agents talk on GitHub</strong>
-          <span>Cursor ↔ Claude on issue #24 works again. You stay in Cursor.</span>
+      </li>
+      <li class="done">
+        <div class="num"><span>2</span></div>
+        <div class="copy">
+          <strong>Agents talk without bouncing you</strong>
+          <p>Cursor ↔ Claude on GitHub #24 works. You stay in this chat.</p>
         </div>
-      </div>
-      <div class="row">
-        <div class="tag ok">Live</div>
-        <div class="body">
-          <strong>eBay channel code</strong>
-          <span>Sell Inventory adapter in. Needs your eBay secrets to go live.</span>
+      </li>
+      <li class="done">
+        <div class="num"><span>3</span></div>
+        <div class="copy">
+          <strong>eBay channel code in</strong>
+          <p>List / price / qty / end paths built. Waiting on eBay secrets to flip live.</p>
         </div>
-      </div>
-      <div class="row">
-        <div class="tag wait">Partial</div>
-        <div class="body">
-          <strong>Misprint</strong>
-          <span>Your API key + seller ID are saved. Finishing the live list/edit hook next.</span>
+      </li>
+      <li class="now">
+        <div class="num"><span>4</span></div>
+        <div class="copy">
+          <span class="now-label">Working now</span>
+          <strong>Misprint live hook</strong>
+          <p>Your key + seller ID are saved. Finishing list/edit so H.U.D owns Misprint inventory.</p>
         </div>
-      </div>
-      <div class="row">
-        <div class="tag next">Next</div>
-        <div class="body">
-          <strong>Double Holo · Shopify · auto sync</strong>
-          <span>Sale on one channel → qty updates everywhere. H.U.D stays canonical.</span>
+      </li>
+      <li>
+        <div class="num"><span>5</span></div>
+        <div class="copy">
+          <strong>Double Holo channel</strong>
+          <p>Same adapter pattern after Misprint.</p>
         </div>
-      </div>
-    </div>
+      </li>
+      <li>
+        <div class="num"><span>6</span></div>
+        <div class="copy">
+          <strong>Shopify channel</strong>
+          <p>Store sync so H.U.D stays source of truth there too.</p>
+        </div>
+      </li>
+      <li>
+        <div class="num"><span>7</span></div>
+        <div class="copy">
+          <strong>Auto sync across channels</strong>
+          <p>Sale anywhere → qty down everywhere. Kill TCGAutomate dependency.</p>
+        </div>
+      </li>
+    </ol>
 
-    <p class="foot">
-      Open app: <a href="/hud.html">/hud.html</a>
-      · Scouter: <a href="/">/</a>
-      · This page: <a href="/hud-status.html">/hud-status.html</a>
-    </p>
+    <p class="foot">Rule: Coalition H.U.D is the only source of truth. Channels follow it.</p>
   </div>
 </body>
 </html>
