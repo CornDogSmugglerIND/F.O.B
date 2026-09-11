@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#050507" />
+  <meta name="theme-color" content="#07090c" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -12,10 +12,10 @@
   <link rel="manifest" href="/manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Orbitron:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/scouter.css?v=24" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Sora:wght@400;550;650;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/scouter.css?v=25" />
 </head>
-<body class="handheld">
+<body class="handheld hud-v2">
   <div class="ambient" aria-hidden="true">
     <div class="ambient-orb ambient-orb-1"></div>
     <div class="ambient-orb ambient-orb-2"></div>
@@ -25,17 +25,24 @@
   <div id="app" class="shell v-glass handheld-shell">
     <div class="v-sweep" aria-hidden="true"></div>
 
+    <!-- SCOUT — mobile intake -->
     <section id="viewCapture" class="view active handheld-scout">
       <header class="hh-top">
         <div class="hh-brand">
           <span class="hh-mark">SCOUTER</span>
-          <span class="hh-sub v-label">Coalition H.U.D</span>
+          <span class="hh-sub v-label">Coalition H.U.D · intake</span>
         </div>
         <div class="hh-pip" aria-live="polite">
           <span class="hh-pip-dot"></span>
-          <span class="v-readout v-emit-gold" id="statCount">00</span>
+          <span class="v-readout" id="statCount">00</span>
         </div>
       </header>
+
+      <div class="mode-row" role="tablist" aria-label="Intake mode">
+        <button type="button" class="mode-chip active" data-mode="shoot" id="modeShoot">CAPTURE</button>
+        <button type="button" class="mode-chip" data-mode="scan" id="modeScanBtn">SCAN</button>
+        <button type="button" class="mode-chip" data-mode="dump" id="modeDump">DUMP</button>
+      </div>
 
       <button type="button" class="hh-viewfinder" id="btnCamera" aria-label="Take photo">
         <div class="hh-vf-frame" id="viewfinderFace">
@@ -46,8 +53,8 @@
             <span class="hh-corner hh-br"></span>
           </div>
           <div class="hh-vf-idle" id="viewfinderIdle">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            <span class="v-label">Tap to shoot</span>
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span class="v-label" id="viewfinderHint">Tap to shoot</span>
           </div>
           <img id="viewfinderPreview" class="hh-vf-preview hidden" alt="" />
         </div>
@@ -56,7 +63,7 @@
       </button>
 
       <div class="hh-actions">
-        <button type="button" class="hh-act hh-act-gold" id="btnShutter">
+        <button type="button" class="hh-act hh-act-primary" id="btnShutter">
           <span class="hh-act-icon" aria-hidden="true">●</span>
           CAPTURE
         </button>
@@ -66,12 +73,19 @@
         </button>
       </div>
 
+      <div class="dump-panel hidden" id="dumpPanel">
+        <p class="dump-copy">Dump a pile of photos, then group them into one product — Resale OS style.</p>
+        <button type="button" class="m-btn m-btn-primary m-btn-cut-wide" id="btnDumpPick">Pick photo pile</button>
+        <div class="dump-pool no-scrollbar" id="dumpPool"></div>
+        <button type="button" class="m-btn m-btn-cut-wide" id="btnDumpAssign" disabled>Use selected as this item</button>
+      </div>
+
       <div class="hh-id">
         <div class="hh-id-row">
           <input class="m-input hh-barcode" id="barcodeInput" placeholder="UPC / EAN" inputmode="numeric" autocomplete="off" enterkeyhint="search" />
           <button type="button" class="m-btn m-btn-primary hh-lookup" id="btnLookup">ID</button>
         </div>
-        <div class="status-strip" id="identifyStatus">Point camera · scan barcode · add item</div>
+        <div class="status-strip" id="identifyStatus">Point · scan · dump · add item</div>
         <div class="hh-id-row hh-title-row" id="manualRow">
           <input class="m-input" id="manualTitle" placeholder="Title (if lookup misses)" autocomplete="off" />
           <button type="button" class="m-btn" id="btnManualOk">Set</button>
@@ -93,8 +107,9 @@
       </label>
 
       <button type="button" class="m-btn m-btn-primary m-btn-cut-wide hh-commit" id="btnSave" disabled>Add to rail</button>
-
       <button type="button" class="hh-gallery" id="btnGallery">Add from gallery</button>
+
+      <!-- stubs kept for scouter.js -->
       <input type="hidden" id="fieldNotes" value="" />
       <button type="button" class="hidden" id="btnManual" tabindex="-1" aria-hidden="true"></button>
       <div class="hidden" id="pageHero"></div>
@@ -111,11 +126,12 @@
       <input type="file" id="importFile" accept="application/json,.json" hidden />
     </section>
 
+    <!-- RAIL — sift / stage -->
     <section id="viewCollection" class="view handheld-rail">
       <header class="hh-top">
         <div class="hh-brand">
           <span class="hh-mark">RAIL</span>
-          <span class="hh-sub v-label">Sift · stage</span>
+          <span class="hh-sub v-label">Sift · stage · push</span>
         </div>
         <button type="button" class="m-btn m-btn-primary" id="btnRailNew" style="padding:10px 14px;font-size:12px">New</button>
       </header>
@@ -126,7 +142,54 @@
       <div id="collectionRoot"></div>
     </section>
 
-    <nav class="bottom-nav" aria-label="Scouter">
+    <!-- SPACES — floating bins -->
+    <section id="viewSpaces" class="view handheld-spaces">
+      <header class="hh-top">
+        <div class="hh-brand">
+          <span class="hh-mark">SPACES</span>
+          <span class="hh-sub v-label">Drag into bins · tap to open</span>
+        </div>
+        <button type="button" class="m-btn" id="btnAddSpace" style="padding:10px 12px;font-size:12px">+ Bin</button>
+      </header>
+      <p class="spaces-lead">Unassigned pool floats below. Drag a card onto a bin. Tap a bin to look inside.</p>
+      <div class="spaces-field" id="spacesField"></div>
+      <div class="pool-label v-label">Unassigned</div>
+      <div class="item-pool no-scrollbar" id="itemPool"></div>
+      <div class="space-detail hidden" id="spaceDetail">
+        <button type="button" class="back-chip" id="btnSpaceBack">← Back</button>
+        <h2 class="space-detail-title" id="spaceDetailTitle">Bin</h2>
+        <div class="space-detail-grid" id="spaceDetailGrid"></div>
+      </div>
+    </section>
+
+    <!-- SPINE — constellation / roadmap -->
+    <section id="viewSpine" class="view handheld-spine">
+      <header class="hh-top">
+        <div class="hh-brand">
+          <span class="hh-mark">SPINE</span>
+          <span class="hh-sub v-label">Roadmap · not a molecule</span>
+        </div>
+      </header>
+      <p class="spaces-lead">Products move down a glowing line — intake → doorstep. Structured, clickable, never a messy cluster.</p>
+      <div class="spine-track" id="spineTrack" aria-label="Workflow spine"></div>
+      <div class="spine-stage-panel" id="spineStagePanel">
+        <h3 class="spine-stage-name" id="spineStageName">Intake</h3>
+        <div class="spine-stage-items" id="spineStageItems"></div>
+      </div>
+    </section>
+
+    <!-- CHANNELS -->
+    <section id="viewChannels" class="view handheld-channels">
+      <header class="hh-top">
+        <div class="hh-brand">
+          <span class="hh-mark">CHANNELS</span>
+          <span class="hh-sub v-label">Live sync · qty · photos</span>
+        </div>
+      </header>
+      <div class="channel-grid" id="channelGrid"></div>
+    </section>
+
+    <nav class="bottom-nav" aria-label="Coalition H.U.D">
       <button type="button" class="nav-tab active" data-view="capture">
         <span class="nav-tab-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -139,11 +202,30 @@
         </span>
         Rail
       </button>
+      <button type="button" class="nav-tab" data-view="spaces">
+        <span class="nav-tab-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        </span>
+        Spaces
+      </button>
+      <button type="button" class="nav-tab" data-view="spine">
+        <span class="nav-tab-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="7" r="2"/><circle cx="12" cy="17" r="2"/><circle cx="19" cy="12" r="2"/><path d="M7 12h3M14 12h3M12 9v6"/></svg>
+        </span>
+        Spine
+      </button>
+      <button type="button" class="nav-tab" data-view="channels">
+        <span class="nav-tab-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M4 12h10M4 17h14"/></svg>
+        </span>
+        Channels
+      </button>
     </nav>
   </div>
 
   <input type="file" id="inputCamera" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" capture="environment" multiple hidden />
   <input type="file" id="inputGallery" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" multiple hidden />
+  <input type="file" id="inputDump" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" multiple hidden />
 
   <div class="scan-overlay" id="scanOverlay">
     <div id="scanReader" class="scan-reader"></div>
@@ -161,8 +243,8 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="/lib/html5-qrcode.min.js?v=24"></script>
-  <script src="/lib/image.js?v=24"></script>
-  <script src="/scouter.js?v=24"></script>
+  <script src="/lib/html5-qrcode.min.js?v=25"></script>
+  <script src="/lib/image.js?v=25"></script>
+  <script src="/scouter.js?v=25"></script>
 </body>
 </html>

@@ -50,10 +50,13 @@ test("GET / serves Scouter frontend", async () => {
     assert.match(html, /Add to rail/);
     assert.match(html, /SCOUTER/);
     assert.match(html, /hh-viewfinder/);
-    assert.match(html, /scouter\.css\?v=24/);
+    assert.match(html, /scouter\.css\?v=25/);
     assert.match(html, /stagedFlag/);
     assert.match(html, /CAPTURE/);
     assert.match(html, /SCAN/);
+    assert.match(html, /Spaces/);
+    assert.match(html, /Spine/);
+    assert.match(html, /Channels/);
     assert.doesNotMatch(html, /Drop a folder of scans/);
     assert.doesNotMatch(html, />Export</);
     assert.doesNotMatch(html, />Import</);
