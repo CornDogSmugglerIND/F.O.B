@@ -92,6 +92,19 @@
   color: var(--text-lo);
 }
 
+.hh-catalog-row {
+  display: grid;
+  grid-template-columns: 1fr 72px 88px;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+@media (max-width: 380px) {
+  .hh-catalog-row {
+    grid-template-columns: 1fr 64px 72px;
+  }
+}
+
 .identify-candidates {
   display: flex;
   flex-direction: column;

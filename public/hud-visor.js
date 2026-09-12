@@ -87,6 +87,9 @@ const els = {
   inputGallery: $("inputGallery"),
   identifyStatus: $("identifyStatus"),
   barcodeInput: $("barcodeInput"),
+  catalogName: $("catalogName"),
+  catalogNumber: $("catalogNumber"),
+  catalogSet: $("catalogSet"),
   manualRow: $("manualRow"),
   manualTitle: $("manualTitle"),
   btnManual: $("btnManual"),
@@ -298,11 +301,15 @@ async function runIdentify() {
   const photos = state.draftPhotos.map((p) => p.dataUrl).filter(Boolean);
   const barcode = (els.barcodeInput?.value || state.barcode || "").trim();
   const manualTitle = (els.manualTitle?.value || "").trim();
+  const catalogName = (els.catalogName?.value || "").trim();
+  const catalogNumber = (els.catalogNumber?.value || "").trim();
+  const catalogSet = (els.catalogSet?.value || "").trim();
+  const hasCatalog = Boolean(catalogNumber || catalogSet || (catalogName && catalogNumber));
 
-  if (!photos.length && !barcode && !manualTitle) {
+  if (!photos.length && !barcode && !manualTitle && !hasCatalog && !catalogName) {
     setIdentifyPhase("fail", "Nothing to ID");
-    setStatus("Drop/take photos first (primary), or scan a UPC, or set Manual.", "err");
-    showToast("Need photos, barcode, or manual title", "err");
+    setStatus("Drop/take photos first (primary), or UPC / set+# / Manual.", "err");
+    showToast("Need photos, UPC, catalog fields, or manual title", "err");
     return;
   }
 
@@ -328,9 +335,18 @@ async function runIdentify() {
       notes: (els.fieldNotes?.value || "").trim() || null,
       category: state.category,
       quantity: state.qty,
-      forcePath: photos.length ? undefined : barcode ? "barcode" : undefined,
+      name: catalogName || null,
+      number: catalogNumber || null,
+      set: catalogSet || null,
+      forcePath: undefined,
     };
-    if (manualTitle && !photos.length && !barcode) {
+    if (photos.length) {
+      payload.forcePath = undefined; // router picks photo_search
+    } else if (hasCatalog || catalogName) {
+      payload.forcePath = "catalog";
+    } else if (barcode) {
+      payload.forcePath = "barcode";
+    } else if (manualTitle) {
       payload.forcePath = "manual";
       payload.manual = {
         product_name: manualTitle,
@@ -587,15 +603,21 @@ function resetCapture() {
   state.category = "other";
   state.title = "";
   state.barcode = "";
+  state.identity = null;
+  state.identifyPath = null;
   els.qtyVal.textContent = "1";
   if (els.fieldNotes) els.fieldNotes.value = "";
-  els.barcodeInput.value = "";
-  els.manualTitle.value = "";
+  if (els.barcodeInput) els.barcodeInput.value = "";
+  if (els.manualTitle) els.manualTitle.value = "";
+  if (els.catalogName) els.catalogName.value = "";
+  if (els.catalogNumber) els.catalogNumber.value = "";
+  if (els.catalogSet) els.catalogSet.value = "";
   if (els.stagedFlag) els.stagedFlag.checked = true;
   setCategory("other");
   renderPhotoGrid();
+  renderCandidates([]);
   setIdentifyPhase("idle");
-  setStatus("Point camera · scan barcode · add item");
+  setStatus("Drop/take photos · tap ID · stage item");
   updateSaveState();
 }
 
