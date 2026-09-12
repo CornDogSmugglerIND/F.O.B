@@ -30,7 +30,7 @@ const VIEW_COPY = {
     sub: "Dark tactical VISOR. Amber-gold only. Scouter is the phone intake tab.",
   },
   intake: {
-    eyebrow: "H.U.D · Scouter rail",
+    eyebrow: "H.U.D · Scouter",
     title: "Sift",
     sub: "Everything currently in Scouter. Review, correct, stage. Not a listing screen.",
   },
@@ -40,9 +40,9 @@ const VIEW_COPY = {
     sub: "Handheld intake: take or dump photos → identify → sift → stage. Does not list.",
   },
   list: {
-    eyebrow: "H.U.D · Staged",
-    title: "Staged",
-    sub: "Batch ready for desktop pipeline. Listing engine runs on desktop — not here.",
+    eyebrow: "H.U.D · Inventory",
+    title: "Inventory",
+    sub: "Staged items ready for desktop pipeline. Listing engine runs on desktop — not here.",
   },
   systems: {
     eyebrow: "H.U.D · Systems",
@@ -87,6 +87,9 @@ const els = {
   inputGallery: $("inputGallery"),
   identifyStatus: $("identifyStatus"),
   barcodeInput: $("barcodeInput"),
+  catalogName: $("catalogName"),
+  catalogNumber: $("catalogNumber"),
+  catalogSet: $("catalogSet"),
   manualRow: $("manualRow"),
   manualTitle: $("manualTitle"),
   btnManual: $("btnManual"),
@@ -103,6 +106,7 @@ const els = {
   identifyResult: $("identifyResult"),
   identifyResultTitle: $("identifyResultTitle"),
   identifyResultMeta: $("identifyResultMeta"),
+  identifyCandidates: $("identifyCandidates"),
   btnExportStaged: $("btnExportStaged"),
   handoffNote: $("handoffNote"),
   btnSave: $("btnSave"),
@@ -207,9 +211,9 @@ function updateSaveState() {
     state.title.trim().length > 0;
   els.btnSave.disabled = !canSave;
   if (!els.btnSave.disabled) {
-    els.btnSave.textContent = els.stagedFlag?.checked ? "Add & stage" : "Add to rail";
+    els.btnSave.textContent = els.stagedFlag?.checked ? "Stage item" : "Save item";
   } else {
-    els.btnSave.textContent = "Add to rail";
+    els.btnSave.textContent = "Stage item";
   }
 }
 
@@ -220,10 +224,11 @@ function setIdentifyPhase(phase, detail = "") {
     ok: "MATCH",
     fail: "NO MATCH",
     manual: "MANUAL",
+    setup: "SETUP",
   };
   if (els.identifyPhaseLbl) els.identifyPhaseLbl.textContent = labels[phase] || phase;
   if (!els.identifyResult) return;
-  if (phase === "idle" || phase === "running") {
+  if (phase === "idle") {
     els.identifyResult.classList.add("hidden");
     return;
   }
@@ -233,12 +238,173 @@ function setIdentifyPhase(phase, detail = "") {
   }
   if (els.identifyResultMeta) {
     const bits = [
-      state.barcode ? `BC ${state.barcode}` : null,
-      phase === "ok" ? "catalog hit" : null,
+      state.identifyPath ? `path ${state.identifyPath}` : null,
+      state.barcode ? `UPC ${state.barcode}` : null,
+      phase === "ok" ? "gate ok" : null,
       phase === "manual" ? "manual title" : null,
-      phase === "fail" ? "needs title" : null,
+      phase === "fail" ? "needs pick / manual" : null,
+      phase === "setup" ? "key missing" : null,
+      phase === "running" ? "working…" : null,
     ].filter(Boolean);
     els.identifyResultMeta.textContent = bits.join(" · ");
+  }
+}
+
+function renderCandidates(candidates = []) {
+  const box = els.identifyCandidates || $("identifyCandidates");
+  if (!box) return;
+  if (!candidates.length) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+  box.classList.remove("hidden");
+  box.innerHTML = candidates
+    .slice(0, 5)
+    .map((c, i) => {
+      const label = [c.product_name, c.collector_number, c.set_name, c.finish]
+        .filter(Boolean)
+        .join(" · ");
+      return `<button type="button" class="identify-candidate" data-cand="${i}">${escapeHtml(label || "Candidate")}</button>`;
+    })
+    .join("");
+  box.querySelectorAll("[data-cand]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const cand = candidates[Number(btn.dataset.cand)];
+      if (!cand) return;
+      applyIdentity(cand, "manual");
+      setIdentifyPhase("ok", cand.product_name);
+      setStatus(`Picked: ${cand.product_name}`, "ok");
+      updateSaveState();
+    });
+  });
+}
+
+function applyIdentity(identity, path) {
+  if (!identity) return;
+  state.title =
+    [identity.product_name, identity.collector_number, identity.set_name, identity.finish]
+      .filter(Boolean)
+      .join(" ")
+      .trim() || identity.product_name || state.title;
+  state.identifyPath = path || identity.source || null;
+  state.identity = identity;
+  if (els.manualTitle && identity.product_name) els.manualTitle.value = state.title;
+}
+
+/**
+ * Photo-first Identify (Command LISTING-ENGINE §1 / #55).
+ * Photos → /api/scouter/identify. Barcode is a shortcut. Manual always available.
+ * Never hang on a spinner — every path resolves with a message.
+ */
+async function runIdentify() {
+  const photos = state.draftPhotos.map((p) => p.dataUrl).filter(Boolean);
+  const barcode = (els.barcodeInput?.value || state.barcode || "").trim();
+  const manualTitle = (els.manualTitle?.value || "").trim();
+  const catalogName = (els.catalogName?.value || "").trim();
+  const catalogNumber = (els.catalogNumber?.value || "").trim();
+  const catalogSet = (els.catalogSet?.value || "").trim();
+  const hasCatalog = Boolean(catalogNumber || catalogSet || (catalogName && catalogNumber));
+
+  if (!photos.length && !barcode && !manualTitle && !hasCatalog && !catalogName) {
+    setIdentifyPhase("fail", "Nothing to ID");
+    setStatus("Drop/take photos first (primary), or UPC / set+# / Manual.", "err");
+    showToast("Need photos, UPC, catalog fields, or manual title", "err");
+    return;
+  }
+
+  setIdentifyPhase("running", "Working…");
+  setStatus("Identify running — photo / catalog / UPC…", "busy");
+  els.btnLookup.disabled = true;
+  els.btnLookup.textContent = "…";
+  renderCandidates([]);
+
+  try {
+    // Optional: if no barcode yet, try reading one from photos (shortcut only)
+    if (!barcode && photos.length) {
+      const fromPhoto = await scanBarcodeFromPhotos();
+      if (fromPhoto) {
+        els.barcodeInput.value = fromPhoto;
+        state.barcode = fromPhoto.trim();
+      }
+    }
+
+    const payload = {
+      barcode: (els.barcodeInput?.value || "").trim() || null,
+      photos,
+      notes: (els.fieldNotes?.value || "").trim() || null,
+      category: state.category,
+      quantity: state.qty,
+      name: catalogName || null,
+      number: catalogNumber || null,
+      set: catalogSet || null,
+      forcePath: undefined,
+    };
+    if (photos.length) {
+      payload.forcePath = undefined; // router picks photo_search
+    } else if (hasCatalog || catalogName) {
+      payload.forcePath = "catalog";
+    } else if (barcode) {
+      payload.forcePath = "barcode";
+    } else if (manualTitle) {
+      payload.forcePath = "manual";
+      payload.manual = {
+        product_name: manualTitle,
+        language: "English",
+        condition: "NM",
+        quantity: state.qty,
+      };
+    }
+
+    const res = await fetch("/api/scouter/identify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    let result;
+    try {
+      result = await res.json();
+    } catch {
+      throw new Error(`Identify returned non-JSON (${res.status})`);
+    }
+    // 422 / 503 still carry structured identify payloads — do not treat as hard crash
+    if (!result || typeof result !== "object") {
+      throw new Error(`Identify failed (${res.status})`);
+    }
+
+    state.identifyPath = result.path;
+    if (result.identity) applyIdentity(result.identity, result.path);
+    renderCandidates(result.candidates || []);
+
+    if (result.ok && result.identity?.product_name) {
+      setIdentifyPhase("ok", result.identity.product_name);
+      setStatus(result.message || `Identified: ${result.identity.product_name}`, "ok");
+      showToast("Identify match");
+    } else if (result.setupTask || ((result.missingKeys || []).length && payload.photos?.length)) {
+      setIdentifyPhase("setup", result.message || "Setup needed");
+      setStatus(result.setupTask || result.message || "Identify setup needed", "err");
+      showToast("Identify needs API key setup", "err");
+      els.manualRow?.classList.remove("hidden");
+    } else if ((result.candidates || []).length) {
+      setIdentifyPhase("fail", result.message || "Pick a candidate");
+      setStatus(result.message || "Multiple / low-confidence — pick one or Manual.", "err");
+      showToast("Pick a candidate", "err");
+      els.manualRow?.classList.remove("hidden");
+    } else {
+      setIdentifyPhase("fail", result.message || "No match");
+      setStatus(result.message || "No match — set Manual. Photos kept.", "err");
+      showToast("No match — manual title", "err");
+      els.manualRow?.classList.remove("hidden");
+    }
+    updateSaveState();
+  } catch (err) {
+    setIdentifyPhase("fail", "Identify failed");
+    setStatus(`Identify failed: ${err.message || "network"}. Photos kept. Use Manual.`, "err");
+    els.manualRow?.classList.remove("hidden");
+    showToast("Identify failed", "err");
+  } finally {
+    els.btnLookup.disabled = false;
+    els.btnLookup.textContent = "ID";
   }
 }
 
@@ -437,15 +603,21 @@ function resetCapture() {
   state.category = "other";
   state.title = "";
   state.barcode = "";
+  state.identity = null;
+  state.identifyPath = null;
   els.qtyVal.textContent = "1";
   if (els.fieldNotes) els.fieldNotes.value = "";
-  els.barcodeInput.value = "";
-  els.manualTitle.value = "";
+  if (els.barcodeInput) els.barcodeInput.value = "";
+  if (els.manualTitle) els.manualTitle.value = "";
+  if (els.catalogName) els.catalogName.value = "";
+  if (els.catalogNumber) els.catalogNumber.value = "";
+  if (els.catalogSet) els.catalogSet.value = "";
   if (els.stagedFlag) els.stagedFlag.checked = true;
   setCategory("other");
   renderPhotoGrid();
+  renderCandidates([]);
   setIdentifyPhase("idle");
-  setStatus("Point camera · scan barcode · add item");
+  setStatus("Drop/take photos · tap ID · stage item");
   updateSaveState();
 }
 
@@ -477,15 +649,20 @@ function renderCommand() {
 
 function renderListRail() {
   const staged = state.items.filter((i) => i.staged);
-  els.listReadyLbl.textContent = pad2(staged.length);
+  if (els.listReadyLbl) els.listReadyLbl.textContent = pad2(staged.length);
   if (els.handoffNote) {
     els.handoffNote.textContent = staged.length
       ? `${staged.length} staged — export batch for desktop (Batches / Inventory)`
-      : "No staged items yet — stage from Scouter or Sift";
+      : "No staged items yet — identify in Scouter, then Stage item";
   }
   if (els.btnExportStaged) els.btnExportStaged.disabled = staged.length === 0;
+  if (!els.listRail) return;
   if (!staged.length) {
-    els.listRail.innerHTML = "";
+    els.listRail.innerHTML = `
+      <div class="v-panel v-cut panel-block" style="margin-top:12px">
+        <p class="hero-sub">Inventory is empty.</p>
+        <p class="hero-sub">Scouter → photos → ID → Stage item. Staged cards show up here with photos.</p>
+      </div>`;
     return;
   }
   els.listRail.innerHTML = staged
@@ -609,16 +786,31 @@ async function saveCapture() {
 
   try {
     const now = new Date().toISOString();
+    const identity = state.identity || null;
+    const staged = els.stagedFlag ? Boolean(els.stagedFlag.checked) : true;
     const item = {
       id: crypto.randomUUID(),
       createdAt: now,
       updatedAt: now,
-      title: state.title.trim() || null,
+      title: state.title.trim() || identity?.product_name || null,
       barcode: state.barcode.trim() || null,
       quantity: state.qty,
       category: state.category,
       notes: (els.fieldNotes?.value || "").trim() || null,
-      staged: els.stagedFlag ? Boolean(els.stagedFlag.checked) : true,
+      staged,
+      phase: staged ? "Staged" : "Draft",
+      location: null,
+      identifyPath: state.identifyPath || null,
+      productName: identity?.product_name || null,
+      collectorNumber: identity?.collector_number || null,
+      setName: identity?.set_name || null,
+      setCode: identity?.set_code || null,
+      game: identity?.game || null,
+      rarity: identity?.rarity || null,
+      finish: identity?.finish || null,
+      language: identity?.language || null,
+      condition: identity?.condition || null,
+      identifyConfidence: identity?.confidence || null,
       photos: state.draftPhotos.map((p) => ({
         id: crypto.randomUUID(),
         dataUrl: p.dataUrl,
@@ -630,7 +822,7 @@ async function saveCapture() {
     state.items.unshift(item);
     saveLocalItems(state.items);
 
-    // Best-effort server sync (barcode identify + backup); never block local save
+    // Best-effort server sync; never block local save / Inventory render
     try {
       let remote = (
         await api("/api/scouter/items", {
@@ -643,20 +835,20 @@ async function saveCapture() {
             category: item.category,
             notes: item.notes,
             staged: item.staged,
+            productName: item.productName,
+            collectorNumber: item.collectorNumber,
+            setName: item.setName,
+            setCode: item.setCode,
+            game: item.game,
+            rarity: item.rarity,
+            finish: item.finish,
+            language: item.language,
+            condition: item.condition,
+            identifyConfidence: item.identifyConfidence,
+            identifyPath: item.identifyPath,
           }),
         })
       ).item;
-
-      if (item.barcode) {
-        remote = (
-          await api(`/api/scouter/items/${remote.id}/identify`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ barcode: item.barcode, title: item.title }),
-          })
-        ).item;
-        if (remote.title) item.title = remote.title;
-      }
 
       for (const photo of item.photos) {
         await api(`/api/scouter/items/${remote.id}/photos/data`, {
@@ -671,14 +863,13 @@ async function saveCapture() {
 
     loadItems();
     resetCapture();
-    navigate("intake");
-    showToast(item.staged ? "Staged on rail" : "Saved to rail");
+    navigate(item.staged ? "list" : "intake");
+    showToast(item.staged ? "Staged — in Inventory" : "Saved to Sift");
   } catch (e) {
     showToast(e.message, "err");
     setStatus(e.message, "err");
   } finally {
     els.btnSave.disabled = false;
-    els.btnSave.textContent = "Add to rail";
     updateSaveState();
   }
 }
@@ -986,19 +1177,7 @@ function bindEvents() {
 
   els.btnScan.addEventListener("click", () => startScanner());
   els.btnScanClose.addEventListener("click", () => stopScanner());
-  els.btnLookup.addEventListener("click", async () => {
-    if (!els.barcodeInput.value.trim() && state.draftPhotos.length) {
-      setIdentifyPhase("running");
-      setStatus("Pulling barcode from photos…", "busy");
-      const fromPhoto = await scanBarcodeFromPhotos();
-      if (fromPhoto) {
-        els.barcodeInput.value = fromPhoto;
-        state.barcode = fromPhoto.trim();
-        updateSaveState();
-      }
-    }
-    await lookupBarcode(els.barcodeInput.value);
-  });
+  els.btnLookup.addEventListener("click", () => runIdentify());
   els.barcodeInput.addEventListener("input", () => {
     state.barcode = els.barcodeInput.value.trim();
     updateSaveState();
@@ -1006,7 +1185,7 @@ function bindEvents() {
   els.barcodeInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      lookupBarcode(els.barcodeInput.value);
+      runIdentify();
     }
   });
 

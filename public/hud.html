@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Orbitron:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/scouter.css?v=24" />
-  <link rel="stylesheet" href="/hud-visor.css?v=24" />
+  <link rel="stylesheet" href="/hud-visor.css?v=27" />
 </head>
 <body class="handheld">
   <div class="ambient" aria-hidden="true">
@@ -38,15 +38,15 @@
       <section id="viewIntake" class="view handheld-rail">
         <header class="hh-top">
           <div class="hh-brand">
-            <span class="hh-mark">RAIL</span>
-            <span class="hh-sub v-label">Sift · stage</span>
+            <span class="hh-mark">SIFT</span>
+            <span class="hh-sub v-label">Review · stage</span>
           </div>
           <button type="button" class="m-btn m-btn-primary" data-go="scan" style="padding:10px 14px;font-size:12px">New</button>
         </header>
         <div class="rail-toolbar" id="railToolbar" style="margin:0 14px 0">
           <div class="rail-search hh-rail-search" style="margin:0;flex:1">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            <input type="search" id="railFilter" placeholder="Filter rail" autocomplete="off" />
+            <input type="search" id="railFilter" placeholder="Filter items" autocomplete="off" />
           </div>
           <button type="button" class="m-btn m-btn-primary hidden" id="btnNewScan">New</button>
         </div>
@@ -100,14 +100,20 @@
             <input class="m-input hh-barcode" id="barcodeInput" placeholder="UPC / EAN" inputmode="numeric" autocomplete="off" enterkeyhint="search" />
             <button type="button" class="m-btn m-btn-primary hh-lookup" id="btnLookup">ID</button>
           </div>
-          <div class="status-strip" id="identifyStatus">Point camera · scan barcode · add item</div>
+          <div class="hh-id-row hh-catalog-row" id="catalogRow">
+            <input class="m-input" id="catalogName" placeholder="Card / product name" autocomplete="off" />
+            <input class="m-input" id="catalogNumber" placeholder="#" inputmode="text" autocomplete="off" style="max-width:72px" />
+            <input class="m-input" id="catalogSet" placeholder="Set" autocomplete="off" style="max-width:88px" />
+          </div>
+          <div class="status-strip" id="identifyStatus">Drop or take photos · tap ID · stage item</div>
           <div class="identify-result hidden" id="identifyResult" aria-live="polite">
-            <div class="v-label" style="font-size:9px">Result</div>
+            <div class="v-label" id="identifyPhaseLbl">IDLE</div>
             <div class="identify-result-title" id="identifyResultTitle">—</div>
             <div class="identify-result-meta v-label" id="identifyResultMeta"></div>
+            <div class="identify-candidates hidden" id="identifyCandidates"></div>
           </div>
           <div class="hh-id-row hh-title-row" id="manualRow">
-            <input class="m-input" id="manualTitle" placeholder="Title (if lookup misses)" autocomplete="off" />
+            <input class="m-input" id="manualTitle" placeholder="Manual title (backup if ID misses)" autocomplete="off" />
             <button type="button" class="m-btn" id="btnManualOk">Set</button>
           </div>
         </div>
@@ -126,11 +132,10 @@
           <span>STAGE for desktop</span>
         </label>
 
-        <button type="button" class="m-btn m-btn-primary m-btn-cut-wide hh-commit" id="btnSave" disabled>Add to rail</button>
+        <button type="button" class="m-btn m-btn-primary m-btn-cut-wide hh-commit" id="btnSave" disabled>Stage item</button>
         <button type="button" class="hh-gallery" id="btnGallery">Add from gallery</button>
         <input type="hidden" id="fieldNotes" value="" />
         <button type="button" class="hidden" id="btnManual" tabindex="-1" aria-hidden="true"></button>
-        <span class="hidden" id="identifyPhaseLbl">IDLE</span>
         <div class="hidden" id="photoDrop"></div>
       </section>
 
@@ -138,8 +143,8 @@
       <section id="viewList" class="view handheld-rail">
         <header class="hh-top" style="padding:0 14px">
           <div class="hh-brand">
-            <span class="hh-mark" style="font-size:18px">STAGED</span>
-            <span class="hh-sub v-label">Desktop handoff</span>
+            <span class="hh-mark" style="font-size:18px">INVENTORY</span>
+            <span class="hh-sub v-label">Staged · desktop handoff</span>
           </div>
           <span class="v-label" id="listReadyLbl">00</span>
         </header>
@@ -183,7 +188,7 @@
         <span class="nav-tab-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         </span>
-        Rail
+        Sift
       </button>
       <button type="button" class="nav-tab active" data-view="scan">
         <span class="nav-tab-icon">
@@ -195,7 +200,7 @@
         <span class="nav-tab-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
         </span>
-        Staged
+        Inventory
       </button>
     </nav>
   </div>
@@ -221,6 +226,6 @@
 
   <script src="/lib/html5-qrcode.min.js?v=24"></script>
   <script src="/lib/image.js?v=24"></script>
-  <script src="/hud-visor.js?v=24"></script>
+  <script src="/hud-visor.js?v=27"></script>
 </body>
 </html>
