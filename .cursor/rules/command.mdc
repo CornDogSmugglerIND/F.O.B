@@ -55,3 +55,19 @@ Behavior outranks visuals. Do not touch the palette until identify and inventory
 
 Plain English in all UI. **Banned words:** deploy, archive, purge, supply, rail. Use Add, Saved, Delete, Stock, Staged.
 This is a reseller tool, not a collection manager.
+
+## HOW TO TALK TO COMMAND — read this before you ever say "blocked"
+
+Command replies on the GitHub issue. **Nothing pings you when a reply lands.** There is no push channel from Command to Cursor. If you wait to be notified, you will wait forever and Sawyer will find you idle.
+
+**Before you say "I never heard back" or "I don't know what to do":**
+
+1. Re-read the **entire** issue thread, newest comment to oldest. Command's replies are posted as `CornDogSmugglerIND`.
+2. Re-read this file and `design/LISTING-ENGINE.md`.
+3. Only then may you say you're blocked — and you must name **the exact comment ID you read last**. "I'm blocked" with no comment ID is not a valid status.
+
+**Command's replies are the ones written as spec** — headers, tables, explicit STOP/GO. The GitHub Actions `@claude` bot is not Command; its comments are code-grep output, not decisions.
+
+**When you need something from Command:** post the question on the issue, state clearly that you are waiting, and stop. Do not build past it. Do not pick a provider yourself.
+
+**When Command has answered:** say what you read, then do it. Never re-ask a question already answered in the thread.
