@@ -100,14 +100,15 @@
             <input class="m-input hh-barcode" id="barcodeInput" placeholder="UPC / EAN" inputmode="numeric" autocomplete="off" enterkeyhint="search" />
             <button type="button" class="m-btn m-btn-primary hh-lookup" id="btnLookup">ID</button>
           </div>
-          <div class="status-strip" id="identifyStatus">Point camera · scan barcode · add item</div>
+          <div class="status-strip" id="identifyStatus">Drop or take photos · tap ID · stage item</div>
           <div class="identify-result hidden" id="identifyResult" aria-live="polite">
-            <div class="v-label" style="font-size:9px">Result</div>
+            <div class="v-label" id="identifyPhaseLbl">IDLE</div>
             <div class="identify-result-title" id="identifyResultTitle">—</div>
             <div class="identify-result-meta v-label" id="identifyResultMeta"></div>
+            <div class="identify-candidates hidden" id="identifyCandidates"></div>
           </div>
           <div class="hh-id-row hh-title-row" id="manualRow">
-            <input class="m-input" id="manualTitle" placeholder="Title (if lookup misses)" autocomplete="off" />
+            <input class="m-input" id="manualTitle" placeholder="Manual title (backup if ID misses)" autocomplete="off" />
             <button type="button" class="m-btn" id="btnManualOk">Set</button>
           </div>
         </div>
@@ -126,11 +127,10 @@
           <span>STAGE for desktop</span>
         </label>
 
-        <button type="button" class="m-btn m-btn-primary m-btn-cut-wide hh-commit" id="btnSave" disabled>Add to rail</button>
+        <button type="button" class="m-btn m-btn-primary m-btn-cut-wide hh-commit" id="btnSave" disabled>Stage item</button>
         <button type="button" class="hh-gallery" id="btnGallery">Add from gallery</button>
         <input type="hidden" id="fieldNotes" value="" />
         <button type="button" class="hidden" id="btnManual" tabindex="-1" aria-hidden="true"></button>
-        <span class="hidden" id="identifyPhaseLbl">IDLE</span>
         <div class="hidden" id="photoDrop"></div>
       </section>
 
@@ -183,7 +183,7 @@
         <span class="nav-tab-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         </span>
-        Rail
+        Staged
       </button>
       <button type="button" class="nav-tab active" data-view="scan">
         <span class="nav-tab-icon">
