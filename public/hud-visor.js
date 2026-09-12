@@ -40,9 +40,9 @@ const VIEW_COPY = {
     sub: "Handheld intake: take or dump photos → identify → sift → stage. Does not list.",
   },
   list: {
-    eyebrow: "H.U.D · Staged",
-    title: "Staged",
-    sub: "Batch ready for desktop pipeline. Listing engine runs on desktop — not here.",
+    eyebrow: "H.U.D · Inventory",
+    title: "Inventory",
+    sub: "Staged items ready for desktop pipeline. Listing engine runs on desktop — not here.",
   },
   systems: {
     eyebrow: "H.U.D · Systems",
@@ -627,15 +627,20 @@ function renderCommand() {
 
 function renderListRail() {
   const staged = state.items.filter((i) => i.staged);
-  els.listReadyLbl.textContent = pad2(staged.length);
+  if (els.listReadyLbl) els.listReadyLbl.textContent = pad2(staged.length);
   if (els.handoffNote) {
     els.handoffNote.textContent = staged.length
       ? `${staged.length} staged — export batch for desktop (Batches / Inventory)`
-      : "No staged items yet — stage from Scouter or Sift";
+      : "No staged items yet — identify in Scouter, then Stage item";
   }
   if (els.btnExportStaged) els.btnExportStaged.disabled = staged.length === 0;
+  if (!els.listRail) return;
   if (!staged.length) {
-    els.listRail.innerHTML = "";
+    els.listRail.innerHTML = `
+      <div class="v-panel v-cut panel-block" style="margin-top:12px">
+        <p class="hero-sub">Inventory is empty.</p>
+        <p class="hero-sub">Scouter → photos → ID → Stage item. Staged cards show up here with photos.</p>
+      </div>`;
     return;
   }
   els.listRail.innerHTML = staged
@@ -759,16 +764,31 @@ async function saveCapture() {
 
   try {
     const now = new Date().toISOString();
+    const identity = state.identity || null;
+    const staged = els.stagedFlag ? Boolean(els.stagedFlag.checked) : true;
     const item = {
       id: crypto.randomUUID(),
       createdAt: now,
       updatedAt: now,
-      title: state.title.trim() || null,
+      title: state.title.trim() || identity?.product_name || null,
       barcode: state.barcode.trim() || null,
       quantity: state.qty,
       category: state.category,
       notes: (els.fieldNotes?.value || "").trim() || null,
-      staged: els.stagedFlag ? Boolean(els.stagedFlag.checked) : true,
+      staged,
+      phase: staged ? "Staged" : "Draft",
+      location: null,
+      identifyPath: state.identifyPath || null,
+      productName: identity?.product_name || null,
+      collectorNumber: identity?.collector_number || null,
+      setName: identity?.set_name || null,
+      setCode: identity?.set_code || null,
+      game: identity?.game || null,
+      rarity: identity?.rarity || null,
+      finish: identity?.finish || null,
+      language: identity?.language || null,
+      condition: identity?.condition || null,
+      identifyConfidence: identity?.confidence || null,
       photos: state.draftPhotos.map((p) => ({
         id: crypto.randomUUID(),
         dataUrl: p.dataUrl,
@@ -780,7 +800,7 @@ async function saveCapture() {
     state.items.unshift(item);
     saveLocalItems(state.items);
 
-    // Best-effort server sync (barcode identify + backup); never block local save
+    // Best-effort server sync; never block local save / Inventory render
     try {
       let remote = (
         await api("/api/scouter/items", {
@@ -793,20 +813,20 @@ async function saveCapture() {
             category: item.category,
             notes: item.notes,
             staged: item.staged,
+            productName: item.productName,
+            collectorNumber: item.collectorNumber,
+            setName: item.setName,
+            setCode: item.setCode,
+            game: item.game,
+            rarity: item.rarity,
+            finish: item.finish,
+            language: item.language,
+            condition: item.condition,
+            identifyConfidence: item.identifyConfidence,
+            identifyPath: item.identifyPath,
           }),
         })
       ).item;
-
-      if (item.barcode) {
-        remote = (
-          await api(`/api/scouter/items/${remote.id}/identify`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ barcode: item.barcode, title: item.title }),
-          })
-        ).item;
-        if (remote.title) item.title = remote.title;
-      }
 
       for (const photo of item.photos) {
         await api(`/api/scouter/items/${remote.id}/photos/data`, {
@@ -821,14 +841,13 @@ async function saveCapture() {
 
     loadItems();
     resetCapture();
-    navigate("intake");
-    showToast(item.staged ? "Staged on rail" : "Saved to rail");
+    navigate(item.staged ? "list" : "intake");
+    showToast(item.staged ? "Staged — in Inventory" : "Saved to Sift");
   } catch (e) {
     showToast(e.message, "err");
     setStatus(e.message, "err");
   } finally {
     els.btnSave.disabled = false;
-    els.btnSave.textContent = "Add to rail";
     updateSaveState();
   }
 }

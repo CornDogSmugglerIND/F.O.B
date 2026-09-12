@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Orbitron:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/scouter.css?v=24" />
-  <link rel="stylesheet" href="/hud-visor.css?v=25" />
+  <link rel="stylesheet" href="/hud-visor.css?v=26" />
 </head>
 <body class="handheld">
   <div class="ambient" aria-hidden="true">
@@ -38,15 +38,15 @@
       <section id="viewIntake" class="view handheld-rail">
         <header class="hh-top">
           <div class="hh-brand">
-            <span class="hh-mark">RAIL</span>
-            <span class="hh-sub v-label">Sift · stage</span>
+            <span class="hh-mark">SIFT</span>
+            <span class="hh-sub v-label">Review · stage</span>
           </div>
           <button type="button" class="m-btn m-btn-primary" data-go="scan" style="padding:10px 14px;font-size:12px">New</button>
         </header>
         <div class="rail-toolbar" id="railToolbar" style="margin:0 14px 0">
           <div class="rail-search hh-rail-search" style="margin:0;flex:1">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            <input type="search" id="railFilter" placeholder="Filter rail" autocomplete="off" />
+            <input type="search" id="railFilter" placeholder="Filter items" autocomplete="off" />
           </div>
           <button type="button" class="m-btn m-btn-primary hidden" id="btnNewScan">New</button>
         </div>
@@ -138,8 +138,8 @@
       <section id="viewList" class="view handheld-rail">
         <header class="hh-top" style="padding:0 14px">
           <div class="hh-brand">
-            <span class="hh-mark" style="font-size:18px">STAGED</span>
-            <span class="hh-sub v-label">Desktop handoff</span>
+            <span class="hh-mark" style="font-size:18px">INVENTORY</span>
+            <span class="hh-sub v-label">Staged · desktop handoff</span>
           </div>
           <span class="v-label" id="listReadyLbl">00</span>
         </header>
@@ -183,7 +183,7 @@
         <span class="nav-tab-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         </span>
-        Staged
+        Sift
       </button>
       <button type="button" class="nav-tab active" data-view="scan">
         <span class="nav-tab-icon">
@@ -195,7 +195,7 @@
         <span class="nav-tab-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
         </span>
-        Staged
+        Inventory
       </button>
     </nav>
   </div>
@@ -221,6 +221,6 @@
 
   <script src="/lib/html5-qrcode.min.js?v=24"></script>
   <script src="/lib/image.js?v=24"></script>
-  <script src="/hud-visor.js?v=25"></script>
+  <script src="/hud-visor.js?v=26"></script>
 </body>
 </html>
