@@ -1,18 +1,15 @@
 /**
- * Identify router — Command LISTING-ENGINE §1 + issue #55 correction.
+ * Identify — Command correction on #55 / #59 (supersedes barcode-first).
  *
- * Fire order (Command #55 — ship 1 / 2 / 4, Path 3 stays dark):
- * 1. Barcode / UPC when barcode present — zero keys
- * 2. Catalog when set+number or explicit name/number — zero keys
- * 3. Photo + live search — dark, honest "not set up yet" until Sawyer asks
- * 4. Manual always available — zero keys
+ * Identify = photos in, identity out. That is the feature.
+ * Manual is the always-available fallback.
+ * Barcode scanning is a separate feature (SCAN / /api/scouter/barcode). It is
+ * not inside this router and does not count as shipping Identify.
  *
- * Never infinite-spinner. Never lose photos. Never guess on low confidence.
- * Never ask Sawyer for an API key.
+ * Photo-first Identify is not wired yet. Honest message. Never substitute
+ * barcode. Never ask Sawyer for a key. Never infinite-spinner. Never lose photos.
  */
 
-import { lookupBarcode } from "../lookup.js";
-import { searchCatalogs } from "./catalog.js";
 import { identifyFromPhotos, visionKeyStatus } from "./vision.js";
 import {
   emptyIdentity,
@@ -23,134 +20,18 @@ import {
 } from "./gate.js";
 
 /**
- * @param {string|null|undefined} barcode
- */
-async function pathBarcode(barcode, quantity = 1) {
-  const networkCalls = [];
-  const code = String(barcode || "").replace(/\D/g, "");
-  if (!code) {
-    return identifyResult({
-      ok: false,
-      path: "barcode",
-      message: "No barcode provided.",
-      networkCalls,
-    });
-  }
-
-  networkCalls.push(`barcode:${code}`);
-  const lookup = await lookupBarcode(code);
-  if (!lookup.found || !lookup.product?.title) {
-    return identifyResult({
-      ok: false,
-      path: "barcode",
-      message: "No UPC catalog match. Try photos or Manual. Photos kept.",
-      networkCalls,
-    });
-  }
-
-  const identity = normalizeIdentity(
-    {
-      product_name: lookup.product.title,
-      collector_number: null,
-      set_name: lookup.product.brand || null,
-      set_code: code,
-      game: "other",
-      rarity: null,
-      finish: null,
-      language: "English",
-      condition: "NM",
-      confidence: "high",
-      source: lookup.product.lookupSource || "upc",
-    },
-    quantity,
-  );
-
-  const gate = gateCheck(identity);
-  if (!gate.complete) {
-    identity.confidence = "low";
-    return identifyResult({
-      ok: false,
-      path: "barcode",
-      identity,
-      candidates: [identity],
-      message: `UPC hit: ${identity.product_name}. Fill missing gate fields (Manual) before listing: ${gate.missing.join(", ")}.`,
-      networkCalls,
-    });
-  }
-
-  return identifyResult({
-    ok: true,
-    path: "barcode",
-    identity,
-    candidates: [identity],
-    message: `UPC identified: ${identity.product_name}`,
-    networkCalls,
-  });
-}
-
-/**
- * @param {{ name?: string, number?: string, set?: string, query?: string, quantity?: number }} input
- */
-async function pathCatalog(input) {
-  const { candidates, networkCalls } = await searchCatalogs(input);
-  if (!candidates.length) {
-    return identifyResult({
-      ok: false,
-      path: "catalog",
-      message: "No catalog match for set/number/name. Try photos or Manual.",
-      networkCalls,
-    });
-  }
-
-  const qty = input.quantity ?? 1;
-  const ranked = candidates.map((c) => normalizeIdentity(c, qty));
-  const top = ranked[0];
-  const gate = gateCheck(top);
-  if (!gate.complete || top.confidence !== "high" || ranked.length > 1) {
-    return identifyResult({
-      ok: false,
-      path: "catalog",
-      identity: top,
-      candidates: ranked.slice(0, 5),
-      message: gate.complete
-        ? ranked.length > 1
-          ? "Multiple catalog candidates — pick one. Photos kept."
-          : "Catalog candidate is low confidence — confirm or use Manual."
-        : `Catalog hit incomplete — missing: ${gate.missing.join(", ")}. Pick/confirm or Manual.`,
-      networkCalls,
-    });
-  }
-
-  return identifyResult({
-    ok: true,
-    path: "catalog",
-    identity: top,
-    candidates: ranked.slice(0, 5),
-    message: `Catalog match: ${top.product_name}`,
-    networkCalls,
-  });
-}
-
-/**
  * @param {{
- *   barcode?: string|null,
  *   photos?: string[],
- *   name?: string,
- *   number?: string,
- *   set?: string,
- *   query?: string,
  *   notes?: string,
  *   category?: string,
  *   quantity?: number,
  *   manual?: Partial<import('./gate.js').IdentifyCandidate>,
- *   forcePath?: 'barcode'|'catalog'|'photo_search'|'manual',
+ *   forcePath?: 'photo_search'|'manual'|'barcode'|'catalog',
  * }} input
  */
 export async function runIdentify(input = {}) {
   const quantity = Math.max(1, Number(input.quantity) || 1);
   const photos = Array.isArray(input.photos) ? input.photos : [];
-  const hasBarcode = Boolean(String(input.barcode || "").replace(/\D/g, ""));
-  const hasCatalogHints = Boolean(input.number || input.set || (input.name && input.number));
   const hasPhotos = photos.some((p) => typeof p === "string" && p.startsWith("data:image/"));
   const force = input.forcePath;
 
@@ -177,25 +58,18 @@ export async function runIdentify(input = {}) {
     });
   }
 
-  if (force === "barcode" || (!force && hasBarcode && !hasCatalogHints)) {
-    return pathBarcode(input.barcode, quantity);
-  }
-
-  if (force === "catalog" || (!force && hasCatalogHints)) {
-    return pathCatalog({
-      name: input.name,
-      number: input.number,
-      set: input.set,
-      query: input.query,
-      quantity,
+  if (force === "barcode") {
+    return identifyResult({
+      ok: false,
+      path: "none",
+      message: "Identify is photos in, identity out. Use Scan for UPC.",
+      setupTask: null,
+      missingKeys: [],
+      networkCalls: [],
     });
   }
 
-  if (force === "photo_search" || (!force && hasPhotos)) {
-    if (hasBarcode && force !== "photo_search") {
-      const upc = await pathBarcode(input.barcode, quantity);
-      if (upc.ok) return upc;
-    }
+  if (force === "photo_search" || hasPhotos) {
     return identifyFromPhotos({
       photos,
       notes: input.notes,
@@ -204,24 +78,10 @@ export async function runIdentify(input = {}) {
     });
   }
 
-  if (hasBarcode) {
-    return pathBarcode(input.barcode, quantity);
-  }
-
-  if (input.name || input.number || input.query) {
-    return pathCatalog({
-      name: input.name,
-      number: input.number,
-      set: input.set,
-      query: input.query,
-      quantity,
-    });
-  }
-
   return identifyResult({
     ok: false,
     path: "none",
-    message: "Nothing to identify. Scan a barcode, enter set+number, or use Manual.",
+    message: "Drop or take photos first. Identify reads the item from the photo. Or use Manual.",
     setupTask: null,
     missingKeys: [],
     networkCalls: [],

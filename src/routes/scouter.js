@@ -155,20 +155,14 @@ export function scouterRouter() {
   });
 
   /**
-   * Command Identify router (LISTING-ENGINE §1 + #55).
-   * Photos-first. Barcode is a shortcut. Manual always available.
-   * Never barcode-only. Never silent no-op. Never lose photos.
+   * Identify = photos in, identity out. Manual is the fallback.
+   * Barcode is a separate feature: GET /barcode/:code and the SCAN button.
    */
   router.post("/identify", async (req, res, next) => {
     try {
       const body = req.body ?? {};
       const result = await runIdentify({
-        barcode: body.barcode,
         photos: body.photos,
-        name: body.name,
-        number: body.number,
-        set: body.set,
-        query: body.query,
         notes: body.notes,
         category: body.category,
         quantity: body.quantity,
@@ -186,11 +180,13 @@ export function scouterRouter() {
     const keys = visionKeyStatus();
     res.json({
       service: "identify",
-      paths: ["barcode", "catalog", "photo_search", "manual"],
+      built: false,
+      paths: ["photo_search", "manual"],
+      barcodeFeature: "separate",
       photoSearchReady: keys.ready,
       missingKeys: [],
       setupTask: null,
-      message: keys.message || "Photo identify is not set up yet.",
+      message: keys.message || "Identify is not built yet.",
     });
   });
 
@@ -206,12 +202,7 @@ export function scouterRouter() {
       const photos = Array.isArray(body.photos) && body.photos.length ? body.photos : photosFromItem;
 
       const result = await runIdentify({
-        barcode: body.barcode ?? item.barcode,
         photos,
-        name: body.name ?? item.productName,
-        number: body.number ?? item.collectorNumber,
-        set: body.set ?? item.setCode,
-        query: body.query,
         notes: body.notes ?? item.notes,
         category: body.category ?? item.category,
         quantity: body.quantity ?? item.quantity,
@@ -223,7 +214,7 @@ export function scouterRouter() {
       if (result.identity) {
         const patch = {
           ...identityToItemPatch(result.identity, result.path),
-          barcode: body.barcode ?? item.barcode ?? result.identity.set_code,
+          barcode: body.barcode ?? item.barcode,
         };
         updated = await updateScoutItem(item.id, patch);
       }

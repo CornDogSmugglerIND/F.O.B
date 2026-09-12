@@ -4,6 +4,9 @@ import { gateCheck, emptyIdentity, normalizeIdentity, identityToItemPatch } from
 import { runIdentify } from "../src/identify/router.js";
 import { visionKeyStatus } from "../src/identify/vision.js";
 
+const tinyPng =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
 describe("identify gate", () => {
   it("rejects incomplete identity", () => {
     const gate = gateCheck(emptyIdentity(1));
@@ -57,7 +60,7 @@ describe("identify router", () => {
     const result = await runIdentify({});
     assert.equal(result.ok, false);
     assert.equal(result.path, "none");
-    assert.ok(result.message);
+    assert.match(result.message, /photos first/i);
     assert.equal(result.setupTask, null);
   });
 
@@ -81,43 +84,27 @@ describe("identify router", () => {
     assert.equal(result.identity.product_name, "Erika's Gloom");
   });
 
-  it("keeps photo identify dark with an honest not-set-up message", async () => {
+  it("says identify is not built yet for photos — never a barcode fallback", async () => {
     const keys = visionKeyStatus();
     assert.equal(keys.ready, false);
     assert.deepEqual(keys.missingKeys, []);
 
-    const tinyPng =
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
-    const result = await runIdentify({ photos: [tinyPng], forcePath: "photo_search" });
-    assert.equal(result.ok, false);
-    assert.equal(result.path, "photo_search");
-    assert.match(result.message, /not set up yet/i);
-    assert.equal(result.setupTask, null);
-    assert.deepEqual(result.missingKeys, []);
-    assert.doesNotMatch(result.message, /ANTHROPIC|API key|API KEY/i);
-  });
-
-  it("does not treat photos as a reason to ask for a key when catalog fields are present", async () => {
-    const tinyPng =
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
     const result = await runIdentify({
       photos: [tinyPng],
-      forcePath: "manual",
-      manual: {
-        product_name: "Erika's Gloom",
-        collector_number: "002/217",
-        set_name: "Ascending Heroes",
-        set_code: "ASC",
-        game: "Pokemon",
-        rarity: "Rare",
-        finish: "Holo",
-        language: "English",
-        condition: "NM",
-      },
+      barcode: "012345678905",
     });
-    assert.equal(result.ok, true);
-    assert.equal(result.path, "manual");
+    assert.equal(result.ok, false);
+    assert.equal(result.path, "photo_search");
+    assert.match(result.message, /not built yet/i);
+    assert.doesNotMatch(result.message, /UPC|barcode|ANTHROPIC|API key/i);
     assert.equal(result.setupTask, null);
     assert.deepEqual(result.missingKeys, []);
+  });
+
+  it("refuses barcode as an identify path", async () => {
+    const result = await runIdentify({ forcePath: "barcode", barcode: "012345678905" });
+    assert.equal(result.ok, false);
+    assert.equal(result.path, "none");
+    assert.match(result.message, /Scan for UPC/i);
   });
 });

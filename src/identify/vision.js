@@ -1,7 +1,7 @@
 /**
- * Path 3 — photo + live web/catalog search.
- * Command (#55): stays dark until Sawyer asks for it. No key ask. Honest "not set up yet."
- * Paths 1 / 2 / 4 ship with zero keys. design/LISTING-ENGINE.md §1.2 / §1.5
+ * Identify photo path — photos in, identity out.
+ * Not wired. Honest "not built yet." No key ask. No barcode substitute.
+ * design/LISTING-ENGINE.md §1.2 / §1.5; Command #55 / #59 correction.
  */
 
 import { normalizeIdentity, identifyResult } from "./gate.js";
@@ -11,7 +11,7 @@ const PHOTO_VISION_LIVE = false;
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = process.env.IDENTIFY_VISION_MODEL || "claude-sonnet-4-20250514";
 const PHOTO_NOT_SET_UP =
-  "Photo identify is not set up yet. Photos were kept. Use catalog fields, UPC, or Manual.";
+  "Identify is not built yet. Photos were kept. Use Manual.";
 
 /** @returns {{ ready: boolean, missingKeys: string[], message: string }} */
 export function visionKeyStatus() {

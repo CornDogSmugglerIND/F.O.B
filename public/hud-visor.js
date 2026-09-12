@@ -293,66 +293,45 @@ function applyIdentity(identity, path) {
 }
 
 /**
- * Photo-first Identify (Command LISTING-ENGINE §1 / #55).
- * Photos → /api/scouter/identify. Barcode is a shortcut. Manual always available.
- * Never hang on a spinner — every path resolves with a message.
+ * Identify = photos in, identity out. Barcode is SCAN, not this button.
+ * Never hang on a spinner. Never treat a UPC hit as Identify.
  */
 async function runIdentify() {
   const photos = state.draftPhotos.map((p) => p.dataUrl).filter(Boolean);
-  const barcode = (els.barcodeInput?.value || state.barcode || "").trim();
   const manualTitle = (els.manualTitle?.value || "").trim();
-  const catalogName = (els.catalogName?.value || "").trim();
-  const catalogNumber = (els.catalogNumber?.value || "").trim();
-  const catalogSet = (els.catalogSet?.value || "").trim();
-  const hasCatalog = Boolean(catalogNumber || catalogSet || (catalogName && catalogNumber));
 
-  if (!photos.length && !barcode && !manualTitle && !hasCatalog && !catalogName) {
+  if (!photos.length && !manualTitle) {
     setIdentifyPhase("fail", "Nothing to ID");
-    setStatus("Scan a UPC, enter set+number, or use Manual.", "err");
-    showToast("Need UPC, catalog fields, or manual title", "err");
+    setStatus("Drop or take photos first. Identify reads the item from the photo. Or use Manual.", "err");
+    showToast("Need photos — or Manual", "err");
     return;
   }
 
   setIdentifyPhase("running", "Working…");
-  setStatus("Identify running — catalog / UPC / Manual…", "busy");
+  setStatus("Identify running…", "busy");
   els.btnLookup.disabled = true;
   els.btnLookup.textContent = "…";
   renderCandidates([]);
 
   try {
-    // Optional: if no barcode yet, try reading one from photos (shortcut only)
-    if (!barcode && photos.length) {
-      const fromPhoto = await scanBarcodeFromPhotos();
-      if (fromPhoto) {
-        els.barcodeInput.value = fromPhoto;
-        state.barcode = fromPhoto.trim();
-      }
-    }
-
     const payload = {
-      barcode: (els.barcodeInput?.value || "").trim() || null,
       photos,
       notes: (els.fieldNotes?.value || "").trim() || null,
       category: state.category,
       quantity: state.qty,
-      name: catalogName || null,
-      number: catalogNumber || null,
-      set: catalogSet || null,
-      forcePath: undefined,
     };
-    if (hasCatalog || catalogName) {
-      payload.forcePath = "catalog";
-    } else if (barcode) {
-      payload.forcePath = "barcode";
-    } else if (manualTitle) {
+    if (!photos.length && manualTitle) {
       payload.forcePath = "manual";
       payload.manual = {
         product_name: manualTitle,
+        collector_number: (els.catalogNumber?.value || "").trim() || null,
+        set_name: (els.catalogSet?.value || "").trim() || null,
+        set_code: (els.catalogSet?.value || "").trim() || null,
         language: "English",
         condition: "NM",
         quantity: state.qty,
       };
-    } else if (photos.length) {
+    } else {
       payload.forcePath = "photo_search";
     }
 
@@ -367,7 +346,6 @@ async function runIdentify() {
     } catch {
       throw new Error(`Identify returned non-JSON (${res.status})`);
     }
-    // 422 / 503 still carry structured identify payloads — do not treat as hard crash
     if (!result || typeof result !== "object") {
       throw new Error(`Identify failed (${res.status})`);
     }
@@ -381,9 +359,9 @@ async function runIdentify() {
       setStatus(result.message || `Identified: ${result.identity.product_name}`, "ok");
       showToast("Identify match");
     } else if (result.path === "photo_search" && !result.ok) {
-      setIdentifyPhase("setup", result.message || "Not set up yet");
-      setStatus(result.message || "Photo identify is not set up yet. Photos were kept.", "err");
-      showToast("Photo identify is not set up yet", "err");
+      setIdentifyPhase("setup", result.message || "Identify is not built yet");
+      setStatus(result.message || "Identify is not built yet. Photos were kept. Use Manual.", "err");
+      showToast("Identify is not built yet", "err");
       els.manualRow?.classList.remove("hidden");
     } else if ((result.candidates || []).length) {
       setIdentifyPhase("fail", result.message || "Pick a candidate");
@@ -536,7 +514,7 @@ function renderCollection() {
       <div class="coll-empty-state">
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="1.4" style="opacity:0.7;filter:drop-shadow(0 0 14px #ffe566)"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         <div class="v-label" style="margin-top:16px;font-size:12px">Intake empty</div>
-        <p>Scan a barcode or drop a photo to bring inventory in.</p>
+        <p>Drop or take photos, then tap ID. Scan is for UPC only.</p>
       </div>`;
     return;
   }
@@ -742,39 +720,34 @@ async function lookupBarcode(code) {
   const trimmed = code.trim();
   if (!trimmed) {
     showToast("Scan or enter a barcode first", "err");
-    setIdentifyPhase("fail", "No barcode");
-    setStatus("Need a barcode or manual title to identify", "err");
+    setStatus("Need a barcode to scan", "err");
     return;
   }
 
   state.barcode = trimmed;
-  els.barcodeInput.value = trimmed;
-  setIdentifyPhase("running");
-  setStatus("Identify running — watching catalog…", "busy");
-  els.btnLookup.disabled = true;
-  els.btnLookup.textContent = "Running…";
+  if (els.barcodeInput) els.barcodeInput.value = trimmed;
+  setStatus("Looking up UPC…", "busy");
 
   try {
     const result = await api(`/api/scouter/barcode/${encodeURIComponent(trimmed)}`);
     if (result.found && result.product?.title) {
       state.title = result.product.title;
-      setIdentifyPhase("ok");
-      setStatus(`Identified: ${result.product.title}`, "ok");
-      showToast("Identify match");
+      state.identifyPath = "barcode";
+      if (els.manualTitle) els.manualTitle.value = result.product.title;
+      setIdentifyPhase("ok", result.product.title);
+      setStatus(`UPC match: ${result.product.title}`, "ok");
+      showToast("UPC match");
     } else {
-      setIdentifyPhase("fail");
-      setStatus("No catalog match — set a title manually", "err");
+      setIdentifyPhase("fail", "No UPC match");
+      setStatus("No UPC match. Photos kept. Use Manual.", "err");
       els.manualRow.classList.remove("hidden");
-      showToast("No match — manual title", "err");
+      showToast("No UPC match", "err");
     }
     updateSaveState();
   } catch {
-    setIdentifyPhase("fail");
-    setStatus("Identify offline — set a title manually", "err");
+    setIdentifyPhase("fail", "UPC lookup failed");
+    setStatus("UPC lookup failed. Photos kept. Use Manual.", "err");
     els.manualRow.classList.remove("hidden");
-  } finally {
-    els.btnLookup.disabled = false;
-    els.btnLookup.textContent = "ID";
   }
 }
 
@@ -1095,7 +1068,7 @@ async function startScanner() {
     }
 
     showToast("Camera scan unavailable — type barcode below", "err");
-    setStatus("Type the barcode number in the field above, or tap Lookup", "err");
+    setStatus("Type the barcode number below, or try Scan again", "err");
     els.barcodeInput.focus();
   }
 }
@@ -1185,7 +1158,7 @@ function bindEvents() {
   els.barcodeInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      runIdentify();
+      lookupBarcode(els.barcodeInput.value);
     }
   });
 

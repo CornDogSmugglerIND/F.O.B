@@ -92,6 +92,15 @@
   color: var(--text-lo);
 }
 
+.hh-id > .hh-lookup {
+  width: 100%;
+  min-height: 48px;
+}
+
+.hh-barcode-row {
+  margin: 0 0 12px;
+}
+
 .hh-catalog-row {
   display: grid;
   grid-template-columns: 1fr 72px 88px;

@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Orbitron:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/scouter.css?v=24" />
-  <link rel="stylesheet" href="/hud-visor.css?v=28" />
+  <link rel="stylesheet" href="/hud-visor.css?v=29" />
 </head>
 <body class="handheld">
   <div class="ambient" aria-hidden="true">
@@ -96,16 +96,8 @@
         </div>
 
         <div class="hh-id">
-          <div class="hh-id-row">
-            <input class="m-input hh-barcode" id="barcodeInput" placeholder="UPC / EAN" inputmode="numeric" autocomplete="off" enterkeyhint="search" />
-            <button type="button" class="m-btn m-btn-primary hh-lookup" id="btnLookup">ID</button>
-          </div>
-          <div class="hh-id-row hh-catalog-row" id="catalogRow">
-            <input class="m-input" id="catalogName" placeholder="Card / product name" autocomplete="off" />
-            <input class="m-input" id="catalogNumber" placeholder="#" inputmode="text" autocomplete="off" style="max-width:72px" />
-            <input class="m-input" id="catalogSet" placeholder="Set" autocomplete="off" style="max-width:88px" />
-          </div>
-          <div class="status-strip" id="identifyStatus">UPC, set+number, or Manual · tap ID · stage item</div>
+          <button type="button" class="m-btn m-btn-primary hh-lookup" id="btnLookup">ID</button>
+          <div class="status-strip" id="identifyStatus">Drop or take photos · tap ID</div>
           <div class="identify-result hidden" id="identifyResult" aria-live="polite">
             <div class="v-label" id="identifyPhaseLbl">IDLE</div>
             <div class="identify-result-title" id="identifyResultTitle">—</div>
@@ -116,6 +108,15 @@
             <input class="m-input" id="manualTitle" placeholder="Manual title (backup if ID misses)" autocomplete="off" />
             <button type="button" class="m-btn" id="btnManualOk">Set</button>
           </div>
+          <div class="hh-id-row hh-catalog-row" id="catalogRow">
+            <input class="m-input" id="catalogName" placeholder="Card / product name" autocomplete="off" />
+            <input class="m-input" id="catalogNumber" placeholder="#" inputmode="text" autocomplete="off" style="max-width:72px" />
+            <input class="m-input" id="catalogSet" placeholder="Set" autocomplete="off" style="max-width:88px" />
+          </div>
+        </div>
+
+        <div class="hh-barcode-row" id="barcodeRow">
+          <input class="m-input hh-barcode" id="barcodeInput" placeholder="UPC / EAN" inputmode="numeric" autocomplete="off" enterkeyhint="search" />
         </div>
 
         <div class="hh-meta">
@@ -226,6 +227,6 @@
 
   <script src="/lib/html5-qrcode.min.js?v=24"></script>
   <script src="/lib/image.js?v=24"></script>
-  <script src="/hud-visor.js?v=28"></script>
+  <script src="/hud-visor.js?v=29"></script>
 </body>
 </html>
