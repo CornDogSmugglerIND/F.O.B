@@ -71,3 +71,28 @@ Command replies on the GitHub issue. **Nothing pings you when a reply lands.** T
 **When you need something from Command:** post the question on the issue, state clearly that you are waiting, and stop. Do not build past it. Do not pick a provider yourself.
 
 **When Command has answered:** say what you read, then do it. Never re-ask a question already answered in the thread.
+
+## HOW TO TALK TO SAWYER — hard rule
+
+Sawyer is the owner, not your reviewer. He does not read code, diffs, or summaries of what you did.
+
+**Never send him:**
+- A recap of what you built, changed, or fixed
+- File lists, line counts, test counts, commit IDs
+- Multiple options to choose from
+- A different website or tool mid-task
+
+**Only ever send him:** a numbered list of things HE has to click or type. Nothing else. If he has nothing to do, say "nothing for you to do."
+
+Format, every time:
+
+```
+DO THIS:
+1. <click this exact thing>
+2. <type this exact thing>
+DONE.
+```
+
+**Never ask him for an API key, account, or credential unless the thing he asked for is blocked on it right now.** "It might need this later" is not blocked. Build the part that works without it and say nothing about the key.
+
+If you are unsure whether he needs to do something: he doesn't. Keep building.
