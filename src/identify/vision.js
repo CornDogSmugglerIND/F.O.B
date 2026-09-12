@@ -1,21 +1,21 @@
 /**
  * Path 3 — photo + live web/catalog search.
- * Uses Anthropic vision when ANTHROPIC_API_KEY is present (same secret GitHub Actions already expects).
- * Does not invent a provider: Command dumps + #55 say photo + live search; keys gate the call.
- * design/LISTING-ENGINE.md §1.2 / §1.5 / §1.6
+ * Command (#55): stays dark until Sawyer asks for it. No key ask. Honest "not set up yet."
+ * Paths 1 / 2 / 4 ship with zero keys. design/LISTING-ENGINE.md §1.2 / §1.5
  */
 
 import { normalizeIdentity, identifyResult } from "./gate.js";
 import { searchCatalogs } from "./catalog.js";
 
+const PHOTO_VISION_LIVE = false;
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = process.env.IDENTIFY_VISION_MODEL || "claude-sonnet-4-20250514";
+const PHOTO_NOT_SET_UP =
+  "Photo identify is not set up yet. Photos were kept. Use catalog fields, UPC, or Manual.";
 
-/** @returns {{ ready: boolean, missingKeys: string[] }} */
+/** @returns {{ ready: boolean, missingKeys: string[], message: string }} */
 export function visionKeyStatus() {
-  const missingKeys = [];
-  if (!process.env.ANTHROPIC_API_KEY) missingKeys.push("ANTHROPIC_API_KEY");
-  return { ready: missingKeys.length === 0, missingKeys };
+  return { ready: PHOTO_VISION_LIVE, missingKeys: [], message: PHOTO_NOT_SET_UP };
 }
 
 /**
@@ -123,15 +123,13 @@ export async function identifyFromPhotos(input = {}) {
     });
   }
 
-  const keys = visionKeyStatus();
-  if (!keys.ready) {
+  if (!PHOTO_VISION_LIVE) {
     return identifyResult({
       ok: false,
       path: "photo_search",
-      message:
-        "Photo identify needs ANTHROPIC_API_KEY in this environment (Cursor Cloud Secrets / Vercel). Photos were kept. Use Manual or catalog fields until the key is mirrored from GitHub Actions / Base44.",
-      setupTask: "Add ANTHROPIC_API_KEY to Cursor Cloud Secrets and Vercel (same key GitHub Actions already uses).",
-      missingKeys: keys.missingKeys,
+      message: PHOTO_NOT_SET_UP,
+      setupTask: null,
+      missingKeys: [],
       networkCalls,
     });
   }

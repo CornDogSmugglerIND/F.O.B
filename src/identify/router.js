@@ -1,13 +1,14 @@
 /**
  * Identify router — Command LISTING-ENGINE §1 + issue #55 correction.
  *
- * Fire order:
- * 1. Barcode / UPC when barcode present
- * 2. Catalog when set+number or explicit name/number
- * 3. Photo + live search when photos present
- * 4. Manual always available (client); server accepts manual identity
+ * Fire order (Command #55 — ship 1 / 2 / 4, Path 3 stays dark):
+ * 1. Barcode / UPC when barcode present — zero keys
+ * 2. Catalog when set+number or explicit name/number — zero keys
+ * 3. Photo + live search — dark, honest "not set up yet" until Sawyer asks
+ * 4. Manual always available — zero keys
  *
  * Never infinite-spinner. Never lose photos. Never guess on low confidence.
+ * Never ask Sawyer for an API key.
  */
 
 import { lookupBarcode } from "../lookup.js";
@@ -176,11 +177,11 @@ export async function runIdentify(input = {}) {
     });
   }
 
-  if (force === "barcode" || (!force && hasBarcode && !hasPhotos && !hasCatalogHints)) {
+  if (force === "barcode" || (!force && hasBarcode && !hasCatalogHints)) {
     return pathBarcode(input.barcode, quantity);
   }
 
-  if (force === "catalog" || (!force && hasCatalogHints && !hasPhotos)) {
+  if (force === "catalog" || (!force && hasCatalogHints)) {
     return pathCatalog({
       name: input.name,
       number: input.number,
@@ -217,14 +218,12 @@ export async function runIdentify(input = {}) {
     });
   }
 
-  const keys = visionKeyStatus();
   return identifyResult({
     ok: false,
     path: "none",
-    message:
-      "Nothing to identify. Drop/take photos (primary), scan a barcode (shortcut), enter set+number, or use Manual.",
+    message: "Nothing to identify. Scan a barcode, enter set+number, or use Manual.",
     setupTask: null,
-    missingKeys: keys.ready ? [] : keys.missingKeys,
+    missingKeys: [],
     networkCalls: [],
   });
 }

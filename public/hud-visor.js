@@ -224,7 +224,7 @@ function setIdentifyPhase(phase, detail = "") {
     ok: "MATCH",
     fail: "NO MATCH",
     manual: "MANUAL",
-    setup: "SETUP",
+    setup: "NOT SET UP",
   };
   if (els.identifyPhaseLbl) els.identifyPhaseLbl.textContent = labels[phase] || phase;
   if (!els.identifyResult) return;
@@ -243,7 +243,7 @@ function setIdentifyPhase(phase, detail = "") {
       phase === "ok" ? "gate ok" : null,
       phase === "manual" ? "manual title" : null,
       phase === "fail" ? "needs pick / manual" : null,
-      phase === "setup" ? "key missing" : null,
+      phase === "setup" ? "not set up yet" : null,
       phase === "running" ? "working…" : null,
     ].filter(Boolean);
     els.identifyResultMeta.textContent = bits.join(" · ");
@@ -308,13 +308,13 @@ async function runIdentify() {
 
   if (!photos.length && !barcode && !manualTitle && !hasCatalog && !catalogName) {
     setIdentifyPhase("fail", "Nothing to ID");
-    setStatus("Drop/take photos first (primary), or UPC / set+# / Manual.", "err");
-    showToast("Need photos, UPC, catalog fields, or manual title", "err");
+    setStatus("Scan a UPC, enter set+number, or use Manual.", "err");
+    showToast("Need UPC, catalog fields, or manual title", "err");
     return;
   }
 
   setIdentifyPhase("running", "Working…");
-  setStatus("Identify running — photo / catalog / UPC…", "busy");
+  setStatus("Identify running — catalog / UPC / Manual…", "busy");
   els.btnLookup.disabled = true;
   els.btnLookup.textContent = "…";
   renderCandidates([]);
@@ -340,9 +340,7 @@ async function runIdentify() {
       set: catalogSet || null,
       forcePath: undefined,
     };
-    if (photos.length) {
-      payload.forcePath = undefined; // router picks photo_search
-    } else if (hasCatalog || catalogName) {
+    if (hasCatalog || catalogName) {
       payload.forcePath = "catalog";
     } else if (barcode) {
       payload.forcePath = "barcode";
@@ -354,6 +352,8 @@ async function runIdentify() {
         condition: "NM",
         quantity: state.qty,
       };
+    } else if (photos.length) {
+      payload.forcePath = "photo_search";
     }
 
     const res = await fetch("/api/scouter/identify", {
@@ -380,10 +380,10 @@ async function runIdentify() {
       setIdentifyPhase("ok", result.identity.product_name);
       setStatus(result.message || `Identified: ${result.identity.product_name}`, "ok");
       showToast("Identify match");
-    } else if (result.setupTask || ((result.missingKeys || []).length && payload.photos?.length)) {
-      setIdentifyPhase("setup", result.message || "Setup needed");
-      setStatus(result.setupTask || result.message || "Identify setup needed", "err");
-      showToast("Identify needs API key setup", "err");
+    } else if (result.path === "photo_search" && !result.ok) {
+      setIdentifyPhase("setup", result.message || "Not set up yet");
+      setStatus(result.message || "Photo identify is not set up yet. Photos were kept.", "err");
+      showToast("Photo identify is not set up yet", "err");
       els.manualRow?.classList.remove("hidden");
     } else if ((result.candidates || []).length) {
       setIdentifyPhase("fail", result.message || "Pick a candidate");

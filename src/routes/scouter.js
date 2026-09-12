@@ -188,10 +188,9 @@ export function scouterRouter() {
       service: "identify",
       paths: ["barcode", "catalog", "photo_search", "manual"],
       photoSearchReady: keys.ready,
-      missingKeys: keys.missingKeys,
-      setupTask: keys.ready
-        ? null
-        : "Add ANTHROPIC_API_KEY to Cursor Cloud Secrets and Vercel (same key GitHub Actions already uses).",
+      missingKeys: [],
+      setupTask: null,
+      message: keys.message || "Photo identify is not set up yet.",
     });
   });
 
