@@ -1,78 +1,57 @@
 ---
-description: Coalition H.U.D — standing spec from Command. Always applies.
+description: Coalition H.U.D — Command standing spec. Always applies.
 alwaysApply: true
 ---
 
-# COMMAND SPEC — Coalition H.U.D (F.O.B)
+# COMMAND — STANDING SPEC
 
-Command is Sawyer's Claude Cowork project. It is the product brain for this repo.
-This file IS Command talking to you. It loads on every request. Sawyer does not need to paste anything.
+Command is Sawyer's Claude Cowork project and the product brain for this repo.
+This file loads on every request. Sawyer does not relay messages between us.
 
-The GitHub Actions `@claude` bot (issue #24) is NOT Command. Do not route product decisions through it.
+The GitHub Actions `@claude` bot is NOT Command. It has no memory and no design record. Do not route product decisions through it.
 
-## HARD RULES
+## READ BEFORE YOU BUILD
 
-1. **Ask before you build.** If the task is ambiguous, ask Sawyer ONE question and stop. Do not start building to find out.
-2. **Never ship a reskin as a fix.** If a feature does not work, changing the colors is not progress. Broken behavior outranks visuals every time.
-3. **Verify before claiming done.** Click the thing. If you did not verify it, say so.
-4. **Do not invent design direction.** It is below. If it is not below, ask.
-5. **One repo.** This one. Do not start a new HUD repo.
+These are the spec. Read them, do not summarize them away:
 
-## KNOWN BROKEN — priority order
+- `design/COMMAND-BRAIN.md` — product model, surfaces, visual system, language
+- `design/LISTING-ENGINE.md` — **the backbone.** Identify, titles, descriptions, channels, templates, pricing
+- `design/BASE44-TRUTH.md` — what Base44 got right, what it got wrong, real screen names
+- `design/CURSOR-BUILD-ORDER.md` — ordered workstreams
 
-1. **Identify does nothing.** Drop photos, hit Identify → spins forever. It fires no network request; there is no backend behind it. Wire a real identify path or remove the button. Do not leave a fake loading state.
-2. **Inventory / Rail is not built.** Renders as a near-blank page with info stacked at the top. It is supposed to be the constellation view.
-3. **Only the photo dump works.** Every other control is chrome over nothing.
+## NON-NEGOTIABLES
 
-Do not touch the palette again until 1 and 2 actually function.
+1. **Do not reskin the same broken shell in a new color.** Three palettes have been shipped over a non-functional app. That is not progress and it will be rejected again.
+2. **Do not invent tab names.** "Rail" is not Sawyer's word — it appeared in the current build and he never approved it. Real names are in `BASE44-TRUTH.md`. If a surface has no name there, ask.
+3. **Do not ship identify as barcode-only.** Barcode covers sealed product with a UPC. It covers almost none of what he sells. See the IDENTIFY section of `LISTING-ENGINE.md`.
+4. **Do not build without the engine spec.** The listing engine is the AI core. Without it nothing downstream can be correct.
+5. **Ask one question if a provider or API-key decision is required. Do not pick alone.** Ask Sawyer, then stop and wait.
+6. **Verify before claiming done.** Click it in a running build. If you did not verify, say so explicitly.
+7. **One repo.** This one.
 
-## VISUAL — locked
+## CURRENT STATE — verified live on https://f-o-b.vercel.app
 
-- **Banned: Crayola/school-bus yellow and gold-on-black form chrome.** `#F5C518` and anything near it is the thing Sawyer has now rejected three times. Retuning brown-gold to brighter gold is not a fix.
-- Accent is **amber, restrained** — `#F2A03D` — on near-black `#07080A`. Panels `#0E1113`.
-- Accent covers **under 10% of screen area**: hairlines, one active state, small glyphs. No gold fills, no gold buttons, no gradients.
+- **Identify is dead.** Photos drop fine. Clicking identify fires **zero network requests** and spins forever. There is no backend behind it.
+- **Inventory is not built.** Near-blank page, info stacked at top.
+- **Only the photo dump works.** Everything else is chrome over nothing.
+
+Behavior outranks visuals. Do not touch the palette until identify and inventory function.
+
+## VISUAL — hard rules
+
+- **Banned:** `#F5C518`, school-bus/Crayola yellow, gold-on-black form chrome, gold buttons, gold gradients. Rejected three times.
+- **Banned:** green as a primary or accent color. Bright/neon green especially — it hurts his eyes. Green-black has failed in past builds.
+- Accent: restrained amber `#F2A03D` on near-black `#07080A`. Panels `#0E1113`. Raised `#151A1D`.
+- Accent covers **under 10% of screen area** — hairlines, one active state, small glyphs. Never large fills.
 - Dark teal `#2E6B6E` is structural only — rails, connectors, inactive nodes. Not a second accent.
-- **Green is off the table** as a primary or accent color, bright/neon especially. Stated reason: it hurts his eyes. Green-black has failed in past builds.
-- Fonts: **Orbitron** for HUD chrome ONLY — uppercase, letterspaced, max ~3 words (counters, status, tab labels). **Rajdhani** for everything else. Orbitron inside a sentence is the fastest way to make this look amateur.
-- Materials: 1px hairline + `backdrop-filter: blur(14px)` on panels; glow is `box-shadow` at 8–12% opacity, never text-shadow bloom; 2–3% noise overlay.
+- Type: **Orbitron** for chrome only (uppercase, letterspaced, ≤3 words). **Rajdhani** for everything else. Orbitron inside a sentence reads amateur.
+- Materials: 1px hairline + `backdrop-filter: blur(14px)`; glow via `box-shadow` at 8–12% opacity, never text-shadow bloom; 2–3% noise overlay.
 - Motion: 180–240ms, `cubic-bezier(0.2, 0.8, 0.2, 1)`. Nothing snaps.
-- Reference feel: Halo TV helmet HUD, Dead Space holographic inventory, DBZ Scouter. Glossy, premium, floaty. Apple-level restraint, not neon.
-- **Every space/tab needs an obvious way to back out.** Non-negotiable.
+- **Every space and tab needs an obvious way to back out.**
 - Avoid the desaturated "blue colored pencil" look.
+- Bar: Sawyer's taste is level 100. Base44 hit ~50. The reskins landed below that.
 
-## LANGUAGE — locked
+## LANGUAGE
 
-Plain English only. **Banned in UI:** deploy, archive, purge, supply, rail (as a verb). Use Add, Saved, Delete, Stock, Staged.
+Plain English in all UI. **Banned words:** deploy, archive, purge, supply, rail. Use Add, Saved, Delete, Stock, Staged.
 This is a reseller tool, not a collection manager.
-
-## SCOUTER — scope
-
-Mobile intake only. It does **not** list.
-Three modes, one surface: **Single** · **Batch** (photo dump → group → assign) · **Import** (CSV / TCG Automate / Epson ES-580W).
-Resale-OS behavior wanted: dump a pile of photos, select ~5 for one product, add that item. Plus quick front+back for a single item.
-Scouter writes to Inventory with state `Staged`. It does NOT ask which bin.
-
-## THE LINE
-
-`Intake → Staged → Listed → Sold → Packed → Shipped → Delivered`
-
-Seven states. An item has exactly one. The spine is fixed left→right and never reflows.
-
-**Spaces is its own tree, NOT children of the spine.** An item has two coordinates at once — lifecycle position and physical location. Parenting bins to the spine forces every item onto the graph twice, which is exactly what collapsed the Base44 version into an unclickable molecule. Do not repeat it.
-
-Spaces nesting mirrors real storage: outer 3-tier collapsible tote (flip-down lid) → pull-out fridge bins on tracks → Connect Kinetic nested holders → cards / Goat mini team bags.
-Bin 1 / Bin 2 are **eBay-listed** bins. Items out of Scouter do not go there. Bin names must be user-editable; numbering is not final.
-
-## LISTING ENGINE — locked spec, do not reinvent
-
-Pipeline, no skipping: 1) identify via live search — never guess, ask for model/tag 2) live keyword research (buyer terms) 3) live price research 4) title from real buyer search terms 5) description in AI-shopping format 6) item specifics 7) shipping.
-
-**Titles:** 80 char max. No exclamation points ever. Product name leads — "Pokemon" never first. TCG singles end `NM Single`. Sealed ends `New/Factory Sealed`. Dash-segmented blocks: `Product Block- Condition Block`. No abbreviations, no fluff.
-
-**Descriptions:** plain text, never a table. Scan line, one prose line (finish/condition/language), then a structured facts block. No superlatives — "genuine/authentic/premium" get downgraded by AI shopping agents. Always ends: `CornDogSmuggler Coalition — Operating To Marine Corps Standards.`
-
-**Pricing:** TCG singles = TCGplayer market x qty x 1.30 + label cost. Hard floor $2.00/card. eBay Standard Envelope $0.78. Low-cost combine base $4.46. Non-TCG = eBay sold comps. Never price from memory. Keep these as config values, not hardcoded.
-
-## SOURCE OF TRUTH
-
-The H.U.D is canonical for inventory. eBay / Double Holo / Shopify / Misprint are channels that reflect HUD state. They are never the source.
