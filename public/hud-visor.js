@@ -103,6 +103,7 @@ const els = {
   identifyResult: $("identifyResult"),
   identifyResultTitle: $("identifyResultTitle"),
   identifyResultMeta: $("identifyResultMeta"),
+  identifyCandidates: $("identifyCandidates"),
   btnExportStaged: $("btnExportStaged"),
   handoffNote: $("handoffNote"),
   btnSave: $("btnSave"),
