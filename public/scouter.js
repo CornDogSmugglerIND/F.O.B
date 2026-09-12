@@ -287,7 +287,7 @@ function renderCollection() {
   if (!count) {
     els.collectionRoot.innerHTML = `
       <div class="coll-empty-state">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="1.4" style="opacity:0.7;filter:drop-shadow(0 0 14px #ffe566)"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#7dcea0" stroke-width="1.4" style="opacity:0.7;filter:drop-shadow(0 0 14px #7dcea0)"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         <div class="v-label" style="margin-top:16px;font-size:12px">Intake empty</div>
         <p>Capture or scan on Scout to fill the rail.</p>
       </div>`;
@@ -533,17 +533,38 @@ async function saveCapture() {
 }
 
 function navigate(view) {
-  const isCollection = view === "collection";
-  els.viewCapture?.classList.toggle("active", !isCollection);
-  els.viewCollection?.classList.toggle("active", isCollection);
+  const known = ["capture", "collection", "spaces", "spine", "channels"];
+  if (!known.includes(view)) view = "capture";
+
+  const map = {
+    capture: els.viewCapture,
+    collection: els.viewCollection,
+    spaces: $("viewSpaces"),
+    spine: $("viewSpine"),
+    channels: $("viewChannels"),
+  };
+
+  Object.entries(map).forEach(([key, node]) => {
+    node?.classList.toggle("active", key === view);
+  });
+
   els.saveBar?.classList.toggle("hidden", true);
   els.pageHero?.classList.toggle("hidden", true);
   els.intakeBar?.classList.toggle("hidden", true);
   els.railToolbar?.classList.toggle("hidden", true);
 
-  if (isCollection) {
+  if (view === "collection") {
     if (els.pageTitle) els.pageTitle.textContent = "Rail";
     renderCollection();
+    stopScanner();
+  } else if (view === "spaces") {
+    renderSpaces();
+    stopScanner();
+  } else if (view === "spine") {
+    renderSpine();
+    stopScanner();
+  } else if (view === "channels") {
+    renderChannels();
     stopScanner();
   } else if (els.pageTitle) {
     els.pageTitle.textContent = "Scout";
@@ -552,8 +573,8 @@ function navigate(view) {
   document.querySelectorAll(".nav-tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.view === view);
   });
-  // Keep URL hash in sync for phone back/forward
-  const hash = isCollection ? "#collection" : "#capture";
+
+  const hash = `#${view}`;
   if (location.hash !== hash) history.replaceState(null, "", hash);
 }
 
@@ -893,14 +914,356 @@ function bindEvents() {
   });
 }
 
+
+/* ── Spaces / Spine / Channels / Dump ── */
+const SPACES_KEY = "coalition-spaces-v1";
+const SPINE_STAGES = [
+  { id: "intake", label: "Intake" },
+  { id: "sift", label: "Sift" },
+  { id: "photos", label: "Photos" },
+  { id: "listing", label: "Listing" },
+  { id: "listed", label: "Listed" },
+  { id: "ship", label: "Ship" },
+  { id: "door", label: "Door" },
+];
+
+const hudUi = {
+  dumpPanel: $("dumpPanel"),
+  dumpPool: $("dumpPool"),
+  btnDumpPick: $("btnDumpPick"),
+  btnDumpAssign: $("btnDumpAssign"),
+  inputDump: $("inputDump"),
+  spacesField: $("spacesField"),
+  itemPool: $("itemPool"),
+  spaceDetail: $("spaceDetail"),
+  btnSpaceBack: $("btnSpaceBack"),
+  spaceDetailTitle: $("spaceDetailTitle"),
+  spaceDetailGrid: $("spaceDetailGrid"),
+  btnAddSpace: $("btnAddSpace"),
+  spineTrack: $("spineTrack"),
+  spineStageName: $("spineStageName"),
+  spineStageItems: $("spineStageItems"),
+  channelGrid: $("channelGrid"),
+  modeShoot: $("modeShoot"),
+  modeDump: $("modeDump"),
+  modeScanBtn: $("modeScanBtn"),
+  viewfinderHint: $("viewfinderHint"),
+};
+
+state.intakeMode = "shoot";
+state.dumpPhotos = [];
+state.dumpSelected = new Set();
+state.activeSpine = "intake";
+state.openSpaceId = null;
+
+function defaultSpaces() {
+  return [
+    { id: "space-staged", name: "Staged / Unlisted", kind: "unlisted", itemIds: [] },
+    { id: "space-ebay-1", name: "eBay Bin 1", kind: "ebay", itemIds: [] },
+    { id: "space-ebay-2", name: "eBay Bin 2", kind: "ebay", itemIds: [] },
+    { id: "space-scanned", name: "Scanned Cards", kind: "scanned", itemIds: [] },
+  ];
+}
+
+function loadSpaces() {
+  try {
+    const raw = localStorage.getItem(SPACES_KEY);
+    if (!raw) return defaultSpaces();
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length ? parsed : defaultSpaces();
+  } catch {
+    return defaultSpaces();
+  }
+}
+
+function saveSpaces(spaces) {
+  localStorage.setItem(SPACES_KEY, JSON.stringify(spaces));
+}
+
+function setIntakeMode(mode) {
+  state.intakeMode = mode;
+  document.querySelectorAll(".mode-chip").forEach((chip) => {
+    chip.classList.toggle("active", chip.dataset.mode === mode);
+  });
+  hudUi.dumpPanel?.classList.toggle("hidden", mode !== "dump");
+  if (hudUi.viewfinderHint) {
+    hudUi.viewfinderHint.textContent =
+      mode === "dump" ? "Dump mode · pick a pile" : mode === "scan" ? "Scan barcode" : "Tap to shoot";
+  }
+  if (mode === "scan") startScanner();
+}
+
+function renderDumpPool() {
+  if (!hudUi.dumpPool) return;
+  if (!state.dumpPhotos.length) {
+    hudUi.dumpPool.innerHTML = `<div class="pool-empty">No dump photos yet</div>`;
+    hudUi.btnDumpAssign.disabled = true;
+    return;
+  }
+  hudUi.dumpPool.innerHTML = state.dumpPhotos
+    .map((p, idx) => {
+      const on = state.dumpSelected.has(idx);
+      return `<button type="button" class="dump-thumb${on ? " selected" : ""}" data-dump="${idx}">
+        <img src="${p.dataUrl}" alt="" />
+        <span class="dump-check">✓</span>
+      </button>`;
+    })
+    .join("");
+  hudUi.dumpPool.querySelectorAll("[data-dump]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.dump);
+      if (state.dumpSelected.has(idx)) state.dumpSelected.delete(idx);
+      else state.dumpSelected.add(idx);
+      renderDumpPool();
+    });
+  });
+  hudUi.btnDumpAssign.disabled = state.dumpSelected.size === 0;
+}
+
+async function addDumpFiles(fileList) {
+  const files = [...fileList].filter((f) => f.type.startsWith("image/"));
+  for (const file of files) {
+    const dataUrl = await window.ScouterImage.fileToDataUrl(file);
+    state.dumpPhotos.push({ dataUrl, file });
+  }
+  renderDumpPool();
+  showToast(`Dump loaded · ${state.dumpPhotos.length} photos`);
+}
+
+function assignDumpToDraft() {
+  const picked = [...state.dumpSelected].sort((a, b) => a - b).map((i) => state.dumpPhotos[i]).filter(Boolean);
+  if (!picked.length) return;
+  state.draftPhotos = [...state.draftPhotos, ...picked.map((p) => ({ dataUrl: p.dataUrl, file: p.file }))].slice(0, MAX_PHOTOS);
+  renderPhotoGrid();
+  updateSaveState();
+  setIntakeMode("shoot");
+  setStatus(`${picked.length} dump photo(s) attached`, "ok");
+  showToast("Dump assigned to this item");
+}
+
+function assignedItemIds(spaces) {
+  const ids = new Set();
+  for (const space of spaces) for (const id of space.itemIds || []) ids.add(id);
+  return ids;
+}
+
+function renderSpaces() {
+  const spaces = loadSpaces();
+  const assigned = assignedItemIds(spaces);
+  const unassigned = state.items.filter((it) => !assigned.has(it.id));
+
+  if (hudUi.spacesField) {
+    hudUi.spacesField.innerHTML = spaces
+      .map(
+        (space) => `<div class="space-card" data-space="${space.id}" tabindex="0">
+          <div class="space-card-name">${escapeHtml(space.name)}</div>
+          <div class="space-card-meta">${escapeHtml(space.kind || "bin")}</div>
+          <div class="space-card-count">${String((space.itemIds || []).length).padStart(2, "0")}</div>
+        </div>`,
+      )
+      .join("");
+
+    hudUi.spacesField.querySelectorAll(".space-card").forEach((card) => {
+      card.addEventListener("click", () => openSpace(card.dataset.space));
+      card.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        card.classList.add("drag-over");
+      });
+      card.addEventListener("dragleave", () => card.classList.remove("drag-over"));
+      card.addEventListener("drop", (e) => {
+        e.preventDefault();
+        card.classList.remove("drag-over");
+        const itemId = e.dataTransfer.getData("text/item-id");
+        if (itemId) moveItemToSpace(itemId, card.dataset.space);
+      });
+    });
+  }
+
+  if (hudUi.itemPool) {
+    if (!unassigned.length) {
+      hudUi.itemPool.innerHTML = `<div class="pool-empty">All items are filed · capture more on Scout</div>`;
+    } else {
+      hudUi.itemPool.innerHTML = unassigned
+        .map((it) => {
+          const src = photoSrc(it.photos?.[0]);
+          const face = src ? `<img src="${src}" alt="" />` : `<div class="holo-card-empty">NO IMG</div>`;
+          return `<div class="pool-card" draggable="true" data-item="${it.id}">${face}<div class="pool-card-title">${escapeHtml(it.title || "Untitled")}</div></div>`;
+        })
+        .join("");
+      hudUi.itemPool.querySelectorAll(".pool-card").forEach((card) => {
+        card.addEventListener("dragstart", (e) => {
+          e.dataTransfer.setData("text/item-id", card.dataset.item);
+        });
+      });
+    }
+  }
+
+  if (state.openSpaceId) openSpace(state.openSpaceId);
+  else closeSpaceDetail();
+}
+
+function moveItemToSpace(itemId, spaceId) {
+  const spaces = loadSpaces();
+  for (const space of spaces) {
+    space.itemIds = (space.itemIds || []).filter((id) => id !== itemId);
+  }
+  const target = spaces.find((s) => s.id === spaceId);
+  if (!target) return;
+  target.itemIds = [...(target.itemIds || []), itemId];
+  saveSpaces(spaces);
+  showToast(`Filed into ${target.name}`);
+  renderSpaces();
+}
+
+function openSpace(spaceId) {
+  const spaces = loadSpaces();
+  const space = spaces.find((s) => s.id === spaceId);
+  if (!space || !hudUi.spaceDetail) return;
+  state.openSpaceId = spaceId;
+  hudUi.spaceDetail.classList.remove("hidden");
+  hudUi.spaceDetailTitle.textContent = space.name;
+  const items = (space.itemIds || []).map((id) => state.items.find((it) => it.id === id)).filter(Boolean);
+  if (!items.length) {
+    hudUi.spaceDetailGrid.innerHTML = `<div class="space-empty">Empty bin — drag items here from the pool</div>`;
+    return;
+  }
+  hudUi.spaceDetailGrid.innerHTML = items
+    .map((it) => {
+      const src = photoSrc(it.photos?.[0]);
+      const face = src ? `<img src="${src}" alt="" />` : "";
+      return `<div class="detail-card">${face}<div class="detail-card-title">${escapeHtml(it.title || "Untitled")}</div></div>`;
+    })
+    .join("");
+}
+
+function closeSpaceDetail() {
+  state.openSpaceId = null;
+  hudUi.spaceDetail?.classList.add("hidden");
+}
+
+function addSpaceBin() {
+  const name = prompt("Bin name", "New Space");
+  if (!name) return;
+  const spaces = loadSpaces();
+  spaces.push({ id: `space-${Date.now()}`, name: name.trim(), kind: "custom", itemIds: [] });
+  saveSpaces(spaces);
+  renderSpaces();
+}
+
+function itemSpineStage(item) {
+  if (item.shipped) return "door";
+  if (item.listed || item.channel === "ebay") return "listed";
+  if (item.listingReady) return "listing";
+  if ((item.photos || []).length >= 2) return "photos";
+  if (item.staged) return "sift";
+  return "intake";
+}
+
+function renderSpine() {
+  if (!hudUi.spineTrack) return;
+  const counts = Object.fromEntries(SPINE_STAGES.map((s) => [s.id, 0]));
+  for (const item of state.items) counts[itemSpineStage(item)] += 1;
+
+  hudUi.spineTrack.innerHTML = SPINE_STAGES.map((stage, idx) => {
+    const active = stage.id === state.activeSpine ? " active" : "";
+    const arrow = idx < SPINE_STAGES.length - 1 ? `<div class="spine-arrow" aria-hidden="true"></div>` : "";
+    return `<button type="button" class="spine-node${active}" data-spine="${stage.id}">
+        <div class="spine-node-label">${stage.label}</div>
+        <div class="spine-node-count">${String(counts[stage.id] || 0).padStart(2, "0")}</div>
+      </button>${arrow}`;
+  }).join("");
+
+  hudUi.spineTrack.querySelectorAll("[data-spine]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.activeSpine = btn.dataset.spine;
+      renderSpine();
+    });
+  });
+
+  const stage = SPINE_STAGES.find((s) => s.id === state.activeSpine) || SPINE_STAGES[0];
+  hudUi.spineStageName.textContent = stage.label;
+  const items = state.items.filter((it) => itemSpineStage(it) === stage.id);
+  if (!items.length) {
+    hudUi.spineStageItems.innerHTML = `<div class="spine-empty">Nothing in ${stage.label} yet</div>`;
+    return;
+  }
+  hudUi.spineStageItems.innerHTML = items
+    .map((it) => {
+      const src = photoSrc(it.photos?.[0]);
+      const face = src ? `<img src="${src}" alt="" />` : "";
+      return `<div class="spine-item-row">${face}<span>${escapeHtml(it.title || "Untitled")}</span></div>`;
+    })
+    .join("");
+}
+
+function renderChannels() {
+  if (!hudUi.channelGrid) return;
+  const staged = state.items.filter((it) => it.staged).length;
+  const listed = state.items.filter((it) => it.listed || it.channel === "ebay").length;
+  const channels = [
+    {
+      name: "eBay",
+      status: "live",
+      statusLabel: "Live sync path",
+      meta: `${listed} listed · ${staged} staged on rail · qty + photo updates wire through HUD`,
+    },
+    {
+      name: "Double Holo",
+      status: "stub",
+      statusLabel: "Stub · awaiting API base",
+      meta: "Channel card ready — no invented endpoints.",
+    },
+    {
+      name: "Misprint",
+      status: "stub",
+      statusLabel: "Stub · awaiting API base",
+      meta: "Seller key shape known · host still unknown.",
+    },
+    {
+      name: "Shopify",
+      status: "stub",
+      statusLabel: "Planned",
+      meta: "Portfolio / storefront mirror later.",
+    },
+  ];
+  hudUi.channelGrid.innerHTML = channels
+    .map(
+      (ch) => `<article class="channel-card">
+        <div class="channel-name">${ch.name}</div>
+        <div class="channel-status ${ch.status}">${ch.statusLabel}</div>
+        <div class="channel-meta">${ch.meta}</div>
+      </article>`,
+    )
+    .join("");
+}
+
+function bindHudEvents() {
+  hudUi.modeShoot?.addEventListener("click", () => setIntakeMode("shoot"));
+  hudUi.modeDump?.addEventListener("click", () => setIntakeMode("dump"));
+  hudUi.modeScanBtn?.addEventListener("click", () => setIntakeMode("scan"));
+  hudUi.btnDumpPick?.addEventListener("click", () => hudUi.inputDump?.click());
+  hudUi.inputDump?.addEventListener("change", (e) => {
+    addDumpFiles(e.target.files || []);
+    e.target.value = "";
+  });
+  hudUi.btnDumpAssign?.addEventListener("click", assignDumpToDraft);
+  hudUi.btnAddSpace?.addEventListener("click", addSpaceBin);
+  hudUi.btnSpaceBack?.addEventListener("click", closeSpaceDetail);
+}
+
+
 function init() {
   initCategories();
   bindDragOverlay();
   bindEvents();
+  bindHudEvents();
   loadItems();
   updateSaveState();
-  const view = new URLSearchParams(location.search).get("view");
-  if (view === "collection" || view === "capture") navigate(view);
+  const params = new URLSearchParams(location.search);
+  const hashView = (location.hash || "").replace("#", "");
+  const view = params.get("view") || hashView;
+  if (["collection", "capture", "spaces", "spine", "channels"].includes(view)) navigate(view);
+  else navigate("capture");
 }
 
 init();
