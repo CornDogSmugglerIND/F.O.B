@@ -10,9 +10,11 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "scans:upload": "node scripts/upload-scans-r2.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1131.0",
     "express": "^4.21.2",
     "html5-qrcode": "^2.3.8",
     "multer": "^2.0.2"
