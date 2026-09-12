@@ -1,21 +1,21 @@
 /**
  * Path 3 — photo + live web/catalog search.
- * Command (#55): stays dark until Sawyer asks for it. No key ask. Honest "not set up yet."
- * Paths 1 / 2 / 4 ship with zero keys. design/LISTING-ENGINE.md §1.2 / §1.5
+ * Uses Anthropic vision when ANTHROPIC_API_KEY is present (same secret GitHub Actions already expects).
+ * Does not invent a provider: Command dumps + #55 say photo + live search; keys gate the call.
+ * design/LISTING-ENGINE.md §1.2 / §1.5 / §1.6
  */
 
 import { normalizeIdentity, identifyResult } from "./gate.js";
 import { searchCatalogs } from "./catalog.js";
 
-const PHOTO_VISION_LIVE = false;
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = process.env.IDENTIFY_VISION_MODEL || "claude-sonnet-4-20250514";
-const PHOTO_NOT_SET_UP =
-  "Photo identify is not set up yet. Photos were kept. Use catalog fields, UPC, or Manual.";
 
-/** @returns {{ ready: boolean, missingKeys: string[], message: string }} */
+/** @returns {{ ready: boolean, missingKeys: string[] }} */
 export function visionKeyStatus() {
-  return { ready: PHOTO_VISION_LIVE, missingKeys: [], message: PHOTO_NOT_SET_UP };
+  const missingKeys = [];
+  if (!process.env.ANTHROPIC_API_KEY) missingKeys.push("ANTHROPIC_API_KEY");
+  return { ready: missingKeys.length === 0, missingKeys };
 }
 
 /**
@@ -123,13 +123,15 @@ export async function identifyFromPhotos(input = {}) {
     });
   }
 
-  if (!PHOTO_VISION_LIVE) {
+  const keys = visionKeyStatus();
+  if (!keys.ready) {
     return identifyResult({
       ok: false,
       path: "photo_search",
-      message: PHOTO_NOT_SET_UP,
-      setupTask: null,
-      missingKeys: [],
+      message:
+        "Photo Identify is not set up yet (ANTHROPIC_API_KEY missing). Photos kept. Use Manual. Barcode is a separate button and does not count as Identify.",
+      setupTask: "Photo Identify needs ANTHROPIC_API_KEY in the runtime environment.",
+      missingKeys: keys.missingKeys,
       networkCalls,
     });
   }

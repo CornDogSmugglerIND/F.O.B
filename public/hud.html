@@ -89,23 +89,14 @@
             <span class="hh-act-icon" aria-hidden="true">●</span>
             CAPTURE
           </button>
-          <button type="button" class="hh-act" id="btnScan">
-            <span class="hh-act-icon" aria-hidden="true">▥</span>
-            SCAN
+          <button type="button" class="hh-act" id="btnIdentify">
+            <span class="hh-act-icon" aria-hidden="true">◎</span>
+            ID
           </button>
         </div>
 
         <div class="hh-id">
-          <div class="hh-id-row">
-            <input class="m-input hh-barcode" id="barcodeInput" placeholder="UPC / EAN" inputmode="numeric" autocomplete="off" enterkeyhint="search" />
-            <button type="button" class="m-btn m-btn-primary hh-lookup" id="btnLookup">ID</button>
-          </div>
-          <div class="hh-id-row hh-catalog-row" id="catalogRow">
-            <input class="m-input" id="catalogName" placeholder="Card / product name" autocomplete="off" />
-            <input class="m-input" id="catalogNumber" placeholder="#" inputmode="text" autocomplete="off" style="max-width:72px" />
-            <input class="m-input" id="catalogSet" placeholder="Set" autocomplete="off" style="max-width:88px" />
-          </div>
-          <div class="status-strip" id="identifyStatus">UPC, set+number, or Manual · tap ID · stage item</div>
+          <div class="status-strip" id="identifyStatus">Drop or take photos · tap ID</div>
           <div class="identify-result hidden" id="identifyResult" aria-live="polite">
             <div class="v-label" id="identifyPhaseLbl">IDLE</div>
             <div class="identify-result-title" id="identifyResultTitle">—</div>
@@ -116,6 +107,18 @@
             <input class="m-input" id="manualTitle" placeholder="Manual title (backup if ID misses)" autocomplete="off" />
             <button type="button" class="m-btn" id="btnManualOk">Set</button>
           </div>
+        </div>
+
+        <div class="hh-barcode-block" id="barcodeBlock">
+          <div class="v-label" id="barcodeFeatureLbl">BARCODE</div>
+          <div class="hh-id-row">
+            <input class="m-input hh-barcode" id="barcodeInput" placeholder="UPC / EAN" inputmode="numeric" autocomplete="off" enterkeyhint="search" />
+            <button type="button" class="m-btn hh-lookup" id="btnLookup">Lookup</button>
+          </div>
+          <button type="button" class="hh-act hh-barcode-scan" id="btnScan">
+            <span class="hh-act-icon" aria-hidden="true">▥</span>
+            SCAN
+          </button>
         </div>
 
         <div class="hh-meta">

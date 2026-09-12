@@ -1,7 +1,7 @@
 /**
- * Path 1 UPC lookup — Command #55:
- * retail UPC first (UPCitemdb or equivalent); Open*Facts stays a weak fallback only.
- * No eBay image search. Honest miss → caller offers Manual and keeps photos.
+ * Barcode / UPC lookup — separate feature from Identify (Command #59).
+ * Retail UPC first (UPCitemdb or equivalent); Open*Facts stays a weak fallback only.
+ * No eBay image search. Honest miss → caller offers Identify on photos or Manual.
  */
 
 const SOURCES = [

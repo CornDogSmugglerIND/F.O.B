@@ -2,7 +2,11 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { gateCheck, emptyIdentity, normalizeIdentity, identityToItemPatch } from "../src/identify/gate.js";
 import { runIdentify } from "../src/identify/router.js";
+import { runBarcodeScan } from "../src/identify/barcode.js";
 import { visionKeyStatus } from "../src/identify/vision.js";
+
+const tinyPng =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
 describe("identify gate", () => {
   it("rejects incomplete identity", () => {
@@ -44,21 +48,45 @@ describe("identify gate", () => {
       confidence: "high",
       source: "pokemontcg.io",
     });
-    const patch = identityToItemPatch(identity, "catalog");
+    const patch = identityToItemPatch(identity, "photo_search");
     assert.match(patch.title, /Charizard/);
     assert.equal(patch.productName, "Charizard");
     assert.equal(patch.collectorNumber, "4");
-    assert.equal(patch.identifyPath, "catalog");
+    assert.equal(patch.identifyPath, "photo_search");
   });
 });
 
-describe("identify router", () => {
+describe("identify router — photo-first", () => {
   it("returns honest empty result without hanging", async () => {
     const result = await runIdentify({});
     assert.equal(result.ok, false);
     assert.equal(result.path, "none");
-    assert.ok(result.message);
+    assert.match(result.message, /photos/i);
+    assert.match(result.message, /separate/i);
     assert.equal(result.setupTask, null);
+  });
+
+  it("does not treat a barcode as Identify", async () => {
+    const result = await runIdentify({
+      forcePath: "barcode",
+      barcode: "012345678905",
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.path, "none");
+    assert.match(result.message, /separate/i);
+    assert.notEqual(result.path, "barcode");
+  });
+
+  it("photos + barcode still take the photo path, never UPC first", async () => {
+    delete process.env.ANTHROPIC_API_KEY;
+    const result = await runIdentify({
+      photos: [tinyPng],
+      barcode: "012345678905",
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.path, "photo_search");
+    assert.notEqual(result.path, "barcode");
+    assert.ok(result.setupTask || result.message);
   });
 
   it("accepts complete manual identity", async () => {
@@ -81,43 +109,25 @@ describe("identify router", () => {
     assert.equal(result.identity.product_name, "Erika's Gloom");
   });
 
-  it("keeps photo identify dark with an honest not-set-up message", async () => {
+  it("surfaces missing vision key for photos without spinning forever", async () => {
+    delete process.env.ANTHROPIC_API_KEY;
     const keys = visionKeyStatus();
     assert.equal(keys.ready, false);
-    assert.deepEqual(keys.missingKeys, []);
 
-    const tinyPng =
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
     const result = await runIdentify({ photos: [tinyPng], forcePath: "photo_search" });
     assert.equal(result.ok, false);
     assert.equal(result.path, "photo_search");
-    assert.match(result.message, /not set up yet/i);
-    assert.equal(result.setupTask, null);
-    assert.deepEqual(result.missingKeys, []);
-    assert.doesNotMatch(result.message, /ANTHROPIC|API key|API KEY/i);
+    assert.ok(result.setupTask || result.message);
+    assert.ok((result.missingKeys || []).includes("ANTHROPIC_API_KEY"));
+    assert.doesNotMatch(result.message || "", /fall back to barcode/i);
   });
+});
 
-  it("does not treat photos as a reason to ask for a key when catalog fields are present", async () => {
-    const tinyPng =
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
-    const result = await runIdentify({
-      photos: [tinyPng],
-      forcePath: "manual",
-      manual: {
-        product_name: "Erika's Gloom",
-        collector_number: "002/217",
-        set_name: "Ascending Heroes",
-        set_code: "ASC",
-        game: "Pokemon",
-        rarity: "Rare",
-        finish: "Holo",
-        language: "English",
-        condition: "NM",
-      },
-    });
-    assert.equal(result.ok, true);
-    assert.equal(result.path, "manual");
-    assert.equal(result.setupTask, null);
-    assert.deepEqual(result.missingKeys, []);
+describe("barcode feature — separate from Identify", () => {
+  it("empty code fails honestly", async () => {
+    const result = await runBarcodeScan("");
+    assert.equal(result.ok, false);
+    assert.equal(result.path, "barcode");
+    assert.ok(result.message);
   });
 });

@@ -34,7 +34,9 @@ Do not touch color until workstreams 1 and 2 are functional and verified in a ru
 
 Spec: `design/LISTING-ENGINE.md` §1.
 
-- Four input paths: barcode, photo + live web search, set + number match, manual. **Not barcode-only.**
+- **Photo-first.** Photos in → identity out. Barcode is a **separate button**, not step one, not a fallback that counts as shipping Identify (Command #59).
+- Manual is the always-available fallback when confidence is low.
+- Barcode scan is its own feature (sealed / printed UPC), built after Identify.
 - Must return the full output gate (product name, collector number, set, set code, game, rarity, finish, language, condition, quantity, confidence).
 - Low confidence → stop and ask. **Never guess.**
 - Every failure case shows a real message. **No spinner that never resolves.**
