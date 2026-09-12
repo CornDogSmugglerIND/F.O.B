@@ -12,7 +12,21 @@ let ready = false;
 /** @typedef {{ id: string, filename: string | null, url: string, dataUrl: string | null, createdAt: string }} Photo */
 /** @typedef {{ listingId: string | null, price: number | null, status: string | null }} ChannelListing */
 /** @typedef {{ ebay?: ChannelListing, double_holo?: ChannelListing, misprint?: ChannelListing }} ChannelMap */
-/** @typedef {{ id: string, createdAt: string, updatedAt: string, title: string | null, barcode: string | null, quantity: number, category: string, brand: string | null, description: string | null, lookupSource: string | null, notes: string | null, staged: boolean, price: number | null, channels: ChannelMap, lastSaleAt: string | null, lastSaleChannel: string | null, lastSaleExternalId: string | null, photos: Photo[] }} ScoutItem */
+/**
+ * @typedef {{
+ *   id: string, createdAt: string, updatedAt: string,
+ *   title: string | null, barcode: string | null, quantity: number, category: string,
+ *   brand: string | null, description: string | null, lookupSource: string | null,
+ *   notes: string | null, staged: boolean, price: number | null,
+ *   channels: ChannelMap,
+ *   lastSaleAt: string | null, lastSaleChannel: string | null, lastSaleExternalId: string | null,
+ *   photos: Photo[],
+ *   productName?: string | null, collectorNumber?: string | null,
+ *   setName?: string | null, setCode?: string | null, game?: string | null,
+ *   rarity?: string | null, finish?: string | null, language?: string | null,
+ *   condition?: string | null, identifyConfidence?: string | null, identifyPath?: string | null,
+ * }} ScoutItem
+ */
 
 function itemsFile() {
   return join(dataRoot, "scouter.json");
@@ -87,6 +101,17 @@ export async function createScoutItem(partial = {}) {
     lastSaleAt: partial.lastSaleAt ?? null,
     lastSaleChannel: partial.lastSaleChannel ?? null,
     lastSaleExternalId: partial.lastSaleExternalId ?? null,
+    productName: partial.productName ?? null,
+    collectorNumber: partial.collectorNumber ?? null,
+    setName: partial.setName ?? null,
+    setCode: partial.setCode ?? null,
+    game: partial.game ?? null,
+    rarity: partial.rarity ?? null,
+    finish: partial.finish ?? null,
+    language: partial.language ?? null,
+    condition: partial.condition ?? null,
+    identifyConfidence: partial.identifyConfidence ?? null,
+    identifyPath: partial.identifyPath ?? null,
     photos: [],
   };
   const items = await readItems();

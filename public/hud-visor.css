@@ -92,6 +92,45 @@
   color: var(--text-lo);
 }
 
+.hh-catalog-row {
+  display: grid;
+  grid-template-columns: 1fr 72px 88px;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+@media (max-width: 380px) {
+  .hh-catalog-row {
+    grid-template-columns: 1fr 64px 72px;
+  }
+}
+
+.identify-candidates {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.identify-candidate {
+  text-align: left;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(245, 197, 24, 0.28);
+  background: rgba(15, 14, 10, 0.72);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.identify-candidate:active,
+.identify-candidate:hover {
+  border-color: rgba(245, 197, 24, 0.6);
+  background: rgba(245, 197, 24, 0.08);
+}
+
 a.m-btn {
   text-decoration: none;
 }
