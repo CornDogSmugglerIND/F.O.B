@@ -97,15 +97,14 @@
 
         <div class="hh-id">
           <div class="hh-id-row">
-            <input class="m-input hh-barcode" id="barcodeInput" placeholder="UPC / EAN" inputmode="numeric" autocomplete="off" enterkeyhint="search" />
-            <button type="button" class="m-btn m-btn-primary hh-lookup" id="btnLookup">ID</button>
+            <button type="button" class="m-btn m-btn-primary hh-lookup" id="btnLookup">IDENTIFY</button>
           </div>
           <div class="hh-id-row hh-catalog-row" id="catalogRow">
             <input class="m-input" id="catalogName" placeholder="Card / product name" autocomplete="off" />
             <input class="m-input" id="catalogNumber" placeholder="#" inputmode="text" autocomplete="off" style="max-width:72px" />
             <input class="m-input" id="catalogSet" placeholder="Set" autocomplete="off" style="max-width:88px" />
           </div>
-          <div class="status-strip" id="identifyStatus">UPC, set+number, or Manual · tap ID · stage item</div>
+          <div class="status-strip" id="identifyStatus">Drop/take photos · tap Identify · or Manual</div>
           <div class="identify-result hidden" id="identifyResult" aria-live="polite">
             <div class="v-label" id="identifyPhaseLbl">IDLE</div>
             <div class="identify-result-title" id="identifyResultTitle">—</div>
@@ -115,6 +114,10 @@
           <div class="hh-id-row hh-title-row" id="manualRow">
             <input class="m-input" id="manualTitle" placeholder="Manual title (backup if ID misses)" autocomplete="off" />
             <button type="button" class="m-btn" id="btnManualOk">Set</button>
+          </div>
+          <div class="hh-id-row hh-barcode-row hidden" id="barcodeRow">
+            <input class="m-input hh-barcode" id="barcodeInput" placeholder="UPC / EAN (Scan)" inputmode="numeric" autocomplete="off" enterkeyhint="search" />
+            <button type="button" class="m-btn" id="btnBarcodeLookup">SCAN LOOKUP</button>
           </div>
         </div>
 

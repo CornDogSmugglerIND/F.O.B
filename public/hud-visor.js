@@ -87,6 +87,8 @@ const els = {
   inputGallery: $("inputGallery"),
   identifyStatus: $("identifyStatus"),
   barcodeInput: $("barcodeInput"),
+  barcodeRow: $("barcodeRow"),
+  btnBarcodeLookup: $("btnBarcodeLookup"),
   catalogName: $("catalogName"),
   catalogNumber: $("catalogNumber"),
   catalogSet: $("catalogSet"),
@@ -293,44 +295,33 @@ function applyIdentity(identity, path) {
 }
 
 /**
- * Photo-first Identify (Command LISTING-ENGINE §1 / #55).
- * Photos → /api/scouter/identify. Barcode is a shortcut. Manual always available.
- * Never hang on a spinner — every path resolves with a message.
+ * Identify = photos in → identity out (Command PR #59 `5649468890`).
+ * Barcode Scan is a separate control. Manual always available.
+ * Never hang on a spinner.
  */
 async function runIdentify() {
   const photos = state.draftPhotos.map((p) => p.dataUrl).filter(Boolean);
-  const barcode = (els.barcodeInput?.value || state.barcode || "").trim();
   const manualTitle = (els.manualTitle?.value || "").trim();
   const catalogName = (els.catalogName?.value || "").trim();
   const catalogNumber = (els.catalogNumber?.value || "").trim();
   const catalogSet = (els.catalogSet?.value || "").trim();
   const hasCatalog = Boolean(catalogNumber || catalogSet || (catalogName && catalogNumber));
 
-  if (!photos.length && !barcode && !manualTitle && !hasCatalog && !catalogName) {
-    setIdentifyPhase("fail", "Nothing to ID");
-    setStatus("Scan a UPC, enter set+number, or use Manual.", "err");
-    showToast("Need UPC, catalog fields, or manual title", "err");
+  if (!photos.length && !manualTitle && !hasCatalog && !catalogName) {
+    setIdentifyPhase("fail", "Need photos");
+    setStatus("Identify needs photos (or Manual / set+#). Use Scan for barcodes.", "err");
+    showToast("Drop or take photos to Identify", "err");
     return;
   }
 
   setIdentifyPhase("running", "Working…");
-  setStatus("Identify running — catalog / UPC / Manual…", "busy");
+  setStatus("Identify running from photos…", "busy");
   els.btnLookup.disabled = true;
   els.btnLookup.textContent = "…";
   renderCandidates([]);
 
   try {
-    // Optional: if no barcode yet, try reading one from photos (shortcut only)
-    if (!barcode && photos.length) {
-      const fromPhoto = await scanBarcodeFromPhotos();
-      if (fromPhoto) {
-        els.barcodeInput.value = fromPhoto;
-        state.barcode = fromPhoto.trim();
-      }
-    }
-
     const payload = {
-      barcode: (els.barcodeInput?.value || "").trim() || null,
       photos,
       notes: (els.fieldNotes?.value || "").trim() || null,
       category: state.category,
@@ -340,10 +331,10 @@ async function runIdentify() {
       set: catalogSet || null,
       forcePath: undefined,
     };
-    if (hasCatalog || catalogName) {
+    if (photos.length) {
+      payload.forcePath = "photo_search";
+    } else if (hasCatalog || catalogName) {
       payload.forcePath = "catalog";
-    } else if (barcode) {
-      payload.forcePath = "barcode";
     } else if (manualTitle) {
       payload.forcePath = "manual";
       payload.manual = {
@@ -352,8 +343,6 @@ async function runIdentify() {
         condition: "NM",
         quantity: state.qty,
       };
-    } else if (photos.length) {
-      payload.forcePath = "photo_search";
     }
 
     const res = await fetch("/api/scouter/identify", {
@@ -404,7 +393,7 @@ async function runIdentify() {
     showToast("Identify failed", "err");
   } finally {
     els.btnLookup.disabled = false;
-    els.btnLookup.textContent = "ID";
+    els.btnLookup.textContent = "IDENTIFY";
   }
 }
 
@@ -739,42 +728,47 @@ function bindHoloClicks(root) {
 }
 
 async function lookupBarcode(code) {
-  const trimmed = code.trim();
+  const trimmed = String(code || "").trim();
   if (!trimmed) {
     showToast("Scan or enter a barcode first", "err");
     setIdentifyPhase("fail", "No barcode");
-    setStatus("Need a barcode or manual title to identify", "err");
+    setStatus("Need a barcode for Scan lookup", "err");
     return;
   }
 
   state.barcode = trimmed;
-  els.barcodeInput.value = trimmed;
+  if (els.barcodeInput) els.barcodeInput.value = trimmed;
+  els.barcodeRow?.classList.remove("hidden");
   setIdentifyPhase("running");
-  setStatus("Identify running — watching catalog…", "busy");
-  els.btnLookup.disabled = true;
-  els.btnLookup.textContent = "Running…";
+  setStatus("Barcode scan lookup…", "busy");
+  if (els.btnBarcodeLookup) {
+    els.btnBarcodeLookup.disabled = true;
+    els.btnBarcodeLookup.textContent = "…";
+  }
 
   try {
     const result = await api(`/api/scouter/barcode/${encodeURIComponent(trimmed)}`);
     if (result.found && result.product?.title) {
       state.title = result.product.title;
       setIdentifyPhase("ok");
-      setStatus(`Identified: ${result.product.title}`, "ok");
-      showToast("Identify match");
+      setStatus(`Scan match: ${result.product.title}`, "ok");
+      showToast("Barcode match");
     } else {
       setIdentifyPhase("fail");
-      setStatus("No catalog match — set a title manually", "err");
-      els.manualRow.classList.remove("hidden");
-      showToast("No match — manual title", "err");
+      setStatus("No barcode catalog match — use Identify photos or Manual", "err");
+      els.manualRow?.classList.remove("hidden");
+      showToast("No barcode match", "err");
     }
     updateSaveState();
   } catch {
     setIdentifyPhase("fail");
-    setStatus("Identify offline — set a title manually", "err");
-    els.manualRow.classList.remove("hidden");
+    setStatus("Barcode lookup failed — try again or Manual", "err");
+    els.manualRow?.classList.remove("hidden");
   } finally {
-    els.btnLookup.disabled = false;
-    els.btnLookup.textContent = "ID";
+    if (els.btnBarcodeLookup) {
+      els.btnBarcodeLookup.disabled = false;
+      els.btnBarcodeLookup.textContent = "SCAN LOOKUP";
+    }
   }
 }
 
@@ -1175,17 +1169,21 @@ function bindEvents() {
     e.target.value = "";
   });
 
-  els.btnScan.addEventListener("click", () => startScanner());
+  els.btnScan.addEventListener("click", () => {
+    els.barcodeRow?.classList.remove("hidden");
+    startScanner();
+  });
   els.btnScanClose.addEventListener("click", () => stopScanner());
   els.btnLookup.addEventListener("click", () => runIdentify());
-  els.barcodeInput.addEventListener("input", () => {
+  els.btnBarcodeLookup?.addEventListener("click", () => lookupBarcode(els.barcodeInput?.value || ""));
+  els.barcodeInput?.addEventListener("input", () => {
     state.barcode = els.barcodeInput.value.trim();
     updateSaveState();
   });
-  els.barcodeInput.addEventListener("keydown", (e) => {
+  els.barcodeInput?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      runIdentify();
+      lookupBarcode(els.barcodeInput.value);
     }
   });
 

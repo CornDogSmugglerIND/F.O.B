@@ -1,21 +1,38 @@
 /**
- * Path 3 — photo + live web/catalog search.
- * Command (#55): stays dark until Sawyer asks for it. No key ask. Honest "not set up yet."
- * Paths 1 / 2 / 4 ship with zero keys. design/LISTING-ENGINE.md §1.2 / §1.5
+ * Identify core — photo in → identity out (Command PR #59 comment `5649468890`).
+ *
+ * Vision provider: Anthropic only. Env: ANTHROPIC_API_KEY (Vercel).
+ * Do not propose other providers. Do not fall back to barcode.
+ *
+ * When key absent: one honest line — "Identify isn't set up yet."
+ * Never spinner. Never fake result. Never ask Sawyer for the key in UI copy.
  */
 
 import { normalizeIdentity, identifyResult } from "./gate.js";
 import { searchCatalogs } from "./catalog.js";
+import { searchLiveWeb } from "./webSearch.js";
 
-const PHOTO_VISION_LIVE = false;
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = process.env.IDENTIFY_VISION_MODEL || "claude-sonnet-4-20250514";
-const PHOTO_NOT_SET_UP =
-  "Photo identify is not set up yet. Photos were kept. Use catalog fields, UPC, or Manual.";
+const NOT_SET_UP = "Identify isn't set up yet.";
+
+const CARD_GAMES = new Set([
+  "Pokemon",
+  "Magic",
+  "One Piece",
+  "Dragon Ball Super",
+  "Digimon",
+  "sports",
+]);
 
 /** @returns {{ ready: boolean, missingKeys: string[], message: string }} */
 export function visionKeyStatus() {
-  return { ready: PHOTO_VISION_LIVE, missingKeys: [], message: PHOTO_NOT_SET_UP };
+  const ready = Boolean(process.env.ANTHROPIC_API_KEY);
+  return {
+    ready,
+    missingKeys: [],
+    message: ready ? "Photo identify ready." : NOT_SET_UP,
+  };
 }
 
 /**
@@ -62,6 +79,7 @@ Look at the photo(s). Return ONLY valid JSON (no markdown) with this shape:
   "language": string,
   "condition": string,
   "confidence": "high"|"low",
+  "kind": "card"|"sealed"|"toy"|"electronics"|"movie"|"other",
   "search_query": string|null,
   "candidates": [{"product_name":string,"collector_number":string|null,"set_name":string|null,"set_code":string|null,"game":string|null,"finish":string|null,"confidence":"high"|"low"}],
   "unusable_photo": boolean,
@@ -72,6 +90,7 @@ Rules:
 - Never guess finish/variant if unsure — set confidence low.
 - Prefer exact printed name and collector number from the card.
 - If photo is blurry / hair / glare, set unusable_photo true.
+- kind=card for TCG/sports cards; sealed/toy/electronics/movie/other otherwise.
 - search_query should be what a buyer would type into eBay for this exact item.`;
 
   const res = await fetch(ANTHROPIC_URL, {
@@ -108,6 +127,12 @@ Rules:
   return JSON.parse(jsonMatch[0]);
 }
 
+function isCardLike(vision) {
+  if (vision.kind === "card") return true;
+  if (vision.collector_number && vision.set_name) return true;
+  return CARD_GAMES.has(String(vision.game || ""));
+}
+
 /**
  * @param {{ photos?: string[], notes?: string, category?: string, quantity?: number }} input
  */
@@ -123,11 +148,12 @@ export async function identifyFromPhotos(input = {}) {
     });
   }
 
-  if (!PHOTO_VISION_LIVE) {
+  const keys = visionKeyStatus();
+  if (!keys.ready) {
     return identifyResult({
       ok: false,
       path: "photo_search",
-      message: PHOTO_NOT_SET_UP,
+      message: NOT_SET_UP,
       setupTask: null,
       missingKeys: [],
       networkCalls,
@@ -188,7 +214,8 @@ export async function identifyFromPhotos(input = {}) {
   const searchQuery =
     vision.search_query ||
     [vision.product_name, vision.collector_number, vision.set_name].filter(Boolean).join(" ");
-  if (searchQuery || vision.collector_number) {
+
+  if (isCardLike(vision) && (searchQuery || vision.collector_number)) {
     const catalog = await searchCatalogs({
       name: vision.product_name || undefined,
       number: vision.collector_number || undefined,
@@ -197,6 +224,12 @@ export async function identifyFromPhotos(input = {}) {
     });
     networkCalls.push(...catalog.networkCalls);
     candidates.push(...catalog.candidates);
+  } else if (searchQuery) {
+    const web = await searchLiveWeb(searchQuery);
+    networkCalls.push(...web.networkCalls);
+    for (const c of web.candidates) {
+      candidates.push(normalizeIdentity(c, qty));
+    }
   }
 
   if (!candidates.length) {

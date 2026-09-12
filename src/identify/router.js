@@ -1,14 +1,13 @@
 /**
- * Identify router — Command LISTING-ENGINE §1 + issue #55 correction.
+ * Identify router — Command PR #59 comment `5649468890`.
  *
- * Fire order (Command #55 — ship 1 / 2 / 4, Path 3 stays dark):
- * 1. Barcode / UPC when barcode present — zero keys
- * 2. Catalog when set+number or explicit name/number — zero keys
- * 3. Photo + live search — dark, honest "not set up yet" until Sawyer asks
- * 4. Manual always available — zero keys
+ * IDENTIFY (default): photos in → identity out (Anthropic vision when keyed).
+ * Manual always available.
+ * Catalog verifies / accepts typed set+number.
  *
- * Never infinite-spinner. Never lose photos. Never guess on low confidence.
- * Never ask Sawyer for an API key.
+ * BARCODE SCAN is a separate feature (`forcePath: "barcode"` only).
+ * Never treat barcode as Identify’s front door. Never fall back to barcode
+ * when photo vision is missing.
  */
 
 import { lookupBarcode } from "../lookup.js";
@@ -43,7 +42,7 @@ async function pathBarcode(barcode, quantity = 1) {
     return identifyResult({
       ok: false,
       path: "barcode",
-      message: "No UPC catalog match. Try photos or Manual. Photos kept.",
+      message: "No UPC catalog match. Photos kept.",
       networkCalls,
     });
   }
@@ -149,10 +148,14 @@ async function pathCatalog(input) {
 export async function runIdentify(input = {}) {
   const quantity = Math.max(1, Number(input.quantity) || 1);
   const photos = Array.isArray(input.photos) ? input.photos : [];
-  const hasBarcode = Boolean(String(input.barcode || "").replace(/\D/g, ""));
   const hasCatalogHints = Boolean(input.number || input.set || (input.name && input.number));
   const hasPhotos = photos.some((p) => typeof p === "string" && p.startsWith("data:image/"));
   const force = input.forcePath;
+
+  // Separate feature — Barcode Scan button only.
+  if (force === "barcode") {
+    return pathBarcode(input.barcode, quantity);
+  }
 
   if (force === "manual" || input.manual?.product_name) {
     const identity = normalizeIdentity(
@@ -177,8 +180,14 @@ export async function runIdentify(input = {}) {
     });
   }
 
-  if (force === "barcode" || (!force && hasBarcode && !hasCatalogHints)) {
-    return pathBarcode(input.barcode, quantity);
+  // Identify core: photos first.
+  if (force === "photo_search" || (!force && hasPhotos)) {
+    return identifyFromPhotos({
+      photos,
+      notes: input.notes,
+      category: input.category,
+      quantity,
+    });
   }
 
   if (force === "catalog" || (!force && hasCatalogHints)) {
@@ -189,23 +198,6 @@ export async function runIdentify(input = {}) {
       query: input.query,
       quantity,
     });
-  }
-
-  if (force === "photo_search" || (!force && hasPhotos)) {
-    if (hasBarcode && force !== "photo_search") {
-      const upc = await pathBarcode(input.barcode, quantity);
-      if (upc.ok) return upc;
-    }
-    return identifyFromPhotos({
-      photos,
-      notes: input.notes,
-      category: input.category,
-      quantity,
-    });
-  }
-
-  if (hasBarcode) {
-    return pathBarcode(input.barcode, quantity);
   }
 
   if (input.name || input.number || input.query) {
@@ -221,7 +213,7 @@ export async function runIdentify(input = {}) {
   return identifyResult({
     ok: false,
     path: "none",
-    message: "Nothing to identify. Scan a barcode, enter set+number, or use Manual.",
+    message: "Identify needs photos (or Manual / set+number). Barcode scan is a separate button.",
     setupTask: null,
     missingKeys: [],
     networkCalls: [],
