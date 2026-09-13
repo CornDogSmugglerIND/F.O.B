@@ -50,10 +50,13 @@ test("GET / serves Scouter frontend", async () => {
     assert.match(html, /Add to rail/);
     assert.match(html, /SCOUTER/);
     assert.match(html, /hh-viewfinder/);
-    assert.match(html, /scouter\.css\?v=24/);
+    assert.match(html, /scouter\.css\?v=25/);
     assert.match(html, /stagedFlag/);
     assert.match(html, /CAPTURE/);
+    assert.match(html, /btnIdentify/);
     assert.match(html, /SCAN/);
+    assert.match(html, /Lookup/);
+    assert.match(html, /hh-barcode-block/);
     assert.doesNotMatch(html, /Drop a folder of scans/);
     assert.doesNotMatch(html, />Export</);
     assert.doesNotMatch(html, />Import</);
@@ -74,6 +77,9 @@ test("GET /hud.html serves Coalition H.U.D shell", async () => {
     assert.match(html, /Scouter/);
     assert.match(html, /stagedFlag/);
     assert.match(html, /hh-viewfinder/);
+    assert.match(html, /btnIdentify/);
+    assert.match(html, /hh-barcode-block/);
+    assert.match(html, /Lookup/);
     assert.match(html, /Export staged/);
     assert.doesNotMatch(html, /Drop a folder of scans/);
     assert.doesNotMatch(html, /Command Core/);
@@ -185,6 +191,52 @@ test("barcode lookup returns structured response", async () => {
     const res = await fetch(`${baseUrl}/api/scouter/barcode/abc`);
     const body = await res.json();
     assert.equal(body.found, false);
+  } finally {
+    await close();
+  }
+});
+
+test("Identify is photo-first and does not accept barcode as a path", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const empty = await fetch(`${baseUrl}/api/scouter/identify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ barcode: "012345678905" }),
+    });
+    const emptyBody = await empty.json();
+    assert.equal(empty.ok, false);
+    assert.equal(emptyBody.path, "none");
+    assert.match(emptyBody.message, /photos/i);
+
+    const forced = await fetch(`${baseUrl}/api/scouter/identify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ forcePath: "barcode", barcode: "012345678905" }),
+    });
+    const forcedBody = await forced.json();
+    assert.equal(forcedBody.path, "none");
+    assert.match(forcedBody.message, /separate/i);
+
+    const tinyPng =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const photo = await fetch(`${baseUrl}/api/scouter/identify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ photos: [tinyPng] }),
+    });
+    const photoBody = await photo.json();
+    assert.equal(photoBody.path, "photo_search");
+    assert.notEqual(photoBody.path, "barcode");
+    assert.ok(photoBody.message);
+
+    const status = await fetch(`${baseUrl}/api/scouter/identify/status`);
+    const statusBody = await status.json();
+    assert.equal(statusBody.feature, "photo");
+    assert.equal(statusBody.barcodeFeature.separate, true);
+    assert.ok(statusBody.paths.includes("photo_search"));
+    assert.ok(statusBody.paths.includes("manual"));
+    assert.ok(!statusBody.paths.includes("barcode"));
   } finally {
     await close();
   }

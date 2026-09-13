@@ -87,14 +87,12 @@ const els = {
   inputGallery: $("inputGallery"),
   identifyStatus: $("identifyStatus"),
   barcodeInput: $("barcodeInput"),
-  catalogName: $("catalogName"),
-  catalogNumber: $("catalogNumber"),
-  catalogSet: $("catalogSet"),
   manualRow: $("manualRow"),
   manualTitle: $("manualTitle"),
   btnManual: $("btnManual"),
   btnManualOk: $("btnManualOk"),
   btnScan: $("btnScan"),
+  btnIdentify: $("btnIdentify"),
   btnLookup: $("btnLookup"),
   qtyVal: $("qtyVal"),
   qtyMinus: $("qtyMinus"),
@@ -224,7 +222,7 @@ function setIdentifyPhase(phase, detail = "") {
     ok: "MATCH",
     fail: "NO MATCH",
     manual: "MANUAL",
-    setup: "NOT SET UP",
+    setup: "SETUP",
   };
   if (els.identifyPhaseLbl) els.identifyPhaseLbl.textContent = labels[phase] || phase;
   if (!els.identifyResult) return;
@@ -239,11 +237,10 @@ function setIdentifyPhase(phase, detail = "") {
   if (els.identifyResultMeta) {
     const bits = [
       state.identifyPath ? `path ${state.identifyPath}` : null,
-      state.barcode ? `UPC ${state.barcode}` : null,
       phase === "ok" ? "gate ok" : null,
       phase === "manual" ? "manual title" : null,
       phase === "fail" ? "needs pick / manual" : null,
-      phase === "setup" ? "not set up yet" : null,
+      phase === "setup" ? "key missing" : null,
       phase === "running" ? "working…" : null,
     ].filter(Boolean);
     els.identifyResultMeta.textContent = bits.join(" · ");
@@ -293,68 +290,34 @@ function applyIdentity(identity, path) {
 }
 
 /**
- * Photo-first Identify (Command LISTING-ENGINE §1 / #55).
- * Photos → /api/scouter/identify. Barcode is a shortcut. Manual always available.
- * Never hang on a spinner — every path resolves with a message.
+ * Identify — photos in, identity out. Command #59 correction.
+ * Never reads a barcode. Never hangs on a spinner.
  */
 async function runIdentify() {
   const photos = state.draftPhotos.map((p) => p.dataUrl).filter(Boolean);
-  const barcode = (els.barcodeInput?.value || state.barcode || "").trim();
-  const manualTitle = (els.manualTitle?.value || "").trim();
-  const catalogName = (els.catalogName?.value || "").trim();
-  const catalogNumber = (els.catalogNumber?.value || "").trim();
-  const catalogSet = (els.catalogSet?.value || "").trim();
-  const hasCatalog = Boolean(catalogNumber || catalogSet || (catalogName && catalogNumber));
 
-  if (!photos.length && !barcode && !manualTitle && !hasCatalog && !catalogName) {
-    setIdentifyPhase("fail", "Nothing to ID");
-    setStatus("Scan a UPC, enter set+number, or use Manual.", "err");
-    showToast("Need UPC, catalog fields, or manual title", "err");
+  if (!photos.length) {
+    setIdentifyPhase("fail", "Need photos");
+    setStatus("Drop or take photos, then tap ID. Barcode is a separate button.", "err");
+    showToast("Need photos first", "err");
     return;
   }
 
-  setIdentifyPhase("running", "Working…");
-  setStatus("Identify running — catalog / UPC / Manual…", "busy");
-  els.btnLookup.disabled = true;
-  els.btnLookup.textContent = "…";
+  setIdentifyPhase("running", "Reading photos…");
+  setStatus("Identify running — reading photos…", "busy");
+  if (els.btnIdentify) {
+    els.btnIdentify.disabled = true;
+    els.btnIdentify.setAttribute("aria-busy", "true");
+  }
   renderCandidates([]);
 
   try {
-    // Optional: if no barcode yet, try reading one from photos (shortcut only)
-    if (!barcode && photos.length) {
-      const fromPhoto = await scanBarcodeFromPhotos();
-      if (fromPhoto) {
-        els.barcodeInput.value = fromPhoto;
-        state.barcode = fromPhoto.trim();
-      }
-    }
-
     const payload = {
-      barcode: (els.barcodeInput?.value || "").trim() || null,
       photos,
       notes: (els.fieldNotes?.value || "").trim() || null,
       category: state.category,
       quantity: state.qty,
-      name: catalogName || null,
-      number: catalogNumber || null,
-      set: catalogSet || null,
-      forcePath: undefined,
     };
-    if (hasCatalog || catalogName) {
-      payload.forcePath = "catalog";
-    } else if (barcode) {
-      payload.forcePath = "barcode";
-    } else if (manualTitle) {
-      payload.forcePath = "manual";
-      payload.manual = {
-        product_name: manualTitle,
-        language: "English",
-        condition: "NM",
-        quantity: state.qty,
-      };
-    } else if (photos.length) {
-      payload.forcePath = "photo_search";
-    }
 
     const res = await fetch("/api/scouter/identify", {
       method: "POST",
@@ -367,7 +330,6 @@ async function runIdentify() {
     } catch {
       throw new Error(`Identify returned non-JSON (${res.status})`);
     }
-    // 422 / 503 still carry structured identify payloads — do not treat as hard crash
     if (!result || typeof result !== "object") {
       throw new Error(`Identify failed (${res.status})`);
     }
@@ -380,10 +342,14 @@ async function runIdentify() {
       setIdentifyPhase("ok", result.identity.product_name);
       setStatus(result.message || `Identified: ${result.identity.product_name}`, "ok");
       showToast("Identify match");
-    } else if (result.path === "photo_search" && !result.ok) {
-      setIdentifyPhase("setup", result.message || "Not set up yet");
-      setStatus(result.message || "Photo identify is not set up yet. Photos were kept.", "err");
-      showToast("Photo identify is not set up yet", "err");
+    } else if (
+      result.setupTask ||
+      (result.missingKeys || []).length ||
+      /isn't set up yet/i.test(result.message || "")
+    ) {
+      setIdentifyPhase("setup", result.message || "Identify isn't set up yet.");
+      setStatus(result.message || "Identify isn't set up yet.", "err");
+      showToast("Identify isn't set up yet.", "err");
       els.manualRow?.classList.remove("hidden");
     } else if ((result.candidates || []).length) {
       setIdentifyPhase("fail", result.message || "Pick a candidate");
@@ -403,8 +369,10 @@ async function runIdentify() {
     els.manualRow?.classList.remove("hidden");
     showToast("Identify failed", "err");
   } finally {
-    els.btnLookup.disabled = false;
-    els.btnLookup.textContent = "ID";
+    if (els.btnIdentify) {
+      els.btnIdentify.disabled = false;
+      els.btnIdentify.removeAttribute("aria-busy");
+    }
   }
 }
 
@@ -536,7 +504,7 @@ function renderCollection() {
       <div class="coll-empty-state">
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="1.4" style="opacity:0.7;filter:drop-shadow(0 0 14px #ffe566)"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         <div class="v-label" style="margin-top:16px;font-size:12px">Intake empty</div>
-        <p>Scan a barcode or drop a photo to bring inventory in.</p>
+        <p>Drop or take photos, tap ID, then stage the item.</p>
       </div>`;
     return;
   }
@@ -609,15 +577,12 @@ function resetCapture() {
   if (els.fieldNotes) els.fieldNotes.value = "";
   if (els.barcodeInput) els.barcodeInput.value = "";
   if (els.manualTitle) els.manualTitle.value = "";
-  if (els.catalogName) els.catalogName.value = "";
-  if (els.catalogNumber) els.catalogNumber.value = "";
-  if (els.catalogSet) els.catalogSet.value = "";
   if (els.stagedFlag) els.stagedFlag.checked = true;
   setCategory("other");
   renderPhotoGrid();
   renderCandidates([]);
   setIdentifyPhase("idle");
-  setStatus("Drop/take photos · tap ID · stage item");
+  setStatus("Drop or take photos · tap ID");
   updateSaveState();
 }
 
@@ -739,42 +704,42 @@ function bindHoloClicks(root) {
 }
 
 async function lookupBarcode(code) {
-  const trimmed = code.trim();
+  const trimmed = String(code || "").trim();
   if (!trimmed) {
     showToast("Scan or enter a barcode first", "err");
-    setIdentifyPhase("fail", "No barcode");
-    setStatus("Need a barcode or manual title to identify", "err");
+    setStatus("Barcode is a separate button — scan or type a UPC.", "err");
     return;
   }
 
   state.barcode = trimmed;
-  els.barcodeInput.value = trimmed;
-  setIdentifyPhase("running");
-  setStatus("Identify running — watching catalog…", "busy");
-  els.btnLookup.disabled = true;
-  els.btnLookup.textContent = "Running…";
+  if (els.barcodeInput) els.barcodeInput.value = trimmed;
+  setStatus("Looking up barcode…", "busy");
+  if (els.btnLookup) {
+    els.btnLookup.disabled = true;
+    els.btnLookup.textContent = "…";
+  }
 
   try {
     const result = await api(`/api/scouter/barcode/${encodeURIComponent(trimmed)}`);
     if (result.found && result.product?.title) {
       state.title = result.product.title;
-      setIdentifyPhase("ok");
-      setStatus(`Identified: ${result.product.title}`, "ok");
-      showToast("Identify match");
+      if (els.manualTitle) els.manualTitle.value = result.product.title;
+      setStatus(`Barcode match: ${result.product.title}`, "ok");
+      showToast("Barcode match");
     } else {
-      setIdentifyPhase("fail");
-      setStatus("No catalog match — set a title manually", "err");
-      els.manualRow.classList.remove("hidden");
-      showToast("No match — manual title", "err");
+      setStatus("No UPC match — use Identify on photos or Manual.", "err");
+      els.manualRow?.classList.remove("hidden");
+      showToast("No barcode match", "err");
     }
     updateSaveState();
   } catch {
-    setIdentifyPhase("fail");
-    setStatus("Identify offline — set a title manually", "err");
-    els.manualRow.classList.remove("hidden");
+    setStatus("Barcode lookup offline — use Identify or Manual. Photos kept.", "err");
+    els.manualRow?.classList.remove("hidden");
   } finally {
-    els.btnLookup.disabled = false;
-    els.btnLookup.textContent = "ID";
+    if (els.btnLookup) {
+      els.btnLookup.disabled = false;
+      els.btnLookup.textContent = "Lookup";
+    }
   }
 }
 
@@ -1175,9 +1140,10 @@ function bindEvents() {
     e.target.value = "";
   });
 
+  els.btnIdentify?.addEventListener("click", () => runIdentify());
   els.btnScan.addEventListener("click", () => startScanner());
   els.btnScanClose.addEventListener("click", () => stopScanner());
-  els.btnLookup.addEventListener("click", () => runIdentify());
+  els.btnLookup.addEventListener("click", () => lookupBarcode(els.barcodeInput.value));
   els.barcodeInput.addEventListener("input", () => {
     state.barcode = els.barcodeInput.value.trim();
     updateSaveState();
@@ -1185,7 +1151,7 @@ function bindEvents() {
   els.barcodeInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      runIdentify();
+      lookupBarcode(els.barcodeInput.value);
     }
   });
 

@@ -18,7 +18,7 @@ export const IDENTIFY_REQUIRED = [
 ];
 
 /**
- * @typedef {'barcode'|'catalog'|'photo_search'|'manual'|'none'} IdentifyPath
+ * @typedef {'photo_search'|'manual'|'none'|'barcode'|'catalog'} IdentifyPath
  * @typedef {'high'|'low'} Confidence
  *
  * @typedef {object} IdentifyCandidate

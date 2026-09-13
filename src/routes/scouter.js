@@ -3,6 +3,7 @@ import multer from "multer";
 import { randomUUID } from "node:crypto";
 import { lookupBarcode } from "../lookup.js";
 import { runIdentify, identityToItemPatch } from "../identify/router.js";
+import { runBarcodeScan } from "../identify/barcode.js";
 import { visionKeyStatus } from "../identify/vision.js";
 import {
   addInlinePhotoToItem,
@@ -155,20 +156,14 @@ export function scouterRouter() {
   });
 
   /**
-   * Command Identify router (LISTING-ENGINE §1 + #55).
-   * Photos-first. Barcode is a shortcut. Manual always available.
-   * Never barcode-only. Never silent no-op. Never lose photos.
+   * Identify — photos in, identity out. Command #59 correction.
+   * Barcode is not accepted as an Identify path.
    */
   router.post("/identify", async (req, res, next) => {
     try {
       const body = req.body ?? {};
       const result = await runIdentify({
-        barcode: body.barcode,
         photos: body.photos,
-        name: body.name,
-        number: body.number,
-        set: body.set,
-        query: body.query,
         notes: body.notes,
         category: body.category,
         quantity: body.quantity,
@@ -186,11 +181,15 @@ export function scouterRouter() {
     const keys = visionKeyStatus();
     res.json({
       service: "identify",
-      paths: ["barcode", "catalog", "photo_search", "manual"],
+      feature: "photo",
+      paths: ["photo_search", "manual"],
+      barcodeFeature: {
+        separate: true,
+        endpoint: "/api/scouter/barcode/:code",
+      },
       photoSearchReady: keys.ready,
       missingKeys: [],
-      setupTask: null,
-      message: keys.message || "Photo identify is not set up yet.",
+      setupTask: keys.ready ? null : keys.message,
     });
   });
 
@@ -206,30 +205,33 @@ export function scouterRouter() {
       const photos = Array.isArray(body.photos) && body.photos.length ? body.photos : photosFromItem;
 
       const result = await runIdentify({
-        barcode: body.barcode ?? item.barcode,
         photos,
-        name: body.name ?? item.productName,
-        number: body.number ?? item.collectorNumber,
-        set: body.set ?? item.setCode,
-        query: body.query,
         notes: body.notes ?? item.notes,
         category: body.category ?? item.category,
         quantity: body.quantity ?? item.quantity,
         manual: body.manual,
-        forcePath: body.forcePath,
+        forcePath: body.forcePath === "barcode" ? undefined : body.forcePath,
       });
 
       let updated = item;
       if (result.identity) {
-        const patch = {
-          ...identityToItemPatch(result.identity, result.path),
-          barcode: body.barcode ?? item.barcode ?? result.identity.set_code,
-        };
+        const patch = identityToItemPatch(result.identity, result.path);
         updated = await updateScoutItem(item.id, patch);
       }
 
       const status = result.ok ? 200 : result.setupTask ? 503 : 422;
       res.status(status).json({ item: updated, identify: result });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post("/barcode", async (req, res, next) => {
+    try {
+      const body = req.body ?? {};
+      const result = await runBarcodeScan(body.barcode ?? body.code, body.quantity);
+      const status = result.ok ? 200 : 422;
+      res.status(status).json(result);
     } catch (err) {
       next(err);
     }

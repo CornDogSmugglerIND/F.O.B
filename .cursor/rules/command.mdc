@@ -23,7 +23,7 @@ These are the spec. Read them, do not summarize them away:
 
 1. **Do not reskin the same broken shell in a new color.** Three palettes have been shipped over a non-functional app. That is not progress and it will be rejected again.
 2. **Do not invent tab names.** "Rail" is not Sawyer's word — it appeared in the current build and he never approved it. Real names are in `BASE44-TRUTH.md`. If a surface has no name there, ask.
-3. **Do not ship identify as barcode-only.** Barcode covers sealed product with a UPC. It covers almost none of what he sells. See the IDENTIFY section of `LISTING-ENGINE.md`.
+3. **Do not ship identify as barcode-only.** Identify is photo-first (photos in → identity out). Barcode is a **separate button**, not the front door, not step one, not a fallback that counts as shipping Identify. See `LISTING-ENGINE.md` §1 and Command #59.
 4. **Do not build without the engine spec.** The listing engine is the AI core. Without it nothing downstream can be correct.
 5. **Ask one question if a provider or API-key decision is required. Do not pick alone.** Ask Sawyer, then stop and wait.
 6. **Verify before claiming done.** Click it in a running build. If you did not verify, say so explicitly.

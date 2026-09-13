@@ -19,16 +19,30 @@ Barcode covers sealed product with a scannable UPC. That is a **minority** of wh
 
 An identify implementation that only reads barcodes is a failed implementation. It is also the current state of the app: the ID button fires zero network requests and spins forever.
 
-## 1.2 The four identify paths
+## 1.2 Identify is photo-first. Barcode is a separate feature.
 
-| Path | When it fires | What it uses |
-|---|---|---|
-| **Barcode / UPC** | Sealed product, ETBs, booster boxes, electronics | Camera barcode read → UPC lookup |
-| **Photo + live web search** | Raw singles, most collectibles | Card art + set symbol + collector number + photos → live search |
-| **Set + number match** | Card scans from the ES-580W | OCR the collector number block (e.g. `002/217`, `ASC EN`) → set database match |
-| **Manual** | Anything the above miss | Sawyer types it — always available, never buried |
+Command #59 correction (supersedes #55 “build barcode/UPC first”):
 
-All four write into the same item record. They are input methods, not separate features.
+**Identify = point the app at an item, it tells you what the item is.** Photos in, identity out. That is the feature.
+
+```
+IDENTIFY (the core feature)
+  photos in -> identity out
+  - reads the item from the image: name, number, set, game, finish
+  - verifies against catalog when the item is a card
+  - verifies against live web search when it is a toy / electronic / sealed / anything else
+  - low confidence -> pick list, never a silent guess
+  - always a manual override
+
+BARCODE SCAN (separate feature, separate button)
+  - scan a UPC -> item record
+  - for sealed product and anything with a printed code
+  - lives next to Identify, not inside it
+```
+
+A missing vision capability means **Identify is not built yet**. It is not “fall back to barcode.” Do not ship a barcode-shaped Identify and call it done.
+
+**Build order:** (1) Identify — photo in, identity out (2) Manual as the always-available fallback (3) Barcode scan as its own separate feature.
 
 ## 1.3 Required inputs
 

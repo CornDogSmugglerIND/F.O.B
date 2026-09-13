@@ -92,17 +92,20 @@
   color: var(--text-lo);
 }
 
-.hh-catalog-row {
-  display: grid;
-  grid-template-columns: 1fr 72px 88px;
-  gap: 8px;
-  margin-top: 8px;
+.hh-barcode-block {
+  margin: 0 0 12px;
+  padding-top: 10px;
+  box-shadow: inset 0 1px 0 rgba(46, 107, 110, 0.3);
 }
 
-@media (max-width: 380px) {
-  .hh-catalog-row {
-    grid-template-columns: 1fr 64px 72px;
-  }
+.hh-barcode-block .v-label {
+  margin-bottom: 8px;
+}
+
+.hh-barcode-scan {
+  width: 100%;
+  margin-top: 8px;
+  min-height: 44px;
 }
 
 .identify-candidates {

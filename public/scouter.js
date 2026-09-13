@@ -56,6 +56,7 @@ const els = {
   btnManual: $("btnManual"),
   btnManualOk: $("btnManualOk"),
   btnScan: $("btnScan"),
+  btnIdentify: $("btnIdentify"),
   btnLookup: $("btnLookup"),
   qtyVal: $("qtyVal"),
   qtyMinus: $("qtyMinus"),
@@ -390,8 +391,73 @@ function resetCapture() {
   if (els.stagedFlag) els.stagedFlag.checked = true;
   setCategory("other");
   renderPhotoGrid();
-  setStatus("Point camera · scan barcode · add item");
+  setStatus("Drop or take photos · tap ID");
   updateSaveState();
+}
+
+async function runIdentify() {
+  const photos = state.draftPhotos.map((p) => p.dataUrl).filter(Boolean);
+  if (!photos.length) {
+    setStatus("Drop or take photos, then tap ID. Barcode is a separate button.", "err");
+    showToast("Need photos first", "err");
+    return;
+  }
+
+  setStatus("Identify running — reading photos…", "busy");
+  if (els.btnIdentify) els.btnIdentify.disabled = true;
+
+  try {
+    const res = await fetch("/api/scouter/identify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        photos,
+        category: state.category,
+        quantity: state.qty,
+        notes: (els.fieldNotes?.value || "").trim() || null,
+      }),
+    });
+    let result;
+    try {
+      result = await res.json();
+    } catch {
+      throw new Error(`Identify returned non-JSON (${res.status})`);
+    }
+    if (!result || typeof result !== "object") {
+      throw new Error(`Identify failed (${res.status})`);
+    }
+
+    if (result.identity?.product_name) {
+      state.title = [result.identity.product_name, result.identity.collector_number, result.identity.set_name]
+        .filter(Boolean)
+        .join(" ");
+      if (els.manualTitle) els.manualTitle.value = state.title;
+    }
+
+    if (result.ok && result.identity?.product_name) {
+      setStatus(result.message || `Identified: ${result.identity.product_name}`, "ok");
+      showToast("Identify match");
+    } else if (
+      result.setupTask ||
+      (result.missingKeys || []).length ||
+      /isn't set up yet/i.test(result.message || "")
+    ) {
+      setStatus(result.message || "Identify isn't set up yet.", "err");
+      showToast("Identify isn't set up yet.", "err");
+      els.manualRow?.classList.remove("hidden");
+    } else {
+      setStatus(result.message || "No match — set Manual. Photos kept.", "err");
+      showToast("No match — manual title", "err");
+      els.manualRow?.classList.remove("hidden");
+    }
+    updateSaveState();
+  } catch (err) {
+    setStatus(`Identify failed: ${err.message || "network"}. Photos kept. Use Manual.`, "err");
+    els.manualRow?.classList.remove("hidden");
+    showToast("Identify failed", "err");
+  } finally {
+    if (els.btnIdentify) els.btnIdentify.disabled = false;
+  }
 }
 
 async function lookupBarcode(code) {
@@ -410,9 +476,10 @@ async function lookupBarcode(code) {
     const result = await api(`/api/scouter/barcode/${encodeURIComponent(trimmed)}`);
     if (result.found && result.product?.title) {
       state.title = result.product.title;
-      setStatus(`Found: ${result.product.title}`, "ok");
+      if (els.manualTitle) els.manualTitle.value = result.product.title;
+      setStatus(`Barcode match: ${result.product.title}`, "ok");
     } else {
-      setStatus("Not in catalog — add a title manually", "err");
+      setStatus("No UPC match — use Identify on photos or Manual.", "err");
       els.manualRow.classList.remove("hidden");
     }
     updateSaveState();
@@ -821,20 +888,10 @@ function bindEvents() {
     e.target.value = "";
   });
 
+  els.btnIdentify?.addEventListener("click", () => runIdentify());
   els.btnScan.addEventListener("click", () => startScanner());
   els.btnScanClose.addEventListener("click", () => stopScanner());
-  els.btnLookup.addEventListener("click", async () => {
-    if (!els.barcodeInput.value.trim() && state.draftPhotos.length) {
-      setStatus("Checking photos for barcode…", "busy");
-      const fromPhoto = await scanBarcodeFromPhotos();
-      if (fromPhoto) {
-        els.barcodeInput.value = fromPhoto;
-        state.barcode = fromPhoto.trim();
-        updateSaveState();
-      }
-    }
-    lookupBarcode(els.barcodeInput.value);
-  });
+  els.btnLookup.addEventListener("click", () => lookupBarcode(els.barcodeInput.value));
   els.barcodeInput.addEventListener("input", () => {
     state.barcode = els.barcodeInput.value.trim();
     updateSaveState();
