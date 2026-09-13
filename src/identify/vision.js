@@ -1,21 +1,41 @@
 /**
- * Path 3 — photo + live web/catalog search.
- * Uses Anthropic vision when ANTHROPIC_API_KEY is present (same secret GitHub Actions already expects).
- * Does not invent a provider: Command dumps + #55 say photo + live search; keys gate the call.
- * design/LISTING-ENGINE.md §1.2 / §1.5 / §1.6
+ * Identify core — photo in → identity out.
+ * Vision: Anthropic only, gated on ANTHROPIC_API_KEY.
+ * Do not propose other providers. Do not fall back to barcode.
+ *
+ * When key absent: one honest line — "Identify isn't set up yet."
+ * Never spinner. Never fake result. Never ask for the key in UI copy.
+ *
+ * Cards: catalog verify after vision.
+ * Non-cards: DuckDuckGo Instant Answer is a WEAK PLACEHOLDER only
+ * (see webSearch.js). Do not treat non-card Identify as working.
  */
 
 import { normalizeIdentity, identifyResult } from "./gate.js";
 import { searchCatalogs } from "./catalog.js";
+import { searchLiveWeb } from "./webSearch.js";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = process.env.IDENTIFY_VISION_MODEL || "claude-sonnet-4-20250514";
+const NOT_SET_UP = "Identify isn't set up yet.";
 
-/** @returns {{ ready: boolean, missingKeys: string[] }} */
+const CARD_GAMES = new Set([
+  "Pokemon",
+  "Magic",
+  "One Piece",
+  "Dragon Ball Super",
+  "Digimon",
+  "sports",
+]);
+
+/** @returns {{ ready: boolean, missingKeys: string[], message: string }} */
 export function visionKeyStatus() {
-  const missingKeys = [];
-  if (!process.env.ANTHROPIC_API_KEY) missingKeys.push("ANTHROPIC_API_KEY");
-  return { ready: missingKeys.length === 0, missingKeys };
+  const ready = Boolean(process.env.ANTHROPIC_API_KEY);
+  return {
+    ready,
+    missingKeys: [],
+    message: ready ? "Photo identify ready." : NOT_SET_UP,
+  };
 }
 
 /**
@@ -62,6 +82,7 @@ Look at the photo(s). Return ONLY valid JSON (no markdown) with this shape:
   "language": string,
   "condition": string,
   "confidence": "high"|"low",
+  "kind": "card"|"sealed"|"toy"|"electronics"|"movie"|"other",
   "search_query": string|null,
   "candidates": [{"product_name":string,"collector_number":string|null,"set_name":string|null,"set_code":string|null,"game":string|null,"finish":string|null,"confidence":"high"|"low"}],
   "unusable_photo": boolean,
@@ -72,6 +93,7 @@ Rules:
 - Never guess finish/variant if unsure — set confidence low.
 - Prefer exact printed name and collector number from the card.
 - If photo is blurry / hair / glare, set unusable_photo true.
+- kind=card for TCG/sports cards; sealed/toy/electronics/movie/other otherwise.
 - search_query should be what a buyer would type into eBay for this exact item.`;
 
   const res = await fetch(ANTHROPIC_URL, {
@@ -108,6 +130,12 @@ Rules:
   return JSON.parse(jsonMatch[0]);
 }
 
+function isCardLike(vision) {
+  if (vision.kind === "card") return true;
+  if (vision.collector_number && vision.set_name) return true;
+  return CARD_GAMES.has(String(vision.game || ""));
+}
+
 /**
  * @param {{ photos?: string[], notes?: string, category?: string, quantity?: number }} input
  */
@@ -128,10 +156,9 @@ export async function identifyFromPhotos(input = {}) {
     return identifyResult({
       ok: false,
       path: "photo_search",
-      message:
-        "Photo Identify is not set up yet (ANTHROPIC_API_KEY missing). Photos kept. Use Manual. Barcode is a separate button and does not count as Identify.",
-      setupTask: "Photo Identify needs ANTHROPIC_API_KEY in the runtime environment.",
-      missingKeys: keys.missingKeys,
+      message: NOT_SET_UP,
+      setupTask: null,
+      missingKeys: [],
       networkCalls,
     });
   }
@@ -190,7 +217,8 @@ export async function identifyFromPhotos(input = {}) {
   const searchQuery =
     vision.search_query ||
     [vision.product_name, vision.collector_number, vision.set_name].filter(Boolean).join(" ");
-  if (searchQuery || vision.collector_number) {
+
+  if (isCardLike(vision) && (searchQuery || vision.collector_number)) {
     const catalog = await searchCatalogs({
       name: vision.product_name || undefined,
       number: vision.collector_number || undefined,
@@ -199,6 +227,23 @@ export async function identifyFromPhotos(input = {}) {
     });
     networkCalls.push(...catalog.networkCalls);
     candidates.push(...catalog.candidates);
+  } else if (searchQuery) {
+    // WEAK PLACEHOLDER — Instant Answer, not a product catalog.
+    // Do not treat this as a working non-card Identify path.
+    const web = await searchLiveWeb(searchQuery);
+    networkCalls.push(...web.networkCalls);
+    for (const c of web.candidates) {
+      candidates.push(
+        normalizeIdentity(
+          {
+            ...c,
+            confidence: "low",
+            source: c.source || "duckduckgo_placeholder",
+          },
+          qty,
+        ),
+      );
+    }
   }
 
   if (!candidates.length) {
@@ -219,16 +264,18 @@ export async function identifyFromPhotos(input = {}) {
   });
 
   const top = candidates[0];
+  const fromPlaceholder = String(top.source || "").includes("placeholder");
   const multi = candidates.length > 1 && top.confidence !== "high";
 
-  if (multi || top.confidence === "low") {
+  if (fromPlaceholder || multi || top.confidence === "low") {
     return identifyResult({
       ok: false,
       path: "photo_search",
       identity: top,
       candidates: candidates.slice(0, 5),
-      message:
-        "Low confidence / multiple candidates. Pick one or use Manual. Never auto-guess finish. Photos kept.",
+      message: fromPlaceholder
+        ? "Non-card verify is a placeholder and not proven. Pick a candidate or use Manual. Photos kept."
+        : "Low confidence / multiple candidates. Pick one or use Manual. Never auto-guess finish. Photos kept.",
       networkCalls,
     });
   }

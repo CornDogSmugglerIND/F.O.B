@@ -91,7 +91,7 @@ export async function runIdentify(input = {}) {
     path: "none",
     message: PHOTO_FIRST_EMPTY,
     setupTask: null,
-    missingKeys: keys.ready ? [] : keys.missingKeys,
+    missingKeys: [],
     networkCalls: [],
   });
 }

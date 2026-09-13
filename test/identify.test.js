@@ -4,6 +4,7 @@ import { gateCheck, emptyIdentity, normalizeIdentity, identityToItemPatch } from
 import { runIdentify } from "../src/identify/router.js";
 import { runBarcodeScan } from "../src/identify/barcode.js";
 import { visionKeyStatus } from "../src/identify/vision.js";
+import { searchLiveWeb } from "../src/identify/webSearch.js";
 
 const tinyPng =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -117,9 +118,18 @@ describe("identify router — photo-first", () => {
     const result = await runIdentify({ photos: [tinyPng], forcePath: "photo_search" });
     assert.equal(result.ok, false);
     assert.equal(result.path, "photo_search");
-    assert.ok(result.setupTask || result.message);
-    assert.ok((result.missingKeys || []).includes("ANTHROPIC_API_KEY"));
-    assert.doesNotMatch(result.message || "", /fall back to barcode/i);
+    assert.equal(result.setupTask, null);
+    assert.deepEqual(result.missingKeys, []);
+    assert.match(result.message, /isn't set up yet/i);
+    assert.doesNotMatch(result.message || "", /ANTHROPIC|API key|API KEY|barcode/i);
+  });
+});
+
+describe("non-card web verify — placeholder only", () => {
+  it("marks DuckDuckGo Instant Answer as a placeholder", async () => {
+    const result = await searchLiveWeb("");
+    assert.equal(result.placeholder, true);
+    assert.deepEqual(result.candidates, []);
   });
 });
 

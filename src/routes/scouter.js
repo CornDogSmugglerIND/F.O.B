@@ -188,10 +188,8 @@ export function scouterRouter() {
         endpoint: "/api/scouter/barcode/:code",
       },
       photoSearchReady: keys.ready,
-      missingKeys: keys.missingKeys,
-      setupTask: keys.ready
-        ? null
-        : "Photo Identify needs ANTHROPIC_API_KEY in the runtime environment.",
+      missingKeys: [],
+      setupTask: keys.ready ? null : keys.message,
     });
   });
 

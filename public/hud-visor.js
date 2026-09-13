@@ -342,10 +342,14 @@ async function runIdentify() {
       setIdentifyPhase("ok", result.identity.product_name);
       setStatus(result.message || `Identified: ${result.identity.product_name}`, "ok");
       showToast("Identify match");
-    } else if (result.setupTask || (result.missingKeys || []).length) {
-      setIdentifyPhase("setup", result.message || "Not set up yet");
-      setStatus(result.message || "Photo Identify is not set up yet. Photos kept. Use Manual.", "err");
-      showToast("Identify not set up yet", "err");
+    } else if (
+      result.setupTask ||
+      (result.missingKeys || []).length ||
+      /isn't set up yet/i.test(result.message || "")
+    ) {
+      setIdentifyPhase("setup", result.message || "Identify isn't set up yet.");
+      setStatus(result.message || "Identify isn't set up yet.", "err");
+      showToast("Identify isn't set up yet.", "err");
       els.manualRow?.classList.remove("hidden");
     } else if ((result.candidates || []).length) {
       setIdentifyPhase("fail", result.message || "Pick a candidate");
