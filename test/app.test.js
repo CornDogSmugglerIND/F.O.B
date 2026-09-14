@@ -41,49 +41,83 @@ test("GET /api/health reports scouter", async () => {
   }
 });
 
-test("GET / serves Scouter frontend", async () => {
+test("GET / serves Base44 port shell", async () => {
   const { baseUrl, close } = await startServer();
   try {
     const res = await fetch(`${baseUrl}/`);
     const html = await res.text();
-    assert.match(html, /Coalition H\.U\.D/);
-    assert.match(html, /Add to rail/);
-    assert.match(html, /SCOUTER/);
-    assert.match(html, /hh-viewfinder/);
-    assert.match(html, /scouter\.css\?v=25/);
-    assert.match(html, /stagedFlag/);
-    assert.match(html, /CAPTURE/);
-    assert.match(html, /btnIdentify/);
-    assert.match(html, /SCAN/);
-    assert.match(html, /Lookup/);
-    assert.match(html, /hh-barcode-block/);
-    assert.doesNotMatch(html, /Drop a folder of scans/);
-    assert.doesNotMatch(html, />Export</);
-    assert.doesNotMatch(html, />Import</);
+    assert.match(html, /Coalition HUD/);
+    assert.match(html, /base44\/app\.css/);
+    assert.match(html, /base44\/shell\.js/);
+    assert.match(html, /COMMAND/);
+    assert.match(html, /SCOUTER|Scouter/);
+    assert.match(html, /STORAGE|Storage/);
+    assert.match(html, /CHANNEL|Channel/);
+    assert.match(html, /INTAKE|Intake/);
+    assert.match(html, /SETTINGS|Settings/);
+    assert.match(html, /scan-intake/);
+    assert.match(html, /Intake empty/);
+    assert.match(html, /New Scan Batch|New batch/);
+    assert.match(html, /Drop scans here/);
+    assert.match(html, /Rail · Step 0/);
+    assert.match(html, /STEP 1 · INTAKE/);
+    assert.match(html, /STEP 2 · BUILD/);
+    assert.match(html, /Scouter value/);
+    assert.match(html, /Write listing with AI/);
+    assert.match(html, /LOCKED ·/);
+    assert.match(html, /rows written/);
+    assert.match(html, /Intake is empty/);
+
+    assert.match(html, /Feed the autofeed scanner/);
+
+    assert.match(html, /Start intake/);
+    assert.match(html, /Scouter empty/);
+    assert.match(html, /v-panel/);
+    assert.match(html, /SITREP/);
+    assert.match(html, /All clear/);
+    assert.match(html, /No locations yet/);
+    assert.match(html, /create one below/);
+    assert.match(html, /Channel empty/);
+    assert.match(html, /LIVE LISTINGS/);
+    assert.match(html, /FULFILMENT/);
+    assert.match(html, /Listing templates/);
+    assert.match(html, /Shipping presets/);
+    assert.match(html, /eBay Diagnostic/);
+    assert.match(html, /AI Connect/);
+    assert.match(html, /No templates yet/);
+    assert.match(html, /Ready to ship/);
+    assert.match(html, /Awaiting payout/);
+    assert.match(html, /System/);
+    assert.match(html, /Open scouter/);
+    assert.match(html, /Scan batch/);
+    assert.match(html, /New card/);
+    assert.match(html, /ALL STORAGE/);
+    assert.match(html, /btnSpaceUp/);
+    assert.match(html, /Nothing is blocked, errored, or sitting untouched\./);
+
+
+    assert.match(html, /m-btn-primary/);
+    assert.doesNotMatch(html, /Add to rail/);
+    assert.doesNotMatch(html, />Rail</);
+    assert.doesNotMatch(html, /camera-first|liveCam/);
   } finally {
     await close();
   }
 });
 
-test("GET /hud.html serves Coalition H.U.D shell", async () => {
+test("GET /hud.html serves Base44 port shell", async () => {
   const { baseUrl, close } = await startServer();
   try {
     const res = await fetch(`${baseUrl}/hud.html`);
     const html = await res.text();
     assert.equal(res.status, 200);
-    assert.match(html, /Coalition H\.U\.D/);
-    assert.match(html, /hud-visor\.js/);
-    assert.match(html, /data-go="scan"/);
-    assert.match(html, /Scouter/);
-    assert.match(html, /stagedFlag/);
-    assert.match(html, /hh-viewfinder/);
-    assert.match(html, /btnIdentify/);
-    assert.match(html, /hh-barcode-block/);
-    assert.match(html, /Lookup/);
-    assert.match(html, /Export staged/);
-    assert.doesNotMatch(html, /Drop a folder of scans/);
-    assert.doesNotMatch(html, /Command Core/);
-    assert.doesNotMatch(html, /readyToList/);
+    assert.match(html, /Coalition HUD/);
+    assert.match(html, /base44\/shell\.js/);
+    assert.match(html, /scan-intake/);
+    assert.match(html, /Intake empty/);
+    assert.match(html, /Drop scans here/);
+    assert.doesNotMatch(html, /Add to rail/);
+    assert.doesNotMatch(html, />Rail</);
   } finally {
     await close();
   }
