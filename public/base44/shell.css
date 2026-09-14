@@ -419,3 +419,31 @@ body.b44 {
 .v-cut-lg { clip-path: polygon(var(--cut-lg, 22px) 0%, 100% 0%, 100% calc(100% - var(--cut-lg, 22px)), calc(100% - var(--cut-lg, 22px)) 100%, 0% 100%, 0% var(--cut-lg, 22px)); }
 .m-btn-go { color: #04070c; background: linear-gradient(180deg, #8ff6e8, #2bd9c0); border: 1px solid #8ff6e8; font-weight: 700; }
 
+
+.b44-attention:empty {
+  display: none;
+}
+.b44-attention .b44-attn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  background: rgba(255, 180, 61, 0.08);
+  border: 1px solid rgba(255, 180, 61, 0.28);
+}
+.b44-attention .b44-attn.bad {
+  background: rgba(255, 77, 109, 0.08);
+  border-color: rgba(255, 77, 109, 0.28);
+}
+.b44-attention .b44-attn strong {
+  display: block;
+  font-size: 13px;
+}
+.b44-attention .b44-attn span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--b44-lo);
+}

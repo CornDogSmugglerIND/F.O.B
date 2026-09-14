@@ -31,7 +31,7 @@
           <div class="v-panel v-cut p-4" style="margin-bottom:12px">
             <div class="v-label" style="font-size:9px">SITREP</div>
             <div class="v-readout v-emit-white" style="font-size:22px;margin-top:8px" id="sitrepTitle">All clear</div>
-            <p class="b44-copy-soft" style="margin-top:8px" id="sitrepHint">Nothing is blocked, errored, or sitting untouched.</p>
+            <p class="b44-copy-soft" style="margin-top:8px" id="sitrepHint">Nothing is blocked — the void is clear.</p>
           </div>
           <div class="b44-toolbar" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
             <div class="v-panel v-cut-sm px-4 py-3">
@@ -47,9 +47,11 @@
             <div class="v-label" style="font-size:9px;color:var(--b44-gold,#ffb43d)">Channel</div>
             <p class="b44-copy-soft" style="margin-top:8px">eBay isn't connected — publishing and sync are offline. Connect it in Settings.</p>
           </div>
+          <div id="cmdAttention" class="b44-attention" style="margin-bottom:12px"></div>
           <div class="b44-actions">
-            <a class="m-btn m-btn-primary" href="#/scan-intake">Open Intake</a>
-            <a class="m-btn" href="#/inventory">Open Scouter</a>
+            <a class="m-btn" href="#/inventory">Open scouter</a>
+            <a class="m-btn" href="#/scan-intake">Scan batch</a>
+            <a class="m-btn m-btn-primary" href="#/inventory">New card</a>
           </div>
         </div>
       </section>
@@ -87,7 +89,7 @@
               <div class="v-label" style="font-size:8px">Spaces</div>
               <div class="v-readout v-emit-gold" id="spaceCount" style="font-size:18px">00</div>
             </div>
-            <div class="v-label" style="margin-left:auto;font-size:9px">Warehouse</div>
+            <div class="v-label" style="margin-left:auto;font-size:9px" id="spaceBreadcrumb">ALL STORAGE</div>
           </div>
           <div class="b44-toolbar">
             <div class="b44-filter">

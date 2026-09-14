@@ -79,8 +79,31 @@ function updateSitrep() {
   if ($("sitrepHint")) {
     $("sitrepHint").textContent = waiting
       ? `${waiting} item${waiting === 1 ? "" : "s"} waiting on you`
-      : "Nothing is blocked, errored, or sitting untouched.";
+      : "Nothing is blocked — the void is clear.";
   }
+  renderCmdAttention();
+}
+
+const SPACE_KINDS = [
+  { value: "warehouse", label: "Warehouse" },
+  { value: "room", label: "Room" },
+  { value: "shelf", label: "Shelf" },
+  { value: "tote", label: "Tote" },
+  { value: "binder", label: "Binder" },
+  { value: "page", label: "Page" },
+  { value: "pocket", label: "Pocket" },
+];
+
+function kindLabel(kind) {
+  return SPACE_KINDS.find((k) => k.value === kind)?.label || "Warehouse";
+}
+
+function renderCmdAttention() {
+  const root = $("cmdAttention");
+  if (!root) return;
+  // Live Base44 only shows attention cards when count > 0. Local port has no
+  // eBay shipments/engine yet — keep the strip empty so Command stays honest.
+  root.innerHTML = "";
 }
 
 function saveItems() {
@@ -368,17 +391,18 @@ function renderSpaces() {
   const q = state.filterSpaces.trim().toLowerCase();
   const rows = state.spaces.filter((s) => {
     if (!q) return true;
-    return String(s.name || "")
-      .toLowerCase()
-      .includes(q);
+    const hay = `${s.name || ""} ${s.code || ""} ${s.kind || ""}`.toLowerCase();
+    return hay.includes(q);
   });
   if ($("spaceCount")) $("spaceCount").textContent = pad2(state.spaces.length);
+  if ($("spaceBreadcrumb")) $("spaceBreadcrumb").textContent = "ALL STORAGE";
   if (empty) empty.classList.toggle("hidden", rows.length > 0);
   root.innerHTML = rows
-    .map(
-      (s) =>
-        `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(s.name)}</strong><span>Warehouse · location</span></div><button type="button" class="m-btn" data-del-space="${esc(s.id)}">×</button></div>`,
-    )
+    .map((s) => {
+      const kind = kindLabel(s.kind);
+      const code = s.code ? ` · ${esc(s.code)}` : "";
+      return `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(s.name)}</strong><span>${esc(kind)}${code}</span></div><button type="button" class="m-btn" data-del-space="${esc(s.id)}">×</button></div>`;
+    })
     .join("");
   root.querySelectorAll("[data-del-space]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -398,16 +422,21 @@ function renderChannel() {
   const list = $("channelList");
   const empty = $("channelEmpty");
   if (!list) return;
-  // Local port: staged items show as intake pipeline; no live channel sync yet
+  // Local port: staged items show as intake pipeline; no live eBay sync yet
   const rows = state.items.slice(0, 40);
-  if (empty) empty.classList.toggle("hidden", rows.length > 0 && state.channelTab === "live");
+  if (empty) {
+    empty.classList.toggle("hidden", rows.length > 0 && state.channelTab === "live");
+    const p = empty.querySelector("p");
+    if (p) p.textContent = "Run a sync to pull your live listings.";
+  }
   if (state.channelTab !== "live") {
     list.innerHTML = "";
     return;
   }
   list.innerHTML = rows
     .map((it) => {
-      const status = it.staged ? "Intake" : "Open";
+      // Si pipeline labels from live Base44
+      const status = it.staged ? "Listing Built" : "Intake";
       return `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${status} · not published</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
     })
     .join("");
@@ -561,12 +590,22 @@ function bind() {
   bindDropZone();
 
   $("btnAddSpace")?.addEventListener("click", () => {
-    const name = prompt("Location name (bin, shelf, or tote)");
+    const name = prompt("Location name", "Warehouse A");
     if (!name?.trim()) return;
+    const kindRaw = prompt(
+      "Kind (warehouse / room / shelf / tote / binder / page / pocket)",
+      "warehouse",
+    );
+    const kind = SPACE_KINDS.some((k) => k.value === (kindRaw || "").trim().toLowerCase())
+      ? (kindRaw || "").trim().toLowerCase()
+      : "warehouse";
+    const code = (prompt("Code (optional)", "") || "").trim();
     loadSpaces();
     state.spaces.unshift({
       id: crypto.randomUUID(),
       name: name.trim(),
+      kind,
+      code,
       createdAt: new Date().toISOString(),
     });
     saveSpaces();
