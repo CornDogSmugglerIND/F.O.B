@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=10" />
+  <link rel="stylesheet" href="/base44/shell.css?v=12" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -137,6 +137,157 @@
               </div>
               <p class="b44-copy-soft" style="margin-top:12px;font-size:12px" id="readoutStatus"></p>
             </div>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="b44-view" id="view-item" data-route="/item">
+        <div class="b44-glass b44-item-page">
+          <div class="b44-item-head">
+            <button type="button" class="m-btn" id="btnItemBack">← Scouter</button>
+            <div class="b44-item-head-main">
+              <div class="v-label" id="itemEyebrow">ASSET · INTAKE</div>
+              <div class="v-readout v-emit-white" style="font-size:22px;line-height:1.2;margin-top:4px" id="itemHeadTitle">Untitled</div>
+            </div>
+            <div class="b44-item-head-actions" id="itemHeadActions">
+              <button type="button" class="m-btn" id="btnItemToScouter">To scouter</button>
+              <button type="button" class="m-btn" id="btnItemMove">Move</button>
+              <button type="button" class="m-btn" id="btnItemDuplicate">Duplicate</button>
+              <button type="button" class="m-btn" id="btnItemArchive">Archive</button>
+              <button type="button" class="m-btn" id="btnItemDelete">Delete</button>
+            </div>
+          </div>
+          <p class="b44-copy-soft" style="margin:0 0 12px;font-size:12px" id="itemPageStatus"></p>
+
+          <div class="b44-item-grid">
+            <div class="v-panel v-cut p-4">
+              <div class="b44-toolbar" style="justify-content:space-between;margin-bottom:10px">
+                <div class="v-label">Photos</div>
+                <span class="v-label" id="itemPhotoBusy" style="font-size:9px"></span>
+              </div>
+              <div id="itemPhotoHero" class="b44-item-hero"></div>
+              <div id="itemPhotoThumbs" class="b44-thumbs" style="margin-top:10px"></div>
+              <button type="button" class="m-btn" id="btnItemAddPhotos" style="width:100%;margin-top:10px">Add photos</button>
+              <input type="file" id="itemImages" accept="image/jpeg,image/png,image/webp,image/*" multiple hidden />
+            </div>
+
+            <div class="v-panel v-cut p-4">
+              <div class="b44-item-phase-row">
+                <span class="b44-phase-dot" id="itemPhaseDot"></span>
+                <span class="v-label" id="itemPhaseLabel" style="color:var(--b44-cyan,#5fe8d0)">INTAKE</span>
+                <span style="color:var(--b44-lo,#6f8697)">·</span>
+                <span class="v-label" id="itemCategoryLabel">Asset</span>
+              </div>
+              <div class="b44-field" style="margin-top:12px">
+                <label>Title</label>
+                <input id="itemTitle" class="b44-input" type="text" autocomplete="off" />
+              </div>
+              <div class="b44-asset-econ" style="margin-top:14px">
+                <div>
+                  <div class="v-label" style="font-size:9px">MARKET</div>
+                  <div class="v-readout v-emit-gold" style="font-size:26px" id="itemEconMarket">$0.00</div>
+                </div>
+                <div>
+                  <div class="v-label" style="font-size:9px">COST</div>
+                  <div class="v-readout" style="font-size:15px;color:var(--b44-lo,#6f8697)" id="itemEconCost">$0.00</div>
+                </div>
+                <div>
+                  <div class="v-label" style="font-size:9px">PROFIT</div>
+                  <div class="v-readout" style="font-size:16px" id="itemEconProfit">+$0.00</div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+                <div class="b44-field">
+                  <label>Category</label>
+                  <select id="itemCategory" class="b44-input">
+                    <option value="pokemon_sealed">Pokemon Sealed</option>
+                    <option value="graded_slabs">Graded Slabs</option>
+                    <option value="raw_cards">Raw Cards</option>
+                    <option value="sports_cards">Sports Cards</option>
+                    <option value="other" selected>Other</option>
+                  </select>
+                </div>
+                <div class="b44-field">
+                  <label>Quantity</label>
+                  <input id="itemQty" class="b44-input" type="number" min="1" value="1" />
+                </div>
+                <div class="b44-field">
+                  <label>Phase</label>
+                  <select id="itemPhase" class="b44-input">
+                    <option value="sorted">1 · Sorted</option>
+                    <option value="photographed">2 · Photographed</option>
+                    <option value="ready_to_list">3 · Listing Built</option>
+                    <option value="listed">4 · Live</option>
+                    <option value="sold">Sold</option>
+                    <option value="error">Error</option>
+                  </select>
+                </div>
+                <div class="b44-field">
+                  <label>Live Channel</label>
+                  <select id="itemChannel" class="b44-input">
+                    <option value="">—</option>
+                    <option value="ebay">eBay</option>
+                    <option value="double_holo">Double Holo</option>
+                    <option value="courtyard">Courtyard</option>
+                    <option value="collx">CollX</option>
+                    <option value="tiktok">TikTok Shop</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div class="b44-field" style="margin-top:12px">
+                <label>Location</label>
+                <select id="itemSpace" class="b44-input">
+                  <option value="">Select…</option>
+                </select>
+              </div>
+              <div id="itemMovePanel" class="b44-item-move hidden"></div>
+              <div class="b44-field" style="margin-top:12px">
+                <label>Notes</label>
+                <textarea id="itemNotes" class="b44-input" rows="3" style="min-height:72px;resize:vertical"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="v-panel v-cut p-4" style="margin-top:14px">
+            <div class="v-label" style="margin-bottom:12px">Market &amp; profit</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="b44-field">
+                <label>Purchase Cost</label>
+                <input id="itemPurchase" class="b44-input" type="number" step="0.01" value="0" />
+              </div>
+              <div class="b44-field">
+                <label>Market Value</label>
+                <input id="itemMarket" class="b44-input" type="number" step="0.01" value="0" />
+              </div>
+              <div class="b44-field">
+                <label>Lowest Active (opt.)</label>
+                <input id="itemLowestActive" class="b44-input" type="number" step="0.01" value="0" placeholder="0" />
+              </div>
+              <div class="b44-field">
+                <label>Recent Sold (opt.)</label>
+                <input id="itemRecentSold" class="b44-input" type="number" step="0.01" value="0" placeholder="0" />
+              </div>
+            </div>
+            <div class="b44-item-metrics" id="itemMetrics">
+              <div class="b44-metric"><div class="v-label">Profit</div><div class="v-readout" id="itemMetricProfit">+$0.00</div></div>
+              <div class="b44-metric"><div class="v-label">ROI %</div><div class="v-readout" id="itemMetricRoi">+0.0%</div></div>
+              <div class="b44-metric"><div class="v-label">Recommended</div><div class="v-readout v-emit-gold" id="itemMetricRec">$0.00</div></div>
+              <div class="b44-metric"><div class="v-label">Quick Sale</div><div class="v-readout" id="itemMetricQuick">$0.00</div></div>
+              <div class="b44-metric"><div class="v-label">Max Profit</div><div class="v-readout" id="itemMetricMax">$0.00</div></div>
+            </div>
+          </div>
+
+          <div class="v-panel v-cut p-4" style="margin-top:14px">
+            <div class="v-label" style="margin-bottom:12px">Shipping package</div>
+            <div style="display:flex;gap:8px;align-items:stretch;flex-wrap:wrap">
+              <select id="itemShipPreset" class="b44-input" style="flex:1;min-width:180px">
+                <option value="">No package assigned</option>
+              </select>
+              <button type="button" class="m-btn" id="btnItemShipManage">Manage</button>
+            </div>
+            <div id="itemShipSummary" class="b44-item-ship-summary hidden"></div>
           </div>
         </div>
       </section>
@@ -861,6 +1012,6 @@
   </div>
 
   <script src="/lib/image.js?v=24"></script>
-  <script src="/base44/shell.js?v=10"></script>
+  <script src="/base44/shell.js?v=12"></script>
 </body>
 </html>

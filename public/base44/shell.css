@@ -1054,3 +1054,70 @@ textarea.b44-input {
   gap: 8px;
   margin: 0 0 14px;
 }
+
+
+
+/* Live OK /item/:id page */
+.b44-item-page { max-width: 1100px; margin: 0 auto; }
+.b44-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.b44-item-head-main { flex: 1; min-width: 160px; }
+.b44-item-head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.b44-item-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 860px) {
+  .b44-item-grid { grid-template-columns: 1fr; }
+}
+.b44-item-hero {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 180, 61, 0.18);
+  background: rgba(255,255,255,0.03);
+}
+.b44-item-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.b44-item-primary-tag {
+  position: absolute; top: 10px; left: 10px;
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 4px 8px; border-radius: 999px;
+  background: #0e1113; color: #4f9e7a; border: 1px solid #4f9e7a;
+}
+.b44-item-hero-empty {
+  width: 100%; height: 100%; border: 0; background: transparent;
+  color: rgba(255,255,255,0.35); cursor: pointer; font: inherit;
+}
+.b44-item-phase-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.b44-phase-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #c9d8e2; box-shadow: 0 0 8px #c9d8e2;
+}
+.b44-item-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.b44-metric {
+  padding: 12px 14px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: linear-gradient(180deg, rgba(255,180,61,0.06), transparent);
+}
+.b44-item-ship-summary,
+.b44-item-move {
+  margin-top: 10px; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03);
+}
+.b44-asset-econ {
+  display: grid; grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 12px; margin: 12px 0; padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,180,61,0.12);
+}

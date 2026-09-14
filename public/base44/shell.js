@@ -3,6 +3,7 @@ const LS_KEY = "scouter-items-v1";
 const ROUTES = {
   "/": { id: "view-command", brand: "COMMAND" },
   "/inventory": { id: "view-inventory", brand: "SCOUTER" },
+  "/item": { id: "view-item", brand: "ASSET" },
   "/storage": { id: "view-storage", brand: "STORAGE" },
   "/channel": { id: "view-channel", brand: "CHANNEL" },
   "/scan-intake": { id: "view-intake", brand: "INTAKE" },
@@ -66,6 +67,9 @@ const state = {
   editingShipId: null,
   assetEditId: null,
   assetPhotos: [],
+  itemPageId: null,
+  itemPhotos: [],
+  itemPageStatus: "",
 };
 
 const SPACES_KEY = "scouter-spaces-v1";
@@ -683,17 +687,25 @@ function saveItems() {
 function navigate(route) {
   const raw = String(route || "");
   const [base, query = ""] = raw.split("?");
-  const path = ROUTES[base] ? base : "/scan-intake";
+  const itemMatch = String(base).match(/^\/item\/([^/?#]+)$/);
+  const path = itemMatch ? "/item" : ROUTES[base] ? base : "/scan-intake";
+  const itemId = itemMatch ? decodeURIComponent(itemMatch[1]) : null;
   state.route = path;
+  state.itemPageId = itemId;
   const meta = ROUTES[path];
   document.querySelectorAll(".b44-view").forEach((el) => {
     el.classList.toggle("active", el.id === meta.id);
   });
   document.querySelectorAll(".b44-tab").forEach((tab) => {
-    tab.classList.toggle("active", tab.dataset.route === path);
+    const tabRoute = tab.dataset.route;
+    tab.classList.toggle(
+      "active",
+      tabRoute === path || (path === "/item" && tabRoute === "/inventory"),
+    );
   });
   if ($("pageBrand")) $("pageBrand").textContent = meta.brand;
-  const hash = query ? `#${path}?${query}` : `#${path}`;
+  const hashBase = itemMatch ? `/item/${encodeURIComponent(itemId)}` : path;
+  const hash = query ? `#${hashBase}?${query}` : `#${hashBase}`;
   if (location.hash !== hash) history.replaceState(null, "", hash);
   if (path === "/settings") {
     setSettingsTab(state.settingsTab || "templates");
@@ -705,6 +717,16 @@ function navigate(route) {
   // Live Command New card → /inventory?add=1 opens VN sheet.
   if (path === "/inventory" && /(?:^|&)add=1(?:&|$)/.test(query)) {
     openAssetSheet(null);
+  }
+  // Live OK full card page at /item/:id
+  if (path === "/item") {
+    if (!itemId) {
+      navigate("/inventory");
+      return;
+    }
+    renderItemPage(itemId);
+  } else if (state.itemPageId && path !== "/item") {
+    // leaving item page — keep id only while on /item
   }
 }
 
@@ -1075,6 +1097,359 @@ async function addAssetImageFiles(fileList) {
     if (dataUrl) state.assetPhotos.push({ dataUrl, name: file.name });
   }
   renderAssetThumbs();
+}
+
+
+
+
+/** Live OK /item/:id page — Market & profit + Shipping package (from live jq/zq). */
+const ITEM_PHASE_META = {
+  draft: { label: "INTAKE", dot: "#C9D8E2" },
+  sorted: { label: "INTAKE", dot: "#C9D8E2" },
+  photographed: { label: "INTAKE", dot: "#C9D8E2" },
+  ready_to_list: { label: "READY", dot: "#FFB43D" },
+  listed: { label: "LIVE", dot: "#5FE8D0" },
+  sold: { label: "SOLD", dot: "#8FF6E8" },
+  error: { label: "ERROR", dot: "#FF6B5A" },
+};
+
+function itemMoney(n) {
+  return moneyUsd(Number(n) || 0);
+}
+
+function itemProfitOf(it) {
+  return Number(it?.marketValue || 0) - Number(it?.purchasePrice || 0);
+}
+
+function itemRoiOf(it) {
+  const cost = Number(it?.purchasePrice || 0);
+  return cost ? (itemProfitOf(it) / cost) * 100 : 0;
+}
+
+function itemRecommendedOf(it) {
+  const recent = Number(it?.recentSold || 0);
+  const market = Number(it?.marketValue || 0);
+  const cost = Number(it?.purchasePrice || 0);
+  return Math.max(2, recent || market || cost * 1.3);
+}
+
+function itemQuickSaleOf(it) {
+  const low = Number(it?.lowestActive || 0);
+  const market = Number(it?.marketValue || 0);
+  return Math.max(2, low || market * 0.9);
+}
+
+function itemMaxProfitOf(it) {
+  const market = Number(it?.marketValue || 0);
+  return Math.max(2, market || itemRecommendedOf(it));
+}
+
+function currentItemPage() {
+  return state.items.find((x) => x.id === state.itemPageId) || null;
+}
+
+function setItemPageStatus(msg) {
+  state.itemPageStatus = msg || "";
+  if ($("itemPageStatus")) $("itemPageStatus").textContent = state.itemPageStatus;
+}
+
+function fillItemSpaceOptions(selected) {
+  loadSpaces();
+  const sel = $("itemSpace");
+  if (!sel) return;
+  sel.innerHTML = [`<option value="">Select…</option>`]
+    .concat(
+      state.spaces.map(
+        (s) =>
+          `<option value="${esc(s.id)}" ${s.id === selected ? "selected" : ""}>${esc(s.name)}</option>`,
+      ),
+    )
+    .join("");
+}
+
+function fillItemShipOptions(selected) {
+  loadSettingsLocal();
+  const sel = $("itemShipPreset");
+  if (!sel) return;
+  sel.innerHTML = [`<option value="">No package assigned</option>`]
+    .concat(
+      state.shipping.map(
+        (s) =>
+          `<option value="${esc(s.id)}" ${s.id === selected ? "selected" : ""}>${esc(s.name)}</option>`,
+      ),
+    )
+    .join("");
+}
+
+function updateItemEconomics(it) {
+  const market = Number(it?.marketValue || 0);
+  const cost = Number(it?.purchasePrice || 0);
+  const profit = market - cost;
+  if ($("itemEconMarket")) $("itemEconMarket").textContent = itemMoney(market);
+  if ($("itemEconCost")) $("itemEconCost").textContent = itemMoney(cost);
+  if ($("itemEconProfit")) {
+    $("itemEconProfit").textContent = `${profit >= 0 ? "+" : ""}${itemMoney(profit)}`;
+    $("itemEconProfit").style.color =
+      profit >= 0 ? "var(--b44-gold-hi,#ffd98a)" : "var(--b44-bad,#ff4d6d)";
+  }
+  const roi = itemRoiOf(it);
+  if ($("itemMetricProfit")) {
+    $("itemMetricProfit").textContent = `${profit >= 0 ? "+" : ""}${itemMoney(profit)}`;
+    $("itemMetricProfit").style.color =
+      profit >= 0 ? "var(--b44-gold-hi,#ffd98a)" : "var(--b44-bad,#ff4d6d)";
+  }
+  if ($("itemMetricRoi")) {
+    $("itemMetricRoi").textContent = `${roi >= 0 ? "+" : ""}${roi.toFixed(1)}%`;
+    $("itemMetricRoi").style.color =
+      roi >= 0 ? "var(--b44-gold-hi,#ffd98a)" : "var(--b44-bad,#ff4d6d)";
+  }
+  if ($("itemMetricRec")) $("itemMetricRec").textContent = itemMoney(itemRecommendedOf(it));
+  if ($("itemMetricQuick")) $("itemMetricQuick").textContent = itemMoney(itemQuickSaleOf(it));
+  if ($("itemMetricMax")) $("itemMetricMax").textContent = itemMoney(itemMaxProfitOf(it));
+}
+
+function renderItemShipSummary(it) {
+  const root = $("itemShipSummary");
+  if (!root) return;
+  loadSettingsLocal();
+  const preset = state.shipping.find((s) => s.id === (it?.shippingPresetId || ""));
+  if (!preset) {
+    root.classList.add("hidden");
+    root.innerHTML = "";
+    return;
+  }
+  const bits = [
+    preset.carrier || "",
+    preset.service || "",
+    preset.cost != null && preset.cost !== "" ? itemMoney(preset.cost) : "",
+    preset.handling_days != null ? `${preset.handling_days}d handle` : "",
+  ].filter(Boolean);
+  root.classList.remove("hidden");
+  root.innerHTML = `<div class="v-label" style="margin-bottom:4px">${esc(preset.name)}</div><div class="b44-copy-soft" style="font-size:12px">${esc(bits.join(" · ") || "No details set")}</div>`;
+}
+
+function renderItemPhotos() {
+  const hero = $("itemPhotoHero");
+  const thumbs = $("itemPhotoThumbs");
+  if (!hero || !thumbs) return;
+  const photos = state.itemPhotos || [];
+  const primary = photos[0];
+  if (primary) {
+    const src = primary.dataUrl || primary;
+    hero.innerHTML = `<img src="${src}" alt="" /><span class="b44-item-primary-tag">Primary</span>`;
+  } else {
+    hero.innerHTML = `<button type="button" class="b44-item-hero-empty" id="btnItemHeroAdd">Add photos</button>`;
+    $("btnItemHeroAdd")?.addEventListener("click", () => $("itemImages")?.click());
+  }
+  thumbs.innerHTML = photos
+    .map((p, i) => {
+      const src = p.dataUrl || p;
+      return `<div class="b44-thumb"><img src="${src}" alt="" /><div class="b44-thumb-actions">${
+        i === 0 ? "" : `<button type="button" data-item-primary="${i}" title="Make primary">★</button>`
+      }<button type="button" data-item-del-photo="${i}" title="Remove">×</button></div></div>`;
+    })
+    .join("");
+  thumbs.querySelectorAll("[data-item-primary]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const i = Number(btn.dataset.itemPrimary);
+      if (!i) return;
+      const [shot] = state.itemPhotos.splice(i, 1);
+      state.itemPhotos.unshift(shot);
+      persistItemPhotos();
+      renderItemPhotos();
+    });
+  });
+  thumbs.querySelectorAll("[data-item-del-photo]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.itemPhotos.splice(Number(btn.dataset.itemDelPhoto), 1);
+      persistItemPhotos();
+      renderItemPhotos();
+    });
+  });
+}
+
+function persistItemPhotos() {
+  const it = currentItemPage();
+  if (!it) return;
+  it.photos = state.itemPhotos.slice();
+  it.updatedAt = new Date().toISOString();
+  saveItems();
+}
+
+async function addItemImageFiles(fileList) {
+  const files = [...(fileList || [])];
+  if ($("itemPhotoBusy")) $("itemPhotoBusy").textContent = files.length ? "SAVING…" : "";
+  for (const file of files) {
+    if (!file.type?.startsWith("image/")) continue;
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+    if (dataUrl) state.itemPhotos.push({ dataUrl, name: file.name });
+  }
+  persistItemPhotos();
+  if ($("itemPhotoBusy")) $("itemPhotoBusy").textContent = "";
+  renderItemPhotos();
+}
+
+function patchItemField(key, value) {
+  const it = currentItemPage();
+  if (!it) return;
+  it[key] = value;
+  it.updatedAt = new Date().toISOString();
+  if (key === "listingStatus") {
+    it.staged = value === "ready_to_list" || value === "listed";
+  }
+  saveItems();
+  updateItemEconomics(it);
+  syncItemChrome(it);
+  renderCollection();
+  updateSitrep();
+}
+
+function syncItemChrome(it) {
+  const phase = it.listingStatus || "sorted";
+  const meta = ITEM_PHASE_META[phase] || ITEM_PHASE_META.sorted;
+  const cat = assetCategoryLabel(it.category || "other");
+  if ($("itemEyebrow")) $("itemEyebrow").textContent = `${cat} · ${meta.label}`;
+  if ($("itemHeadTitle")) $("itemHeadTitle").textContent = it.title || "Untitled";
+  if ($("pageBrand")) $("pageBrand").textContent = (it.title || "ASSET").slice(0, 28);
+  if ($("itemPhaseLabel")) {
+    $("itemPhaseLabel").textContent = meta.label;
+    $("itemPhaseLabel").style.color = meta.dot;
+  }
+  if ($("itemPhaseDot")) {
+    $("itemPhaseDot").style.background = meta.dot;
+    $("itemPhaseDot").style.boxShadow = `0 0 8px ${meta.dot}`;
+  }
+  if ($("itemCategoryLabel")) $("itemCategoryLabel").textContent = cat;
+  if ($("btnItemArchive")) {
+    $("btnItemArchive").textContent = it.archived ? "Restore" : "Archive";
+  }
+  renderItemShipSummary(it);
+  setItemPageStatus(state.itemPageStatus);
+}
+
+function renderItemMovePanel(open) {
+  const panel = $("itemMovePanel");
+  if (!panel) return;
+  if (!open) {
+    panel.classList.add("hidden");
+    panel.innerHTML = "";
+    return;
+  }
+  loadSpaces();
+  const it = currentItemPage();
+  const cur = it?.spaceId || "";
+  panel.classList.remove("hidden");
+  if (!state.spaces.length) {
+    panel.innerHTML = `<p class="b44-copy-soft" style="font-size:12px">No spaces yet. Create one in Storage.</p>`;
+    return;
+  }
+  panel.innerHTML =
+    `<div class="v-label" style="margin-bottom:8px">Move to space</div>` +
+    state.spaces
+      .map(
+        (s) =>
+          `<button type="button" class="m-btn ${s.id === cur ? "m-btn-primary" : ""}" data-item-move="${esc(s.id)}" style="width:100%;margin-bottom:6px;justify-content:flex-start">${esc(s.name)}</button>`,
+      )
+      .join("") +
+    `<button type="button" class="m-btn" data-item-move="" style="width:100%">Clear location</button>`;
+  panel.querySelectorAll("[data-item-move]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const next = btn.dataset.itemMove || "";
+      if ($("itemSpace")) $("itemSpace").value = next;
+      patchItemField("spaceId", next);
+      setItemPageStatus(next ? "Location updated" : "Location cleared");
+      renderItemMovePanel(false);
+    });
+  });
+}
+
+function renderItemPage(id) {
+  const it = state.items.find((x) => x.id === id);
+  if (!it) {
+    setItemPageStatus("Item not found.");
+    navigate("/inventory");
+    return;
+  }
+  state.itemPageId = it.id;
+  state.itemPhotos = Array.isArray(it.photos)
+    ? it.photos.map((p) => (typeof p === "string" ? { dataUrl: p } : { ...p }))
+    : [];
+  state.itemPageStatus = "";
+  if ($("itemTitle")) $("itemTitle").value = it.title || "";
+  if ($("itemCategory")) $("itemCategory").value = it.category || "other";
+  if ($("itemQty")) $("itemQty").value = String(it.quantity ?? 1);
+  let phase = it.listingStatus || it.listing_status || "sorted";
+  if (!it.listingStatus && it.staged) phase = "ready_to_list";
+  if ($("itemPhase")) $("itemPhase").value = phase;
+  if ($("itemChannel")) $("itemChannel").value = it.liveChannel || it.live_channel || "";
+  fillItemSpaceOptions(it.spaceId || it.storage_location_id || "");
+  if ($("itemNotes")) $("itemNotes").value = it.notes || "";
+  if ($("itemPurchase")) $("itemPurchase").value = String(it.purchasePrice ?? it.purchase_price ?? 0);
+  if ($("itemMarket")) $("itemMarket").value = String(it.marketValue ?? it.market_value ?? 0);
+  if ($("itemLowestActive")) $("itemLowestActive").value = String(it.lowestActive ?? it.lowest_active ?? 0);
+  if ($("itemRecentSold")) $("itemRecentSold").value = String(it.recentSold ?? it.recent_sold ?? 0);
+  fillItemShipOptions(it.shippingPresetId || it.shipping_preset_id || "");
+  updateItemEconomics(it);
+  syncItemChrome(it);
+  renderItemPhotos();
+  renderItemMovePanel(false);
+  closeAssetSheet();
+  closeScouterReadout();
+}
+
+function duplicateItemPage() {
+  const it = currentItemPage();
+  if (!it) return;
+  const copy = {
+    ...structuredClone(it),
+    id: crypto.randomUUID(),
+    title: `${it.title || "Untitled"} (Copy)`,
+    listingStatus: "sorted",
+    staged: false,
+    liveChannel: "",
+    archived: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  state.items.unshift(copy);
+  saveItems();
+  renderCollection();
+  updateSitrep();
+  navigate(`/item/${copy.id}`);
+  setItemPageStatus("Duplicated");
+}
+
+function archiveItemPage() {
+  const it = currentItemPage();
+  if (!it) return;
+  it.archived = !it.archived;
+  it.updatedAt = new Date().toISOString();
+  saveItems();
+  renderCollection();
+  updateSitrep();
+  if (it.archived) navigate("/inventory");
+  else {
+    syncItemChrome(it);
+    setItemPageStatus("Restored");
+  }
+}
+
+function deleteItemPage() {
+  const id = state.itemPageId;
+  if (!id) return;
+  if (!confirm("This permanently deletes the item. This cannot be undone.")) return;
+  state.items = state.items.filter((x) => x.id !== id);
+  saveItems();
+  state.itemPageId = null;
+  state.itemPhotos = [];
+  renderCollection();
+  updateSitrep();
+  navigate("/");
 }
 
 
@@ -2981,8 +3356,66 @@ function bind() {
   $("btnOpenCard")?.addEventListener("click", () => {
     const it = state.items.find((x) => x.id === state.lockedItemId);
     if (!it) return;
-    openAssetSheet(it);
+    navigate(`/item/${it.id}`);
   });
+
+  // Live OK /item/:id page controls
+  $("btnItemBack")?.addEventListener("click", () => navigate("/inventory"));
+  $("btnItemToScouter")?.addEventListener("click", () => navigate("/"));
+  $("btnItemMove")?.addEventListener("click", () => {
+    const panel = $("itemMovePanel");
+    const opening = !!panel?.classList.contains("hidden");
+    renderItemMovePanel(opening);
+    if (opening) $("itemSpace")?.focus();
+  });
+  $("btnItemDuplicate")?.addEventListener("click", () => duplicateItemPage());
+  $("btnItemArchive")?.addEventListener("click", () => archiveItemPage());
+  $("btnItemDelete")?.addEventListener("click", () => deleteItemPage());
+  $("btnItemAddPhotos")?.addEventListener("click", () => $("itemImages")?.click());
+  $("itemImages")?.addEventListener("change", async (e) => {
+    await addItemImageFiles(e.target.files);
+    e.target.value = "";
+  });
+  $("btnItemShipManage")?.addEventListener("click", () => {
+    navigate("/settings");
+    setSettingsTab("shipping");
+  });
+  $("itemTitle")?.addEventListener("change", (e) => patchItemField("title", e.target.value));
+  $("itemNotes")?.addEventListener("change", (e) => patchItemField("notes", e.target.value));
+  $("itemCategory")?.addEventListener("change", (e) => patchItemField("category", e.target.value));
+  $("itemPhase")?.addEventListener("change", (e) => patchItemField("listingStatus", e.target.value));
+  $("itemChannel")?.addEventListener("change", (e) => patchItemField("liveChannel", e.target.value));
+  $("itemSpace")?.addEventListener("change", (e) => {
+    patchItemField("spaceId", e.target.value);
+    renderItemMovePanel(false);
+  });
+  $("itemQty")?.addEventListener("change", (e) => {
+    patchItemField("quantity", Number(e.target.value) || 1);
+  });
+  const bindItemMoney = (id, key) => {
+    $(id)?.addEventListener("change", (e) => {
+      const n = e.target.value === "" ? 0 : Number(e.target.value);
+      if (Number.isNaN(n)) return;
+      patchItemField(key, n);
+    });
+    $(id)?.addEventListener("input", () => {
+      const it = currentItemPage();
+      if (!it) return;
+      it.purchasePrice = Number($("itemPurchase")?.value || 0) || 0;
+      it.marketValue = Number($("itemMarket")?.value || 0) || 0;
+      it.lowestActive = Number($("itemLowestActive")?.value || 0) || 0;
+      it.recentSold = Number($("itemRecentSold")?.value || 0) || 0;
+      updateItemEconomics(it);
+    });
+  };
+  bindItemMoney("itemPurchase", "purchasePrice");
+  bindItemMoney("itemMarket", "marketValue");
+  bindItemMoney("itemLowestActive", "lowestActive");
+  bindItemMoney("itemRecentSold", "recentSold");
+  $("itemShipPreset")?.addEventListener("change", (e) => {
+    patchItemField("shippingPresetId", e.target.value);
+  });
+
   $("btnNewCard")?.addEventListener("click", () => {
     navigate("/inventory?add=1");
   });
