@@ -1,0 +1,39 @@
+---
+description: Coalition H.U.D — what the app actually is. Always applies. Read before any scope decision.
+alwaysApply: true
+---
+
+## WHAT THIS APP IS — read this first, every time
+
+**Coalition H.U.D is Sawyer's entire eBay workflow in a heads-up display — from sifting a
+pile of cards, toys, electronics or sealed product, all the way to the package arriving at
+the customer's doorstep.** It replaces roughly 17 separate softwares and sites with one.
+
+It is NOT a scan-identify-list tool. That is one feature inside it. Every time this gets
+reduced to "scan → identify → list," it is wrong, and Sawyer has corrected it repeatedly.
+
+The surfaces, and what each one is:
+
+- **Scouter** — mobile intake ONLY. Camera, barcode, photo dump. Capture on the go, then
+  move to desktop. **Scouter does not list.** It is the front door, not the app.
+- **Spaces** — collection/storage tracker built on real photos of his real bins. Physical
+  nesting mirrored digitally: outer tote → pull-out fridge bins → Connect Kinetic holders →
+  cards / Goat mini team bags. Click a space and it zooms forward into the next level.
+  Floating interactive bins. Listed bins and unlisted/staged bins are different things.
+- **Spine** — the structured glowing constellation. Items float on a line and move down it
+  stage by stage until listed, then file into their bins. Click = half-zoom info card, not
+  full screen. **Structured constellation, never the molecule chaos Base44 produced.**
+- **Channels** — eBay live, plus Double Holo, Misprint, Shopify.
+- **Shipping** — same constellation path: dropoff → scan → in transit → doorstep.
+- **Listing engine** — identify, titles, descriptions, pricing, templates. This is the part
+  that replaces TCGAutomate.
+
+Two things drive the whole build:
+
+1. **Don't lose photos.** Ever, at any stage.
+2. **He can see the whole line move.** That is what "heads-up display" means here.
+
+Business reality: TCGAutomate Pro costs $40/month and locks inventory sync behind the top
+tier. This app replacing it is a real bill going away, not a nice-to-have. But that is the
+*motivation*, not the scope. The scope is the whole workflow above.
+
