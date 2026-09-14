@@ -1449,3 +1449,57 @@ textarea.b44-input {
   font-size: 10px;
   color: #6f8697;
 }
+
+/* Live nle — LIVE VALUE connection mark */
+.b44-live-status {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #6f8697;
+  box-shadow: none;
+  opacity: 0.85;
+}
+.b44-live-status.is-live {
+  background: #2bd9c0;
+  box-shadow: 0 0 12px 1px #2bd9c0;
+  opacity: 1;
+}
+
+/* Live nle — Active / Ended hub rails */
+.b44-channel-hub {
+  margin: 14px 0 18px;
+}
+.b44-channel-hub-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+  margin-bottom: 10px;
+}
+.b44-channel-hub-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.b44-channel-hub-label {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+.b44-channel-hub-count {
+  margin-left: auto;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+.b44-channel-hub-empty {
+  padding: 20px 8px;
+  text-align: center;
+  font-size: 10px;
+}
+.b44-channel-tile .b44-scout-tile-badge {
+  background: rgba(5, 7, 10, 0.82);
+}

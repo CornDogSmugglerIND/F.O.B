@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=20" />
+  <link rel="stylesheet" href="/base44/shell.css?v=22" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -366,7 +366,8 @@
             <button type="button" class="m-btn" data-channel-tab="ship" id="tabShip">FULFILMENT</button>
           </div>
           <div id="channelLive">
-            <div class="v-panel v-cut-sm px-4 py-3" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div class="v-panel v-cut-sm px-4 py-3" style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <span id="liveValueStatus" class="b44-live-status" aria-hidden="true"></span>
               <div class="v-label" style="font-size:9px">LIVE VALUE</div>
               <div class="v-readout v-emit-gold" style="font-size:22px;margin-left:auto" id="liveValue">$0.00</div>
             </div>
@@ -389,33 +390,25 @@
               <p class="b44-copy-soft" style="margin-top:8px" id="ebayConnectHint">eBay isn't connected — publishing and sync are offline. Connect it below.</p>
               <div class="b44-actions" style="margin-top:12px;flex-wrap:wrap">
                 <button type="button" class="m-btn m-btn-primary" id="btnEbayConnect">Connect eBay</button>
-                <button type="button" class="m-btn" id="btnChannelSync">Sync</button>
-                <button type="button" class="m-btn" id="btnChannelPhotos">Photos</button>
-                <button type="button" class="m-btn" id="btnChannelToken">Token</button>
-                <button type="button" class="m-btn" id="btnChannelPolicies">Policies</button>
               </div>
               <p class="b44-copy-soft" style="margin-top:10px;font-size:12px" id="channelActionStatus"></p>
             </div>
-            <div id="channelFilterBar" class="b44-toolbar hidden" style="margin-bottom:12px">
+            <div id="channelFilterBar" class="b44-toolbar hidden" style="margin-bottom:12px;align-items:stretch">
               <div class="b44-filter" style="flex:1">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
                 <input id="channelFilter" type="search" placeholder="Filter listings" autocomplete="off" />
               </div>
-            </div>
-            <div id="channelHubs" class="hidden" style="display:flex;gap:10px;margin-bottom:12px">
-              <div class="v-panel v-cut-sm px-4 py-3" style="flex:1">
-                <div class="v-label" style="font-size:8px">Active · On market</div>
-                <div class="v-readout" style="font-size:18px;color:#5fe8d0" id="hubActive">00</div>
-              </div>
-              <div class="v-panel v-cut-sm px-4 py-3" style="flex:1">
-                <div class="v-label" style="font-size:8px">Ended · Off market</div>
-                <div class="v-readout" style="font-size:18px;color:#c9d8e2" id="hubEnded">00</div>
-              </div>
+              <button type="button" class="m-btn m-btn-primary" id="btnChannelSync">Sync</button>
             </div>
             <div id="channelList"></div>
             <div id="channelEmpty" class="v-panel v-cut b44-empty">
               <div class="v-label">Channel empty</div>
               <p>Connect eBay to see what's on the channel.</p>
+            </div>
+            <div id="channelFooterActions" class="b44-actions hidden" style="margin-top:16px;flex-wrap:wrap">
+              <button type="button" class="m-btn" id="btnChannelPhotos">Photos</button>
+              <button type="button" class="m-btn" id="btnChannelPolicies">Policies</button>
+              <button type="button" class="m-btn" id="btnChannelToken">Token</button>
             </div>
             <div id="channelSheet" class="v-panel v-cut p-4 hidden" style="margin-top:12px">
               <div class="b44-toolbar" style="justify-content:space-between;margin-bottom:8px">
@@ -1288,7 +1281,7 @@
 
   <script src="/lib/image.js?v=24"></script>
   <script src="/lib/html5-qrcode.min.js"></script>
-  <script src="/base44/shell.js?v=20"></script>
+  <script src="/base44/shell.js?v=22"></script>
 
 </body>
 </html>

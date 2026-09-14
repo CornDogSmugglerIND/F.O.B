@@ -654,11 +654,14 @@ function updateSitrep() {
 
   const cards = buildCmdAttention();
   const blocked = cards.reduce((n, c) => n + c.count, 0);
-  if ($("sitrepTitle")) $("sitrepTitle").textContent = blocked ? "To list" : "All clear";
+  // Live XK SITREP: panel title stays SITREP; body shows "All clear" only when empty.
+  if ($("sitrepTitle")) {
+    $("sitrepTitle").textContent = "All clear";
+    $("sitrepTitle").classList.toggle("hidden", blocked > 0);
+  }
   if ($("sitrepHint")) {
-    $("sitrepHint").textContent = blocked
-      ? `${blocked} item${blocked === 1 ? "" : "s"} waiting on you`
-      : "Nothing is blocked, errored, or sitting untouched.";
+    $("sitrepHint").textContent = "Nothing is blocked, errored, or sitting untouched.";
+    $("sitrepHint").classList.toggle("hidden", blocked > 0);
   }
   if ($("ebayWarn")) {
     $("ebayWarn").classList.toggle("hidden", !!state.ebayConnected);
@@ -3174,19 +3177,49 @@ function setChannelRepriceOpen(open) {
   }
 }
 
-function channelListingRow(it, hub) {
-  const status =
-    hub === "ended" ? "Ended" : itemPipeLabel(it) === "Listed" ? "Active" : "Built, not live";
-  const sku = it.barcode || it.sku || "NO SKU";
-  const price = Number(it.marketValue ?? it.price);
-  const priceBit = Number.isFinite(price) && price > 0 ? ` · $${price.toFixed(2)}` : "";
+/** Live nle hub defs (a_): Active/On market · Ended/Off market. */
+const CHANNEL_HUBS = [
+  { key: "fresh", label: "Active", sub: "On market", core: "#2BD9C0", hi: "#8FF6E8" },
+  { key: "ended", label: "Ended", sub: "Off market", core: "#8FA3AD", hi: "#FFFFFF" },
+];
+
+/** Live Ma tile for Channel hub rails — age badge + price sub. */
+function channelListingTileHtml(it, hub) {
+  const core = hub.core;
+  const hi = hub.hi;
   const age = channelAgeDays(it);
-  const ageBit = hub === "fresh" && itemPipeLabel(it) === "Listed" ? ` · ${age}D` : "";
+  const price = money(Number(it.marketValue ?? it.price) || 0);
   const thumb = it.photos?.[0]?.dataUrl || "";
   const img = thumb
-    ? `<img src="${thumb}" alt="" />`
-    : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
-  return `<div class="v-panel v-cut-sm b44-item" data-open-listing="${esc(it.id)}" style="cursor:pointer">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(status)} · ${esc(sku)}${priceBit}${ageBit}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
+    ? `<img src="${esc(thumb)}" alt="" draggable="false" />`
+    : `<span class="b44-copy-soft" style="font-size:10px">no img</span>`;
+  return `<button type="button" class="b44-scout-tile-card b44-channel-tile" data-open-listing="${esc(it.id)}" style="--phase:${esc(core)};--phase-hi:${esc(hi)}">
+    <div class="b44-scout-tile-img" style="box-shadow:inset 0 0 0 1px color-mix(in srgb, ${esc(core)} 40%, transparent)">${img}<span class="b44-scout-tile-badge" style="color:${esc(hi)}">${age}D</span></div>
+    <div class="b44-scout-tile-title">${esc(it.title || "Untitled")}</div>
+    <div class="b44-scout-tile-sub" style="color:${esc(hi)}">${esc(price)}</div>
+  </button>`;
+}
+
+function channelHubSectionHtml(hub, rows) {
+  const count = rows.length;
+  const countColor = count ? hub.hi : "#6F8697";
+  const shown = rows.slice(0, 20);
+  const more =
+    rows.length > shown.length
+      ? `<div class="b44-scout-tile-card" style="width:60px;justify-content:center;display:flex;align-items:center"><div class="b44-scout-tile-img" style="width:60px;height:196px;color:${esc(hub.hi)}">+${rows.length - shown.length}</div></div>`
+      : "";
+  const body = count
+    ? `<div class="b44-scout-group-rail">${shown.map((it) => channelListingTileHtml(it, hub)).join("")}${more}</div>`
+    : `<div class="b44-channel-hub-empty v-label">Nothing here</div>`;
+  return `<section class="b44-channel-hub" data-hub="${esc(hub.key)}">
+    <div class="b44-channel-hub-head">
+      <span class="b44-channel-hub-dot" style="background:${esc(hub.core)};box-shadow:0 0 10px 1px ${esc(hub.core)}"></span>
+      <span class="b44-channel-hub-label">${esc(hub.label)}</span>
+      <span class="v-label" style="font-size:9px">${esc(hub.sub.toUpperCase())}</span>
+      <span class="v-readout b44-channel-hub-count" style="color:${esc(countColor)}">${pad2(count)}</span>
+    </div>
+    ${body}
+  </section>`;
 }
 
 function openChannelSheet(id) {
@@ -3319,75 +3352,73 @@ function renderChannel() {
   if ($("pipeReady")) $("pipeReady").textContent = pad2(ready);
   if ($("pipeListed")) $("pipeListed").textContent = pad2(listed);
 
-  // Live nle: Connect alone when offline; Sync + Photos/Policies/Token when connected.
+  // Live nle: Connect alone when offline; Filter+Sync when connected; Photos/Policies/Token footer.
   const connected = !!state.ebayConnected;
   $("btnEbayConnect")?.classList.toggle("hidden", connected);
-  $("btnChannelSync")?.classList.toggle("hidden", !connected);
-  $("btnChannelPhotos")?.classList.toggle("hidden", !connected);
-  $("btnChannelToken")?.classList.toggle("hidden", !connected);
-  $("btnChannelPolicies")?.classList.toggle("hidden", !connected);
+  $("ebayConnectPanel")?.classList.toggle("hidden", connected && state.channelTab === "live");
+  $("channelFooterActions")?.classList.toggle(
+    "hidden",
+    !(connected && state.channelTab === "live"),
+  );
   if ($("ebayConnectHint")) {
     $("ebayConnectHint").textContent = connected
       ? "eBay marked connected on this device. Sync/Photos/Token/Policies still need live credentials on the server."
       : "eBay isn't connected — publishing and sync are offline. Connect it below.";
   }
+  // Live nle: status mark next to LIVE VALUE (green when connected).
+  $("liveValueStatus")?.classList.toggle("is-live", connected);
   if ($("liveValue")) {
+    // Live sums active listing price (no qty multiply).
     const liveVal = state.items
-      .filter((it) => itemPipeLabel(it) === "Listed")
-      .reduce((sum, it) => sum + (Number(it.marketValue ?? it.price) || 0) * (Number(it.quantity) || 1), 0);
+      .filter((it) => channelHubKey(it) === "fresh" && itemPipeLabel(it) === "Listed")
+      .reduce((sum, it) => sum + (Number(it.marketValue ?? it.price) || 0), 0);
     $("liveValue").textContent = money(liveVal);
   }
 
   const filterBar = $("channelFilterBar");
-  const hubs = $("channelHubs");
   if (filterBar) filterBar.classList.toggle("hidden", !(connected && state.channelTab === "live"));
-  if (hubs) hubs.classList.toggle("hidden", !(connected && state.channelTab === "live"));
 
   const list = $("channelList");
   const empty = $("channelEmpty");
   if (list) {
-    // Live nle hubs: Active (on market) / Ended (off market). Local port uses listingStatus.
+    // Live nle hubs: Active (on market) / Ended (off market) with Ma tile rails.
     const q = (state.channelFilter || "").trim().toLowerCase();
-    const pool = connected
-      ? state.items.filter((it) => {
-          const hub = channelHubKey(it);
-          if (!hub) return false;
-          if (!q) return true;
-          const hay = `${it.title || ""} ${it.barcode || ""} ${it.sku || ""}`.toLowerCase();
-          return hay.includes(q);
-        })
-      : [];
-    const active = pool.filter((it) => channelHubKey(it) === "fresh");
-    const ended = pool.filter((it) => channelHubKey(it) === "ended");
-    if ($("hubActive")) $("hubActive").textContent = pad2(active.length);
-    if ($("hubEnded")) $("hubEnded").textContent = pad2(ended.length);
+    const allHubItems = state.items.filter((it) => channelHubKey(it));
+    const pool = allHubItems.filter((it) => {
+      if (!q) return true;
+      const hay = `${it.title || ""} ${it.barcode || ""} ${it.sku || ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+    const byKey = {
+      fresh: pool.filter((it) => channelHubKey(it) === "fresh"),
+      ended: pool.filter((it) => channelHubKey(it) === "ended"),
+    };
 
+    // Live nle: Channel empty only when connected with no listings (or filter miss).
+    // Offline + empty shows Connect alone — no empty panel.
+    const showEmpty =
+      state.channelTab === "live" &&
+      connected &&
+      (allHubItems.length === 0 || (q && pool.length === 0));
     if (empty) {
-      empty.classList.toggle("hidden", !(state.channelTab === "live" && pool.length === 0));
+      empty.classList.toggle("hidden", !showEmpty);
       const label = empty.querySelector(".v-label");
       const p = empty.querySelector("p");
       if (label) label.textContent = "Channel empty";
       if (p) {
-        p.textContent = connected
-          ? q
-            ? "No listings match this filter."
-            : "Run a sync to pull your live listings."
-          : "Connect eBay to see what's on the channel.";
+        p.textContent = q
+          ? "No listings match this filter."
+          : "Run a sync to pull your live listings.";
       }
     }
     if (state.channelTab === "live") {
       const chunks = [];
-      const pushHub = (key, title, rows) => {
-        if (!rows.length) return;
-        chunks.push(
-          `<div class="v-label" style="font-size:9px;margin:12px 0 6px;color:var(--b44-gold,#ffb43d)">${esc(title)} · ${pad2(rows.length)}</div>`,
-        );
-        for (const it of rows.slice(0, 40)) {
-          chunks.push(channelListingRow(it, key));
-        }
-      };
-      pushHub("fresh", "ACTIVE · ON MARKET", active);
-      pushHub("ended", "ENDED · OFF MARKET", ended);
+      for (const hub of CHANNEL_HUBS) {
+        const rows = byKey[hub.key] || [];
+        // Live: always show hubs when connected; when offline skip empty hubs.
+        if (!connected && !rows.length) continue;
+        chunks.push(channelHubSectionHtml(hub, rows));
+      }
       list.innerHTML = chunks.join("");
       list.querySelectorAll("[data-open-listing]").forEach((row) => {
         row.addEventListener("click", () => openChannelSheet(row.dataset.openListing));
