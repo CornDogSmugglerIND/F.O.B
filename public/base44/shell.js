@@ -25,6 +25,7 @@ const state = {
   filterIntake: "",
   filterScouter: "",
   filterSpaces: "",
+  spaceTrail: [],
   channelTab: "live",
   settingsTab: "templates",
   templates: [],
@@ -101,9 +102,53 @@ function kindLabel(kind) {
 function renderCmdAttention() {
   const root = $("cmdAttention");
   if (!root) return;
-  // Live Base44 only shows attention cards when count > 0. Local port has no
-  // eBay shipments/engine yet — keep the strip empty so Command stays honest.
-  root.innerHTML = "";
+  // Live $K only pushes cards when count > 0.
+  const cards = [];
+  const push = (c) => {
+    if (c.count > 0) cards.push(c);
+  };
+  const staged = state.items.filter((it) => it.staged);
+  const needsReview = state.items.filter(
+    (it) => it.needsReview || it.confidence === "Low" || it.confidence === "Failed" || (!it.title && !it.staged),
+  );
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const stalled = state.items.filter((it) => {
+    if (it.listingStatus === "listed") return false;
+    const t = Date.parse(it.updatedAt || it.createdAt || "") || 0;
+    return t && Date.now() - t >= weekMs;
+  });
+  push({
+    key: "publish",
+    tone: "act",
+    to: "/inventory",
+    label: "Built, not published",
+    detail: "Listing is ready to go live",
+    count: staged.length,
+  });
+  push({
+    key: "review",
+    tone: "act",
+    to: "/scan-intake",
+    label: "Scans needing review",
+    detail: "Low confidence or unidentified",
+    count: needsReview.length,
+  });
+  push({
+    key: "stalled",
+    tone: "idle",
+    to: "/inventory",
+    label: "Untouched 7+ days",
+    detail: "Sitting in the pipeline going nowhere",
+    count: stalled.length,
+  });
+  const toneRank = { bad: 0, act: 1, idle: 2 };
+  cards.sort((a, b) => toneRank[a.tone] - toneRank[b.tone] || b.count - a.count);
+  root.innerHTML = cards
+    .map(
+      (c) =>
+        `<a class="b44-attn ${esc(c.tone)}" href="#${esc(c.to)}"><div><strong>${esc(c.label)}</strong><span>${esc(c.detail)}</span></div><div class="v-readout v-emit-gold" style="font-size:18px">${pad2(c.count)}</div></a>`,
+    )
+    .join("");
 }
 
 function saveItems() {
@@ -383,30 +428,75 @@ function saveSpaces() {
   renderSpaces();
 }
 
+function currentSpaceParentId() {
+  return state.spaceTrail.length ? state.spaceTrail[state.spaceTrail.length - 1] : "";
+}
+
+function spaceById(id) {
+  return state.spaces.find((s) => s.id === id);
+}
+
 function renderSpaces() {
   loadSpaces();
   const root = $("spaceList");
   const empty = $("spaceEmpty");
   if (!root) return;
+  const parentId = currentSpaceParentId();
   const q = state.filterSpaces.trim().toLowerCase();
-  const rows = state.spaces.filter((s) => {
-    if (!q) return true;
-    const hay = `${s.name || ""} ${s.code || ""} ${s.kind || ""}`.toLowerCase();
-    return hay.includes(q);
-  });
-  if ($("spaceCount")) $("spaceCount").textContent = pad2(state.spaces.length);
-  if ($("spaceBreadcrumb")) $("spaceBreadcrumb").textContent = "ALL STORAGE";
-  if (empty) empty.classList.toggle("hidden", rows.length > 0);
+  const rows = state.spaces
+    .filter((s) => (s.parentId || "") === parentId)
+    .filter((s) => {
+      if (!q) return true;
+      const hay = `${s.name || ""} ${s.code || ""} ${s.kind || ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  const totalHere = state.spaces.filter((s) => (s.parentId || "") === parentId).length;
+  if ($("spaceCount")) $("spaceCount").textContent = pad2(totalHere);
+  const crumb = parentId
+    ? state.spaceTrail.map((id) => spaceById(id)?.name || "…").join(" / ")
+    : "ALL STORAGE";
+  if ($("spaceBreadcrumb")) $("spaceBreadcrumb").textContent = crumb;
+  $("btnSpaceUp")?.classList.toggle("hidden", !parentId);
+  if (empty) {
+    empty.classList.toggle("hidden", rows.length > 0);
+    const label = empty.querySelector(".v-label");
+    const p = empty.querySelector("p");
+    if (label) label.textContent = "No locations yet";
+    if (p) p.textContent = "No locations yet — create one below.";
+  }
   root.innerHTML = rows
     .map((s) => {
       const kind = kindLabel(s.kind);
-      const code = s.code ? ` · ${esc(s.code)}` : "";
-      return `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(s.name)}</strong><span>${esc(kind)}${code}</span></div><button type="button" class="m-btn" data-del-space="${esc(s.id)}">×</button></div>`;
+      const code = s.code ? `${esc(s.code)} · ` : "";
+      const kids = state.spaces.filter((c) => (c.parentId || "") === s.id).length;
+      const sub = kids ? `${code}${esc(kind)} · ${kids} inside` : `${code}${esc(kind)}`;
+      return `<div class="v-panel v-cut-sm b44-item" data-open-space="${esc(s.id)}" style="cursor:pointer"><div class="meta"><strong>${esc(s.name)}</strong><span>${sub}</span></div><button type="button" class="m-btn" data-del-space="${esc(s.id)}">×</button></div>`;
     })
     .join("");
+  root.querySelectorAll("[data-open-space]").forEach((row) => {
+    row.addEventListener("click", (e) => {
+      if (e.target.closest("[data-del-space]")) return;
+      state.spaceTrail = [...state.spaceTrail, row.dataset.openSpace];
+      renderSpaces();
+    });
+  });
   root.querySelectorAll("[data-del-space]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.spaces = state.spaces.filter((s) => s.id !== btn.dataset.delSpace);
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.delSpace;
+      const drop = new Set([id]);
+      let grew = true;
+      while (grew) {
+        grew = false;
+        for (const s of state.spaces) {
+          if (drop.has(s.parentId || "") && !drop.has(s.id)) {
+            drop.add(s.id);
+            grew = true;
+          }
+        }
+      }
+      state.spaces = state.spaces.filter((s) => !drop.has(s.id));
+      state.spaceTrail = state.spaceTrail.filter((x) => !drop.has(x));
       saveSpaces();
     });
   });
@@ -419,10 +509,15 @@ function renderChannel() {
   if (ship) ship.classList.toggle("hidden", state.channelTab !== "ship");
   $("tabLive")?.classList.toggle("m-btn-primary", state.channelTab === "live");
   $("tabShip")?.classList.toggle("m-btn-primary", state.channelTab === "ship");
+  const intake = state.items.filter((it) => !it.staged).length;
+  const ready = state.items.filter((it) => it.staged).length;
+  if ($("pipeIntake")) $("pipeIntake").textContent = pad2(intake);
+  if ($("pipeReady")) $("pipeReady").textContent = pad2(ready);
+  if ($("pipeListed")) $("pipeListed").textContent = "00";
   const list = $("channelList");
   const empty = $("channelEmpty");
   if (!list) return;
-  // Local port: staged items show as intake pipeline; no live eBay sync yet
+  // Local port: intake pipeline rows until eBay sync exists
   const rows = state.items.slice(0, 40);
   if (empty) {
     empty.classList.toggle("hidden", rows.length > 0 && state.channelTab === "live");
@@ -435,9 +530,15 @@ function renderChannel() {
   }
   list.innerHTML = rows
     .map((it) => {
-      // Si pipeline labels from live Base44
       const status = it.staged ? "Listing Built" : "Intake";
-      return `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${status} · not published</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
+      const sku = it.barcode || it.sku || "NO SKU";
+      const price = Number(it.marketValue ?? it.price);
+      const priceBit = Number.isFinite(price) && price > 0 ? ` · $${price.toFixed(2)}` : "";
+      const thumb = it.photos?.[0]?.dataUrl || "";
+      const img = thumb
+        ? `<img src="${thumb}" alt="" />`
+        : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
+      return `<div class="v-panel v-cut-sm b44-item">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(status)} · ${esc(sku)}${priceBit} · not published</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
     })
     .join("");
 }
@@ -589,6 +690,15 @@ function bind() {
 
   bindDropZone();
 
+  $("btnSpaceUp")?.addEventListener("click", () => {
+    state.spaceTrail = state.spaceTrail.slice(0, -1);
+    renderSpaces();
+  });
+  $("spaceBreadcrumb")?.addEventListener("click", () => {
+    if (!state.spaceTrail.length) return;
+    state.spaceTrail = [];
+    renderSpaces();
+  });
   $("btnAddSpace")?.addEventListener("click", () => {
     const name = prompt("Location name", "Warehouse A");
     if (!name?.trim()) return;
@@ -606,6 +716,7 @@ function bind() {
       name: name.trim(),
       kind,
       code,
+      parentId: currentSpaceParentId(),
       createdAt: new Date().toISOString(),
     });
     saveSpaces();

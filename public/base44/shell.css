@@ -447,3 +447,15 @@ body.b44 {
   font-size: 12px;
   color: var(--b44-lo);
 }
+
+#spaceBreadcrumb {
+  cursor: pointer;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.b44-attn {
+  text-decoration: none;
+  color: inherit;
+}

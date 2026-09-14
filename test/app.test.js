@@ -65,6 +65,7 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /SITREP/);
     assert.match(html, /All clear/);
     assert.match(html, /No locations yet/);
+    assert.match(html, /create one below/);
     assert.match(html, /Channel empty/);
     assert.match(html, /LIVE LISTINGS/);
     assert.match(html, /FULFILMENT/);
@@ -80,6 +81,7 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /Scan batch/);
     assert.match(html, /New card/);
     assert.match(html, /ALL STORAGE/);
+    assert.match(html, /btnSpaceUp/);
     assert.match(html, /Nothing is blocked — the void is clear/);
 
 
