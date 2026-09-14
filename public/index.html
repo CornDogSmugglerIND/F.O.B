@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=12" />
+  <link rel="stylesheet" href="/base44/shell.css?v=13" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -402,14 +402,24 @@
               <p>Connect eBay to see what's on the channel.</p>
             </div>
             <div id="channelSheet" class="v-panel v-cut p-4 hidden" style="margin-top:12px">
-              <div class="v-label" style="font-size:9px;color:var(--b44-gold,#ffb43d)" id="channelSheetSku">NO SKU</div>
-              <div class="v-readout v-emit-white" style="font-size:16px;margin-top:8px" id="channelSheetTitle">—</div>
-              <div class="v-readout v-emit-gold" style="font-size:22px;margin-top:8px" id="channelSheetPrice">$0.00</div>
-              <div class="b44-actions" style="margin-top:14px;flex-wrap:wrap">
+              <div class="b44-toolbar" style="justify-content:space-between;margin-bottom:8px">
+                <div class="v-label" style="font-size:9.5px;color:var(--b44-gold,#ffb43d)" id="channelSheetEyebrow">ACTIVE · 0D ON MARKET</div>
+                <button type="button" class="m-btn" id="btnChannelSheetClose" title="Close">×</button>
+              </div>
+              <div class="v-label" style="font-size:9px" id="channelSheetSku">NO SKU</div>
+              <div class="v-readout v-emit-white" style="font-size:16px;margin-top:8px;line-height:1.25" id="channelSheetTitle">—</div>
+              <div class="v-readout v-emit-gold" style="font-size:26px;margin-top:10px" id="channelSheetPrice">$0.00</div>
+              <a class="b44-copy-soft hidden" style="display:inline-flex;margin-top:8px;font-size:12px;color:var(--b44-olive-hi,#9fbf6a)" id="channelSheetEbay" href="#" target="_blank" rel="noreferrer">View on eBay ↗</a>
+              <div id="channelRepriceRow" class="b44-toolbar hidden" style="margin-top:12px;gap:8px">
+                <span class="v-label" style="font-size:12px">$</span>
+                <input id="channelRepriceInput" class="b44-input" type="number" step="0.01" min="0.01" style="flex:1;text-align:center" />
+                <button type="button" class="m-btn m-btn-primary" id="btnChannelRepriceGo">Set</button>
+                <button type="button" class="m-btn" id="btnChannelRepriceCancel">Cancel</button>
+              </div>
+              <div class="b44-actions" style="margin-top:14px;flex-wrap:wrap" id="channelSheetActions">
                 <button type="button" class="m-btn m-btn-primary" id="btnChannelReprice">Reprice</button>
                 <button type="button" class="m-btn" id="btnChannelRelist">Relist</button>
                 <button type="button" class="m-btn" id="btnChannelEnd">End listing</button>
-                <button type="button" class="m-btn" id="btnChannelSheetClose">Close</button>
               </div>
               <p class="b44-copy-soft" style="margin-top:10px;font-size:12px" id="channelSheetStatus"></p>
             </div>
@@ -1012,6 +1022,6 @@
   </div>
 
   <script src="/lib/image.js?v=24"></script>
-  <script src="/base44/shell.js?v=12"></script>
+  <script src="/base44/shell.js?v=13"></script>
 </body>
 </html>

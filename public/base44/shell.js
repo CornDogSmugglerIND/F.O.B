@@ -2569,16 +2569,58 @@ function channelHubKey(it) {
   return null;
 }
 
+/** Live o_ age: days since pushed_date / created_date. */
+function channelAgeDays(it) {
+  const raw =
+    it.pushedAt ||
+    it.pushed_date ||
+    it.listedAt ||
+    it.listed_at ||
+    it.createdAt ||
+    it.created_date ||
+    "";
+  if (!raw) return 0;
+  const t = new Date(raw).getTime();
+  if (!Number.isFinite(t)) return 0;
+  return Math.max(0, Math.floor((Date.now() - t) / 86400000));
+}
+
+function channelEbayId(it) {
+  return (
+    it.ebayListingId ||
+    it.ebay_listing_id ||
+    it.ebayItemId ||
+    it.ebay_item_id ||
+    ""
+  );
+}
+
+function setChannelRepriceOpen(open) {
+  $("channelRepriceRow")?.classList.toggle("hidden", !open);
+  $("channelSheetActions")?.classList.toggle("hidden", !!open);
+  if (open) {
+    const it = state.items.find((x) => x.id === state.channelSheetId);
+    if ($("channelRepriceInput")) {
+      $("channelRepriceInput").value = String(it?.marketValue ?? it?.price ?? "");
+      $("channelRepriceInput").focus();
+      $("channelRepriceInput").select();
+    }
+  }
+}
+
 function channelListingRow(it, hub) {
-  const status = hub === "ended" ? "Ended" : itemPipeLabel(it) === "Listed" ? "Active" : "Built, not live";
+  const status =
+    hub === "ended" ? "Ended" : itemPipeLabel(it) === "Listed" ? "Active" : "Built, not live";
   const sku = it.barcode || it.sku || "NO SKU";
   const price = Number(it.marketValue ?? it.price);
   const priceBit = Number.isFinite(price) && price > 0 ? ` · $${price.toFixed(2)}` : "";
+  const age = channelAgeDays(it);
+  const ageBit = hub === "fresh" && itemPipeLabel(it) === "Listed" ? ` · ${age}D` : "";
   const thumb = it.photos?.[0]?.dataUrl || "";
   const img = thumb
     ? `<img src="${thumb}" alt="" />`
     : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
-  return `<div class="v-panel v-cut-sm b44-item" data-open-listing="${esc(it.id)}" style="cursor:pointer">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(status)} · ${esc(sku)}${priceBit}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
+  return `<div class="v-panel v-cut-sm b44-item" data-open-listing="${esc(it.id)}" style="cursor:pointer">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(status)} · ${esc(sku)}${priceBit}${ageBit}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
 }
 
 function openChannelSheet(id) {
@@ -2591,22 +2633,70 @@ function openChannelSheet(id) {
   if (state.channelSheetId !== id) state.channelSheetStatus = "";
   state.channelSheetId = id;
   sheet.classList.remove("hidden");
+  const hub = channelHubKey(it);
+  const ended = hub === "ended";
+  const age = channelAgeDays(it);
+  const hubLabel = ended ? "ENDED" : itemPipeLabel(it) === "Listed" ? "ACTIVE" : "BUILT";
+  if ($("channelSheetEyebrow")) {
+    $("channelSheetEyebrow").textContent = ended
+      ? `${hubLabel} · OFF MARKET`
+      : `${hubLabel} · ${age}D ON MARKET`;
+  }
   const sku = it.barcode || it.sku || "NO SKU";
   if ($("channelSheetSku")) $("channelSheetSku").textContent = sku;
   if ($("channelSheetTitle")) $("channelSheetTitle").textContent = it.title || "Untitled";
   const price = Number(it.marketValue ?? it.price) || 0;
   if ($("channelSheetPrice")) $("channelSheetPrice").textContent = money(price);
   if ($("channelSheetStatus")) $("channelSheetStatus").textContent = state.channelSheetStatus || "";
-  const ended = channelHubKey(it) === "ended";
+  const ebayId = channelEbayId(it);
+  const ebay = $("channelSheetEbay");
+  if (ebay) {
+    if (ebayId) {
+      ebay.href = `https://www.ebay.com/itm/${encodeURIComponent(ebayId)}`;
+      ebay.classList.remove("hidden");
+    } else {
+      ebay.href = "#";
+      ebay.classList.add("hidden");
+    }
+  }
   $("btnChannelReprice")?.classList.toggle("hidden", ended);
   $("btnChannelEnd")?.classList.toggle("hidden", ended);
   $("btnChannelRelist")?.classList.toggle("hidden", !ended);
+  setChannelRepriceOpen(false);
 }
 
 function closeChannelSheet() {
   state.channelSheetId = null;
   state.channelSheetStatus = "";
+  setChannelRepriceOpen(false);
   $("channelSheet")?.classList.add("hidden");
+}
+
+function applyChannelReprice() {
+  const it = state.items.find((x) => x.id === state.channelSheetId);
+  if (!it) return;
+  if (!state.ebayConnected) {
+    state.channelSheetStatus = "Connect eBay before listing actions.";
+    openChannelSheet(it.id);
+    return;
+  }
+  const next = Number($("channelRepriceInput")?.value || 0);
+  if (!next || next <= 0) {
+    state.channelSheetStatus = "Enter a valid price.";
+    openChannelSheet(it.id);
+    setChannelRepriceOpen(true);
+    return;
+  }
+  // Honest local port: update local value; live eBay reprice needs server creds.
+  it.marketValue = next;
+  it.price = next;
+  it.updatedAt = new Date().toISOString();
+  saveItems();
+  state.channelSheetStatus =
+    `Local price set to ${money(next)}. Live eBay reprice needs server credentials.`;
+  setChannelRepriceOpen(false);
+  openChannelSheet(it.id);
+  renderChannel();
 }
 
 function channelSheetAction(kind) {
@@ -2618,21 +2708,15 @@ function channelSheetAction(kind) {
     return;
   }
   if (kind === "reprice") {
-    const next = Number(prompt("New price ($)", String(it.marketValue ?? it.price ?? "")) || 0);
-    if (!next || next <= 0) return;
-    // Honest local port: update local value; live eBay reprice needs server creds.
-    it.marketValue = next;
-    it.price = next;
-    saveItems();
-    state.channelSheetStatus =
-      `Local price set to ${money(next)}. Live eBay reprice needs server credentials.`;
-    openChannelSheet(it.id);
-    renderChannel();
+    // Live nle: expand inline price field (no window.prompt).
+    setChannelRepriceOpen(true);
     return;
   }
   if (kind === "relist") {
     it.listingStatus = "listed";
     it.channelStatus = "active";
+    it.pushedAt = new Date().toISOString();
+    it.updatedAt = new Date().toISOString();
     saveItems();
     state.channelSheetStatus =
       "Marked Active locally. Live Relist needs server eBay credentials.";
@@ -2643,6 +2727,7 @@ function channelSheetAction(kind) {
   if (kind === "end") {
     it.listingStatus = "ended";
     it.channelStatus = "ended";
+    it.updatedAt = new Date().toISOString();
     saveItems();
     state.channelSheetStatus =
       "Marked Ended locally. Live End listing needs server eBay credentials.";
@@ -2650,6 +2735,7 @@ function channelSheetAction(kind) {
     renderChannel();
   }
 }
+
 
 function renderChannel() {
   loadShipments();
@@ -3586,6 +3672,12 @@ function bind() {
   $("btnChannelReprice")?.addEventListener("click", () => channelSheetAction("reprice"));
   $("btnChannelRelist")?.addEventListener("click", () => channelSheetAction("relist"));
   $("btnChannelEnd")?.addEventListener("click", () => channelSheetAction("end"));
+  $("btnChannelRepriceGo")?.addEventListener("click", () => applyChannelReprice());
+  $("btnChannelRepriceCancel")?.addEventListener("click", () => setChannelRepriceOpen(false));
+  $("channelRepriceInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") applyChannelReprice();
+    if (e.key === "Escape") setChannelRepriceOpen(false);
+  });
   
   document.querySelectorAll("[data-settings-tab]").forEach((btn) => {
     btn.addEventListener("click", () => setSettingsTab(btn.dataset.settingsTab));
