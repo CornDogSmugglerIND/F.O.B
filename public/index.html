@@ -59,7 +59,7 @@
           <div class="b44-actions">
             <a class="m-btn" href="#/inventory">Open scouter</a>
             <a class="m-btn" href="#/scan-intake">Scan batch</a>
-            <a class="m-btn m-btn-primary" href="#/inventory">New card</a>
+            <button type="button" class="m-btn m-btn-primary" id="btnNewCard">New card</button>
           </div>
         </div>
       </section>
@@ -119,6 +119,7 @@
                 <button type="button" class="m-btn m-btn-primary hidden" id="btnPublishEbay">Publish to eBay</button>
                 <button type="button" class="m-btn hidden" id="btnMovePhase">Move to Listing Built</button>
                 <a class="m-btn hidden" id="btnManageChannel" href="#/channel">Manage on channel</a>
+                <button type="button" class="m-btn" id="btnOpenCard">Open card</button>
               </div>
               <p class="b44-copy-soft" style="margin-top:12px;font-size:12px" id="readoutStatus"></p>
             </div>
@@ -541,9 +542,135 @@
   </div>
 
   <input type="file" id="inputGallery" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" multiple hidden />
+  <input type="file" id="assetImages" accept="image/jpeg,image/png,image/webp,image/*" multiple hidden />
   <input type="checkbox" id="stagedFlag" checked hidden />
   <input type="hidden" id="fieldNotes" value="" />
   <div class="hidden" id="toast"></div>
+
+  <div id="assetSheet" class="b44-modal hidden" role="dialog" aria-modal="true">
+    <div class="v-panel v-cut b44-modal-panel" id="assetSheetPanel">
+      <div class="b44-toolbar" style="justify-content:space-between;margin-bottom:14px">
+        <div class="v-label" id="assetSheetTitle">// NEW ASSET</div>
+        <button type="button" class="m-btn" id="btnAssetClose" title="Close">×</button>
+      </div>
+      <div style="display:grid;gap:12px">
+        <div>
+          <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Title</label>
+          <input id="assetTitle" class="b44-input" type="text" autocomplete="off" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Category</label>
+            <select id="assetCategory" class="b44-input">
+              <option value="pokemon_sealed">Pokemon Sealed</option>
+              <option value="graded_slabs">Graded Slabs</option>
+              <option value="raw_cards">Raw Cards</option>
+              <option value="sports_cards">Sports Cards</option>
+              <option value="other" selected>Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Condition</label>
+            <select id="assetCondition" class="b44-input">
+              <option value="raw" selected>Raw</option>
+              <option value="nm">NM</option>
+              <option value="lp">LP</option>
+              <option value="mp">MP</option>
+              <option value="hp">HP</option>
+              <option value="damaged">Damaged</option>
+              <option value="new">New</option>
+              <option value="used">Used</option>
+              <option value="graded">Graded</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div>
+            <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Market Value</label>
+            <input id="assetMarket" class="b44-input" type="number" value="0" />
+          </div>
+          <div>
+            <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Purchase Price</label>
+            <input id="assetPurchase" class="b44-input" type="number" value="0" />
+          </div>
+          <div>
+            <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Quantity</label>
+            <input id="assetQty" class="b44-input" type="number" value="1" />
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">SKU</label>
+            <input id="assetSku" class="b44-input" type="text" autocomplete="off" />
+          </div>
+          <div>
+            <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Phase</label>
+            <select id="assetPhase" class="b44-input">
+              <option value="sorted">1 · Sorted</option>
+              <option value="photographed">2 · Photographed</option>
+              <option value="ready_to_list">3 · Listing Built</option>
+              <option value="listed">4 · Live</option>
+              <option value="sold">Sold</option>
+              <option value="error">Error</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Live Channel</label>
+            <select id="assetChannel" class="b44-input">
+              <option value="">—</option>
+              <option value="ebay">eBay</option>
+              <option value="courtyard">Courtyard</option>
+              <option value="collx">CollX</option>
+              <option value="tiktok">TikTok Shop</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Storage Location</label>
+            <select id="assetSpace" class="b44-input">
+              <option value="">—</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Grade</label>
+            <input id="assetGrade" class="b44-input" type="text" placeholder="e.g. 10" autocomplete="off" />
+          </div>
+          <div>
+            <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Grading Company</label>
+            <select id="assetGrader" class="b44-input">
+              <option value="">—</option>
+              <option value="PSA">PSA</option>
+              <option value="BGS">BGS</option>
+              <option value="CGC">CGC</option>
+              <option value="SGC">SGC</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Description</label>
+          <textarea id="assetDesc" class="b44-input" rows="3" style="min-height:72px;resize:vertical"></textarea>
+        </div>
+        <div>
+          <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Notes</label>
+          <textarea id="assetNotes" class="b44-input" rows="2" style="min-height:56px;resize:vertical"></textarea>
+        </div>
+        <div>
+          <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Images</label>
+          <button type="button" class="m-btn" id="btnAssetAddImages" style="width:100%">Drop images here</button>
+          <div id="assetThumbs" class="b44-thumbs" style="margin-top:8px"></div>
+        </div>
+      </div>
+      <div class="b44-actions" style="margin-top:16px;justify-content:flex-end">
+        <button type="button" class="m-btn" id="btnAssetCancel">Cancel</button>
+        <button type="button" class="m-btn m-btn-primary" id="btnAssetSave">Save</button>
+      </div>
+      <p class="b44-copy-soft" style="margin-top:10px;font-size:12px" id="assetSheetStatus"></p>
+    </div>
+  </div>
 
   <script src="/lib/image.js?v=24"></script>
   <script src="/base44/shell.js?v=2"></script>

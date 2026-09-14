@@ -43,6 +43,8 @@ const state = {
   editingTemplateId: null,
   showShipForm: false,
   editingShipId: null,
+  assetEditId: null,
+  assetPhotos: [],
 };
 
 const SPACES_KEY = "scouter-spaces-v1";
@@ -91,7 +93,7 @@ const PIPE_STEPS = [
 
 function itemPipeLabel(it) {
   if (it.listingStatus === "listed") return "Listed";
-  if (it.staged) return "Listing Built";
+  if (it.listingStatus === "ready_to_list" || it.staged) return "Listing Built";
   return "Intake";
 }
 
@@ -264,7 +266,9 @@ function saveItems() {
 }
 
 function navigate(route) {
-  const path = ROUTES[route] ? route : "/scan-intake";
+  const raw = String(route || "");
+  const [base, query = ""] = raw.split("?");
+  const path = ROUTES[base] ? base : "/scan-intake";
   state.route = path;
   const meta = ROUTES[path];
   document.querySelectorAll(".b44-view").forEach((el) => {
@@ -274,7 +278,8 @@ function navigate(route) {
     tab.classList.toggle("active", tab.dataset.route === path);
   });
   if ($("pageBrand")) $("pageBrand").textContent = meta.brand;
-  if (location.hash !== `#${path}`) history.replaceState(null, "", `#${path}`);
+  const hash = query ? `#${path}?${query}` : `#${path}`;
+  if (location.hash !== hash) history.replaceState(null, "", hash);
   if (path === "/settings") {
     setSettingsTab(state.settingsTab || "templates");
     renderSettings();
@@ -282,6 +287,10 @@ function navigate(route) {
   if (path === "/storage") renderSpaces();
   if (path === "/channel") renderChannel();
   if (path === "/" || path === "/command") updateSitrep();
+  // Live Command New card → /inventory?add=1 opens VN sheet.
+  if (path === "/inventory" && /(?:^|&)add=1(?:&|$)/.test(query)) {
+    openAssetSheet(null);
+  }
 }
 
 function setIntakeMode(mode) {
@@ -418,6 +427,136 @@ function closeScouterReadout() {
   state.lockedItemId = null;
   state.readoutStatus = "";
   $("scouterReadout")?.classList.add("hidden");
+}
+
+function fillAssetSpaceOptions(selected) {
+  loadSpaces();
+  const sel = $("assetSpace");
+  if (!sel) return;
+  const opts = [`<option value="">—</option>`].concat(
+    state.spaces.map((s) => `<option value="${esc(s.id)}" ${s.id === selected ? "selected" : ""}>${esc(s.name)}</option>`),
+  );
+  sel.innerHTML = opts.join("");
+}
+
+function renderAssetThumbs() {
+  const root = $("assetThumbs");
+  if (!root) return;
+  root.innerHTML = state.assetPhotos
+    .map(
+      (p, i) =>
+        `<div class="b44-thumb"><img src="${p.dataUrl || p}" alt="" /><button type="button" data-del-asset-img="${i}" title="Remove">×</button></div>`,
+    )
+    .join("");
+  root.querySelectorAll("[data-del-asset-img]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.assetPhotos.splice(Number(btn.dataset.delAssetImg), 1);
+      renderAssetThumbs();
+    });
+  });
+}
+
+/** Live VN Open card / New asset sheet. */
+function openAssetSheet(item) {
+  state.assetEditId = item?.id || null;
+  state.assetPhotos = Array.isArray(item?.photos)
+    ? item.photos.map((p) => (typeof p === "string" ? { dataUrl: p } : { ...p }))
+    : [];
+  if ($("assetSheetTitle")) {
+    $("assetSheetTitle").textContent = item?.id ? "// EDIT ASSET" : "// NEW ASSET";
+  }
+  if ($("assetTitle")) $("assetTitle").value = item?.title || "";
+  if ($("assetCategory")) $("assetCategory").value = item?.category || "other";
+  if ($("assetCondition")) $("assetCondition").value = item?.condition || "raw";
+  if ($("assetMarket")) $("assetMarket").value = String(item?.marketValue ?? item?.market_value ?? 0);
+  if ($("assetPurchase")) $("assetPurchase").value = String(item?.purchasePrice ?? item?.purchase_price ?? 0);
+  if ($("assetQty")) $("assetQty").value = String(item?.quantity ?? 1);
+  if ($("assetSku")) $("assetSku").value = item?.sku || item?.barcode || "";
+  let phase = item?.listingStatus || item?.listing_status || "sorted";
+  if (!item?.listingStatus && item?.staged) phase = "ready_to_list";
+  if ($("assetPhase")) $("assetPhase").value = phase;
+  if ($("assetChannel")) $("assetChannel").value = item?.liveChannel || item?.live_channel || "";
+  if ($("assetGrade")) $("assetGrade").value = item?.grade || "";
+  if ($("assetGrader")) $("assetGrader").value = item?.gradingCompany || item?.grading_company || "";
+  if ($("assetDesc")) $("assetDesc").value = item?.description || "";
+  if ($("assetNotes")) $("assetNotes").value = item?.notes || "";
+  fillAssetSpaceOptions(item?.spaceId || item?.storage_location_id || "");
+  if ($("assetSheetStatus")) $("assetSheetStatus").textContent = "";
+  renderAssetThumbs();
+  $("assetSheet")?.classList.remove("hidden");
+  $("assetTitle")?.focus();
+}
+
+function closeAssetSheet() {
+  state.assetEditId = null;
+  state.assetPhotos = [];
+  $("assetSheet")?.classList.add("hidden");
+}
+
+function saveAssetSheet() {
+  const title = ($("assetTitle")?.value || "").trim();
+  if (!title) {
+    if ($("assetSheetStatus")) $("assetSheetStatus").textContent = "Title is required.";
+    return;
+  }
+  const phase = $("assetPhase")?.value || "sorted";
+  const qty = Number($("assetQty")?.value || 1) || 1;
+  const marketValue = Number($("assetMarket")?.value || 0) || 0;
+  const purchasePrice = Number($("assetPurchase")?.value || 0) || 0;
+  const sku = ($("assetSku")?.value || "").trim();
+  const payload = {
+    title,
+    category: $("assetCategory")?.value || "other",
+    condition: $("assetCondition")?.value || "raw",
+    marketValue,
+    purchasePrice,
+    quantity: qty,
+    sku,
+    barcode: sku,
+    listingStatus: phase,
+    staged: phase === "ready_to_list" || phase === "listed",
+    liveChannel: $("assetChannel")?.value || "",
+    grade: ($("assetGrade")?.value || "").trim(),
+    gradingCompany: $("assetGrader")?.value || "",
+    spaceId: $("assetSpace")?.value || "",
+    description: $("assetDesc")?.value || "",
+    notes: $("assetNotes")?.value || "",
+    photos: state.assetPhotos.slice(),
+    updatedAt: new Date().toISOString(),
+  };
+  if (state.assetEditId) {
+    const it = state.items.find((x) => x.id === state.assetEditId);
+    if (!it) return;
+    Object.assign(it, payload);
+  } else {
+    state.items.unshift({
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      game: "PKM",
+      ...payload,
+    });
+  }
+  saveItems();
+  closeAssetSheet();
+  renderCollection();
+  renderIntakeList();
+  updateSitrep();
+  if (state.lockedItemId) openScouterReadout(state.lockedItemId);
+}
+
+async function addAssetImageFiles(fileList) {
+  const files = [...(fileList || [])];
+  for (const file of files) {
+    if (!file.type?.startsWith("image/")) continue;
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+    if (dataUrl) state.assetPhotos.push({ dataUrl, name: file.name });
+  }
+  renderAssetThumbs();
 }
 
 function renderPhotos() {
@@ -1580,8 +1719,30 @@ function bind() {
     renderCollection();
     updateSitrep();
   });
+  $("btnOpenCard")?.addEventListener("click", () => {
+    const it = state.items.find((x) => x.id === state.lockedItemId);
+    if (!it) return;
+    openAssetSheet(it);
+  });
+  $("btnNewCard")?.addEventListener("click", () => {
+    navigate("/inventory?add=1");
+  });
+  $("btnAssetClose")?.addEventListener("click", () => closeAssetSheet());
+  $("btnAssetCancel")?.addEventListener("click", () => closeAssetSheet());
+  $("btnAssetSave")?.addEventListener("click", () => saveAssetSheet());
+  $("btnAssetAddImages")?.addEventListener("click", () => $("assetImages")?.click());
+  $("assetImages")?.addEventListener("change", async (e) => {
+    await addAssetImageFiles(e.target.files);
+    e.target.value = "";
+  });
+  $("assetSheet")?.addEventListener("click", (e) => {
+    if (e.target === $("assetSheet")) closeAssetSheet();
+  });
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeScouterReadout();
+    if (e.key === "Escape") {
+      if (!$("assetSheet")?.classList.contains("hidden")) closeAssetSheet();
+      else closeScouterReadout();
+    }
   });
   $("btnNewBatch")?.addEventListener("click", () => openNewBatch());
   $("btnCancelBatch")?.addEventListener("click", () => {

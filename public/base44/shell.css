@@ -406,6 +406,38 @@ body.b44 {
   line-height: 1.45;
 }
 
+.b44-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.b44-modal.hidden {
+  display: none;
+}
+
+.b44-modal-panel {
+  width: 600px;
+  max-width: 100%;
+  margin: 32px 0;
+  padding: 20px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.b44-input,
+select.b44-input,
+textarea.b44-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* Class aliases used by index.html */
 .b44-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .b44-filter { position: relative; flex: 1; min-width: 0; }
