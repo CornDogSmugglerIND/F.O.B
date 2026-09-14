@@ -65,6 +65,7 @@ const state = {
   editingTemplateId: null,
   showShipForm: false,
   editingShipId: null,
+  showStorageForm: false,
   assetEditId: null,
   assetPhotos: [],
   itemPageId: null,
@@ -3230,6 +3231,36 @@ function resetShipForm() {
   $("shipForm")?.classList.add("hidden");
 }
 
+function resetStorageDefForm() {
+  if ($("storageDefName")) $("storageDefName").value = "";
+  if ($("storageDefCode")) $("storageDefCode").value = "";
+  if ($("storageDefDesc")) $("storageDefDesc").value = "";
+  state.showStorageForm = false;
+  $("storageDefForm")?.classList.add("hidden");
+}
+
+function storageDefItemCount(def) {
+  const code = (def.code || def.location_code || "").trim();
+  const name = (def.name || "").trim();
+  const spaceIds = new Set(
+    state.spaces
+      .filter(
+        (s) =>
+          (code && (s.code || "") === code) ||
+          (name && (s.name || "") === name) ||
+          s.storageDefId === def.id,
+      )
+      .map((s) => s.id),
+  );
+  return state.items.filter(
+    (it) =>
+      it.storageDefId === def.id ||
+      it.storageLocationId === def.id ||
+      (it.spaceId && spaceIds.has(it.spaceId)),
+  ).length;
+}
+
+
 function templateCardHtml(t) {
   const markup = t.markup_percent ?? t.markup ?? 0;
   const chip = t.is_default
@@ -3457,16 +3488,45 @@ function renderSettings() {
       });
     });
   }
+  $("storageDefForm")?.classList.toggle("hidden", !state.showStorageForm);
   const dRoot = $("storageDefList");
   const dEmpty = $("storageDefEmpty");
   if (dRoot) {
-    dRoot.innerHTML = state.storageDefs
-      .map(
-        (d) =>
-          `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(d.name)}</strong><span>${esc(d.code || "")}</span></div><button type="button" class="m-btn" data-del-storage-def="${esc(d.id)}">×</button></div>`,
-      )
-      .join("");
-    if (dEmpty) dEmpty.classList.toggle("hidden", state.storageDefs.length > 0);
+    if (!state.storageDefs.length) {
+      dRoot.innerHTML = "";
+    } else {
+      dRoot.innerHTML = state.storageDefs
+        .map((d) => {
+          const code = d.code || d.location_code || "";
+          const desc = d.description || "";
+          const count = storageDefItemCount(d);
+          const codeChip = code
+            ? `<div class="v-label" style="display:inline-block;margin-top:6px;padding:2px 8px;border:1px solid rgba(255,255,255,0.12);font-size:11px">${esc(code)}</div>`
+            : "";
+          const descBit = desc
+            ? `<p class="b44-copy-soft" style="margin-top:8px;font-size:13px;line-height:1.4">${esc(desc)}</p>`
+            : "";
+          return `<div class="v-panel v-cut-sm p-4">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div class="v-label" style="font-size:9px">LOCATION</div>
+              <button type="button" class="m-btn" data-del-storage-def="${esc(d.id)}" title="Delete">×</button>
+            </div>
+            <div class="v-readout v-emit-white" style="font-size:15px;margin-top:8px">${esc(d.name)}</div>
+            ${codeChip}
+            ${descBit}
+            <div class="b44-copy-soft" style="margin-top:12px;font-size:13px">${pad2(count)} items</div>
+          </div>`;
+        })
+        .join("");
+      dRoot.style.display = "grid";
+      dRoot.style.gridTemplateColumns = "repeat(auto-fill,minmax(220px,1fr))";
+      dRoot.style.gap = "12px";
+    }
+    if (dEmpty) {
+      dEmpty.classList.toggle("hidden", state.storageDefs.length > 0);
+      dEmpty.textContent =
+        "No storage locations yet. Add warehouses, shelves, or totes to organize inventory.";
+    }
     dRoot.querySelectorAll("[data-del-storage-def]").forEach((btn) => {
       btn.addEventListener("click", () => {
         loadSettingsLocal();
@@ -4064,13 +4124,38 @@ function bind() {
     renderSettings();
   });
   $("btnNewStorageDef")?.addEventListener("click", () => {
-    const name = prompt("Location name", "Warehouse A");
-    if (!name?.trim()) return;
-    const code = prompt("Code", "WH-A") || "";
-    loadSettingsLocal();
-    state.storageDefs.unshift({ id: crypto.randomUUID(), name: name.trim(), code });
-    saveSettingsLocal();
+    state.showShipForm = false;
+    state.showTemplateForm = false;
+    state.showStorageForm = true;
+    if ($("storageDefName")) $("storageDefName").value = "";
+    if ($("storageDefCode")) $("storageDefCode").value = "";
+    if ($("storageDefDesc")) $("storageDefDesc").value = "";
     renderSettings();
+    $("storageDefName")?.focus();
+  });
+  $("btnStorageDefCancel")?.addEventListener("click", () => {
+    resetStorageDefForm();
+    renderSettings();
+  });
+  $("btnStorageDefSave")?.addEventListener("click", () => {
+    const name = ($("storageDefName")?.value || "").trim();
+    if (!name) return;
+    const code = ($("storageDefCode")?.value || "").trim();
+    const description = ($("storageDefDesc")?.value || "").trim();
+    loadSettingsLocal();
+    state.storageDefs.unshift({
+      id: crypto.randomUUID(),
+      name,
+      code,
+      location_code: code,
+      description,
+    });
+    saveSettingsLocal();
+    resetStorageDefForm();
+    renderSettings();
+  });
+  $("storageDefName")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("btnStorageDefSave")?.click();
   });
   $("btnEbayDiag")?.addEventListener("click", () => runEbayDiagnostic());
   $("btnCopyMcp")?.addEventListener("click", async () => {
