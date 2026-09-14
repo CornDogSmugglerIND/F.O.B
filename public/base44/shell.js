@@ -27,6 +27,7 @@ const state = {
   filterSpaces: "",
   spaceTrail: [],
   lockedItemId: null,
+  readoutStatus: "",
   shipments: [],
   ebayConnected: false,
   mcpClient: "claude",
@@ -375,24 +376,47 @@ function openScouterReadout(id) {
     closeScouterReadout();
     return;
   }
+  if (state.lockedItemId && state.lockedItemId !== it.id) state.readoutStatus = "";
   state.lockedItemId = it.id;
   panel.classList.remove("hidden");
   const step = itemPipeLabel(it);
+  const status = it.listingStatus || "";
   if ($("readoutLock")) $("readoutLock").textContent = `LOCKED · ${step.toUpperCase()}`;
   if ($("readoutTitle")) $("readoutTitle").textContent = it.title || "Untitled";
-  if ($("readoutPrice")) $("readoutPrice").textContent = money(it.marketValue);
+  if ($("readoutPrice")) $("readoutPrice").textContent = money(it.marketValue ?? it.price);
   if ($("readoutSku")) $("readoutSku").textContent = it.barcode || it.sku || "NO SKU";
-  if ($("readoutStatus")) $("readoutStatus").textContent = "";
-  if ($("btnAdvanceBuilt")) {
-    $("btnAdvanceBuilt").classList.toggle("hidden", step === "Listing Built" || step === "Listed");
+  if ($("readoutStatus")) $("readoutStatus").textContent = state.readoutStatus || "";
+
+  // Live Scouter locked readout (tle renderReadout): Write / Publish / Move / Manage.
+  const canWrite = !["ready_to_list", "listed", "sold", "error"].includes(status) && step !== "Listed" && step !== "Listing Built";
+  const canPublish = status === "ready_to_list" || step === "Listing Built";
+  const nextPhase = scouterNextPhase(it);
+  const canMove = !!nextPhase && status !== "ready_to_list" && step === "Intake";
+  const canManage = status === "listed" || step === "Listed";
+
+  $("btnWriteListing")?.classList.toggle("hidden", !canWrite);
+  $("btnPublishEbay")?.classList.toggle("hidden", !canPublish);
+  $("btnMovePhase")?.classList.toggle("hidden", !canMove);
+  $("btnManageChannel")?.classList.toggle("hidden", !canManage);
+  if ($("btnMovePhase") && nextPhase) {
+    $("btnMovePhase").textContent = `Move to ${nextPhase.label}`;
   }
-  if ($("btnWriteListing")) {
-    $("btnWriteListing").classList.toggle("hidden", step === "Listed");
+  if ($("btnPublishEbay")) {
+    $("btnPublishEbay").textContent = "Publish to eBay";
   }
+}
+
+/** Live Si next-phase for locked Scouter Move button. */
+function scouterNextPhase(it) {
+  const step = itemPipeLabel(it);
+  if (step === "Intake") return { key: "ready_to_list", label: "Listing Built" };
+  if (step === "Listing Built") return { key: "listed", label: "Listed" };
+  return null;
 }
 
 function closeScouterReadout() {
   state.lockedItemId = null;
+  state.readoutStatus = "";
   $("scouterReadout")?.classList.add("hidden");
 }
 
@@ -1515,18 +1539,46 @@ function bind() {
 
   $("btnCloseReadout")?.addEventListener("click", () => closeScouterReadout());
   $("btnWriteListing")?.addEventListener("click", () => {
-    if ($("readoutStatus")) {
-      $("readoutStatus").textContent =
-        "Listing engine isn't connected here yet — title/photos stay. Identify remains photo-first.";
-    }
+    state.readoutStatus =
+      "Listing engine isn't connected here yet — title/photos stay. Identify remains photo-first.";
+    if (state.lockedItemId) openScouterReadout(state.lockedItemId);
   });
-  $("btnAdvanceBuilt")?.addEventListener("click", () => {
+  $("btnMovePhase")?.addEventListener("click", () => {
     const it = state.items.find((x) => x.id === state.lockedItemId);
     if (!it) return;
-    it.staged = true;
+    const next = scouterNextPhase(it);
+    if (!next) return;
+    if (next.key === "ready_to_list") {
+      it.staged = true;
+      it.listingStatus = "ready_to_list";
+    } else if (next.key === "listed") {
+      it.listingStatus = "listed";
+    }
     it.updatedAt = new Date().toISOString();
     saveItems();
+    state.readoutStatus = `Moved to ${next.label}.`;
     openScouterReadout(it.id);
+    renderCollection();
+    updateSitrep();
+  });
+  $("btnPublishEbay")?.addEventListener("click", () => {
+    const it = state.items.find((x) => x.id === state.lockedItemId);
+    if (!it) return;
+    if (!state.ebayConnected) {
+      state.readoutStatus = "Connect eBay on Channel before publishing.";
+      openScouterReadout(it.id);
+      return;
+    }
+    // Honest local port: mark Listed locally; live publish needs server eBay creds.
+    it.staged = true;
+    it.listingStatus = "listed";
+    it.updatedAt = new Date().toISOString();
+    saveItems();
+    state.readoutStatus =
+      "Marked Listed locally. Live Publish to eBay needs server credentials.";
+    openScouterReadout(it.id);
+    renderCollection();
+    updateSitrep();
   });
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeScouterReadout();
