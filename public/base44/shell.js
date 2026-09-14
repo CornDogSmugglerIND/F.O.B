@@ -3929,6 +3929,304 @@ function runEbayDiagnostic() {
 }
 
 
+
+/* —— Live CR barcode scanner (Xre Scan BARCODE) —— */
+const crState = {
+  mode: "scan",
+  code: "",
+  draft: null,
+  meta: null,
+  added: 0,
+  lastTitle: "",
+  photoDataUrl: "",
+  busy: false,
+  scanner: null,
+  lastDecoded: "",
+};
+
+function crEmptyDraft() {
+  return { title: "", category: "other", imageUrl: "", notes: "", marketValue: 0 };
+}
+
+function crShowPane(mode) {
+  crState.mode = mode;
+  $("crScanPane")?.classList.toggle("hidden", mode !== "scan");
+  $("crLookingPane")?.classList.toggle("hidden", mode !== "looking");
+  $("crPreviewPane")?.classList.toggle("hidden", mode !== "preview");
+}
+
+function crSetCamMsg(msg) {
+  const el = $("crCamMsg");
+  if (!el) return;
+  if (!msg) {
+    el.classList.add("hidden");
+    el.textContent = "";
+    return;
+  }
+  el.textContent = msg;
+  el.classList.remove("hidden");
+}
+
+function crUpdateAddedBadge() {
+  const el = $("crAddedCount");
+  if (!el) return;
+  if (crState.added > 0) {
+    el.textContent = `${crState.added} added`;
+    el.classList.remove("hidden");
+  } else {
+    el.classList.add("hidden");
+  }
+  const last = $("crLastAdded");
+  if (last) {
+    if (crState.lastTitle) {
+      last.textContent = `Last added: ${crState.lastTitle}`;
+      last.classList.remove("hidden");
+    } else {
+      last.classList.add("hidden");
+    }
+  }
+}
+
+async function crStopScanner() {
+  const s = crState.scanner;
+  crState.scanner = null;
+  if (!s) return;
+  try {
+    await s.stop();
+  } catch (_) {}
+  try {
+    await s.clear();
+  } catch (_) {}
+}
+
+async function crStartScanner() {
+  await crStopScanner();
+  crSetCamMsg("");
+  const host = $("crScannerHost");
+  if (!host) return;
+  host.innerHTML = "";
+  if (!(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function")) {
+    crSetCamMsg("Camera isn't available in this browser. Enter the barcode manually below.");
+    return;
+  }
+  if (typeof Html5Qrcode === "undefined") {
+    crSetCamMsg("Barcode scanner library missing. Enter the barcode manually below.");
+    return;
+  }
+  const scanner = new Html5Qrcode("crScannerHost", { verbose: false });
+  crState.scanner = scanner;
+  const onDecode = (text) => {
+    const code = String(text || "").trim();
+    if (!code || crState.busy) return;
+    if (code === crState.lastDecoded) return;
+    crState.lastDecoded = code;
+    crLookup(code);
+  };
+  try {
+    await scanner.start(
+      { facingMode: "environment" },
+      { fps: 8, qrbox: { width: 240, height: 120 }, aspectRatio: 1.6 },
+      onDecode,
+      () => {},
+    );
+  } catch (err) {
+    const name = err?.name || "";
+    const msg = err?.message || "";
+    if (name === "NotAllowedError" || name === "SecurityError") {
+      crSetCamMsg("Camera permission was blocked. Allow camera access in your browser settings, or enter the barcode manually below.");
+    } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+      crSetCamMsg("No camera found on this device. Enter the barcode manually below.");
+    } else if (name === "NotReadableError" || name === "AbortError") {
+      crSetCamMsg("Camera is in use by another app. Close it and reopen the scanner, or enter the barcode manually.");
+    } else if (String(msg).includes("MediaStream")) {
+      crSetCamMsg("Camera couldn't start in this context. Try opening the app in a new tab, or enter the barcode manually.");
+    } else {
+      crSetCamMsg("Camera unavailable. Enter the barcode manually below.");
+    }
+  }
+}
+
+function crFillPreview(draft, meta, code) {
+  crState.draft = { ...crEmptyDraft(), ...draft };
+  crState.meta = meta || null;
+  crState.code = code;
+  crState.photoDataUrl = draft.imageUrl && String(draft.imageUrl).startsWith("data:") ? draft.imageUrl : "";
+  if ($("crTitle")) $("crTitle").value = crState.draft.title || "";
+  if ($("crCategory")) $("crCategory").value = crState.draft.category || "other";
+  if ($("crMarket")) $("crMarket").value = String(crState.draft.marketValue || 0);
+  if ($("crNotes")) $("crNotes").value = crState.draft.notes || "";
+  if ($("crPreviewBarcode")) $("crPreviewBarcode").textContent = code ? `Barcode ${code}` : "";
+  if ($("crPreviewBrand")) $("crPreviewBrand").textContent = meta?.brand || "";
+  if ($("crPreviewConfidence")) {
+    const c = meta?.confidence;
+    $("crPreviewConfidence").textContent =
+      typeof c === "number" && c > 0 ? `Confidence ${Math.round(c * 100)}%` : "";
+  }
+  const thumb = $("crPreviewThumb");
+  const noImg = $("crPreviewNoImg");
+  const url = crState.draft.imageUrl || "";
+  if (thumb && noImg) {
+    if (url) {
+      thumb.src = url;
+      thumb.classList.remove("hidden");
+      noImg.classList.add("hidden");
+    } else {
+      thumb.removeAttribute("src");
+      thumb.classList.add("hidden");
+      noImg.classList.remove("hidden");
+    }
+  }
+  crSyncItemPhoto();
+}
+
+function crSyncItemPhoto() {
+  const img = $("crItemPhoto");
+  const empty = $("crItemPhotoEmpty");
+  const remove = $("btnCrRemovePhoto");
+  const src = crState.photoDataUrl || crState.draft?.imageUrl || "";
+  if (img && empty) {
+    if (src) {
+      img.src = src;
+      img.classList.remove("hidden");
+      empty.classList.add("hidden");
+    } else {
+      img.removeAttribute("src");
+      img.classList.add("hidden");
+      empty.classList.remove("hidden");
+    }
+  }
+  remove?.classList.toggle("hidden", !src);
+  if ($("btnCrAddPhoto")) $("btnCrAddPhoto").textContent = src ? "Replace" : "Add Photo";
+}
+
+function crReadDraftFromForm() {
+  return {
+    title: ($("crTitle")?.value || "").trim(),
+    category: $("crCategory")?.value || "other",
+    notes: ($("crNotes")?.value || "").trim(),
+    marketValue: Number($("crMarket")?.value || 0) || 0,
+    imageUrl: crState.photoDataUrl || crState.draft?.imageUrl || "",
+  };
+}
+
+async function crLookup(code) {
+  const trimmed = String(code || "").trim();
+  if (!trimmed || crState.busy) return;
+  crState.busy = true;
+  crState.code = trimmed;
+  if ($("crLookingCode")) $("crLookingCode").textContent = trimmed;
+  crShowPane("looking");
+  await crStopScanner();
+  try {
+    const res = await fetch(`/api/scouter/barcode/${encodeURIComponent(trimmed)}`);
+    const result = await res.json();
+    const product = result.product || null;
+    const found = !!(result.found && product?.title);
+    const draft = {
+      title: found ? product.title : `Unknown Product (${trimmed})`,
+      category: "other",
+      imageUrl: product?.imageUrl || product?.image_url || "",
+      notes: found ? product.description || "" : "",
+      marketValue: Number(product?.marketValue || product?.market_value || 0) || 0,
+    };
+    const meta = {
+      brand: product?.brand || "",
+      confidence: found ? 0.85 : 0,
+    };
+    const auto = !!$("crAutoAdd")?.checked;
+    if (auto) {
+      await crAddItem(draft, trimmed);
+      crShowPane("scan");
+      crState.lastDecoded = "";
+      await crStartScanner();
+    } else {
+      crFillPreview(draft, meta, trimmed);
+      crShowPane("preview");
+    }
+  } catch (e) {
+    setScouterStatus(`Product lookup failed: ${e.message || e}`);
+    crShowPane("scan");
+    crState.lastDecoded = "";
+    await crStartScanner();
+  } finally {
+    crState.busy = false;
+  }
+}
+
+async function crAddItem(draft, code) {
+  const d = draft || crReadDraftFromForm();
+  const title = (d.title || "").trim();
+  if (!title) {
+    setScouterStatus("Title is required.");
+    return false;
+  }
+  const image = d.imageUrl || crState.photoDataUrl || "";
+  const photos = image ? [{ dataUrl: image, name: "barcode" }] : [];
+  const item = {
+    id: crypto.randomUUID(),
+    title,
+    category: d.category || "other",
+    condition: "nm",
+    listingStatus: "sorted",
+    staged: false,
+    photos,
+    quantity: 1,
+    marketValue: Number(d.marketValue) || 0,
+    purchasePrice: 0,
+    language: "English",
+    game: "PKM",
+    barcode: code || crState.code || null,
+    sku: code || crState.code || null,
+    notes: d.notes || "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  state.items.unshift(item);
+  saveItems();
+  crState.added += 1;
+  crState.lastTitle = title;
+  crUpdateAddedBadge();
+  setScouterStatus(`Added: ${title}`);
+  renderCollection();
+  renderIntakeList();
+  updateSitrep();
+  return true;
+}
+
+async function openBarcodeSheet() {
+  crState.mode = "scan";
+  crState.code = "";
+  crState.draft = crEmptyDraft();
+  crState.meta = null;
+  crState.busy = false;
+  crState.lastDecoded = "";
+  crState.photoDataUrl = "";
+  if ($("crManualCode")) $("crManualCode").value = "";
+  if ($("crAutoAdd")) $("crAutoAdd").checked = false;
+  crUpdateAddedBadge();
+  crShowPane("scan");
+  $("barcodeSheet")?.classList.remove("hidden");
+  setTimeout(() => crStartScanner(), 300);
+}
+
+async function closeBarcodeSheet() {
+  await crStopScanner();
+  $("barcodeSheet")?.classList.add("hidden");
+  crShowPane("scan");
+}
+
+async function crRescan() {
+  crState.draft = crEmptyDraft();
+  crState.meta = null;
+  crState.code = "";
+  crState.photoDataUrl = "";
+  crState.lastDecoded = "";
+  if ($("crManualCode")) $("crManualCode").value = "";
+  crShowPane("scan");
+  await crStartScanner();
+}
+
+
 function bind() {
   document.querySelectorAll(".b44-tab").forEach((tab) => {
     tab.addEventListener("click", () => navigate(tab.dataset.route));
@@ -3945,7 +4243,59 @@ function bind() {
   });
 
 
+
   $("btnScoutPipeline")?.addEventListener("click", () => setScouterMode("pipeline"));
+  $("btnScouterManual")?.addEventListener("click", () => openAssetSheet(null));
+  $("btnScouterScan")?.addEventListener("click", () => openBarcodeSheet());
+  $("btnBarcodeClose")?.addEventListener("click", () => closeBarcodeSheet());
+  $("barcodeSheet")?.addEventListener("click", (e) => {
+    if (e.target === $("barcodeSheet")) closeBarcodeSheet();
+  });
+  $("crManualForm")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const code = ($("crManualCode")?.value || "").trim();
+    if (code) crLookup(code);
+  });
+  $("btnCrRescan")?.addEventListener("click", () => crRescan());
+  $("btnCrDone")?.addEventListener("click", () => closeBarcodeSheet());
+  $("btnCrAddItem")?.addEventListener("click", async () => {
+    const ok = await crAddItem(null, crState.code);
+    if (ok) await crRescan();
+  });
+  $("btnCrAddPhoto")?.addEventListener("click", () => $("crPhotoInput")?.click());
+  $("btnCrRemovePhoto")?.addEventListener("click", () => {
+    crState.photoDataUrl = "";
+    if (crState.draft) crState.draft.imageUrl = "";
+    crSyncItemPhoto();
+    const thumb = $("crPreviewThumb");
+    const noImg = $("crPreviewNoImg");
+    if (thumb && noImg) {
+      thumb.removeAttribute("src");
+      thumb.classList.add("hidden");
+      noImg.classList.remove("hidden");
+    }
+  });
+  $("crPhotoInput")?.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      crState.photoDataUrl = dataUrl;
+      if (crState.draft) crState.draft.imageUrl = dataUrl;
+      crSyncItemPhoto();
+      const thumb = $("crPreviewThumb");
+      const noImg = $("crPreviewNoImg");
+      if (thumb && noImg && dataUrl) {
+        thumb.src = dataUrl;
+        thumb.classList.remove("hidden");
+        noImg.classList.add("hidden");
+      }
+    } catch (_) {
+      setScouterStatus("Image upload failed");
+    }
+  });
+
   $("btnScoutSpaces")?.addEventListener("click", () => setScouterMode("spaces"));
   $("btnScouterExport")?.addEventListener("click", () => exportScouterCsv());
   $("scouterPhotoInput")?.addEventListener("change", async (e) => {

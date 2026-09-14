@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=18" />
+  <link rel="stylesheet" href="/base44/shell.css?v=19" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -68,13 +68,23 @@
         <div class="b44-glass" id="scouterGlass">
           <div class="v-panel v-cut-sm px-4 py-3" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
             <div>
-              <div class="v-label" style="font-size:8px">On Scouter</div>
+              <div class="v-label" style="font-size:8px">ON SCOUTER</div>
               <div class="v-readout v-emit-gold" id="scouterCount" style="font-size:18px">00</div>
             </div>
             <div class="b44-mode-toggle" style="margin-left:auto" role="tablist" aria-label="Scouter mode">
               <button type="button" class="m-btn m-btn-primary" id="btnScoutPipeline" data-scout-mode="pipeline">Pipeline</button>
               <button type="button" class="m-btn" id="btnScoutSpaces" data-scout-mode="spaces">Spaces</button>
             </div>
+          </div>
+          <div class="b44-scout-actions" aria-label="Scouter intake">
+            <label class="b44-scout-tile b44-scout-tile-primary" for="scouterPhotoInput">
+              <span class="b44-scout-tile-label">Photo</span>
+              <span class="b44-scout-tile-sub">SNAP</span>
+            </label>
+            <button type="button" class="b44-scout-tile" id="btnScouterScan">
+              <span class="b44-scout-tile-label">Scan</span>
+              <span class="b44-scout-tile-sub">BARCODE</span>
+            </button>
           </div>
           <div class="v-panel v-cut-sm px-4 py-3" style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap" id="scouterPipe">
             <div data-pipe-stat>
@@ -98,7 +108,7 @@
               <div class="v-readout" style="font-size:16px;color:#c9d8e2" id="scoutOnMap">00</div>
             </div>
             <div style="margin-left:auto;text-align:right">
-              <div class="v-label" style="font-size:8px">Scouter value</div>
+              <div class="v-label" style="font-size:8px">VALUE</div>
               <div class="v-readout v-emit-gold" style="font-size:16px" id="scouterValue">$0.00</div>
             </div>
           </div>
@@ -118,7 +128,10 @@
               <a class="m-btn m-btn-primary" href="#/scan-intake">New batch</a>
             </div>
           </div>
-          <input type="file" id="scouterPhotoInput" accept="image/jpeg,image/png,image/webp,image/*" multiple hidden />
+          <div class="b44-scout-manual">
+            <button type="button" class="m-btn" id="btnScouterManual">+ Manual entry</button>
+          </div>
+          <input type="file" id="scouterPhotoInput" accept="image/jpeg,image/png,image/webp,image/*" multiple capture="environment" hidden />
           <div id="scouterReadout" class="b44-readout-panel hidden">
             <div class="v-panel v-cut p-4">
               <div class="b44-toolbar" style="justify-content:space-between;margin-bottom:8px">
@@ -1166,7 +1179,113 @@
     </div>
   </div>
 
+
+  <!-- Live CR — Barcode Scanner -->
+  <div id="barcodeSheet" class="b44-modal hidden" role="dialog" aria-modal="true" aria-labelledby="barcodeSheetTitle">
+    <div class="v-panel v-cut b44-modal-panel b44-cr-panel">
+      <button type="button" class="b44-modal-x" id="btnBarcodeClose" aria-label="Close">×</button>
+      <div class="v-readout v-emit-white" style="font-size:18px;font-weight:300" id="barcodeSheetTitle">Barcode Scanner</div>
+      <p class="b44-copy-soft" style="margin-top:6px;font-size:12px">Scan a product barcode to auto-fill title, category, image, and a market-value estimate.</p>
+
+      <div id="crScanPane" class="b44-cr-pane">
+        <div class="b44-cr-viewport" id="crViewport">
+          <div id="crScannerHost" class="b44-cr-scanner-host"></div>
+          <div class="b44-cr-overlay" aria-hidden="true">
+            <span class="b44-cr-corner b44-cr-tl"></span>
+            <span class="b44-cr-corner b44-cr-tr"></span>
+            <span class="b44-cr-corner b44-cr-bl"></span>
+            <span class="b44-cr-corner b44-cr-br"></span>
+            <div class="b44-cr-frame"></div>
+            <div class="b44-cr-sweep"></div>
+          </div>
+          <div class="b44-cr-cam-msg hidden" id="crCamMsg"></div>
+          <div class="b44-cr-cam-footer">
+            <span class="b44-cr-pill">Point at barcode</span>
+            <span class="b44-cr-pill b44-cr-pill-brand hidden" id="crAddedCount"></span>
+          </div>
+        </div>
+        <label class="b44-cr-auto">
+          <input type="checkbox" id="crAutoAdd" />
+          Auto-add each scan without preview (rapid mode)
+        </label>
+        <form id="crManualForm" class="b44-cr-manual-row">
+          <input id="crManualCode" class="b44-input" type="text" inputmode="numeric" placeholder="Type barcode / EAN / UPC…" autocomplete="off" />
+          <button type="submit" class="m-btn m-btn-primary" id="btnCrLookup">Look up</button>
+        </form>
+        <p class="b44-copy-soft b44-cr-last hidden" id="crLastAdded"></p>
+      </div>
+
+      <div id="crLookingPane" class="b44-cr-pane hidden">
+        <div class="b44-cr-looking">
+          <div class="b44-cr-spin" aria-hidden="true"></div>
+          <p class="b44-copy-soft" style="font-size:14px">Looking up <span class="b44-cr-mono" id="crLookingCode"></span>…</p>
+        </div>
+      </div>
+
+      <div id="crPreviewPane" class="b44-cr-pane hidden">
+        <div class="b44-cr-preview-head">
+          <div class="b44-cr-thumb" id="crPreviewThumbWrap">
+            <img id="crPreviewThumb" alt="" class="hidden" referrerpolicy="no-referrer" />
+            <span id="crPreviewNoImg">no img</span>
+          </div>
+          <div class="b44-cr-preview-meta">
+            <p class="b44-cr-mono" id="crPreviewBarcode"></p>
+            <p class="b44-copy-soft" style="font-size:11px;margin-top:2px" id="crPreviewBrand"></p>
+            <p class="b44-copy-soft" style="font-size:11px;margin-top:2px;opacity:0.7" id="crPreviewConfidence"></p>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label class="v-label" style="display:block;margin-bottom:6px;font-size:9.5px">Title</label>
+          <input id="crTitle" class="b44-input" type="text" autocomplete="off" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+          <div>
+            <label class="v-label" style="display:block;margin-bottom:6px;font-size:9.5px">Category</label>
+            <select id="crCategory" class="b44-input">
+              <option value="pokemon_sealed">Pokemon Sealed</option>
+              <option value="graded_slabs">Graded Slabs</option>
+              <option value="raw_cards">Raw Cards</option>
+              <option value="sports_cards">Sports Cards</option>
+              <option value="other" selected>Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="v-label" style="display:block;margin-bottom:6px;font-size:9.5px">Market value ($)</label>
+            <input id="crMarket" class="b44-input" type="number" min="0" value="0" />
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label class="v-label" style="display:block;margin-bottom:6px;font-size:9.5px">Description / notes</label>
+          <textarea id="crNotes" class="b44-input" rows="2" style="min-height:56px;resize:none"></textarea>
+        </div>
+        <div style="margin-top:12px">
+          <label class="v-label" style="display:block;margin-bottom:6px;font-size:9.5px">Item Photo</label>
+          <div class="b44-cr-photo-row">
+            <div class="b44-cr-thumb b44-cr-thumb-sm" id="crItemPhotoWrap">
+              <img id="crItemPhoto" alt="" class="hidden" />
+              <span id="crItemPhotoEmpty" aria-hidden="true">◇</span>
+            </div>
+            <div class="b44-actions" style="gap:8px">
+              <button type="button" class="m-btn" id="btnCrAddPhoto">Add Photo</button>
+              <button type="button" class="m-btn hidden" id="btnCrRemovePhoto">Remove</button>
+            </div>
+            <input type="file" id="crPhotoInput" accept="image/*" capture="environment" hidden />
+          </div>
+        </div>
+        <div class="b44-cr-preview-actions">
+          <button type="button" class="m-btn" id="btnCrRescan">Rescan</button>
+          <div class="b44-actions" style="gap:8px">
+            <button type="button" class="m-btn" id="btnCrDone">Done</button>
+            <button type="button" class="m-btn m-btn-primary" id="btnCrAddItem">Add item</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="/lib/image.js?v=24"></script>
-  <script src="/base44/shell.js?v=18"></script>
+  <script src="/lib/html5-qrcode.min.js"></script>
+  <script src="/base44/shell.js?v=19"></script>
+
 </body>
 </html>
