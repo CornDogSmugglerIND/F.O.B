@@ -62,6 +62,12 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /Start intake/);
     assert.match(html, /Scouter empty/);
     assert.match(html, /v-panel/);
+    assert.match(html, /SITREP/);
+    assert.match(html, /All clear/);
+    assert.match(html, /Empty location/);
+    assert.match(html, /Channel empty/);
+    assert.match(html, /LIVE LISTINGS/);
+    assert.match(html, /FULFILMENT/);
     assert.match(html, /m-btn-primary/);
     assert.doesNotMatch(html, /Add to rail/);
     assert.doesNotMatch(html, />Rail</);

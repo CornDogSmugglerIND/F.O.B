@@ -12,6 +12,7 @@ const ROUTES = {
 const state = {
   route: "/scan-intake",
   items: [],
+  spaces: [],
   draftPhotos: [],
   title: "",
   barcode: "",
@@ -23,7 +24,11 @@ const state = {
   intakeMode: "list", // list | batch | identifying
   filterIntake: "",
   filterScouter: "",
+  filterSpaces: "",
+  channelTab: "live",
 };
+
+const SPACES_KEY = "scouter-spaces-v1";
 
 const $ = (id) => document.getElementById(id);
 
@@ -52,8 +57,26 @@ function loadItems() {
   if ($("statCount")) $("statCount").textContent = n;
   if ($("scouterCount")) $("scouterCount").textContent = n;
   if ($("intakeValue")) $("intakeValue").textContent = n;
+  if ($("cmdScouterCount")) $("cmdScouterCount").textContent = n;
+  if ($("cmdToList")) $("cmdToList").textContent = n;
+  if ($("pipeIntake")) $("pipeIntake").textContent = n;
+  if ($("pipeReady")) $("pipeReady").textContent = "00";
+  if ($("pipeListed")) $("pipeListed").textContent = "00";
+  updateSitrep();
   renderCollection();
   renderIntakeList();
+  renderSpaces();
+  renderChannel();
+}
+
+function updateSitrep() {
+  const waiting = state.items.length;
+  if ($("sitrepTitle")) $("sitrepTitle").textContent = waiting ? "To list" : "All clear";
+  if ($("sitrepHint")) {
+    $("sitrepHint").textContent = waiting
+      ? `${waiting} item${waiting === 1 ? "" : "s"} waiting on you`
+      : "Nothing is blocked, errored, or sitting untouched.";
+  }
 }
 
 function saveItems() {
@@ -312,6 +335,73 @@ function bindDropZone() {
   });
 }
 
+function loadSpaces() {
+  try {
+    const raw = localStorage.getItem(SPACES_KEY);
+    state.spaces = raw ? JSON.parse(raw) : [];
+  } catch {
+    state.spaces = [];
+  }
+}
+
+function saveSpaces() {
+  localStorage.setItem(SPACES_KEY, JSON.stringify(state.spaces));
+  renderSpaces();
+}
+
+function renderSpaces() {
+  loadSpaces();
+  const root = $("spaceList");
+  const empty = $("spaceEmpty");
+  if (!root) return;
+  const q = state.filterSpaces.trim().toLowerCase();
+  const rows = state.spaces.filter((s) => {
+    if (!q) return true;
+    return String(s.name || "")
+      .toLowerCase()
+      .includes(q);
+  });
+  if ($("spaceCount")) $("spaceCount").textContent = pad2(state.spaces.length);
+  if (empty) empty.classList.toggle("hidden", rows.length > 0);
+  root.innerHTML = rows
+    .map(
+      (s) =>
+        `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(s.name)}</strong><span>Warehouse · location</span></div><button type="button" class="m-btn" data-del-space="${esc(s.id)}">×</button></div>`,
+    )
+    .join("");
+  root.querySelectorAll("[data-del-space]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.spaces = state.spaces.filter((s) => s.id !== btn.dataset.delSpace);
+      saveSpaces();
+    });
+  });
+}
+
+function renderChannel() {
+  const live = $("channelLive");
+  const ship = $("channelShip");
+  if (live) live.classList.toggle("hidden", state.channelTab !== "live");
+  if (ship) ship.classList.toggle("hidden", state.channelTab !== "ship");
+  $("tabLive")?.classList.toggle("m-btn-primary", state.channelTab === "live");
+  $("tabShip")?.classList.toggle("m-btn-primary", state.channelTab === "ship");
+  const list = $("channelList");
+  const empty = $("channelEmpty");
+  if (!list) return;
+  // Local port: staged items show as intake pipeline; no live channel sync yet
+  const rows = state.items.slice(0, 40);
+  if (empty) empty.classList.toggle("hidden", rows.length > 0 && state.channelTab === "live");
+  if (state.channelTab !== "live") {
+    list.innerHTML = "";
+    return;
+  }
+  list.innerHTML = rows
+    .map((it) => {
+      const status = it.staged ? "Intake" : "Open";
+      return `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${status} · not published</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
+    })
+    .join("");
+}
+
 function bind() {
   document.querySelectorAll(".b44-tab").forEach((tab) => {
     tab.addEventListener("click", () => navigate(tab.dataset.route));
@@ -377,6 +467,34 @@ function bind() {
   });
 
   bindDropZone();
+
+  $("btnAddSpace")?.addEventListener("click", () => {
+    const name = prompt("Location name (bin, shelf, or tote)");
+    if (!name?.trim()) return;
+    loadSpaces();
+    state.spaces.unshift({
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      createdAt: new Date().toISOString(),
+    });
+    saveSpaces();
+  });
+  $("spaceFilter")?.addEventListener("input", (e) => {
+    state.filterSpaces = e.target.value;
+    renderSpaces();
+  });
+  $("tabLive")?.addEventListener("click", () => {
+    state.channelTab = "live";
+    renderChannel();
+  });
+  $("tabShip")?.addEventListener("click", () => {
+    state.channelTab = "ship";
+    renderChannel();
+  });
+  $("btnChannelSync")?.addEventListener("click", () => {
+    setStatus("Channel sync needs eBay connected in Settings.");
+    alert("eBay isn't connected — publishing and sync are offline. Connect it in Settings.");
+  });
 
   $("btnExport")?.addEventListener("click", () => {
     const blob = new Blob([JSON.stringify({ items: state.items }, null, 2)], {

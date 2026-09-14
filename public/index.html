@@ -27,10 +27,26 @@
     <main class="b44-main">
       <!-- Routes match live Base44 FX/jX exactly -->
       <section class="b44-view" id="view-command" data-route="/">
-        <div class="v-panel v-cut p-4">
-          <div class="v-label" style="font-size:10px">Command Core</div>
-          <div class="v-readout v-emit-white" style="font-size:22px;margin-top:8px">COMMAND</div>
-          <p class="b44-copy-soft" style="margin-top:10px">Desktop overview. Phone work starts on Intake.</p>
+        <div class="b44-glass">
+          <div class="v-panel v-cut p-4" style="margin-bottom:12px">
+            <div class="v-label" style="font-size:9px">SITREP</div>
+            <div class="v-readout v-emit-white" style="font-size:22px;margin-top:8px" id="sitrepTitle">All clear</div>
+            <p class="b44-copy-soft" style="margin-top:8px" id="sitrepHint">Nothing is blocked, errored, or sitting untouched.</p>
+          </div>
+          <div class="b44-toolbar" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+            <div class="v-panel v-cut-sm px-4 py-3">
+              <div class="v-label" style="font-size:8px">On Scouter</div>
+              <div class="v-readout v-emit-gold" id="cmdScouterCount" style="font-size:20px">00</div>
+            </div>
+            <div class="v-panel v-cut-sm px-4 py-3">
+              <div class="v-label" style="font-size:8px">To list</div>
+              <div class="v-readout v-emit-gold" id="cmdToList" style="font-size:20px">00</div>
+            </div>
+          </div>
+          <div class="v-panel v-cut-sm p-4" style="margin-bottom:12px" id="ebayWarn">
+            <div class="v-label" style="font-size:9px;color:var(--b44-gold,#ffb43d)">Channel</div>
+            <p class="b44-copy-soft" style="margin-top:8px">eBay isn't connected — publishing and sync are offline. Connect it in Settings.</p>
+          </div>
           <div class="b44-actions">
             <a class="m-btn m-btn-primary" href="#/scan-intake">Open Intake</a>
             <a class="m-btn" href="#/inventory">Open Scouter</a>
@@ -65,20 +81,65 @@
       </section>
 
       <section class="b44-view" id="view-storage" data-route="/storage">
-        <div class="v-panel v-cut p-4">
-          <div class="v-label">Spaces</div>
-          <div class="v-readout v-emit-white" style="font-size:20px;margin-top:8px">STORAGE</div>
-          <p class="b44-copy-soft" style="margin-top:10px">Physical bins and totes — separate from the spine. Port of Base44 Spaces next.</p>
+        <div class="b44-glass">
+          <div class="v-panel v-cut-sm px-4 py-3" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div>
+              <div class="v-label" style="font-size:8px">Spaces</div>
+              <div class="v-readout v-emit-gold" id="spaceCount" style="font-size:18px">00</div>
+            </div>
+            <div class="v-label" style="margin-left:auto;font-size:9px">Warehouse</div>
+          </div>
+          <div class="b44-toolbar">
+            <div class="b44-filter">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
+              <input id="spaceFilter" type="search" placeholder="Filter spaces" autocomplete="off" />
+            </div>
+            <button type="button" class="m-btn m-btn-primary" id="btnAddSpace">Add location</button>
+          </div>
+          <div id="spaceList"></div>
+          <div id="spaceEmpty" class="v-panel v-cut b44-empty">
+            <div class="v-label">Empty location</div>
+            <p>Add a bin, shelf or tote to start mapping your shelves.</p>
+          </div>
         </div>
       </section>
 
       <section class="b44-view" id="view-channel" data-route="/channel">
-        <div class="v-panel v-cut p-4">
-          <div class="v-label">Channels</div>
-          <div class="v-readout v-emit-white" style="font-size:20px;margin-top:8px">CHANNEL</div>
-          <p class="b44-copy-soft" style="margin-top:10px">eBay / Double Holo / Shopify sync from Base44.</p>
-          <div class="b44-actions">
-            <a class="m-btn" href="/listing-copy.html">Listing Copy</a>
+        <div class="b44-glass">
+          <div class="b44-toolbar" style="margin-bottom:12px">
+            <button type="button" class="m-btn m-btn-primary" data-channel-tab="live" id="tabLive">LIVE LISTINGS</button>
+            <button type="button" class="m-btn" data-channel-tab="ship" id="tabShip">FULFILMENT</button>
+          </div>
+          <div id="channelLive">
+            <div class="v-panel v-cut-sm px-4 py-3" style="display:flex;gap:16px;margin-bottom:12px">
+              <div>
+                <div class="v-label" style="font-size:8px">Intake</div>
+                <div class="v-readout" style="font-size:16px;color:#c9d8e2" id="pipeIntake">00</div>
+              </div>
+              <div>
+                <div class="v-label" style="font-size:8px">Listing Built</div>
+                <div class="v-readout v-emit-gold" style="font-size:16px" id="pipeReady">00</div>
+              </div>
+              <div>
+                <div class="v-label" style="font-size:8px">Listed</div>
+                <div class="v-readout" style="font-size:16px;color:#5fe8d0" id="pipeListed">00</div>
+              </div>
+            </div>
+            <div id="channelList"></div>
+            <div id="channelEmpty" class="v-panel v-cut b44-empty">
+              <div class="v-label">Channel empty</div>
+              <p>Run a sync to pull your live listings.</p>
+            </div>
+            <div class="b44-actions" style="margin-top:12px">
+              <a class="m-btn" href="/listing-copy.html">Listing Copy</a>
+              <button type="button" class="m-btn m-btn-primary" id="btnChannelSync">Sync</button>
+            </div>
+          </div>
+          <div id="channelShip" class="hidden">
+            <div class="v-panel v-cut p-4">
+              <div class="v-label">Fulfilment</div>
+              <p class="b44-copy-soft" style="margin-top:10px">Ship queue from Base44 Channel · ship tab. Orders appear here after publish.</p>
+            </div>
           </div>
         </div>
       </section>
