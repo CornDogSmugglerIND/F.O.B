@@ -27,6 +27,8 @@ const state = {
   filterSpaces: "",
   spaceTrail: [],
   lockedItemId: null,
+  shipments: [],
+  ebayConnected: false,
   channelTab: "live",
   settingsTab: "templates",
   templates: [],
@@ -35,6 +37,18 @@ const state = {
 };
 
 const SPACES_KEY = "scouter-spaces-v1";
+const SHIPS_KEY = "scouter-shipments-v1";
+const EBAY_KEY = "scouter-ebay-connected-v1";
+
+/** Live fle/ld fulfilment stages (desktop Channel · FULFILMENT). */
+const SHIP_STAGES = [
+  { key: "ready_to_ship", n: 1, label: "Ready to ship", next: "dropped_off" },
+  { key: "dropped_off", n: 2, label: "Dropped at carrier", next: "in_transit" },
+  { key: "in_transit", n: 3, label: "Carrier scanned", next: "out_for_delivery" },
+  { key: "out_for_delivery", n: 4, label: "Out for delivery", next: "delivered" },
+  { key: "delivered", n: 5, label: "Delivered", next: null },
+];
+
 
 const $ = (id) => document.getElementById(id);
 
@@ -94,6 +108,7 @@ function loadItems() {
   updateSitrep();
   renderCollection();
   renderIntakeList();
+  loadShipments();
   renderSpaces();
   renderChannel();
 }
@@ -535,7 +550,35 @@ function spaceById(id) {
   return state.spaces.find((s) => s.id === id);
 }
 
+function loadShipments() {
+  try {
+    const raw = localStorage.getItem(SHIPS_KEY);
+    state.shipments = raw ? JSON.parse(raw) : [];
+  } catch {
+    state.shipments = [];
+  }
+  try {
+    state.ebayConnected = localStorage.getItem(EBAY_KEY) === "1";
+  } catch {
+    state.ebayConnected = false;
+  }
+}
+
+function saveShipments() {
+  localStorage.setItem(SHIPS_KEY, JSON.stringify(state.shipments));
+  renderChannel();
+}
+
+function shipStageLabel(key) {
+  return SHIP_STAGES.find((s) => s.key === key)?.label || key;
+}
+
+function nextShipStage(key) {
+  return SHIP_STAGES.find((s) => s.key === key)?.next || null;
+}
+
 function renderSpaces() {
+
   loadSpaces();
   const root = $("spaceList");
   const empty = $("spaceEmpty");
@@ -602,46 +645,174 @@ function renderSpaces() {
 }
 
 function renderChannel() {
+  loadShipments();
   const live = $("channelLive");
   const ship = $("channelShip");
   if (live) live.classList.toggle("hidden", state.channelTab !== "live");
   if (ship) ship.classList.toggle("hidden", state.channelTab !== "ship");
   $("tabLive")?.classList.toggle("m-btn-primary", state.channelTab === "live");
   $("tabShip")?.classList.toggle("m-btn-primary", state.channelTab === "ship");
-  const intake = state.items.filter((it) => !it.staged).length;
-  const ready = state.items.filter((it) => it.staged).length;
+
+  const intake = state.items.filter((it) => itemPipeLabel(it) === "Intake").length;
+  const ready = state.items.filter((it) => itemPipeLabel(it) === "Listing Built").length;
+  const listed = state.items.filter((it) => itemPipeLabel(it) === "Listed").length;
   if ($("pipeIntake")) $("pipeIntake").textContent = pad2(intake);
   if ($("pipeReady")) $("pipeReady").textContent = pad2(ready);
-  if ($("pipeListed")) $("pipeListed").textContent = "00";
+  if ($("pipeListed")) $("pipeListed").textContent = pad2(listed);
+
+  // Live nle: Connect alone when offline; Sync + Photos/Policies/Token when connected.
+  const connected = !!state.ebayConnected;
+  $("btnEbayConnect")?.classList.toggle("hidden", connected);
+  $("btnChannelSync")?.classList.toggle("hidden", !connected);
+  $("btnChannelPhotos")?.classList.toggle("hidden", !connected);
+  $("btnChannelToken")?.classList.toggle("hidden", !connected);
+  $("btnChannelPolicies")?.classList.toggle("hidden", !connected);
+  if ($("ebayConnectHint")) {
+    $("ebayConnectHint").textContent = connected
+      ? "eBay marked connected on this device. Sync/Photos/Token/Policies still need live credentials on the server."
+      : "eBay isn't connected — publishing and sync are offline. Connect it below.";
+  }
+  if ($("liveValue")) {
+    const liveVal = state.items
+      .filter((it) => itemPipeLabel(it) === "Listed")
+      .reduce((sum, it) => sum + (Number(it.marketValue ?? it.price) || 0) * (Number(it.quantity) || 1), 0);
+    $("liveValue").textContent = money(liveVal);
+  }
+
   const list = $("channelList");
   const empty = $("channelEmpty");
-  if (!list) return;
-  // Local port: intake pipeline rows until eBay sync exists
-  const rows = state.items.slice(0, 40);
-  if (empty) {
-    empty.classList.toggle("hidden", rows.length > 0 && state.channelTab === "live");
-    const p = empty.querySelector("p");
-    if (p) p.textContent = "Run a sync to pull your live listings.";
+  if (list) {
+    // Until real eBay sync exists, show local pipeline rows only when connected.
+    const rows = connected ? state.items.slice(0, 40) : [];
+    if (empty) {
+      empty.classList.toggle("hidden", !(state.channelTab === "live" && rows.length === 0));
+      const label = empty.querySelector(".v-label");
+      const p = empty.querySelector("p");
+      if (label) label.textContent = "Channel empty";
+      if (p) {
+        p.textContent = connected
+          ? "Run a sync to pull your live listings."
+          : "Connect eBay to see what's on the channel.";
+      }
+    }
+    if (state.channelTab === "live") {
+      list.innerHTML = rows
+        .map((it) => {
+          const status = itemPipeLabel(it);
+          const sku = it.barcode || it.sku || "NO SKU";
+          const price = Number(it.marketValue ?? it.price);
+          const priceBit = Number.isFinite(price) && price > 0 ? ` · $${price.toFixed(2)}` : "";
+          const thumb = it.photos?.[0]?.dataUrl || "";
+          const img = thumb
+            ? `<img src="${thumb}" alt="" />`
+            : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
+          return `<div class="v-panel v-cut-sm b44-item">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(status)} · ${esc(sku)}${priceBit} · not published</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
+        })
+        .join("");
+    } else {
+      list.innerHTML = "";
+    }
   }
-  if (state.channelTab !== "live") {
-    list.innerHTML = "";
-    return;
+
+  // Fulfilment stage counters + grouped rows (live fle/ld)
+  const counts = Object.fromEntries(SHIP_STAGES.map((s) => [s.key, 0]));
+  for (const sh of state.shipments) {
+    if (counts[sh.status] != null) counts[sh.status] += 1;
   }
-  list.innerHTML = rows
-    .map((it) => {
-      const status = it.staged ? "Listing Built" : "Intake";
-      const sku = it.barcode || it.sku || "NO SKU";
-      const price = Number(it.marketValue ?? it.price);
-      const priceBit = Number.isFinite(price) && price > 0 ? ` · $${price.toFixed(2)}` : "";
-      const thumb = it.photos?.[0]?.dataUrl || "";
-      const img = thumb
-        ? `<img src="${thumb}" alt="" />`
-        : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
-      return `<div class="v-panel v-cut-sm b44-item">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(status)} · ${esc(sku)}${priceBit} · not published</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
-    })
-    .join("");
+  if ($("fulReady")) $("fulReady").textContent = pad2(counts.ready_to_ship);
+  if ($("fulDropped")) $("fulDropped").textContent = pad2(counts.dropped_off);
+  if ($("fulTransit")) $("fulTransit").textContent = pad2(counts.in_transit);
+  if ($("fulOut")) $("fulOut").textContent = pad2(counts.out_for_delivery);
+  if ($("fulDelivered")) $("fulDelivered").textContent = pad2(counts.delivered);
+  const awaiting = state.shipments.filter((s) => s.status !== "delivered").length;
+  if ($("fulPayout")) $("fulPayout").textContent = pad2(awaiting);
+
+  const fulList = $("fulList");
+  const fulEmpty = $("fulEmpty");
+  if (fulList) {
+    if (fulEmpty) {
+      fulEmpty.classList.toggle("hidden", state.shipments.length > 0);
+      const p = fulEmpty.querySelector("p");
+      if (p) {
+        p.textContent =
+          "Packages appear here once an order is created from Listings or eBay Sync.";
+      }
+    }
+    const chunks = [];
+    for (const stage of SHIP_STAGES) {
+      const rows = state.shipments.filter((sh) => sh.status === stage.key);
+      if (!rows.length) continue;
+      chunks.push(
+        `<div class="v-label" style="font-size:9px;margin:12px 0 6px;color:var(--b44-gold,#ffb43d)">STEP ${stage.n} · ${esc(stage.label)} · ${pad2(rows.length)}</div>`,
+      );
+      for (const sh of rows) {
+        const next = nextShipStage(sh.status);
+        const price = Number(sh.salePrice);
+        const priceBit = Number.isFinite(price) && price > 0 ? money(price) : "—";
+        const carrier = sh.carrier || "NO CARRIER";
+        let advance;
+        if (sh.status === "delivered") {
+          const payout = sh.payoutReleaseAt
+            ? new Date(sh.payoutReleaseAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "2-digit",
+              })
+            : "—";
+          advance = `<span class="v-label">PAYOUT EST. ${esc(payout)}</span>`;
+        } else if (next) {
+          advance = `<button type="button" class="m-btn m-btn-primary" data-advance-ship="${esc(sh.id)}">Advance to ${esc(shipStageLabel(next))}</button>`;
+        } else {
+          advance = `<span class="v-label">Complete</span>`;
+        }
+        chunks.push(
+          `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(sh.title || "Untitled")}</strong><span>PACKAGE · ${esc(stage.label.toUpperCase())} · ${esc(priceBit)} · ${esc(carrier)}</span></div><div class="qty">${advance}</div></div>`,
+        );
+      }
+    }
+    fulList.innerHTML = chunks.join("");
+    fulList.querySelectorAll("[data-advance-ship]").forEach((btn) => {
+      btn.addEventListener("click", () => advanceShipment(btn.dataset.advanceShip));
+    });
+  }
 }
 
+function advanceShipment(id) {
+  loadShipments();
+  const sh = state.shipments.find((s) => s.id === id);
+  if (!sh) return;
+  const next = nextShipStage(sh.status);
+  if (!next) return;
+  sh.status = next;
+  sh.updatedAt = new Date().toISOString();
+  if (next === "dropped_off") sh.droppedOffAt = sh.updatedAt;
+  if (next === "delivered") {
+    sh.deliveredAt = sh.updatedAt;
+    const payout = new Date();
+    payout.setDate(payout.getDate() + 4);
+    sh.payoutReleaseAt = payout.toISOString();
+  }
+  saveShipments();
+  if ($("channelActionStatus")) {
+    $("channelActionStatus").textContent = `Advanced to ${shipStageLabel(next)}.`;
+  }
+}
+
+function addPackedOrder() {
+  const title = prompt("Order title", "Packed card lot");
+  if (!title?.trim()) return;
+  const sale = Number(prompt("Sale price ($)", "24.99") || 0);
+  loadShipments();
+  state.shipments.unshift({
+    id: crypto.randomUUID(),
+    title: title.trim(),
+    salePrice: sale,
+    status: "ready_to_ship",
+    createdAt: new Date().toISOString(),
+  });
+  saveShipments();
+  state.channelTab = "ship";
+  renderChannel();
+}
 
 const SETTINGS_KEY = "scouter-settings-v1";
 
@@ -887,10 +1058,51 @@ function bind() {
     }
   });
 
-  $("btnChannelSync")?.addEventListener("click", () => {
-    setStatus("Channel sync needs eBay connected in Settings.");
-    alert("eBay isn't connected — publishing and sync are offline. Connect it in Settings.");
+  const setChannelStatus = (msg) => {
+    if ($("channelActionStatus")) $("channelActionStatus").textContent = msg;
+    setStatus(msg);
+  };
+  $("btnEbayConnect")?.addEventListener("click", () => {
+    loadShipments();
+    if (state.ebayConnected) {
+      setChannelStatus("eBay already marked connected on this device.");
+      return;
+    }
+    // Local port: no OAuth consent URL yet — flag only, honest about server auth.
+    state.ebayConnected = true;
+    localStorage.setItem(EBAY_KEY, "1");
+    setChannelStatus("Marked connected locally. Live eBay OAuth still needs server credentials.");
+    renderChannel();
   });
+  $("btnChannelSync")?.addEventListener("click", () => {
+    if (!state.ebayConnected) {
+      setChannelStatus("Connect eBay before Sync.");
+      return;
+    }
+    setChannelStatus("Sync needs live eBay credentials on the server — nothing pulled.");
+  });
+  $("btnChannelPhotos")?.addEventListener("click", () => {
+    if (!state.ebayConnected) {
+      setChannelStatus("Connect eBay before Photos.");
+      return;
+    }
+    setChannelStatus("Photos sync needs live eBay credentials on the server.");
+  });
+  $("btnChannelToken")?.addEventListener("click", () => {
+    if (!state.ebayConnected) {
+      setChannelStatus("Connect eBay before Token refresh.");
+      return;
+    }
+    setChannelStatus("Token refresh needs live eBay credentials on the server.");
+  });
+  $("btnChannelPolicies")?.addEventListener("click", () => {
+    if (!state.ebayConnected) {
+      setChannelStatus("Connect eBay before Policies.");
+      return;
+    }
+    setChannelStatus("Policies load needs live eBay credentials on the server.");
+  });
+  $("btnAddShipment")?.addEventListener("click", () => addPackedOrder());
 
   $("btnExport")?.addEventListener("click", () => {
     const blob = new Blob([JSON.stringify({ items: state.items }, null, 2)], {
