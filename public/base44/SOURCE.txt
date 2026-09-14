@@ -9,3 +9,5 @@ Primary nav (from shipped JS):
   INTAKE → /scan-intake
   SETTINGS → /settings
 Do not invent alternate tab names.
+
+Port progress: Intake (Zle/Mle) + Scouter list (tle) shell wired to local identify/stage. Using shipped v-*/m-* classes from app.css.

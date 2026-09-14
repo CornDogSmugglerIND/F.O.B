@@ -56,8 +56,16 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /INTAKE|Intake/);
     assert.match(html, /SETTINGS|Settings/);
     assert.match(html, /scan-intake/);
+    assert.match(html, /Intake empty/);
+    assert.match(html, /New Scan Batch|New batch/);
+    assert.match(html, /Drop scans here/);
+    assert.match(html, /Start intake/);
+    assert.match(html, /Scouter empty/);
+    assert.match(html, /v-panel/);
+    assert.match(html, /m-btn-primary/);
     assert.doesNotMatch(html, /Add to rail/);
     assert.doesNotMatch(html, />Rail</);
+    assert.doesNotMatch(html, /Rail · Step/);
     assert.doesNotMatch(html, /camera-first|liveCam/);
   } finally {
     await close();
@@ -73,8 +81,11 @@ test("GET /hud.html serves Base44 port shell", async () => {
     assert.match(html, /Coalition HUD/);
     assert.match(html, /base44\/shell\.js/);
     assert.match(html, /scan-intake/);
+    assert.match(html, /Intake empty/);
+    assert.match(html, /Drop scans here/);
     assert.doesNotMatch(html, /Add to rail/);
     assert.doesNotMatch(html, />Rail</);
+    assert.doesNotMatch(html, /Rail · Step/);
   } finally {
     await close();
   }

@@ -1,4 +1,4 @@
-/** Base44 route shell — nav/routes from live silky-coalition-command-core JS. */
+/** Base44 route shell — nav/routes + Intake/Scouter shape from live silky JS. */
 const LS_KEY = "scouter-items-v1";
 const ROUTES = {
   "/": { id: "view-command", brand: "COMMAND" },
@@ -17,9 +17,23 @@ const state = {
   barcode: "",
   qty: 1,
   category: "other",
+  game: "ITM",
+  batchName: "",
+  backsIncluded: false,
+  intakeMode: "list", // list | batch | identifying
+  filterIntake: "",
+  filterScouter: "",
 };
 
 const $ = (id) => document.getElementById(id);
+
+function esc(s) {
+  return String(s || "").replace(/[<>&"']/g, "");
+}
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
 
 function loadItems() {
   try {
@@ -28,9 +42,11 @@ function loadItems() {
   } catch {
     state.items = [];
   }
-  const n = String(state.items.length).padStart(2, "0");
-  if ($("statCount")) $("statCount").textContent = n;
+  if ($("statCount")) $("statCount").textContent = pad2(state.items.length);
+  if ($("scouterCount")) $("scouterCount").textContent = pad2(state.items.length);
+  if ($("intakeValue")) $("intakeValue").textContent = pad2(state.items.length);
   renderCollection();
+  renderIntakeList();
 }
 
 function saveItems() {
@@ -52,19 +68,63 @@ function navigate(route) {
   if (location.hash !== `#${path}`) history.replaceState(null, "", `#${path}`);
 }
 
-function renderCollection() {
-  const root = $("collectionRoot");
-  if (!root) return;
-  if (!state.items.length) {
-    root.textContent = "No items yet. Use Intake to add photos and stage.";
-    return;
-  }
-  root.innerHTML = state.items
+function setIntakeMode(mode) {
+  state.intakeMode = mode;
+  $("intakeList")?.classList.toggle("hidden", mode !== "list");
+  $("intakeBatch")?.classList.toggle("hidden", mode !== "batch");
+  $("intakeIdentifying")?.classList.toggle("hidden", mode !== "identifying");
+}
+
+function renderIntakeList() {
+  const root = $("intakeBatches");
+  const empty = $("intakeEmpty");
+  if (!root || !empty) return;
+  const q = state.filterIntake.trim().toLowerCase();
+  const rows = state.items.filter((it) => {
+    if (!q) return true;
+    return String(it.title || "")
+      .toLowerCase()
+      .includes(q);
+  });
+  empty.classList.toggle("hidden", rows.length > 0);
+  root.innerHTML = rows
     .slice(0, 40)
     .map((it) => {
-      const title = (it.title || "Untitled").replace(/[<>&]/g, "");
+      const thumb = it.photos?.[0]?.dataUrl || "";
       const badge = it.staged ? "STAGED" : "OPEN";
-      return `<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><strong>${title}</strong> · ${badge} · ×${it.quantity || 1}</div>`;
+      const img = thumb
+        ? `<img src="${thumb}" alt="" />`
+        : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
+      return `<div class="v-panel v-cut-sm b44-item" data-id="${esc(it.id)}">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${badge} · ${esc(it.game || "ITM")}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
+    })
+    .join("");
+}
+
+function renderCollection() {
+  const root = $("collectionRoot");
+  const empty = $("scouterEmpty");
+  if (!root) return;
+  const q = state.filterScouter.trim().toLowerCase();
+  const rows = state.items.filter((it) => {
+    if (!q) return true;
+    return String(it.title || "")
+      .toLowerCase()
+      .includes(q);
+  });
+  if (empty) empty.classList.toggle("hidden", rows.length > 0);
+  if (!rows.length) {
+    root.innerHTML = "";
+    return;
+  }
+  root.innerHTML = rows
+    .slice(0, 60)
+    .map((it) => {
+      const thumb = it.photos?.[0]?.dataUrl || "";
+      const sku = it.barcode || "NO SKU";
+      const img = thumb
+        ? `<img src="${thumb}" alt="" />`
+        : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
+      return `<div class="v-panel v-cut-sm b44-item"><div>${img}</div><div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(sku)} · ${esc(it.game || "ITM")}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
     })
     .join("");
 }
@@ -75,11 +135,12 @@ function renderPhotos() {
   grid.innerHTML = state.draftPhotos
     .map(
       (p, i) =>
-        `<div style="width:56px;height:56px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.12)"><img src="${p.dataUrl}" style="width:100%;height:100%;object-fit:cover"/><button type="button" data-rm="${i}" style="position:absolute;top:0;right:0;border:0;background:#000a;color:#fff;width:18px;height:18px">×</button></div>`,
+        `<div class="b44-thumb"><img src="${p.dataUrl}" alt="" /><button type="button" data-rm="${i}" title="Remove">×</button></div>`,
     )
     .join("");
   grid.querySelectorAll("[data-rm]").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
       state.draftPhotos.splice(Number(btn.dataset.rm), 1);
       renderPhotos();
       updateSave();
@@ -88,9 +149,11 @@ function renderPhotos() {
 }
 
 function updateSave() {
-  const btn = $("btnSave");
-  if (!btn) return;
-  btn.disabled = !(state.title.trim() && state.draftPhotos.length);
+  const canId = state.draftPhotos.length > 0;
+  const canStage = !!(state.title.trim() && state.draftPhotos.length);
+  if ($("btnStartIntake")) $("btnStartIntake").disabled = !canId;
+  if ($("btnIdentify")) $("btnIdentify").disabled = !canId;
+  if ($("btnSave")) $("btnSave").disabled = !canStage;
 }
 
 function setStatus(msg) {
@@ -101,7 +164,7 @@ async function addFiles(fileList) {
   const isImage = window.ScouterImage?.isImageFile ?? ((f) => f.type?.startsWith("image/"));
   const incoming = [...(fileList || [])].filter(isImage).slice(0, 8 - state.draftPhotos.length);
   if (!incoming.length) return;
-  setStatus("Processing photos…");
+  setStatus("Uploading…");
   const compressed = await window.ScouterImage.compressPhotos(incoming);
   for (const file of compressed) {
     const dataUrl = await window.ScouterImage.fileToDataUrl(file);
@@ -109,34 +172,46 @@ async function addFiles(fileList) {
   }
   renderPhotos();
   updateSave();
-  setStatus(`${state.draftPhotos.length} photo(s) ready`);
+  setStatus(`${state.draftPhotos.length} scan(s) ready`);
 }
 
 async function runIdentify() {
   const photos = state.draftPhotos.map((p) => p.dataUrl).filter(Boolean);
   if (!photos.length) {
     setStatus("Need photos first");
-    return;
+    return false;
   }
-  setStatus("Identify running…");
+  setIntakeMode("identifying");
+  setStatus("IDENTIFYING…");
   try {
     const res = await fetch("/api/scouter/identify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ photos, category: state.category, quantity: state.qty }),
+      body: JSON.stringify({
+        photos,
+        category: state.category,
+        quantity: state.qty,
+        game: state.game,
+      }),
     });
     const result = await res.json();
+    setIntakeMode("batch");
     if (result.identity?.product_name) {
       state.title = result.identity.product_name;
       if ($("manualTitle")) $("manualTitle").value = state.title;
       setStatus(result.message || `Identified: ${state.title}`);
-    } else {
-      setStatus(result.message || "No match — set Manual. Photos kept.");
+      updateSave();
+      return true;
     }
+    setStatus(result.message || "No match — set Manual. Photos kept.");
+    updateSave();
+    return false;
   } catch (e) {
+    setIntakeMode("batch");
     setStatus(`Identify failed: ${e.message}. Photos kept.`);
+    updateSave();
+    return false;
   }
-  updateSave();
 }
 
 async function lookupBarcode(code) {
@@ -171,21 +246,63 @@ function stageItem() {
     barcode: state.barcode || null,
     quantity: state.qty,
     category: state.category,
+    game: state.game,
+    batchName: state.batchName || null,
     staged: true,
     photos: state.draftPhotos.map((p) => ({ dataUrl: p.dataUrl })),
     createdAt: new Date().toISOString(),
   };
   state.items.unshift(item);
   saveItems();
+  resetDraft();
+  setStatus("Staged");
+  setIntakeMode("list");
+  navigate("/inventory");
+}
+
+function resetDraft() {
   state.draftPhotos = [];
   state.title = "";
   state.barcode = "";
+  state.batchName = "";
   if ($("manualTitle")) $("manualTitle").value = "";
   if ($("barcodeInput")) $("barcodeInput").value = "";
+  if ($("batchName")) $("batchName").value = "";
+  if ($("backsIncluded")) $("backsIncluded").checked = false;
   renderPhotos();
   updateSave();
-  setStatus("Staged");
-  navigate("/inventory");
+}
+
+function openNewBatch() {
+  resetDraft();
+  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  state.batchName = `BATCH-${stamp}`;
+  if ($("batchName")) $("batchName").value = state.batchName;
+  setIntakeMode("batch");
+  setStatus("Drop scans here · or click to browse");
+}
+
+function bindDropZone() {
+  const zone = $("dropZone");
+  if (!zone) return;
+  const open = () => $("inputGallery")?.click();
+  zone.addEventListener("click", open);
+  zone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      open();
+    }
+  });
+  zone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    zone.classList.add("drag");
+  });
+  zone.addEventListener("dragleave", () => zone.classList.remove("drag"));
+  zone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    zone.classList.remove("drag");
+    addFiles(e.dataTransfer?.files);
+  });
 }
 
 function bind() {
@@ -203,12 +320,20 @@ function bind() {
     navigate(path);
   });
 
-  $("btnGallery")?.addEventListener("click", () => $("inputGallery").click());
+  $("btnNewBatch")?.addEventListener("click", () => openNewBatch());
+  $("btnCancelBatch")?.addEventListener("click", () => {
+    resetDraft();
+    setIntakeMode("list");
+  });
   $("inputGallery")?.addEventListener("change", (e) => {
     addFiles(e.target.files);
     e.target.value = "";
   });
   $("btnIdentify")?.addEventListener("click", () => runIdentify());
+  $("btnStartIntake")?.addEventListener("click", async () => {
+    const ok = await runIdentify();
+    if (ok) updateSave();
+  });
   $("btnSave")?.addEventListener("click", () => stageItem());
   $("btnManualOk")?.addEventListener("click", () => {
     state.title = ($("manualTitle")?.value || "").trim();
@@ -222,6 +347,29 @@ function bind() {
       lookupBarcode($("barcodeInput").value);
     }
   });
+  $("batchName")?.addEventListener("input", (e) => {
+    state.batchName = e.target.value;
+  });
+  $("batchGame")?.addEventListener("change", (e) => {
+    state.game = e.target.value;
+  });
+  $("backsIncluded")?.addEventListener("change", (e) => {
+    state.backsIncluded = !!e.target.checked;
+  });
+  $("intakeFilter")?.addEventListener("input", (e) => {
+    state.filterIntake = e.target.value;
+    renderIntakeList();
+  });
+  $("scouterFilter")?.addEventListener("input", (e) => {
+    state.filterScouter = e.target.value;
+    renderCollection();
+  });
+  $("manualTitle")?.addEventListener("input", (e) => {
+    state.title = e.target.value.trim();
+    updateSave();
+  });
+
+  bindDropZone();
 
   $("btnExport")?.addEventListener("click", () => {
     const blob = new Blob([JSON.stringify({ items: state.items }, null, 2)], {
@@ -260,4 +408,5 @@ function bind() {
 
 loadItems();
 bind();
+setIntakeMode("list");
 navigate((location.hash || "#/scan-intake").replace(/^#/, "") || "/scan-intake");
