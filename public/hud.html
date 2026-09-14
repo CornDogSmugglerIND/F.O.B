@@ -133,6 +133,24 @@
             </div>
             <div class="v-label" style="margin-left:auto;font-size:9px" id="spaceBreadcrumb">ALL STORAGE</div>
           </div>
+          <div class="v-panel v-cut-sm px-4 py-3" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px" id="spaceStats">
+            <div>
+              <div class="v-label" style="font-size:8px">Sub-locations</div>
+              <div class="v-readout" style="font-size:16px;color:#c9d8e2" id="spaceSubCount">00</div>
+            </div>
+            <div>
+              <div class="v-label" style="font-size:8px">Cards here</div>
+              <div class="v-readout v-emit-gold" style="font-size:16px" id="spaceCardCount">00</div>
+            </div>
+            <div>
+              <div class="v-label" style="font-size:8px">Value here</div>
+              <div class="v-readout v-emit-gold" style="font-size:16px" id="spaceValue">$0.00</div>
+            </div>
+            <div>
+              <div class="v-label" style="font-size:8px">Unfiled</div>
+              <div class="v-readout" style="font-size:16px;color:#c9d8e2" id="spaceUnfiled">00</div>
+            </div>
+          </div>
           <div class="b44-toolbar">
             <button type="button" class="m-btn hidden" id="btnSpaceUp" title="Up one level">↑ Up</button>
             <div class="b44-filter">
@@ -140,11 +158,19 @@
               <input id="spaceFilter" type="search" placeholder="Filter spaces" autocomplete="off" />
             </div>
             <button type="button" class="m-btn m-btn-primary" id="btnAddSpace">Add location</button>
+            <button type="button" class="m-btn hidden" id="btnFileHere">File card here</button>
           </div>
+          <div class="v-label" style="font-size:9px;margin:8px 0 6px;color:var(--b44-gold,#ffb43d)">LOCATIONS</div>
           <div id="spaceList"></div>
           <div id="spaceEmpty" class="v-panel v-cut b44-empty">
             <div class="v-label">No locations yet</div>
             <p>No locations yet — create one below.</p>
+          </div>
+          <div class="v-label" style="font-size:9px;margin:16px 0 6px;color:var(--b44-gold,#ffb43d)" id="spaceItemsLabel">CARDS HERE</div>
+          <div id="spaceItems"></div>
+          <div id="spaceItemsEmpty" class="v-panel v-cut b44-empty hidden">
+            <div class="v-label">No cards here</div>
+            <p>Cards filed into this location show up here.</p>
           </div>
         </div>
       </section>

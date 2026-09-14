@@ -636,28 +636,53 @@ function nextShipStage(key) {
   return SHIP_STAGES.find((s) => s.key === key)?.next || null;
 }
 
-function renderSpaces() {
+function itemsInSpace(spaceId) {
+  if (!spaceId) return state.items.filter((it) => !it.spaceId);
+  return state.items.filter((it) => (it.spaceId || "") === spaceId);
+}
 
+function spaceValue(items) {
+  return items.reduce(
+    (sum, it) => sum + (Number(it.marketValue ?? it.price) || 0) * (Number(it.quantity) || 1),
+    0,
+  );
+}
+
+function renderSpaces() {
   loadSpaces();
   const root = $("spaceList");
   const empty = $("spaceEmpty");
   if (!root) return;
   const parentId = currentSpaceParentId();
-  const q = state.filterSpaces.trim().toLowerCase();
+  const q = (state.filterSpaces || "").trim().toLowerCase();
   const rows = state.spaces
     .filter((s) => (s.parentId || "") === parentId)
     .filter((s) => {
       if (!q) return true;
       const hay = `${s.name || ""} ${s.code || ""} ${s.kind || ""}`.toLowerCase();
       return hay.includes(q);
-    });
+    })
+    .sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { numeric: true }));
   const totalHere = state.spaces.filter((s) => (s.parentId || "") === parentId).length;
   if ($("spaceCount")) $("spaceCount").textContent = pad2(totalHere);
+  if ($("spaceSubCount")) $("spaceSubCount").textContent = pad2(totalHere);
+
+  const cardsHere = itemsInSpace(parentId);
+  const unfiled = state.items.filter((it) => !it.spaceId);
+  if ($("spaceCardCount")) $("spaceCardCount").textContent = pad2(cardsHere.length);
+  if ($("spaceValue")) $("spaceValue").textContent = money(spaceValue(cardsHere));
+  if ($("spaceUnfiled")) $("spaceUnfiled").textContent = pad2(unfiled.length);
+
   const crumb = parentId
-    ? state.spaceTrail.map((id) => spaceById(id)?.name || "…").join(" / ")
+    ? state.spaceTrail.map((id) => {
+        const sp = spaceById(id);
+        return sp?.code ? `${sp.code} · ${sp.name}` : sp?.name || "…";
+      }).join(" / ")
     : "ALL STORAGE";
   if ($("spaceBreadcrumb")) $("spaceBreadcrumb").textContent = crumb;
   $("btnSpaceUp")?.classList.toggle("hidden", !parentId);
+  $("btnFileHere")?.classList.toggle("hidden", !parentId);
+
   if (empty) {
     empty.classList.toggle("hidden", rows.length > 0);
     const label = empty.querySelector(".v-label");
@@ -665,15 +690,20 @@ function renderSpaces() {
     if (label) label.textContent = "No locations yet";
     if (p) p.textContent = "No locations yet — create one below.";
   }
+
   root.innerHTML = rows
     .map((s) => {
       const kind = kindLabel(s.kind);
       const code = s.code ? `${esc(s.code)} · ` : "";
       const kids = state.spaces.filter((c) => (c.parentId || "") === s.id).length;
-      const sub = kids ? `${code}${esc(kind)} · ${kids} inside` : `${code}${esc(kind)}`;
-      return `<div class="v-panel v-cut-sm b44-item" data-open-space="${esc(s.id)}" style="cursor:pointer"><div class="meta"><strong>${esc(s.name)}</strong><span>${sub}</span></div><button type="button" class="m-btn" data-del-space="${esc(s.id)}">×</button></div>`;
+      const cards = itemsInSpace(s.id).length;
+      const bits = [`${code}${esc(kind)}`];
+      if (kids) bits.push(`${kids} inside`);
+      if (cards) bits.push(`${cards} card${cards === 1 ? "" : "s"}`);
+      return `<div class="v-panel v-cut-sm b44-item" data-open-space="${esc(s.id)}" style="cursor:pointer"><div class="meta"><strong>${esc(s.name)}</strong><span>${bits.join(" · ")}</span></div><button type="button" class="m-btn" data-del-space="${esc(s.id)}">×</button></div>`;
     })
     .join("");
+
   root.querySelectorAll("[data-open-space]").forEach((row) => {
     row.addEventListener("click", (e) => {
       if (e.target.closest("[data-del-space]")) return;
@@ -696,11 +726,76 @@ function renderSpaces() {
           }
         }
       }
+      // Live: clearing a bin leaves cards unfiled.
+      state.items = state.items.map((it) => (drop.has(it.spaceId || "") ? { ...it, spaceId: "" } : it));
+      saveItems();
       state.spaces = state.spaces.filter((s) => !drop.has(s.id));
       state.spaceTrail = state.spaceTrail.filter((x) => !drop.has(x));
       saveSpaces();
     });
   });
+
+  // Live Spaces: cards at current location (or unfiled at ALL STORAGE).
+  const itemsRoot = $("spaceItems");
+  const itemsEmpty = $("spaceItemsEmpty");
+  const itemsLabel = $("spaceItemsLabel");
+  if (itemsLabel) {
+    itemsLabel.textContent = parentId ? "CARDS HERE" : "UNFILED CARDS";
+  }
+  if (itemsRoot) {
+    const list = parentId ? cardsHere : unfiled;
+    if (itemsEmpty) {
+      itemsEmpty.classList.toggle("hidden", list.length > 0);
+      const p = itemsEmpty.querySelector("p");
+      if (p) {
+        p.textContent = parentId
+          ? "Cards filed into this location show up here."
+          : "Cards with no location sit here until you file them.";
+      }
+    }
+    itemsRoot.innerHTML = list
+      .map((it) => {
+        const price = Number(it.marketValue ?? it.price);
+        const priceBit = Number.isFinite(price) && price > 0 ? money(price) : "—";
+        const status = itemPipeLabel(it);
+        const unfile = parentId
+          ? `<button type="button" class="m-btn" data-unfile="${esc(it.id)}">Unfile</button>`
+          : "";
+        return `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(status)} · ${esc(priceBit)}</span></div>${unfile}</div>`;
+      })
+      .join("");
+    itemsRoot.querySelectorAll("[data-unfile]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const it = state.items.find((x) => x.id === btn.dataset.unfile);
+        if (!it) return;
+        it.spaceId = "";
+        saveItems();
+        renderSpaces();
+        updateSitrep();
+      });
+    });
+  }
+}
+
+function fileCardIntoCurrentSpace() {
+  const parentId = currentSpaceParentId();
+  if (!parentId) return;
+  const unfiled = state.items.filter((it) => !it.spaceId);
+  if (!unfiled.length) {
+    alert("No unfiled cards — everything already has a location.");
+    return;
+  }
+  const names = unfiled
+    .slice(0, 12)
+    .map((it, i) => `${i + 1}. ${it.title || "Untitled"}`)
+    .join("\n");
+  const pick = prompt(`File which unfiled card into this location?\n${names}\n\nEnter number`, "1");
+  const idx = Number(pick) - 1;
+  if (!Number.isInteger(idx) || idx < 0 || idx >= unfiled.length) return;
+  unfiled[idx].spaceId = parentId;
+  saveItems();
+  renderSpaces();
+  updateSitrep();
 }
 
 function renderChannel() {
@@ -1047,6 +1142,7 @@ function bind() {
     state.spaceTrail = [];
     renderSpaces();
   });
+  $("btnFileHere")?.addEventListener("click", () => fileCardIntoCurrentSpace());
   $("btnAddSpace")?.addEventListener("click", () => {
     const name = prompt("Location name", "Warehouse A");
     if (!name?.trim()) return;
