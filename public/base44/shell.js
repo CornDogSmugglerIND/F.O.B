@@ -21,6 +21,7 @@ const state = {
   game: "PKM",
   batchName: "",
   backsIncluded: true,
+  skuPrefix: "ITM",
   intakeMode: "list", // list | batch | identifying
   filterIntake: "",
   filterScouter: "",
@@ -85,6 +86,17 @@ function money(n) {
     maximumFractionDigits: 2,
   });
 }
+
+
+/** Live Tle game chips on Intake batch form (Mle). */
+const INTAKE_GAMES = [
+  { code: "PKM", label: "Pokemon" },
+  { code: "OPC", label: "One Piece" },
+  { code: "DBS", label: "Dragon Ball" },
+  { code: "HCK", label: "Hockey" },
+  { code: "WRL", label: "Wrestling" },
+  { code: "ITM", label: "Other" },
+];
 
 /** Live Si pipeline steps (tle). */
 const PIPE_STEPS = [
@@ -873,6 +885,34 @@ async function addAssetImageFiles(fileList) {
   renderAssetThumbs();
 }
 
+
+function setBatchGame(code) {
+  const hit = INTAKE_GAMES.find((g) => g.code === code) || INTAKE_GAMES[0];
+  state.game = hit.code;
+  if ($("batchGame")) $("batchGame").value = hit.code;
+  document.querySelectorAll("#batchGameChips [data-game]").forEach((btn) => {
+    btn.classList.toggle("m-chip-on", btn.dataset.game === hit.code);
+  });
+  if (!state.skuPrefix || INTAKE_GAMES.some((g) => g.code === state.skuPrefix)) {
+    // keep manual prefix unless it still looks like a default game code
+  }
+  if (!($("batchSkuPrefix")?.dataset.touched === "1")) {
+    state.skuPrefix = hit.code === "PKM" ? "PKM" : hit.code;
+    if ($("batchSkuPrefix")) $("batchSkuPrefix").value = state.skuPrefix;
+  }
+}
+
+function updateBatchScanChrome() {
+  const n = state.draftPhotos.length;
+  const odd = !!state.backsIncluded && n > 0 && n % 2 !== 0;
+  if ($("batchScanReady")) {
+    $("batchScanReady").innerHTML = odd
+      ? `${n} scan${n === 1 ? "" : "s"} ready<span class="b44-odd-inline"> · odd count</span>`
+      : `${n} scan${n === 1 ? "" : "s"} ready`;
+  }
+  $("batchOddWarn")?.classList.toggle("hidden", !odd);
+}
+
 function renderPhotos() {
   const grid = $("photoGrid");
   if (!grid) return;
@@ -890,6 +930,7 @@ function renderPhotos() {
       updateSave();
     });
   });
+  updateBatchScanChrome();
 }
 
 function updateSave() {
@@ -898,6 +939,7 @@ function updateSave() {
   if ($("btnStartIntake")) $("btnStartIntake").disabled = !canId;
   if ($("btnIdentify")) $("btnIdentify").disabled = !canId;
   if ($("btnSave")) $("btnSave").disabled = !canStage;
+  updateBatchScanChrome();
 }
 
 function setStatus(msg) {
@@ -913,7 +955,7 @@ function setIdentifyProgress(stage, done, total) {
 
 async function addFiles(fileList) {
   const isImage = window.ScouterImage?.isImageFile ?? ((f) => f.type?.startsWith("image/"));
-  const incoming = [...(fileList || [])].filter(isImage).slice(0, 8 - state.draftPhotos.length);
+  const incoming = [...(fileList || [])].filter(isImage).slice(0, 40 - state.draftPhotos.length);
   if (!incoming.length) return;
   setIntakeMode("identifying");
   setIdentifyProgress("Uploading", 0, incoming.length);
@@ -1008,6 +1050,8 @@ function stageItem() {
     category: state.category,
     game: state.game,
     batchName: state.batchName || null,
+    skuPrefix: (state.skuPrefix || "").trim().toUpperCase() || null,
+    sku: state.barcode || null,
     staged: true,
     photos: state.draftPhotos.map((p) => ({ dataUrl: p.dataUrl })),
     createdAt: new Date().toISOString(),
@@ -1025,9 +1069,14 @@ function resetDraft() {
   state.title = "";
   state.barcode = "";
   state.batchName = "";
+  state.skuPrefix = "ITM";
   if ($("manualTitle")) $("manualTitle").value = "";
   if ($("barcodeInput")) $("barcodeInput").value = "";
   if ($("batchName")) $("batchName").value = "";
+  if ($("batchSkuPrefix")) {
+    $("batchSkuPrefix").value = "";
+    delete $("batchSkuPrefix").dataset.touched;
+  }
   if ($("backsIncluded")) $("backsIncluded").checked = false;
   renderPhotos();
   updateSave();
@@ -1039,14 +1088,19 @@ function openNewBatch() {
   const mon = now.toLocaleString("en-US", { month: "short" }).toUpperCase();
   const day = String(now.getDate()).padStart(2, "0");
   state.batchName = `BATCH-${mon}${day}`;
-  state.game = "PKM";
   state.backsIncluded = true;
+  state.skuPrefix = "PKM";
   if ($("batchName")) $("batchName").value = state.batchName;
   if ($("batchTitle")) $("batchTitle").textContent = state.batchName;
-  if ($("batchGame")) $("batchGame").value = "PKM";
+  if ($("batchSkuPrefix")) {
+    $("batchSkuPrefix").value = "PKM";
+    delete $("batchSkuPrefix").dataset.touched;
+  }
   if ($("backsIncluded")) $("backsIncluded").checked = true;
+  setBatchGame("PKM");
   setIntakeMode("batch");
-  setStatus("Drop scans here · or click to browse");
+  updateBatchScanChrome();
+  setStatus("Drop a folder of scans · or click to browse");
 }
 
 function bindDropZone() {
@@ -2105,7 +2159,19 @@ function bind() {
   });
   $("backsIncluded")?.addEventListener("change", (e) => {
     state.backsIncluded = !!e.target.checked;
+    updateBatchScanChrome();
   });
+
+  $("batchGameChips")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-game]");
+    if (!btn) return;
+    setBatchGame(btn.dataset.game);
+  });
+  $("batchSkuPrefix")?.addEventListener("input", (e) => {
+    e.target.dataset.touched = "1";
+    state.skuPrefix = e.target.value.trim().toUpperCase();
+  });
+
   $("intakeFilter")?.addEventListener("input", (e) => {
     state.filterIntake = e.target.value;
     renderIntakeList();

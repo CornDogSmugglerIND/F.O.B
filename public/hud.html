@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=3" />
+  <link rel="stylesheet" href="/base44/shell.css?v=5" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -323,26 +323,38 @@
                 <input id="batchName" type="text" placeholder="BATCH" autocomplete="off" />
               </div>
               <div class="b44-field">
-                <label for="batchGame">Game</label>
-                <select id="batchGame">
-                  <option value="PKM">Pokemon</option>
-                  <option value="OPC">One Piece</option>
-                  <option value="DBS">Dragon Ball</option>
-                  <option value="HCK">Hockey</option>
-                  <option value="WRL">Wrestling</option>
-                  <option value="ITM">Other</option>
-                </select>
+                <label>Game</label>
+                <input type="hidden" id="batchGame" value="PKM" />
+                <div class="b44-chip-row" id="batchGameChips" role="group" aria-label="Game">
+                  <button type="button" class="m-chip m-chip-on" data-game="PKM">Pokemon</button>
+                  <button type="button" class="m-chip" data-game="OPC">One Piece</button>
+                  <button type="button" class="m-chip" data-game="DBS">Dragon Ball</button>
+                  <button type="button" class="m-chip" data-game="HCK">Hockey</button>
+                  <button type="button" class="m-chip" data-game="WRL">Wrestling</button>
+                  <button type="button" class="m-chip" data-game="ITM">Other</button>
+                </div>
+              </div>
+              <div class="b44-field">
+                <label for="batchSkuPrefix">SKU prefix</label>
+                <input id="batchSkuPrefix" type="text" maxlength="12" placeholder="ITM" autocomplete="off" style="width:120px;text-transform:uppercase" />
               </div>
               <label class="b44-check">
                 <input type="checkbox" id="backsIncluded" checked />
-                <span>Backs included — scans alternate front, back, front, back</span>
+                <span>
+                  <strong>Backs included</strong>
+                  <em>Scans alternate front, back, front, back</em>
+                </span>
               </label>
+              <div id="batchOddWarn" class="b44-warn hidden" role="status">
+                Odd file count — front/back pairing would misalign every row after it. Add or remove one scan.
+              </div>
               <div class="b44-drop v-cut" id="dropZone" tabindex="0" role="button">
-                <div class="v-label">Drop scans here</div>
-                <p>or click to browse — photos up to 8 at a time</p>
+                <div class="v-label">Drop a folder of scans</div>
+                <p>or click to browse — 2400×2400 JPGs (up to 40 on this device)</p>
               </div>
               <div id="photoGrid" class="b44-thumbs"></div>
               <div class="b44-status" id="identifyStatus">Add photos · then Start intake</div>
+              <div class="b44-scan-ready" id="batchScanReady">0 scans ready</div>
               <div class="b44-field">
                 <label for="barcodeInput">Barcode shortcut</label>
                 <div style="display:flex;gap:8px">
@@ -687,6 +699,6 @@
   </div>
 
   <script src="/lib/image.js?v=24"></script>
-  <script src="/base44/shell.js?v=3"></script>
+  <script src="/base44/shell.js?v=4"></script>
 </body>
 </html>
