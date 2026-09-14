@@ -1006,29 +1006,57 @@ function setSettingsTab(tab) {
   });
 }
 
+/** Live xo listing-template defaults. */
+const DEFAULT_TITLE_TEMPLATE = "Pokémon [SET] - Pick Your Card! [RARITY] NM";
+const DEFAULT_DESC_TEMPLATE = "[TITLE]\n\n[BRAND_TAGLINE]";
+
 function renderSettings() {
   loadSettingsLocal();
   const tRoot = $("templateList");
   const tEmpty = $("templateEmpty");
   if (tRoot) {
     tRoot.innerHTML = state.templates
-      .map(
-        (t) =>
-          `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(t.name)}</strong><span>Markup ${esc(String(t.markup ?? 0))}%</span></div></div>`,
-      )
+      .map((t) => {
+        const markup = t.markup_percent ?? t.markup ?? 0;
+        const chip = t.is_default ? `<span class="v-label" style="color:var(--b44-gold,#ffb43d)">DEFAULT</span>` : "";
+        const title = t.title_template || DEFAULT_TITLE_TEMPLATE;
+        return `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(t.name)}</strong><span>Markup ${esc(String(markup))}% · ${esc(title)}</span></div><div class="qty" style="display:flex;gap:6px;align-items:center">${chip}<button type="button" class="m-btn" data-del-template="${esc(t.id)}">×</button></div></div>`;
+      })
       .join("");
-    if (tEmpty) tEmpty.classList.toggle("hidden", state.templates.length > 0);
+    if (tEmpty) {
+      tEmpty.classList.toggle("hidden", state.templates.length > 0);
+      tEmpty.textContent = "No templates yet. Create one to apply default markup and policies.";
+    }
+    tRoot.querySelectorAll("[data-del-template]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        loadSettingsLocal();
+        state.templates = state.templates.filter((t) => t.id !== btn.dataset.delTemplate);
+        saveSettingsLocal();
+      });
+    });
   }
   const sRoot = $("shipList");
   const sEmpty = $("shipEmpty");
   if (sRoot) {
     sRoot.innerHTML = state.shipping
-      .map(
-        (s) =>
-          `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(s.name)}</strong><span>${esc(s.carrier || "")} · $${esc(String(s.cost ?? 0))}</span></div></div>`,
-      )
+      .map((s) => {
+        const chip = s.is_default ? `<span class="v-label" style="color:var(--b44-gold,#ffb43d)">DEFAULT</span>` : "";
+        const service = s.service ? ` · ${s.service}` : "";
+        const handle = s.handling_days != null ? ` · ${s.handling_days}d handle` : "";
+        return `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(s.name)}</strong><span>${esc(s.carrier || "")}${esc(service)} · $${esc(String(s.cost ?? 0))}${esc(handle)}</span></div><div class="qty" style="display:flex;gap:6px;align-items:center">${chip}<button type="button" class="m-btn" data-del-ship="${esc(s.id)}">×</button></div></div>`;
+      })
       .join("");
-    if (sEmpty) sEmpty.classList.toggle("hidden", state.shipping.length > 0);
+    if (sEmpty) {
+      sEmpty.classList.toggle("hidden", state.shipping.length > 0);
+      sEmpty.textContent = "No shipping presets yet. Add carriers and services to reuse on listings.";
+    }
+    sRoot.querySelectorAll("[data-del-ship]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        loadSettingsLocal();
+        state.shipping = state.shipping.filter((s) => s.id !== btn.dataset.delShip);
+        saveSettingsLocal();
+      });
+    });
   }
   const dRoot = $("storageDefList");
   const dEmpty = $("storageDefEmpty");
@@ -1036,10 +1064,17 @@ function renderSettings() {
     dRoot.innerHTML = state.storageDefs
       .map(
         (d) =>
-          `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(d.name)}</strong><span>${esc(d.code || "")}</span></div></div>`,
+          `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(d.name)}</strong><span>${esc(d.code || "")}</span></div><button type="button" class="m-btn" data-del-storage-def="${esc(d.id)}">×</button></div>`,
       )
       .join("");
     if (dEmpty) dEmpty.classList.toggle("hidden", state.storageDefs.length > 0);
+    dRoot.querySelectorAll("[data-del-storage-def]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        loadSettingsLocal();
+        state.storageDefs = state.storageDefs.filter((d) => d.id !== btn.dataset.delStorageDef);
+        saveSettingsLocal();
+      });
+    });
   }
   if ($("aiConnectStatus")) {
     $("aiConnectStatus").textContent =
@@ -1184,18 +1219,50 @@ function bind() {
   $("btnNewTemplate")?.addEventListener("click", () => {
     const name = prompt("Template name", "Default");
     if (!name?.trim()) return;
-    const markup = Number(prompt("Markup %", "15") || 0);
+    const markup_percent = Number(prompt("Markup %", "30") || 0);
+    const makeDefault = confirm("Set as default template?");
+    const title_template =
+      prompt("Title template", DEFAULT_TITLE_TEMPLATE) || DEFAULT_TITLE_TEMPLATE;
+    const description_template =
+      prompt("Description template", DEFAULT_DESC_TEMPLATE) || DEFAULT_DESC_TEMPLATE;
     loadSettingsLocal();
-    state.templates.unshift({ id: crypto.randomUUID(), name: name.trim(), markup });
+    if (makeDefault) {
+      state.templates = state.templates.map((t) => ({ ...t, is_default: false }));
+    }
+    state.templates.unshift({
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      markup_percent,
+      is_default: makeDefault || state.templates.length === 0,
+      title_template,
+      description_template,
+      pricing_type: "markup",
+      price_floor: 1.77,
+      round_to_nearest: 0.99,
+    });
     saveSettingsLocal();
   });
   $("btnNewShip")?.addEventListener("click", () => {
     const name = prompt("Preset name", "USPS Priority");
     if (!name?.trim()) return;
     const carrier = prompt("Carrier", "USPS") || "";
+    const service = prompt("Service", "Priority Mail") || "";
     const cost = Number(prompt("Cost ($)", "8.50") || 0);
+    const handling_days = Number(prompt("Handling days", "1") || 1);
+    const makeDefault = confirm("Set as default shipping preset?");
     loadSettingsLocal();
-    state.shipping.unshift({ id: crypto.randomUUID(), name: name.trim(), carrier, cost });
+    if (makeDefault) {
+      state.shipping = state.shipping.map((s) => ({ ...s, is_default: false }));
+    }
+    state.shipping.unshift({
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      carrier,
+      service,
+      cost,
+      handling_days,
+      is_default: makeDefault || state.shipping.length === 0,
+    });
     saveSettingsLocal();
   });
   $("btnNewStorageDef")?.addEventListener("click", () => {
@@ -1208,8 +1275,9 @@ function bind() {
   });
   $("btnEbayDiag")?.addEventListener("click", () => {
     if ($("ebayDiagStatus")) {
-      $("ebayDiagStatus").textContent =
-        "Diagnostic call failed — eBay isn't connected. Connect it before publishing or sync.";
+      $("ebayDiagStatus").textContent = state.ebayConnected
+        ? "Diagnostic needs live eBay credentials on the server — nothing called."
+        : "Diagnostic call failed — eBay isn't connected. Connect it on Channel before publishing or sync.";
     }
   });
 
