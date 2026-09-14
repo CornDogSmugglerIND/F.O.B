@@ -93,7 +93,7 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /New card/);
     assert.match(html, /ALL STORAGE/);
     assert.match(html, /btnSpaceUp/);
-    assert.match(html, /Nothing is blocked — the void is clear/);
+    assert.match(html, /Nothing is blocked, errored, or sitting untouched\./);
 
 
     assert.match(html, /m-btn-primary/);

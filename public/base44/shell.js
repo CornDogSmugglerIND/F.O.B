@@ -113,15 +113,32 @@ function loadItems() {
   renderChannel();
 }
 
+const STALE_DAYS = 7;
+
 function updateSitrep() {
-  const waiting = state.items.length;
-  if ($("sitrepTitle")) $("sitrepTitle").textContent = waiting ? "To list" : "All clear";
+  loadShipments();
+  const toList = state.items.filter((it) => itemPipeLabel(it) !== "Listed").length;
+  const needsBin = state.items.filter((it) => !it.spaceId && itemPipeLabel(it) !== "Listed").length;
+  const listed = state.items.filter((it) => itemPipeLabel(it) === "Listed").length;
+  const inventory = state.items.length;
+  if ($("cmdToList")) $("cmdToList").textContent = pad2(toList);
+  if ($("cmdNeedsBin")) $("cmdNeedsBin").textContent = pad2(needsBin);
+  if ($("cmdListed")) $("cmdListed").textContent = pad2(listed);
+  if ($("cmdInventory")) $("cmdInventory").textContent = pad2(inventory);
+  if ($("cmdScouterCount")) $("cmdScouterCount").textContent = pad2(inventory);
+
+  const cards = buildCmdAttention();
+  const blocked = cards.reduce((n, c) => n + c.count, 0);
+  if ($("sitrepTitle")) $("sitrepTitle").textContent = blocked ? "To list" : "All clear";
   if ($("sitrepHint")) {
-    $("sitrepHint").textContent = waiting
-      ? `${waiting} item${waiting === 1 ? "" : "s"} waiting on you`
-      : "Nothing is blocked — the void is clear.";
+    $("sitrepHint").textContent = blocked
+      ? `${blocked} item${blocked === 1 ? "" : "s"} waiting on you`
+      : "Nothing is blocked, errored, or sitting untouched.";
   }
-  renderCmdAttention();
+  if ($("ebayWarn")) {
+    $("ebayWarn").classList.toggle("hidden", !!state.ebayConnected);
+  }
+  renderCmdAttention(cards);
 }
 
 const SPACE_KINDS = [
@@ -138,31 +155,55 @@ function kindLabel(kind) {
   return SPACE_KINDS.find((k) => k.value === kind)?.label || "Warehouse";
 }
 
-function renderCmdAttention() {
-  const root = $("cmdAttention");
-  if (!root) return;
-  // Live $K only pushes cards when count > 0.
+/** Live $K attention cards — only emit when count > 0. */
+function buildCmdAttention() {
   const cards = [];
   const push = (c) => {
     if (c.count > 0) cards.push(c);
   };
-  const staged = state.items.filter((it) => it.staged);
+  const readyShip = state.shipments.filter((s) => !s.archived && s.status === "ready_to_ship").length;
+  const engineErr = state.items.filter((it) => it.engineStatus === "error").length;
+  const itemErr = state.items.filter((it) => it.listingStatus === "error").length;
   const needsReview = state.items.filter(
-    (it) => it.needsReview || it.confidence === "Low" || it.confidence === "Failed" || (!it.title && !it.staged),
-  );
-  const weekMs = 7 * 24 * 60 * 60 * 1000;
+    (it) =>
+      it.needsReview ||
+      it.status === "Needs Review" ||
+      it.confidence === "Low" ||
+      it.confidence === "Failed" ||
+      (!it.title && !it.staged && itemPipeLabel(it) === "Intake"),
+  ).length;
+  const readyPublish = state.items.filter(
+    (it) => it.listingStatus === "ready_to_list" || (it.staged && it.listingStatus !== "listed"),
+  ).length;
+  const staleMs = STALE_DAYS * 24 * 60 * 60 * 1000;
   const stalled = state.items.filter((it) => {
-    if (it.listingStatus === "listed") return false;
+    if (it.listingStatus === "listed" || itemPipeLabel(it) === "Listed") return false;
     const t = Date.parse(it.updatedAt || it.createdAt || "") || 0;
-    return t && Date.now() - t >= weekMs;
+    return t && Date.now() - t >= staleMs;
+  }).length;
+  push({
+    key: "ship",
+    tone: "act",
+    to: "/channel",
+    label: "Ready to ship",
+    detail: "Packed and waiting on a drop-off",
+    count: readyShip,
   });
   push({
-    key: "publish",
-    tone: "act",
+    key: "engine-error",
+    tone: "bad",
+    to: "/",
+    label: "Listing engine errors",
+    detail: "The AI writer failed on these",
+    count: engineErr,
+  });
+  push({
+    key: "item-error",
+    tone: "bad",
     to: "/inventory",
-    label: "Built, not published",
-    detail: "Listing is ready to go live",
-    count: staged.length,
+    label: "Items in error",
+    detail: "Push to channel failed",
+    count: itemErr,
   });
   push({
     key: "review",
@@ -170,19 +211,37 @@ function renderCmdAttention() {
     to: "/scan-intake",
     label: "Scans needing review",
     detail: "Low confidence or unidentified",
-    count: needsReview.length,
+    count: needsReview,
+  });
+  push({
+    key: "publish",
+    tone: "act",
+    to: "/inventory",
+    label: "Built, not published",
+    detail: "Listing is ready to go live",
+    count: readyPublish,
   });
   push({
     key: "stalled",
     tone: "idle",
     to: "/inventory",
-    label: "Untouched 7+ days",
+    label: `Untouched ${STALE_DAYS}+ days`,
     detail: "Sitting in the pipeline going nowhere",
-    count: stalled.length,
+    count: stalled,
   });
   const toneRank = { bad: 0, act: 1, idle: 2 };
-  cards.sort((a, b) => toneRank[a.tone] - toneRank[b.tone] || b.count - a.count);
-  root.innerHTML = cards
+  return cards.sort((a, b) => toneRank[a.tone] - toneRank[b.tone] || b.count - a.count);
+}
+
+function renderCmdAttention(cards) {
+  const root = $("cmdAttention");
+  if (!root) return;
+  const list = cards || buildCmdAttention();
+  if (!list.length) {
+    root.innerHTML = `<div class="v-panel v-cut-sm p-4" style="text-align:center"><div class="v-readout" style="font-size:18px;color:#5fe8d0">All clear</div><p class="b44-copy-soft" style="margin-top:8px">Nothing is blocked, errored, or sitting untouched.</p></div>`;
+    return;
+  }
+  root.innerHTML = list
     .map(
       (c) =>
         `<a class="b44-attn ${esc(c.tone)}" href="#${esc(c.to)}"><div><strong>${esc(c.label)}</strong><span>${esc(c.detail)}</span></div><div class="v-readout v-emit-gold" style="font-size:18px">${pad2(c.count)}</div></a>`,
