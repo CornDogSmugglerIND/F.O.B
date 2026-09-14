@@ -65,6 +65,24 @@
             </div>
             <div class="v-label" style="margin-left:auto;font-size:9px">Pipeline · Spaces</div>
           </div>
+          <div class="v-panel v-cut-sm px-4 py-3" style="display:flex;gap:16px;margin-bottom:12px" id="scouterPipe">
+            <div>
+              <div class="v-label" style="font-size:8px">STEP 1 · INTAKE</div>
+              <div class="v-readout" style="font-size:16px;color:#c9d8e2" id="scoutStepIntake">00</div>
+            </div>
+            <div>
+              <div class="v-label" style="font-size:8px">STEP 2 · BUILD</div>
+              <div class="v-readout v-emit-gold" style="font-size:16px" id="scoutStepBuilt">00</div>
+            </div>
+            <div>
+              <div class="v-label" style="font-size:8px">STEP 3 · PUBLISH</div>
+              <div class="v-readout" style="font-size:16px;color:#5fe8d0" id="scoutStepListed">00</div>
+            </div>
+            <div style="margin-left:auto;text-align:right">
+              <div class="v-label" style="font-size:8px">Scouter value</div>
+              <div class="v-readout v-emit-gold" style="font-size:16px" id="scouterValue">$0.00</div>
+            </div>
+          </div>
           <div class="b44-toolbar">
             <div class="b44-filter">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
@@ -183,7 +201,9 @@
           <!-- New batch (Mle) -->
           <div id="intakeBatch" class="hidden">
             <div class="v-panel v-cut-lg p-4">
-              <div class="v-label" style="font-size:9px">New Scan Batch</div>
+              <div class="v-label" style="font-size:9px">Rail · Step 0</div>
+              <div class="v-readout v-emit-white" style="font-size:20px;margin-top:6px" id="batchTitle">New Scan Batch</div>
+              <p class="b44-copy-soft" style="margin-top:8px">Feed the autofeed scanner, dedupe the fronts, identify the cards, then push the whole batch onto the rail.</p>
               <div class="b44-field">
                 <label for="batchName">Batch name</label>
                 <input id="batchName" type="text" placeholder="BATCH" autocomplete="off" />
@@ -191,16 +211,16 @@
               <div class="b44-field">
                 <label for="batchGame">Game</label>
                 <select id="batchGame">
-                  <option value="ITM">ITM · General</option>
-                  <option value="PKM">PKM · Pokémon</option>
-                  <option value="OPC">OPC · One Piece</option>
-                  <option value="DBS">DBS · Dragon Ball</option>
-                  <option value="HCK">HCK</option>
-                  <option value="WRL">WRL · Wrestling</option>
+                  <option value="PKM">Pokemon</option>
+                  <option value="OPC">One Piece</option>
+                  <option value="DBS">Dragon Ball</option>
+                  <option value="HCK">Hockey</option>
+                  <option value="WRL">Wrestling</option>
+                  <option value="ITM">Other</option>
                 </select>
               </div>
               <label class="b44-check">
-                <input type="checkbox" id="backsIncluded" />
+                <input type="checkbox" id="backsIncluded" checked />
                 <span>Backs included — scans alternate front, back, front, back</span>
               </label>
               <div class="b44-drop v-cut" id="dropZone" tabindex="0" role="button">
@@ -238,7 +258,8 @@
           <div id="intakeIdentifying" class="hidden">
             <div class="v-panel v-cut b44-identifying">
               <div class="b44-spin" aria-hidden="true"></div>
-              <div class="v-readout v-emit-white" style="font-size:18px;margin-top:16px">IDENTIFYING…</div>
+              <div class="v-label" style="margin-top:16px;color:var(--b44-gold-hi,#ffd98a)" id="identifyStage">IDENTIFYING…</div>
+              <div class="v-readout v-emit-white" style="font-size:18px;margin-top:8px" id="identifyPct">0%</div>
               <div class="v-label" style="margin-top:8px">Rows appear live — a refresh won't lose completed work.</div>
             </div>
           </div>

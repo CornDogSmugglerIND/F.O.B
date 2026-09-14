@@ -18,9 +18,9 @@ const state = {
   barcode: "",
   qty: 1,
   category: "other",
-  game: "ITM",
+  game: "PKM",
   batchName: "",
-  backsIncluded: false,
+  backsIncluded: true,
   intakeMode: "list", // list | batch | identifying
   filterIntake: "",
   filterScouter: "",
@@ -49,6 +49,26 @@ function esc(s) {
 
 function pad2(n) {
   return String(n).padStart(2, "0");
+}
+
+function money(n) {
+  return "$" + Number(n || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/** Live Si pipeline steps (tle). */
+const PIPE_STEPS = [
+  { key: "sorted", label: "Intake", match: (it) => !it.staged && it.listingStatus !== "listed" },
+  { key: "ready_to_list", label: "Listing Built", match: (it) => !!it.staged && it.listingStatus !== "listed" },
+  { key: "listed", label: "Listed", match: (it) => it.listingStatus === "listed" },
+];
+
+function itemPipeLabel(it) {
+  if (it.listingStatus === "listed") return "Listed";
+  if (it.staged) return "Listing Built";
+  return "Intake";
 }
 
 function loadItems() {
@@ -200,11 +220,11 @@ function renderIntakeList() {
     .slice(0, 40)
     .map((it) => {
       const thumb = it.photos?.[0]?.dataUrl || "";
-      const badge = it.staged ? "STAGED" : "OPEN";
+      const badge = itemPipeLabel(it);
       const img = thumb
         ? `<img src="${thumb}" alt="" />`
         : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
-      return `<div class="v-panel v-cut-sm b44-item">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${badge} · ${esc(it.game || "ITM")}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
+      return `<div class="v-panel v-cut-sm b44-item">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(badge)} · ${esc(it.game || "PKM")}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
     })
     .join("");
 }
@@ -216,10 +236,19 @@ function renderCollection() {
   const q = state.filterScouter.trim().toLowerCase();
   const rows = state.items.filter((it) => {
     if (!q) return true;
-    return String(it.title || "")
-      .toLowerCase()
-      .includes(q);
+    const hay = `${it.title || ""} ${it.barcode || ""} ${it.sku || ""} ${it.game || ""}`.toLowerCase();
+    return hay.includes(q);
   });
+  const intakeN = state.items.filter((it) => itemPipeLabel(it) === "Intake").length;
+  const builtN = state.items.filter((it) => itemPipeLabel(it) === "Listing Built").length;
+  const listedN = state.items.filter((it) => itemPipeLabel(it) === "Listed").length;
+  const value = state.items
+    .filter((it) => it.listingStatus !== "sold")
+    .reduce((sum, it) => sum + (Number(it.marketValue) || 0) * (Number(it.quantity) || 1), 0);
+  if ($("scoutStepIntake")) $("scoutStepIntake").textContent = pad2(intakeN);
+  if ($("scoutStepBuilt")) $("scoutStepBuilt").textContent = pad2(builtN);
+  if ($("scoutStepListed")) $("scoutStepListed").textContent = pad2(listedN);
+  if ($("scouterValue")) $("scouterValue").textContent = money(value);
   if (empty) empty.classList.toggle("hidden", rows.length > 0);
   if (!rows.length) {
     root.innerHTML = "";
@@ -229,11 +258,13 @@ function renderCollection() {
     .slice(0, 60)
     .map((it) => {
       const thumb = it.photos?.[0]?.dataUrl || "";
-      const sku = it.barcode || "NO SKU";
+      const sku = it.barcode || it.sku || "NO SKU";
+      const step = itemPipeLabel(it);
+      const price = money(it.marketValue);
       const img = thumb
         ? `<img src="${thumb}" alt="" />`
         : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
-      return `<div class="v-panel v-cut-sm b44-item">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(sku)} · ${esc(it.game || "ITM")}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
+      return `<div class="v-panel v-cut-sm b44-item">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(step)} · ${esc(sku)} · ${esc(it.game || "PKM")}</span></div><div class="qty"><div class="v-readout v-emit-gold" style="font-size:14px">${esc(price)}</div><div>×${it.quantity || 1}</div></div></div>`;
     })
     .join("");
 }
@@ -291,6 +322,8 @@ async function runIdentify() {
     return false;
   }
   setIntakeMode("identifying");
+  if ($("identifyStage")) $("identifyStage").textContent = "IDENTIFYING…";
+  if ($("identifyPct")) $("identifyPct").textContent = "…";
   setStatus("IDENTIFYING…");
   try {
     const res = await fetch("/api/scouter/identify", {
@@ -384,9 +417,16 @@ function resetDraft() {
 
 function openNewBatch() {
   resetDraft();
-  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  state.batchName = `BATCH-${stamp}`;
+  const now = new Date();
+  const mon = now.toLocaleString("en-US", { month: "short" }).toUpperCase();
+  const day = String(now.getDate()).padStart(2, "0");
+  state.batchName = `BATCH-${mon}${day}`;
+  state.game = "PKM";
+  state.backsIncluded = true;
   if ($("batchName")) $("batchName").value = state.batchName;
+  if ($("batchTitle")) $("batchTitle").textContent = state.batchName;
+  if ($("batchGame")) $("batchGame").value = "PKM";
+  if ($("backsIncluded")) $("backsIncluded").checked = true;
   setIntakeMode("batch");
   setStatus("Drop scans here · or click to browse");
 }
@@ -668,6 +708,7 @@ function bind() {
   });
   $("batchName")?.addEventListener("input", (e) => {
     state.batchName = e.target.value;
+    if ($("batchTitle")) $("batchTitle").textContent = state.batchName || "New Scan Batch";
   });
   $("batchGame")?.addEventListener("change", (e) => {
     state.game = e.target.value;
