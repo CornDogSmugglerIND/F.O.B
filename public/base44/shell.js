@@ -26,6 +26,10 @@ const state = {
   filterScouter: "",
   filterSpaces: "",
   channelTab: "live",
+  settingsTab: "templates",
+  templates: [],
+  shipping: [],
+  storageDefs: [],
 };
 
 const SPACES_KEY = "scouter-spaces-v1";
@@ -96,6 +100,13 @@ function navigate(route) {
   });
   if ($("pageBrand")) $("pageBrand").textContent = meta.brand;
   if (location.hash !== `#${path}`) history.replaceState(null, "", `#${path}`);
+  if (path === "/settings") {
+    setSettingsTab(state.settingsTab || "templates");
+    renderSettings();
+  }
+  if (path === "/storage") renderSpaces();
+  if (path === "/channel") renderChannel();
+  if (path === "/" || path === "/command") updateSitrep();
 }
 
 function setIntakeMode(mode) {
@@ -402,6 +413,87 @@ function renderChannel() {
     .join("");
 }
 
+
+const SETTINGS_KEY = "scouter-settings-v1";
+
+function loadSettingsLocal() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    state.templates = Array.isArray(parsed.templates) ? parsed.templates : [];
+    state.shipping = Array.isArray(parsed.shipping) ? parsed.shipping : [];
+    state.storageDefs = Array.isArray(parsed.storageDefs) ? parsed.storageDefs : [];
+  } catch {
+    state.templates = [];
+    state.shipping = [];
+    state.storageDefs = [];
+  }
+}
+
+function saveSettingsLocal() {
+  localStorage.setItem(
+    SETTINGS_KEY,
+    JSON.stringify({
+      templates: state.templates,
+      shipping: state.shipping,
+      storageDefs: state.storageDefs,
+    }),
+  );
+  renderSettings();
+}
+
+function setSettingsTab(tab) {
+  state.settingsTab = tab;
+  document.querySelectorAll("[data-settings-tab]").forEach((btn) => {
+    btn.classList.toggle("m-btn-primary", btn.dataset.settingsTab === tab);
+  });
+  ["templates", "shipping", "storage", "diagnostic", "agent"].forEach((id) => {
+    $(`settings-${id}`)?.classList.toggle("hidden", id !== tab);
+  });
+}
+
+function renderSettings() {
+  loadSettingsLocal();
+  const tRoot = $("templateList");
+  const tEmpty = $("templateEmpty");
+  if (tRoot) {
+    tRoot.innerHTML = state.templates
+      .map(
+        (t) =>
+          `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(t.name)}</strong><span>Markup ${esc(String(t.markup ?? 0))}%</span></div></div>`,
+      )
+      .join("");
+    if (tEmpty) tEmpty.classList.toggle("hidden", state.templates.length > 0);
+  }
+  const sRoot = $("shipList");
+  const sEmpty = $("shipEmpty");
+  if (sRoot) {
+    sRoot.innerHTML = state.shipping
+      .map(
+        (s) =>
+          `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(s.name)}</strong><span>${esc(s.carrier || "")} · $${esc(String(s.cost ?? 0))}</span></div></div>`,
+      )
+      .join("");
+    if (sEmpty) sEmpty.classList.toggle("hidden", state.shipping.length > 0);
+  }
+  const dRoot = $("storageDefList");
+  const dEmpty = $("storageDefEmpty");
+  if (dRoot) {
+    dRoot.innerHTML = state.storageDefs
+      .map(
+        (d) =>
+          `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(d.name)}</strong><span>${esc(d.code || "")}</span></div></div>`,
+      )
+      .join("");
+    if (dEmpty) dEmpty.classList.toggle("hidden", state.storageDefs.length > 0);
+  }
+  if ($("aiConnectStatus")) {
+    $("aiConnectStatus").textContent =
+      "Identify is photo-first. If ANTHROPIC_API_KEY is set on the server, ID runs; otherwise you get an honest setup message — photos stay.";
+  }
+}
+
+
 function bind() {
   document.querySelectorAll(".b44-tab").forEach((tab) => {
     tab.addEventListener("click", () => navigate(tab.dataset.route));
@@ -491,6 +583,42 @@ function bind() {
     state.channelTab = "ship";
     renderChannel();
   });
+  
+  document.querySelectorAll("[data-settings-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => setSettingsTab(btn.dataset.settingsTab));
+  });
+  $("btnNewTemplate")?.addEventListener("click", () => {
+    const name = prompt("Template name", "Default");
+    if (!name?.trim()) return;
+    const markup = Number(prompt("Markup %", "15") || 0);
+    loadSettingsLocal();
+    state.templates.unshift({ id: crypto.randomUUID(), name: name.trim(), markup });
+    saveSettingsLocal();
+  });
+  $("btnNewShip")?.addEventListener("click", () => {
+    const name = prompt("Preset name", "USPS Priority");
+    if (!name?.trim()) return;
+    const carrier = prompt("Carrier", "USPS") || "";
+    const cost = Number(prompt("Cost ($)", "8.50") || 0);
+    loadSettingsLocal();
+    state.shipping.unshift({ id: crypto.randomUUID(), name: name.trim(), carrier, cost });
+    saveSettingsLocal();
+  });
+  $("btnNewStorageDef")?.addEventListener("click", () => {
+    const name = prompt("Location name", "Warehouse A");
+    if (!name?.trim()) return;
+    const code = prompt("Code", "WH-A") || "";
+    loadSettingsLocal();
+    state.storageDefs.unshift({ id: crypto.randomUUID(), name: name.trim(), code });
+    saveSettingsLocal();
+  });
+  $("btnEbayDiag")?.addEventListener("click", () => {
+    if ($("ebayDiagStatus")) {
+      $("ebayDiagStatus").textContent =
+        "Diagnostic call failed — eBay isn't connected. Connect it before publishing or sync.";
+    }
+  });
+
   $("btnChannelSync")?.addEventListener("click", () => {
     setStatus("Channel sync needs eBay connected in Settings.");
     alert("eBay isn't connected — publishing and sync are offline. Connect it in Settings.");
@@ -532,6 +660,9 @@ function bind() {
 }
 
 loadItems();
+loadSettingsLocal();
 bind();
 setIntakeMode("list");
+setSettingsTab(state.settingsTab || "templates");
+renderSettings();
 navigate((location.hash || "#/scan-intake").replace(/^#/, "") || "/scan-intake");

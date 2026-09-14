@@ -98,8 +98,8 @@
           </div>
           <div id="spaceList"></div>
           <div id="spaceEmpty" class="v-panel v-cut b44-empty">
-            <div class="v-label">Empty location</div>
-            <p>Add a bin, shelf or tote to start mapping your shelves.</p>
+            <div class="v-label">No locations yet</div>
+            <p>Add warehouses, shelves, or totes to organize inventory.</p>
           </div>
         </div>
       </section>
@@ -136,9 +136,18 @@
             </div>
           </div>
           <div id="channelShip" class="hidden">
+            <div class="v-panel v-cut-sm px-4 py-3" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px" id="fulfilStats">
+              <div><div class="v-label" style="font-size:8px">Ready to ship</div><div class="v-readout" style="font-size:16px;color:#c9d8e2" id="fulReady">00</div></div>
+              <div><div class="v-label" style="font-size:8px">Dropped off</div><div class="v-readout" style="font-size:16px;color:#c9d8e2" id="fulDropped">00</div></div>
+              <div><div class="v-label" style="font-size:8px">In transit</div><div class="v-readout v-emit-gold" style="font-size:16px" id="fulTransit">00</div></div>
+              <div><div class="v-label" style="font-size:8px">Out for delivery</div><div class="v-readout" style="font-size:16px;color:#5fe8d0" id="fulOut">00</div></div>
+              <div><div class="v-label" style="font-size:8px">Delivered</div><div class="v-readout" style="font-size:16px;color:#5fe8d0" id="fulDelivered">00</div></div>
+              <div><div class="v-label" style="font-size:8px">Awaiting payout</div><div class="v-readout v-emit-gold" style="font-size:16px" id="fulPayout">00</div></div>
+            </div>
             <div class="v-panel v-cut p-4">
               <div class="v-label">Fulfilment</div>
-              <p class="b44-copy-soft" style="margin-top:10px">Ship queue from Base44 Channel · ship tab. Orders appear here after publish.</p>
+              <p class="b44-copy-soft" style="margin-top:10px">Ship queue from Base44 Channel · FULFILMENT tab. Orders appear here after publish.</p>
+              <div id="fulEmpty" class="b44-copy-soft" style="margin-top:12px">No shipments yet — packed orders show here after Channel sync.</div>
             </div>
           </div>
         </div>
@@ -233,16 +242,86 @@
         </div>
       </section>
 
-      <section class="b44-view" id="view-settings" data-route="/settings">
-        <div class="v-panel v-cut p-4">
-          <div class="v-label">Settings</div>
-          <p class="b44-copy-soft" style="margin-top:10px">Backup / wipe for this phone store.</p>
-          <div class="b44-actions">
-            <button type="button" class="m-btn" id="btnExport">Export</button>
-            <button type="button" class="m-btn" id="btnImport">Import</button>
-            <button type="button" class="m-btn" id="btnWipe">Wipe</button>
+            <section class="b44-view" id="view-settings" data-route="/settings">
+        <div class="b44-glass">
+          <div class="v-panel v-cut p-4" style="margin-bottom:12px">
+            <div class="v-label" style="font-size:9px">System</div>
+            <div class="v-readout v-emit-white" style="font-size:22px;margin-top:8px">Settings</div>
+            <p class="b44-copy-soft" style="margin-top:8px">Templates, shipping presets, storage definitions and agent access. Set once, reused by every listing you push.</p>
           </div>
-          <input type="file" id="importFile" accept="application/json,.json" hidden />
+          <div class="b44-toolbar" style="flex-wrap:wrap;margin-bottom:12px" id="settingsTabs">
+            <button type="button" class="m-btn m-btn-primary" data-settings-tab="templates">Listing templates</button>
+            <button type="button" class="m-btn" data-settings-tab="shipping">Shipping presets</button>
+            <button type="button" class="m-btn" data-settings-tab="storage">Storage</button>
+            <button type="button" class="m-btn" data-settings-tab="diagnostic">eBay Diagnostic</button>
+            <button type="button" class="m-btn" data-settings-tab="agent">AI Connect</button>
+          </div>
+
+          <div id="settings-templates" class="settings-pane">
+            <div class="v-panel v-cut p-4">
+              <div class="b44-toolbar" style="justify-content:space-between">
+                <div class="v-label">Listing templates</div>
+                <button type="button" class="m-btn m-btn-primary" id="btnNewTemplate">New template</button>
+              </div>
+              <div id="templateList" style="margin-top:12px"></div>
+              <div id="templateEmpty" class="b44-copy-soft" style="margin-top:12px">No templates yet. Create one to apply default markup and policies.</div>
+            </div>
+          </div>
+
+          <div id="settings-shipping" class="settings-pane hidden">
+            <div class="v-panel v-cut p-4">
+              <div class="b44-toolbar" style="justify-content:space-between">
+                <div class="v-label">Shipping presets</div>
+                <button type="button" class="m-btn m-btn-primary" id="btnNewShip">New preset</button>
+              </div>
+              <div id="shipList" style="margin-top:12px"></div>
+              <div id="shipEmpty" class="b44-copy-soft" style="margin-top:12px">No shipping presets yet. Add carriers and services to reuse on listings.</div>
+            </div>
+          </div>
+
+          <div id="settings-storage" class="settings-pane hidden">
+            <div class="v-panel v-cut p-4">
+              <div class="b44-toolbar" style="justify-content:space-between">
+                <div class="v-label">Storage locations</div>
+                <button type="button" class="m-btn m-btn-primary" id="btnNewStorageDef">New location</button>
+              </div>
+              <div id="storageDefList" style="margin-top:12px"></div>
+              <div id="storageDefEmpty" class="b44-copy-soft" style="margin-top:12px">No storage locations yet. Add warehouses, shelves, or totes to organize inventory.</div>
+              <div class="b44-actions" style="margin-top:12px">
+                <a class="m-btn" href="#/storage">Open Spaces map</a>
+              </div>
+            </div>
+          </div>
+
+          <div id="settings-diagnostic" class="settings-pane hidden">
+            <div class="v-panel v-cut p-4">
+              <div class="v-label">eBay Diagnostic</div>
+              <p class="b44-copy-soft" style="margin-top:10px">Calls eBay's own API directly — real counts, real errors, no guessing.</p>
+              <div class="b44-actions" style="margin-top:12px">
+                <button type="button" class="m-btn m-btn-primary" id="btnEbayDiag">Run Diagnostic</button>
+              </div>
+              <div id="ebayDiagStatus" class="b44-copy-soft" style="margin-top:12px">eBay isn't connected — publishing and sync are offline.</div>
+            </div>
+          </div>
+
+          <div id="settings-agent" class="settings-pane hidden">
+            <div class="v-panel v-cut p-4">
+              <div class="v-label">AI Connect</div>
+              <p class="b44-copy-soft" style="margin-top:10px">Agent access for Identify / listing brain. Photo-first Identify uses Anthropic when the key is set on the server.</p>
+              <div id="aiConnectStatus" class="b44-copy-soft" style="margin-top:12px">Checking…</div>
+            </div>
+          </div>
+
+          <div class="v-panel v-cut p-4" style="margin-top:12px">
+            <div class="v-label">This phone</div>
+            <p class="b44-copy-soft" style="margin-top:8px">Backup / wipe for local intake on this device.</p>
+            <div class="b44-actions" style="margin-top:12px">
+              <button type="button" class="m-btn" id="btnExport">Export</button>
+              <button type="button" class="m-btn" id="btnImport">Import</button>
+              <button type="button" class="m-btn" id="btnWipe">Wipe</button>
+            </div>
+            <input type="file" id="importFile" accept="application/json,.json" hidden />
+          </div>
         </div>
       </section>
     </main>

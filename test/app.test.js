@@ -64,10 +64,19 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /v-panel/);
     assert.match(html, /SITREP/);
     assert.match(html, /All clear/);
-    assert.match(html, /Empty location/);
+    assert.match(html, /No locations yet/);
     assert.match(html, /Channel empty/);
     assert.match(html, /LIVE LISTINGS/);
     assert.match(html, /FULFILMENT/);
+    assert.match(html, /Listing templates/);
+    assert.match(html, /Shipping presets/);
+    assert.match(html, /eBay Diagnostic/);
+    assert.match(html, /AI Connect/);
+    assert.match(html, /No templates yet/);
+    assert.match(html, /Ready to ship/);
+    assert.match(html, /Awaiting payout/);
+    assert.match(html, /System/);
+
     assert.match(html, /m-btn-primary/);
     assert.doesNotMatch(html, /Add to rail/);
     assert.doesNotMatch(html, />Rail</);
