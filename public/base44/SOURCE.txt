@@ -1,0 +1,11 @@
+Vendored from live Base44 app on 2026-09-14:
+https://silky-coalition-command-core.base44.app/assets/index-CIPfPHae.css
+App ID: 6a45d0cea37e6615c8e0de67
+Primary nav (from shipped JS):
+  COMMAND → /
+  SCOUTER → /inventory
+  STORAGE → /storage
+  CHANNEL → /channel
+  INTAKE → /scan-intake
+  SETTINGS → /settings
+Do not invent alternate tab names.

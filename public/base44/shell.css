@@ -1,0 +1,207 @@
+/* Extracted from live Base44 silky-coalition-command-core (2026-09-14) */
+:root {
+  --b44-base: #04070c;
+  --b44-text: #ffffff;
+  --b44-mid: #c9d8e2;
+  --b44-lo: #6f8697;
+  --b44-gold: #ffb43d;
+  --b44-gold-hi: #ffd98a;
+  --b44-cyan: #2bd9c0;
+  --b44-cyan-hi: #8ff6e8;
+  --b44-bad: #ff4d6d;
+  --b44-bad-hi: #ff9aae;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--b44-base);
+  color: var(--b44-text);
+  font-family: Inter, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.b44 {
+  padding-bottom: calc(70px + var(--safe-bottom));
+}
+
+.hidden {
+  display: none !important;
+}
+
+.b44-shell {
+  min-height: 100dvh;
+  background:
+    radial-gradient(900px 500px at 20% 10%, rgba(255, 180, 61, 0.1), transparent 60%),
+    radial-gradient(700px 480px at 85% 80%, rgba(43, 217, 192, 0.06), transparent 55%),
+    var(--b44-base);
+}
+
+.b44-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(14px + var(--safe-top)) 16px 10px;
+}
+
+.b44-brand {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--b44-gold-hi);
+  text-shadow: 0 0 18px rgba(255, 180, 61, 0.35);
+}
+
+.b44-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--b44-lo);
+}
+
+.b44-main {
+  padding: 8px 16px 24px;
+}
+
+.b44-view {
+  display: none;
+}
+.b44-view.active {
+  display: block;
+}
+
+.b44-panel {
+  position: relative;
+  padding: 16px;
+  background: linear-gradient(180deg, #ffffff0f, #ffffff07);
+  -webkit-backdrop-filter: blur(20px) saturate(1.25);
+  backdrop-filter: blur(20px) saturate(1.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  margin-bottom: 12px;
+}
+
+.b44-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.b44-copy {
+  color: var(--b44-mid);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.b44-readout {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  color: var(--b44-gold);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 18px rgba(255, 180, 61, 0.4);
+}
+
+.b44-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 11px;
+  cursor: pointer;
+  color: #fff;
+  background: #ffffff12;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  font-family: Inter, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.b44-btn-primary {
+  color: #04070c;
+  background: linear-gradient(180deg, #ffd98a, #ffb43d);
+  border: 1px solid #ffd98a;
+  font-weight: 700;
+  box-shadow: 0 0 26px -6px #ffb43d8c, inset 0 1px #ffffff80;
+}
+
+.b44-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* Mobile nav — exact Base44 labels from shipped JS */
+.b44-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  height: calc(70px + var(--safe-bottom));
+  padding: 0 8px var(--safe-bottom);
+  display: flex;
+  background: linear-gradient(180deg, rgba(10, 16, 24, 0.9), rgba(4, 7, 12, 0.97));
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
+  backdrop-filter: blur(22px) saturate(1.2);
+  box-shadow: inset 0 1px 0 rgba(255, 180, 61, 0.18), 0 -12px 30px rgba(0, 0, 0, 0.6);
+}
+
+.b44-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--b44-lo);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.b44-tab .ico {
+  width: 42px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: polygon(7px 0%, 100% 0%, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0% 100%, 0% 7px);
+}
+
+.b44-tab.active {
+  color: var(--b44-gold-hi);
+}
+.b44-tab.active .ico {
+  background: linear-gradient(168deg, rgba(255, 180, 61, 0.133), rgba(255, 180, 61, 0.031));
+  box-shadow: inset 0 0 0 1px rgba(255, 180, 61, 0.333);
+}
+
+.b44-tab svg {
+  width: 19px;
+  height: 19px;
+}

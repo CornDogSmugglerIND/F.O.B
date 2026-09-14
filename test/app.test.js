@@ -41,49 +41,40 @@ test("GET /api/health reports scouter", async () => {
   }
 });
 
-test("GET / serves Scouter frontend", async () => {
+test("GET / serves Base44 port shell", async () => {
   const { baseUrl, close } = await startServer();
   try {
     const res = await fetch(`${baseUrl}/`);
     const html = await res.text();
-    assert.match(html, /Coalition H\.U\.D/);
-    assert.match(html, /Add to rail/);
-    assert.match(html, /SCOUTER/);
-    assert.match(html, /hh-viewfinder/);
-    assert.match(html, /scouter\.css\?v=25/);
-    assert.match(html, /stagedFlag/);
-    assert.match(html, /CAPTURE/);
-    assert.match(html, /btnIdentify/);
-    assert.match(html, /SCAN/);
-    assert.match(html, /Lookup/);
-    assert.match(html, /hh-barcode-block/);
-    assert.doesNotMatch(html, /Drop a folder of scans/);
-    assert.doesNotMatch(html, />Export</);
-    assert.doesNotMatch(html, />Import</);
+    assert.match(html, /Coalition HUD/);
+    assert.match(html, /base44\/app\.css/);
+    assert.match(html, /base44\/shell\.js/);
+    assert.match(html, /COMMAND/);
+    assert.match(html, /SCOUTER|Scouter/);
+    assert.match(html, /STORAGE|Storage/);
+    assert.match(html, /CHANNEL|Channel/);
+    assert.match(html, /INTAKE|Intake/);
+    assert.match(html, /SETTINGS|Settings/);
+    assert.match(html, /scan-intake/);
+    assert.doesNotMatch(html, /Add to rail/);
+    assert.doesNotMatch(html, />Rail</);
+    assert.doesNotMatch(html, /camera-first|liveCam/);
   } finally {
     await close();
   }
 });
 
-test("GET /hud.html serves Coalition H.U.D shell", async () => {
+test("GET /hud.html serves Base44 port shell", async () => {
   const { baseUrl, close } = await startServer();
   try {
     const res = await fetch(`${baseUrl}/hud.html`);
     const html = await res.text();
     assert.equal(res.status, 200);
-    assert.match(html, /Coalition H\.U\.D/);
-    assert.match(html, /hud-visor\.js/);
-    assert.match(html, /data-go="scan"/);
-    assert.match(html, /Scouter/);
-    assert.match(html, /stagedFlag/);
-    assert.match(html, /hh-viewfinder/);
-    assert.match(html, /btnIdentify/);
-    assert.match(html, /hh-barcode-block/);
-    assert.match(html, /Lookup/);
-    assert.match(html, /Export staged/);
-    assert.doesNotMatch(html, /Drop a folder of scans/);
-    assert.doesNotMatch(html, /Command Core/);
-    assert.doesNotMatch(html, /readyToList/);
+    assert.match(html, /Coalition HUD/);
+    assert.match(html, /base44\/shell\.js/);
+    assert.match(html, /scan-intake/);
+    assert.doesNotMatch(html, /Add to rail/);
+    assert.doesNotMatch(html, />Rail</);
   } finally {
     await close();
   }
