@@ -290,7 +290,7 @@ function renderCollection() {
       <div class="coll-empty-state">
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="1.4" style="opacity:0.7;filter:drop-shadow(0 0 14px #ffe566)"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
         <div class="v-label" style="margin-top:16px;font-size:12px">Intake empty</div>
-        <p>Capture or scan on Scout to fill the rail.</p>
+        <p>Capture or scan on Scout to fill Staged.</p>
       </div>`;
     return;
   }
@@ -530,13 +530,13 @@ async function saveCapture() {
     state.items.unshift(item);
     saveLocalItems(state.items);
 
-    // Finish local UX immediately — never wait on network for rail handoff
+    // Finish local UX immediately — never wait on network for staged handoff
     loadItems();
     resetCapture();
     navigate("collection");
-    showToast(item.staged ? "Staged on rail" : "Saved to rail");
+    showToast(item.staged ? "Staged" : "Saved");
     els.btnSave.disabled = false;
-    els.btnSave.textContent = "Add to rail";
+    els.btnSave.textContent = "Stage item";
     updateSaveState();
 
     // Best-effort server sync in background (barcode identify + backup)
@@ -594,7 +594,7 @@ async function saveCapture() {
     showToast(e.message, "err");
     setStatus(e.message, "err");
     els.btnSave.disabled = false;
-    els.btnSave.textContent = "Add to rail";
+    els.btnSave.textContent = "Stage item";
     updateSaveState();
   }
 }
@@ -609,7 +609,7 @@ function navigate(view) {
   els.railToolbar?.classList.toggle("hidden", true);
 
   if (isCollection) {
-    if (els.pageTitle) els.pageTitle.textContent = "Rail";
+    if (els.pageTitle) els.pageTitle.textContent = "Staged";
     renderCollection();
     stopScanner();
   } else if (els.pageTitle) {

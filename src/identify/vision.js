@@ -14,9 +14,14 @@
 import { normalizeIdentity, identifyResult } from "./gate.js";
 import { searchCatalogs } from "./catalog.js";
 import { searchLiveWeb } from "./webSearch.js";
+import {
+  ANTHROPIC_URL,
+  ANTHROPIC_VERSION,
+  anthropicErrorMessage,
+  toAnthropicImage,
+  visionModel,
+} from "./anthropicPayload.js";
 
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = process.env.IDENTIFY_VISION_MODEL || "claude-sonnet-4-20250514";
 const NOT_SET_UP = "Identify isn't set up yet.";
 
 const CARD_GAMES = new Set([
@@ -39,31 +44,18 @@ export function visionKeyStatus() {
 }
 
 /**
- * @param {string} dataUrl
- * @returns {{ mediaType: string, data: string } | null}
- */
-function parseDataUrl(dataUrl) {
-  const match = String(dataUrl || "").match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
-  if (!match) return null;
-  return { mediaType: match[1], data: match[2] };
-}
-
-/**
  * @param {string[]} dataUrls
  * @param {{ notes?: string, category?: string }} [ctx]
  */
 async function callClaudeVision(dataUrls, ctx = {}) {
   const images = [];
   for (const url of dataUrls.slice(0, 5)) {
-    const parsed = parseDataUrl(url);
-    if (parsed) {
-      images.push({
-        type: "image",
-        source: { type: "base64", media_type: parsed.mediaType, data: parsed.data },
-      });
-    }
+    const image = toAnthropicImage(url);
+    if (image) images.push(image);
   }
-  if (!images.length) throw new Error("No usable photo data URLs");
+  if (!images.length) {
+    throw new Error("No usable JPEG/PNG/GIF/WebP photo data. Photos kept.");
+  }
 
   const prompt = `You identify collectible / retail products for a reseller intake tool (Coalition H.U.D Scouter).
 
@@ -101,11 +93,11 @@ Rules:
     headers: {
       "content-type": "application/json",
       "x-api-key": process.env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
+      "anthropic-version": ANTHROPIC_VERSION,
     },
     body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 1200,
+      model: visionModel(),
+      max_tokens: 4096,
       messages: [{ role: "user", content: [...images, { type: "text", text: prompt }] }],
     }),
     signal: AbortSignal.timeout(45000),
@@ -113,9 +105,10 @@ Rules:
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    const err = new Error(`Anthropic vision failed: HTTP ${res.status}`);
+    console.error("[identify] Anthropic HTTP", res.status, String(text).slice(0, 800));
+    const err = new Error(anthropicErrorMessage(res.status, text));
     err.status = res.status;
-    err.body = text.slice(0, 400);
+    err.body = String(text).slice(0, 800);
     throw err;
   }
 
