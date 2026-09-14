@@ -33,6 +33,7 @@ const state = {
   channelTab: "live",
   channelFilter: "",
   channelSheetId: null,
+  channelSheetStatus: "",
   settingsTab: "templates",
   templates: [],
   shipping: [],
@@ -834,6 +835,7 @@ function openChannelSheet(id) {
     closeChannelSheet();
     return;
   }
+  if (state.channelSheetId !== id) state.channelSheetStatus = "";
   state.channelSheetId = id;
   sheet.classList.remove("hidden");
   const sku = it.barcode || it.sku || "NO SKU";
@@ -841,7 +843,7 @@ function openChannelSheet(id) {
   if ($("channelSheetTitle")) $("channelSheetTitle").textContent = it.title || "Untitled";
   const price = Number(it.marketValue ?? it.price) || 0;
   if ($("channelSheetPrice")) $("channelSheetPrice").textContent = money(price);
-  if ($("channelSheetStatus")) $("channelSheetStatus").textContent = "";
+  if ($("channelSheetStatus")) $("channelSheetStatus").textContent = state.channelSheetStatus || "";
   const ended = channelHubKey(it) === "ended";
   $("btnChannelReprice")?.classList.toggle("hidden", ended);
   $("btnChannelEnd")?.classList.toggle("hidden", ended);
@@ -850,6 +852,7 @@ function openChannelSheet(id) {
 
 function closeChannelSheet() {
   state.channelSheetId = null;
+  state.channelSheetStatus = "";
   $("channelSheet")?.classList.add("hidden");
 }
 
@@ -857,9 +860,8 @@ function channelSheetAction(kind) {
   const it = state.items.find((x) => x.id === state.channelSheetId);
   if (!it) return;
   if (!state.ebayConnected) {
-    if ($("channelSheetStatus")) {
-      $("channelSheetStatus").textContent = "Connect eBay before listing actions.";
-    }
+    state.channelSheetStatus = "Connect eBay before listing actions.";
+    openChannelSheet(it.id);
     return;
   }
   if (kind === "reprice") {
@@ -869,10 +871,8 @@ function channelSheetAction(kind) {
     it.marketValue = next;
     it.price = next;
     saveItems();
-    if ($("channelSheetStatus")) {
-      $("channelSheetStatus").textContent =
-        `Local price set to ${money(next)}. Live eBay reprice needs server credentials.`;
-    }
+    state.channelSheetStatus =
+      `Local price set to ${money(next)}. Live eBay reprice needs server credentials.`;
     openChannelSheet(it.id);
     renderChannel();
     return;
@@ -881,10 +881,8 @@ function channelSheetAction(kind) {
     it.listingStatus = "listed";
     it.channelStatus = "active";
     saveItems();
-    if ($("channelSheetStatus")) {
-      $("channelSheetStatus").textContent =
-        "Marked Active locally. Live Relist needs server eBay credentials.";
-    }
+    state.channelSheetStatus =
+      "Marked Active locally. Live Relist needs server eBay credentials.";
     openChannelSheet(it.id);
     renderChannel();
     return;
@@ -893,10 +891,8 @@ function channelSheetAction(kind) {
     it.listingStatus = "ended";
     it.channelStatus = "ended";
     saveItems();
-    if ($("channelSheetStatus")) {
-      $("channelSheetStatus").textContent =
-        "Marked Ended locally. Live End listing needs server eBay credentials.";
-    }
+    state.channelSheetStatus =
+      "Marked Ended locally. Live End listing needs server eBay credentials.";
     openChannelSheet(it.id);
     renderChannel();
   }
