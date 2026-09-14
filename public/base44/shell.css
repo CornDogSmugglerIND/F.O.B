@@ -402,3 +402,20 @@ body.b44 {
   color: var(--b44-mid);
   line-height: 1.45;
 }
+
+/* Class aliases used by index.html */
+.b44-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.b44-filter { position: relative; flex: 1; min-width: 0; }
+.b44-filter svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--b44-lo); pointer-events: none; }
+.b44-filter input { width: 100%; padding: 10px 12px 10px 32px; outline: none; border: none; color: #fff; font-family: Inter, sans-serif; font-size: 14px; background: rgba(255,255,255,0.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); border-radius: 10px; }
+.b44-empty { text-align: center; padding: 40px 16px; }
+.b44-empty .v-label { margin-top: 16px; font-size: 12px; }
+.b44-empty p { margin-top: 6px; font-family: Inter, sans-serif; font-size: 14px; color: var(--b44-mid); line-height: 1.45; }
+.b44-copy-soft { font-family: Inter, sans-serif; font-size: 14px; color: var(--b44-mid); line-height: 1.45; }
+.p-4 { padding: 16px; }
+.px-4 { padding-left: 16px; padding-right: 16px; }
+.py-3 { padding-top: 12px; padding-bottom: 12px; }
+.v-cut-sm { clip-path: polygon(var(--cut-sm, 8px) 0%, 100% 0%, 100% calc(100% - var(--cut-sm, 8px)), calc(100% - var(--cut-sm, 8px)) 100%, 0% 100%, 0% var(--cut-sm, 8px)); }
+.v-cut-lg { clip-path: polygon(var(--cut-lg, 22px) 0%, 100% 0%, 100% calc(100% - var(--cut-lg, 22px)), calc(100% - var(--cut-lg, 22px)) 100%, 0% 100%, 0% var(--cut-lg, 22px)); }
+.m-btn-go { color: #04070c; background: linear-gradient(180deg, #8ff6e8, #2bd9c0); border: 1px solid #8ff6e8; font-weight: 700; }
+

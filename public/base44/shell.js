@@ -1,4 +1,4 @@
-/** Base44 route shell — nav/routes + Intake/Scouter shape from live silky JS. */
+/** Base44 route shell — nav + Intake/Scouter from live silky bundle (Zle/Mle/tle). */
 const LS_KEY = "scouter-items-v1";
 const ROUTES = {
   "/": { id: "view-command", brand: "COMMAND" },
@@ -28,7 +28,13 @@ const state = {
 const $ = (id) => document.getElementById(id);
 
 function esc(s) {
-  return String(s || "").replace(/[<>&"']/g, "");
+  return String(s || "").replace(/[<>&"']/g, (c) => ({
+    "<": "&lt;",
+    ">": "&gt;",
+    "&": "&amp;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[c]);
 }
 
 function pad2(n) {
@@ -42,9 +48,10 @@ function loadItems() {
   } catch {
     state.items = [];
   }
-  if ($("statCount")) $("statCount").textContent = pad2(state.items.length);
-  if ($("scouterCount")) $("scouterCount").textContent = pad2(state.items.length);
-  if ($("intakeValue")) $("intakeValue").textContent = pad2(state.items.length);
+  const n = pad2(state.items.length);
+  if ($("statCount")) $("statCount").textContent = n;
+  if ($("scouterCount")) $("scouterCount").textContent = n;
+  if ($("intakeValue")) $("intakeValue").textContent = n;
   renderCollection();
   renderIntakeList();
 }
@@ -95,7 +102,7 @@ function renderIntakeList() {
       const img = thumb
         ? `<img src="${thumb}" alt="" />`
         : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
-      return `<div class="v-panel v-cut-sm b44-item" data-id="${esc(it.id)}">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${badge} · ${esc(it.game || "ITM")}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
+      return `<div class="v-panel v-cut-sm b44-item">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${badge} · ${esc(it.game || "ITM")}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
     })
     .join("");
 }
@@ -124,7 +131,7 @@ function renderCollection() {
       const img = thumb
         ? `<img src="${thumb}" alt="" />`
         : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
-      return `<div class="v-panel v-cut-sm b44-item"><div>${img}</div><div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(sku)} · ${esc(it.game || "ITM")}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
+      return `<div class="v-panel v-cut-sm b44-item">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(sku)} · ${esc(it.game || "ITM")}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
     })
     .join("");
 }
