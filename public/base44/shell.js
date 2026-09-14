@@ -34,6 +34,13 @@ const state = {
   intakeScanCount: 0,
   intakeReviewStatus: "",
   intakeExportSummary: null,
+  fleRowId: null,
+  fleFace: "front",
+  flePickId: null,
+  unItemId: null,
+  unPhase: "idle", // idle | running | done | error
+  unDraft: null,
+  unStatus: "",
   filterIntake: "",
   filterScouter: "",
   filterSpaces: "",
@@ -1187,6 +1194,7 @@ async function startIdentificationFromGroups() {
     let variation = "";
     let confidence = "Failed";
     let message = "";
+    let candidates = [];
     try {
       const res = await fetch("/api/scouter/identify", {
         method: "POST",
@@ -1208,6 +1216,14 @@ async function startIdentificationFromGroups() {
       setCode = idn.set_code || "";
       variation = idn.finish || idn.variation || "";
       confidence = mapIntakeConfidence(idn.confidence || result.confidence, !!idn.product_name);
+      candidates = (result.candidates || []).map((c, ci) => ({
+        id: c.id || `cand-${done}-${ci}`,
+        name: c.product_name || c.name || "Candidate",
+        number: c.collector_number || c.number || "",
+        set: c.set_name || c.set || "",
+        set_code: c.set_code || "",
+        image_url: c.image_url || c.imageUrl || null,
+      }));
     } catch (e) {
       message = `Identify failed: ${e.message}`;
       confidence = "Failed";
@@ -1229,6 +1245,9 @@ async function startIdentificationFromGroups() {
       market_price: "",
       suggested_price: "",
       photos: photos.map((dataUrl) => ({ dataUrl })),
+      front_url: front.url || "",
+      back_url: back?.url || "",
+      catalog_candidates: candidates,
       message,
     });
     done += 1;
@@ -1317,7 +1336,7 @@ function renderIntakeReview() {
       const checked = state.intakeReviewSelected.includes(r.id) ? "checked" : "";
       return `<tr class="b44-review-row ${edge}" data-row-id="${esc(r.id)}">
         <td><input type="checkbox" data-rev-sel="${esc(r.id)}" ${checked} /></td>
-        <td class="b44-review-thumb">${r.photos?.[0]?.dataUrl ? `<img src="${r.photos[0].dataUrl}" alt="" />` : ""}</td>
+        <td class="b44-review-thumb"><button type="button" class="b44-review-open" data-open-fle="${esc(r.id)}" title="Open scan">${r.photos?.[0]?.dataUrl ? `<img src="${r.photos[0].dataUrl}" alt="" />` : "Open"}</button></td>
         <td><input class="b44-review-input" data-rev-field="card_name" data-id="${esc(r.id)}" value="${esc(r.card_name)}" /></td>
         <td><input class="b44-review-input" data-rev-field="number" data-id="${esc(r.id)}" value="${esc(r.number)}" style="width:56px" /></td>
         <td><input class="b44-review-input" data-rev-field="set" data-id="${esc(r.id)}" value="${esc(r.set)}" /></td>
@@ -1337,6 +1356,9 @@ function renderIntakeReview() {
       </tr>`;
     })
     .join("");
+  body.querySelectorAll("[data-open-fle]").forEach((btn) => {
+    btn.addEventListener("click", () => openFleSheet(btn.dataset.openFle));
+  });
   body.querySelectorAll("[data-rev-sel]").forEach((el) => {
     el.addEventListener("change", () => {
       const id = el.dataset.revSel;
@@ -1437,6 +1459,181 @@ function stageReviewToScouter() {
   resetDraft();
   setIntakeMode("list");
   navigate("/inventory");
+}
+
+/** Live Fle — catalog candidate sheet from Intake review. */
+function openFleSheet(rowId) {
+  const row = state.intakeReviewRows.find((r) => r.id === rowId);
+  if (!row) return;
+  state.fleRowId = rowId;
+  state.fleFace = "front";
+  state.flePickId = row.catalog_candidates?.[0]?.id || null;
+  renderFleSheet();
+  $("fleSheet")?.classList.remove("hidden");
+}
+
+function closeFleSheet() {
+  state.fleRowId = null;
+  state.flePickId = null;
+  $("fleSheet")?.classList.add("hidden");
+}
+
+function renderFleSheet() {
+  const row = state.intakeReviewRows.find((r) => r.id === state.fleRowId);
+  if (!row) return;
+  const cands = row.catalog_candidates || [];
+  const pick = cands.find((c) => c.id === state.flePickId) || cands[0] || null;
+  const faceUrl = state.fleFace === "back" ? row.back_url || row.photos?.[1]?.dataUrl : row.front_url || row.photos?.[0]?.dataUrl;
+  if ($("fleTitle")) {
+    $("fleTitle").textContent = `${row.card_name || "UNIDENTIFIED"} · #${row.number || "—"} · ${row.set || "—"}${row.set_code ? ` (${row.set_code})` : ""}`;
+  }
+  if ($("fleScanImg")) {
+    $("fleScanImg").innerHTML = faceUrl
+      ? `<img src="${faceUrl}" alt="" />`
+      : `<div class="b44-fle-empty">No ${state.fleFace} scan</div>`;
+  }
+  $("fleFaceFront")?.classList.toggle("m-chip-on", state.fleFace === "front");
+  $("fleFaceBack")?.classList.toggle("m-chip-on", state.fleFace === "back");
+  $("fleFaceBack")?.classList.toggle("hidden", !(row.back_url || row.photos?.[1]));
+  if ($("fleCatalogImg")) {
+    $("fleCatalogImg").innerHTML = pick?.image_url
+      ? `<img src="${esc(pick.image_url)}" alt="" />`
+      : `<div class="b44-fle-empty">${cands.length ? "Pick a candidate below" : "No match found"}</div>`;
+  }
+  if ($("fleCatalogMeta")) {
+    $("fleCatalogMeta").textContent = pick ? `${pick.name} · #${pick.number || "—"} · ${pick.set || "—"}` : "";
+  }
+  const list = $("fleCandidates");
+  const rowEl = $("fleCandRow");
+  if (list && rowEl) {
+    list.classList.toggle("hidden", cands.length <= 1);
+    rowEl.innerHTML = cands
+      .map(
+        (c) => `<button type="button" class="b44-fle-cand${c.id === (pick && pick.id) ? " on" : ""}" data-fle-cand="${esc(c.id)}">
+          ${c.image_url ? `<img src="${esc(c.image_url)}" alt="" />` : `<span class="b44-fle-cand-ph">${esc((c.name || "?").slice(0, 2))}</span>`}
+          <span class="b44-fle-cand-meta">#${esc(c.number || "—")}</span>
+        </button>`,
+      )
+      .join("");
+    rowEl.querySelectorAll("[data-fle-cand]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.flePickId = btn.dataset.fleCand;
+        renderFleSheet();
+      });
+    });
+  }
+}
+
+function applyFlePick() {
+  const row = state.intakeReviewRows.find((r) => r.id === state.fleRowId);
+  if (!row) return;
+  const pick = (row.catalog_candidates || []).find((c) => c.id === state.flePickId);
+  if (!pick) {
+    state.intakeReviewStatus = "No candidate to apply";
+    closeFleSheet();
+    renderIntakeReview();
+    return;
+  }
+  row.card_name = pick.name || row.card_name;
+  row.number = pick.number || row.number;
+  row.set = pick.set || row.set;
+  row.set_code = pick.set_code || row.set_code;
+  row.confidence = "High";
+  row.status = "Approved";
+  state.intakeReviewStatus = "Candidate applied → High";
+  closeFleSheet();
+  renderIntakeReview();
+}
+
+/** Live UN — AI listing engine sheet (honest when engine unwired). */
+function openUnSheet(itemId) {
+  const it = state.items.find((x) => x.id === itemId);
+  if (!it) return;
+  state.unItemId = itemId;
+  state.unPhase = "idle";
+  state.unDraft = null;
+  state.unStatus = "";
+  renderUnSheet();
+  $("unSheet")?.classList.remove("hidden");
+}
+
+function closeUnSheet() {
+  state.unItemId = null;
+  state.unDraft = null;
+  state.unPhase = "idle";
+  $("unSheet")?.classList.add("hidden");
+}
+
+function renderUnSheet() {
+  const it = state.items.find((x) => x.id === state.unItemId);
+  if (!it) return;
+  if ($("unTarget")) $("unTarget").textContent = it.title || "Untitled Item";
+  if ($("unPhotoCount")) {
+    const n = (it.photos || []).length;
+    $("unPhotoCount").textContent = `${n} PHOTO${n === 1 ? "" : "S"}`;
+  }
+  const phase = state.unPhase;
+  $("unIdle")?.classList.toggle("hidden", phase !== "idle");
+  $("unRunning")?.classList.toggle("hidden", phase !== "running");
+  $("unError")?.classList.toggle("hidden", phase !== "error");
+  $("unDone")?.classList.toggle("hidden", phase !== "done");
+  if ($("unStatus")) $("unStatus").textContent = state.unStatus || "";
+  const d = state.unDraft;
+  if (phase === "done" && d) {
+    if ($("unDraftTitle")) $("unDraftTitle").value = d.title || "";
+    if ($("unDraftPrice")) $("unDraftPrice").value = d.price != null ? String(d.price) : "";
+    if ($("unDraftConf")) $("unDraftConf").textContent = `${Math.round((d.ai_confidence || 0) * 100)}%`;
+    if ($("unKeywords")) {
+      $("unKeywords").innerHTML = (d.ai_keywords || [])
+        .map((k) => `<span class="b44-un-chip">${esc(k)}</span>`)
+        .join("");
+    }
+    if ($("unSpecifics")) {
+      $("unSpecifics").innerHTML = (d.item_specifics || [])
+        .map((s) => `<div class="b44-un-spec"><span>${esc(s.name || s.key || "")}</span><strong>${esc(s.value || "")}</strong></div>`)
+        .join("");
+    }
+    if ($("unShipSku")) {
+      $("unShipSku").textContent = `SHIP · ${d.shipping_method || "Standard"} · SKU · ${d.sku || "—"}`;
+    }
+    if ($("unPriceBasis")) $("unPriceBasis").textContent = d.ai_price_basis ? `⊕ ${d.ai_price_basis}` : "";
+  }
+}
+
+async function runUnEngine() {
+  const it = state.items.find((x) => x.id === state.unItemId);
+  if (!it) return;
+  state.unPhase = "running";
+  state.unStatus = "";
+  renderUnSheet();
+  // Live sie() needs Base44 listing AI — not wired here. Fail honestly like live error path.
+  await new Promise((r) => setTimeout(r, 400));
+  state.unPhase = "error";
+  state.unDraft = null;
+  state.unStatus = "AI engine failed — check item data. Listing engine isn't connected on this device.";
+  renderUnSheet();
+}
+
+function saveUnDraft() {
+  const it = state.items.find((x) => x.id === state.unItemId);
+  const d = state.unDraft;
+  if (!it || !d) {
+    state.unStatus = "Failed to save draft";
+    renderUnSheet();
+    return;
+  }
+  it.title = d.title || it.title;
+  if (d.price != null) it.marketValue = Number(d.price) || it.marketValue;
+  if (d.sku) it.sku = d.sku;
+  it.listingStatus = "ready_to_list";
+  it.staged = true;
+  it.updatedAt = new Date().toISOString();
+  saveItems();
+  state.readoutStatus = "Draft saved → Ready to List";
+  closeUnSheet();
+  if (state.lockedItemId) openScouterReadout(state.lockedItemId);
+  renderCollection();
+  updateSitrep();
 }
 
 function renderPhotos() {
@@ -2595,10 +2792,28 @@ function bind() {
 
   $("btnCloseReadout")?.addEventListener("click", () => closeScouterReadout());
   $("btnWriteListing")?.addEventListener("click", () => {
-    state.readoutStatus =
-      "Listing engine isn't connected here yet — title/photos stay. Identify remains photo-first.";
-    if (state.lockedItemId) openScouterReadout(state.lockedItemId);
+    if (!state.lockedItemId) return;
+    openUnSheet(state.lockedItemId);
   });
+  $("btnFleClose")?.addEventListener("click", () => closeFleSheet());
+  $("fleSheet")?.addEventListener("click", (e) => {
+    if (e.target === $("fleSheet")) closeFleSheet();
+  });
+  $("fleFaceFront")?.addEventListener("click", () => {
+    state.fleFace = "front";
+    renderFleSheet();
+  });
+  $("fleFaceBack")?.addEventListener("click", () => {
+    state.fleFace = "back";
+    renderFleSheet();
+  });
+  $("btnFleApply")?.addEventListener("click", () => applyFlePick());
+  $("btnUnClose")?.addEventListener("click", () => closeUnSheet());
+  $("unSheet")?.addEventListener("click", (e) => {
+    if (e.target === $("unSheet")) closeUnSheet();
+  });
+  $("btnUnRun")?.addEventListener("click", () => runUnEngine());
+  $("btnUnSave")?.addEventListener("click", () => saveUnDraft());
   $("btnMovePhase")?.addEventListener("click", () => {
     const it = state.items.find((x) => x.id === state.lockedItemId);
     if (!it) return;
@@ -2657,7 +2872,9 @@ function bind() {
   });
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      if (!$("assetSheet")?.classList.contains("hidden")) closeAssetSheet();
+      if (!$("fleSheet")?.classList.contains("hidden")) closeFleSheet();
+      else if (!$("unSheet")?.classList.contains("hidden")) closeUnSheet();
+      else if (!$("assetSheet")?.classList.contains("hidden")) closeAssetSheet();
       else closeScouterReadout();
     }
   });
