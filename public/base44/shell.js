@@ -29,6 +29,7 @@ const state = {
   lockedItemId: null,
   shipments: [],
   ebayConnected: false,
+  mcpClient: "claude",
   channelTab: "live",
   settingsTab: "templates",
   templates: [],
@@ -1076,10 +1077,143 @@ function renderSettings() {
       });
     });
   }
-  if ($("aiConnectStatus")) {
-    $("aiConnectStatus").textContent =
-      "Identify is photo-first. If ANTHROPIC_API_KEY is set on the server, ID runs; otherwise you get an honest setup message — photos stay.";
+  refreshAiConnect();
+}
+
+
+
+/** Live NR MCP client setup steps (AI Connect). */
+const MCP_CLIENTS = {
+  claude: {
+    label: "Claude",
+    steps: [
+      "Open your profile menu (top-left) and go to Settings.",
+      "Select the Connectors tab and click “Add custom connector”.",
+      "Name the connector (e.g. “Coalition”), paste the server URL, and click Add.",
+      "On first use, Claude opens this app’s consent page — sign in with your account and Approve.",
+    ],
+  },
+  chatgpt: {
+    label: "ChatGPT",
+    steps: [
+      "Go to Settings → Apps → enable Developer mode (confirm the warning ChatGPT shows).",
+      "Click “Create app”, name it, paste the server URL, and click Create.",
+      "Enable the app from the chat composer before prompting it.",
+      "On first use, ChatGPT opens this app’s consent page — sign in with your account and Approve.",
+    ],
+  },
+  cursor: {
+    label: "Cursor",
+    steps: [
+      "Open Settings → Tools & Integrations and click “New MCP Server”.",
+      "This opens mcp.json — add an entry whose url is the server URL, then save.",
+      "Toggle the server on in the list.",
+      "On first use, Cursor opens this app’s consent page — sign in with your account and Approve.",
+    ],
+  },
+  custom: {
+    label: "Custom",
+    steps: [
+      "Copy the server URL below.",
+      "Add it as a streamable HTTP MCP server in your client.",
+      "A name and the URL is all most clients need — then reload the client.",
+      "On first use, your client opens this app’s consent page — sign in with your account and Approve.",
+    ],
+  },
+};
+
+function mcpServerUrl() {
+  return new URL("/api/mcp", window.location.origin).toString();
+}
+
+function renderMcpClient(key) {
+  state.mcpClient = key in MCP_CLIENTS ? key : "claude";
+  document.querySelectorAll("[data-mcp-client]").forEach((btn) => {
+    btn.classList.toggle("m-btn-primary", btn.dataset.mcpClient === state.mcpClient);
+  });
+  const client = MCP_CLIENTS[state.mcpClient];
+  const root = $("mcpClientSteps");
+  if (!root || !client) return;
+  root.innerHTML =
+    `<div class="v-label" style="font-size:9px;margin-bottom:8px">${esc(client.label)}</div>` +
+    `<ol style="margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px">` +
+    client.steps
+      .map(
+        (step, i) =>
+          `<li><span class="v-label" style="font-size:10px;margin-right:6px">${String(i + 1).padStart(2, "0")}</span>${esc(step)}</li>`,
+      )
+      .join("") +
+    `</ol>`;
+}
+
+async function refreshAiConnect() {
+  if ($("mcpServerUrl")) $("mcpServerUrl").textContent = mcpServerUrl();
+  if (!state.mcpClient) state.mcpClient = "claude";
+  renderMcpClient(state.mcpClient);
+  const status = $("aiConnectStatus");
+  if (!status) return;
+  status.textContent = "Checking photo Identify…";
+  try {
+    const res = await fetch("/api/scouter/identify/status");
+    const data = await res.json();
+    if (data.photoSearchReady) {
+      status.textContent =
+        "Photo Identify ready on this server. MCP clients can also connect with the URL above.";
+    } else {
+      status.textContent =
+        data.setupTask ||
+        "Photo Identify needs ANTHROPIC_API_KEY on the server. Photos still save — ID stays honest until the key is set.";
+    }
+  } catch {
+    status.textContent =
+      "Could not reach Identify status. Photos still save locally; reconnect and try again.";
   }
+}
+
+function runEbayDiagnostic() {
+  const status = $("ebayDiagStatus");
+  const result = $("ebayDiagResult");
+  if (status) status.textContent = "Checking eBay…";
+  if (result) {
+    result.classList.add("hidden");
+    result.innerHTML = "";
+  }
+  // Local port: no server ebayAuth yet — honest structured result shaped like live.
+  window.setTimeout(() => {
+    if (!state.ebayConnected) {
+      if (status) {
+        status.textContent =
+          "Diagnostic call failed — eBay isn't connected. Connect it on Channel before publishing or sync.";
+      }
+      return;
+    }
+    const listed = state.items.filter((it) => itemPipeLabel(it) === "Listed").length;
+    if (status) {
+      status.textContent =
+        "Local flag is connected, but live eBay OAuth credentials are not on this server — showing Coalition inventory only.";
+    }
+    if (result) {
+      result.classList.remove("hidden");
+      result.innerHTML = `
+        <div class="v-panel v-cut-sm p-3" style="margin-bottom:8px;border-color:rgba(43,217,192,0.35)">
+          <span class="b44-copy-soft">Synced in Coalition HUD right now: <strong>${pad2(listed)}</strong> listings</span>
+        </div>
+        <div class="v-panel v-cut-sm p-3" style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;gap:8px">
+            <strong>Active</strong>
+            <span class="v-label" style="color:#ff4d6d">Skipped</span>
+          </div>
+          <p class="b44-copy-soft" style="margin-top:6px;font-size:12px">eBay API not called — server credentials missing.</p>
+        </div>
+        <div class="v-panel v-cut-sm p-3">
+          <div style="display:flex;justify-content:space-between;gap:8px">
+            <strong>Unsold</strong>
+            <span class="v-label" style="color:#ff4d6d">Skipped</span>
+          </div>
+          <p class="b44-copy-soft" style="margin-top:6px;font-size:12px">eBay API not called — server credentials missing.</p>
+        </div>`;
+    }
+  }, 350);
 }
 
 
@@ -1273,12 +1407,22 @@ function bind() {
     state.storageDefs.unshift({ id: crypto.randomUUID(), name: name.trim(), code });
     saveSettingsLocal();
   });
-  $("btnEbayDiag")?.addEventListener("click", () => {
-    if ($("ebayDiagStatus")) {
-      $("ebayDiagStatus").textContent = state.ebayConnected
-        ? "Diagnostic needs live eBay credentials on the server — nothing called."
-        : "Diagnostic call failed — eBay isn't connected. Connect it on Channel before publishing or sync.";
+  $("btnEbayDiag")?.addEventListener("click", () => runEbayDiagnostic());
+  $("btnCopyMcp")?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(mcpServerUrl());
+      if ($("btnCopyMcp")) $("btnCopyMcp").textContent = "Copied";
+      window.setTimeout(() => {
+        if ($("btnCopyMcp")) $("btnCopyMcp").textContent = "Copy";
+      }, 1800);
+    } catch {
+      if ($("aiConnectStatus")) {
+        $("aiConnectStatus").textContent = "Could not copy — select the URL and copy manually.";
+      }
     }
+  });
+  document.querySelectorAll("[data-mcp-client]").forEach((btn) => {
+    btn.addEventListener("click", () => renderMcpClient(btn.dataset.mcpClient));
   });
 
   const setChannelStatus = (msg) => {

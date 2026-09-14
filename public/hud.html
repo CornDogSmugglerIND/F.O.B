@@ -397,14 +397,28 @@
                 <button type="button" class="m-btn m-btn-primary" id="btnEbayDiag">Run Diagnostic</button>
               </div>
               <div id="ebayDiagStatus" class="b44-copy-soft" style="margin-top:12px">eBay isn't connected — publishing and sync are offline.</div>
+              <div id="ebayDiagResult" class="hidden" style="margin-top:12px"></div>
             </div>
           </div>
 
           <div id="settings-agent" class="settings-pane hidden">
             <div class="v-panel v-cut p-4">
               <div class="v-label">AI Connect</div>
-              <p class="b44-copy-soft" style="margin-top:10px">Agent access for Identify / listing brain. Photo-first Identify uses Anthropic when the key is set on the server.</p>
-              <div id="aiConnectStatus" class="b44-copy-soft" style="margin-top:12px">Checking…</div>
+              <p class="b44-copy-soft" style="margin-top:10px">Point Claude, ChatGPT, or Cursor at this app's MCP server. The assistant acts as you — it only sees and does what your account allows.</p>
+              <div class="v-label" style="font-size:8px;margin-top:14px">MCP server URL</div>
+              <div class="b44-actions" style="margin-top:8px;align-items:stretch">
+                <code id="mcpServerUrl" class="v-readout" style="flex:1;font-size:12px;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></code>
+                <button type="button" class="m-btn m-btn-primary" id="btnCopyMcp">Copy</button>
+              </div>
+              <p class="b44-copy-soft" style="margin-top:8px;font-size:12px">OAuth — each client signs you in here and asks you to approve before it can act.</p>
+              <div class="b44-actions" style="margin-top:14px;flex-wrap:wrap" id="mcpClientTabs">
+                <button type="button" class="m-btn m-btn-primary" data-mcp-client="claude">Claude</button>
+                <button type="button" class="m-btn" data-mcp-client="chatgpt">ChatGPT</button>
+                <button type="button" class="m-btn" data-mcp-client="cursor">Cursor</button>
+                <button type="button" class="m-btn" data-mcp-client="custom">Custom</button>
+              </div>
+              <div id="mcpClientSteps" class="b44-copy-soft" style="margin-top:12px"></div>
+              <div id="aiConnectStatus" class="b44-copy-soft" style="margin-top:14px">Checking photo Identify…</div>
             </div>
           </div>
 
