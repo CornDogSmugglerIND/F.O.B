@@ -22,7 +22,12 @@ const state = {
   batchName: "",
   backsIncluded: true,
   skuPrefix: "ITM",
-  intakeMode: "list", // list | batch | identifying
+  intakeMode: "list", // list | batch | grouping | identifying
+  intakeScans: [],
+  intakeGroups: [],
+  intakeThreshold: 5,
+  groupSplitOpen: null,
+  groupSplitPick: [],
   filterIntake: "",
   filterScouter: "",
   filterSpaces: "",
@@ -97,6 +102,79 @@ const INTAKE_GAMES = [
   { code: "WRL", label: "Wrestling" },
   { code: "ITM", label: "Other" },
 ];
+
+/** Live Cle / Ale / p_ — 8×8 difference hash for Intake grouping (Nle). */
+function loadImageUrl(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("image load failed"));
+    img.src = url;
+  });
+}
+
+async function intakeDHashFromDataUrl(dataUrl, maxEdge = 1200) {
+  const img = await loadImageUrl(dataUrl);
+  const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+  const w = Math.max(1, Math.round(img.width * scale));
+  const h = Math.max(1, Math.round(img.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+  const tiny = document.createElement("canvas");
+  tiny.width = 9;
+  tiny.height = 8;
+  const ctx = tiny.getContext("2d");
+  ctx.drawImage(canvas, 0, 0, 9, 8);
+  const { data } = ctx.getImageData(0, 0, 9, 8);
+  let bits = "";
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const a = (row * 9 + col) * 4;
+      const b = (row * 9 + (col + 1)) * 4;
+      const la = 0.299 * data[a] + 0.587 * data[a + 1] + 0.114 * data[a + 2];
+      const lb = 0.299 * data[b] + 0.587 * data[b + 1] + 0.114 * data[b + 2];
+      bits += la > lb ? "1" : "0";
+    }
+  }
+  let hex = "";
+  for (let i = 0; i < 64; i += 4) hex += parseInt(bits.slice(i, i + 4), 2).toString(16);
+  return { hash: hex, width: w, height: h };
+}
+
+function intakeHammingHex(a, b) {
+  if (!a || !b || a.length !== b.length) return 999;
+  let dist = 0;
+  for (let i = 0; i < a.length; i++) {
+    let x = parseInt(a[i], 16) ^ parseInt(b[i], 16);
+    while (x) {
+      dist += x & 1;
+      x >>= 1;
+    }
+  }
+  return dist;
+}
+
+function groupFrontsByHash(fronts, threshold = 5) {
+  const groups = [];
+  for (const scan of fronts) {
+    if (!scan.hash) {
+      groups.push([scan]);
+      continue;
+    }
+    let placed = false;
+    for (const g of groups) {
+      if (g[0].hash && intakeHammingHex(scan.hash, g[0].hash) <= threshold) {
+        g.push(scan);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) groups.push([scan]);
+  }
+  return groups;
+}
 
 /** Live Si pipeline steps (tle). */
 const PIPE_STEPS = [
@@ -621,6 +699,7 @@ function setIntakeMode(mode) {
   state.intakeMode = mode;
   $("intakeList")?.classList.toggle("hidden", mode !== "list");
   $("intakeBatch")?.classList.toggle("hidden", mode !== "batch");
+  $("intakeGrouping")?.classList.toggle("hidden", mode !== "grouping");
   $("intakeIdentifying")?.classList.toggle("hidden", mode !== "identifying");
 }
 
@@ -913,6 +992,228 @@ function updateBatchScanChrome() {
   $("batchOddWarn")?.classList.toggle("hidden", !odd);
 }
 
+function regroupIntake() {
+  const fronts = state.intakeScans.filter((s) => s.isFront);
+  state.intakeGroups = groupFrontsByHash(fronts, state.intakeThreshold);
+  renderGrouping();
+}
+
+function renderGrouping() {
+  const root = $("groupGrid");
+  if (!root) return;
+  const scans = state.intakeScans;
+  const groups = state.intakeGroups;
+  const cardCount = state.backsIncluded ? Math.floor(scans.length / 2) : scans.length;
+  const unique = groups.length;
+  const dupes = Math.max(0, cardCount - unique);
+  const fewer = cardCount ? Math.round((dupes / cardCount) * 100) : 0;
+  if ($("groupStatScans")) $("groupStatScans").textContent = String(scans.length);
+  if ($("groupStatCards")) $("groupStatCards").textContent = String(cardCount);
+  if ($("groupStatUnique")) $("groupStatUnique").textContent = String(unique);
+  if ($("groupThreshVal")) $("groupThreshVal").textContent = String(state.intakeThreshold);
+  if ($("groupSensitivity")) $("groupSensitivity").value = String(state.intakeThreshold);
+  if ($("groupSkuPrefix")) $("groupSkuPrefix").value = state.skuPrefix || "";
+  $("btnSwapFrontBack")?.classList.toggle("hidden", !state.backsIncluded);
+  if ($("groupVerify")) {
+    let msg = `Verify the grouping is right before identifying. ${unique} unique group${unique === 1 ? "" : "s"} from ${cardCount} card${cardCount === 1 ? "" : "s"}.`;
+    if (dupes > 0) msg += ` ${dupes} duplicates collapsed — ${fewer}% fewer AI calls.`;
+    msg += " Drag the sensitivity to tighten or loosen.";
+    $("groupVerify").textContent = msg;
+  }
+  root.innerHTML = groups
+    .map((g, gi) => {
+      const head = g[0];
+      const open = state.groupSplitOpen === gi;
+      const thumbs = g
+        .slice(0, 8)
+        .map(
+          (s) =>
+            `<div class="b44-group-mini">${s.url ? `<img src="${s.url}" alt="" />` : ""}</div>`,
+        )
+        .join("");
+      const extra = g.length > 8 ? `<span class="b44-group-extra">+${g.length - 8}</span>` : "";
+      const splitGrid = open
+        ? `<div class="b44-group-split">
+            <div class="b44-group-split-grid">
+              ${g
+                .map((s) => {
+                  const on = state.groupSplitPick.includes(s.id);
+                  return `<button type="button" class="b44-group-pick${on ? " on" : ""}" data-split-id="${s.id}" title="${esc(s.filename)}">
+                    ${s.url ? `<img src="${s.url}" alt="" />` : ""}
+                  </button>`;
+                })
+                .join("")}
+            </div>
+            <button type="button" class="m-btn m-btn-primary w-full" data-confirm-split="${gi}" ${state.groupSplitPick.length ? "" : "disabled"} style="font-size:11px;margin-top:8px">
+              Split ${state.groupSplitPick.length || ""} into new group
+            </button>
+          </div>`
+        : "";
+      return `<div class="m-panel b44-group-card${open ? " open" : ""}">
+        <div class="b44-group-head">
+          <span class="b44-group-dot" aria-hidden="true"></span>
+          <span class="b44-group-label">Group ${gi + 1}</span>
+          <span class="b44-group-qty m-mono">×${g.length}</span>
+        </div>
+        <div class="b44-group-body">
+          <div class="b44-group-hero">${head?.url ? `<img src="${head.url}" alt="" />` : ""}</div>
+          <div class="b44-group-minis">${thumbs}${extra}</div>
+          <button type="button" class="m-btn m-btn-ghost w-full" data-toggle-split="${gi}" style="font-size:11px;margin-top:8px">${open ? "Close" : "Split"}</button>
+          ${splitGrid}
+        </div>
+      </div>`;
+    })
+    .join("");
+  root.querySelectorAll("[data-toggle-split]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const gi = Number(btn.dataset.toggleSplit);
+      state.groupSplitOpen = state.groupSplitOpen === gi ? null : gi;
+      state.groupSplitPick = [];
+      renderGrouping();
+    });
+  });
+  root.querySelectorAll("[data-split-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = Number(btn.dataset.splitId);
+      const set = new Set(state.groupSplitPick);
+      if (set.has(id)) set.delete(id);
+      else set.add(id);
+      state.groupSplitPick = [...set];
+      renderGrouping();
+    });
+  });
+  root.querySelectorAll("[data-confirm-split]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const gi = Number(btn.dataset.confirmSplit);
+      splitIntakeGroup(gi, state.groupSplitPick);
+    });
+  });
+}
+
+function splitIntakeGroup(gi, ids) {
+  if (!ids?.length) return;
+  const next = state.intakeGroups.map((g) => g.slice());
+  const moved = next[gi].filter((s) => ids.includes(s.id));
+  next[gi] = next[gi].filter((s) => !ids.includes(s.id));
+  if (moved.length) next.push(moved);
+  state.intakeGroups = next.filter((g) => g.length > 0);
+  state.groupSplitOpen = null;
+  state.groupSplitPick = [];
+  renderGrouping();
+  setStatus("Group split");
+}
+
+function swapFrontBack() {
+  state.intakeScans = state.intakeScans.map((s) => ({ ...s, isFront: !s.isFront }));
+  state.groupSplitOpen = null;
+  state.groupSplitPick = [];
+  regroupIntake();
+  setStatus("Front ↔ back swapped");
+}
+
+async function startIntakeToGrouping() {
+  const photos = state.draftPhotos;
+  if (!photos.length) {
+    setStatus("Need photos first");
+    return;
+  }
+  if (state.backsIncluded && photos.length % 2 !== 0) {
+    setStatus(`Odd file count (${photos.length}) — front/back pairing would misalign. Add or remove a scan.`);
+    $("batchOddWarn")?.classList.remove("hidden");
+    return;
+  }
+  setIntakeMode("identifying");
+  setIdentifyProgress("Hashing", 0, photos.length);
+  const scans = [];
+  for (let z = 0; z < photos.length; z++) {
+    const p = photos[z];
+    let hash = "";
+    try {
+      hash = (await intakeDHashFromDataUrl(p.dataUrl)).hash;
+    } catch {
+      /* empty hash → singleton */
+    }
+    scans.push({
+      id: z,
+      filename: p.file?.name || `scan-${z + 1}.jpg`,
+      url: p.dataUrl,
+      hash,
+      isFront: !state.backsIncluded || z % 2 === 0,
+      pair: state.backsIncluded ? Math.floor(z / 2) : z,
+    });
+    setIdentifyProgress("Hashing", z + 1, photos.length);
+  }
+  setIdentifyProgress("Deduping", 1, 1);
+  state.intakeScans = scans;
+  state.intakeThreshold = 5;
+  state.groupSplitOpen = null;
+  state.groupSplitPick = [];
+  regroupIntake();
+  const cards = scans.filter((s) => s.isFront).length;
+  setIntakeMode("grouping");
+  setStatus(`${cards} cards → ${state.intakeGroups.length} unique`);
+}
+
+async function startIdentificationFromGroups() {
+  const groups = state.intakeGroups;
+  if (!groups.length) {
+    setStatus("No groups to identify");
+    return;
+  }
+  setIntakeMode("identifying");
+  const total = groups.length;
+  let done = 0;
+  const prefix = (state.skuPrefix || "").trim().toUpperCase();
+  for (const g of groups) {
+    setIdentifyProgress("Identifying", done, total);
+    const front = g[0];
+    const back = state.backsIncluded
+      ? state.intakeScans.find((s) => s.pair === front.pair && !s.isFront)
+      : null;
+    const photos = [front.url].concat(back?.url ? [back.url] : []);
+    let title = (front.filename || "").replace(/\.[^.]+$/, "") || `Card ${done + 1}`;
+    try {
+      const res = await fetch("/api/scouter/identify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photos,
+          category: state.category,
+          quantity: g.length,
+          game: state.game,
+          sku_prefix: prefix || undefined,
+        }),
+      });
+      const result = await res.json();
+      if (result.identity?.product_name) title = result.identity.product_name;
+      else if (result.message) setStatus(result.message);
+    } catch (e) {
+      setStatus(`Identify failed: ${e.message}`);
+    }
+    state.items.unshift({
+      id: crypto.randomUUID(),
+      title,
+      barcode: null,
+      quantity: g.length,
+      category: state.category,
+      game: state.game,
+      batchName: state.batchName || null,
+      skuPrefix: prefix || null,
+      sku: prefix ? `${prefix}-${String(done + 1).padStart(3, "0")}` : null,
+      staged: true,
+      listingStatus: "sorted",
+      photos: photos.map((dataUrl) => ({ dataUrl })),
+      createdAt: new Date().toISOString(),
+    });
+    done += 1;
+    setIdentifyProgress("Identifying", done, total);
+  }
+  saveItems();
+  resetDraft();
+  setIntakeMode("list");
+  navigate("/inventory");
+}
+
 function renderPhotos() {
   const grid = $("photoGrid");
   if (!grid) return;
@@ -1070,6 +1371,11 @@ function resetDraft() {
   state.barcode = "";
   state.batchName = "";
   state.skuPrefix = "ITM";
+  state.intakeScans = [];
+  state.intakeGroups = [];
+  state.intakeThreshold = 5;
+  state.groupSplitOpen = null;
+  state.groupSplitPick = [];
   if ($("manualTitle")) $("manualTitle").value = "";
   if ($("barcodeInput")) $("barcodeInput").value = "";
   if ($("batchName")) $("batchName").value = "";
@@ -1077,6 +1383,7 @@ function resetDraft() {
     $("batchSkuPrefix").value = "";
     delete $("batchSkuPrefix").dataset.touched;
   }
+  if ($("groupSkuPrefix")) $("groupSkuPrefix").value = "";
   if ($("backsIncluded")) $("backsIncluded").checked = false;
   renderPhotos();
   updateSave();
@@ -2133,9 +2440,22 @@ function bind() {
     e.target.value = "";
   });
   $("btnIdentify")?.addEventListener("click", () => runIdentify());
-  $("btnStartIntake")?.addEventListener("click", async () => {
-    const ok = await runIdentify();
-    if (ok) updateSave();
+  $("btnStartIntake")?.addEventListener("click", () => startIntakeToGrouping());
+  $("btnGroupNewBatch")?.addEventListener("click", () => openNewBatch());
+  $("btnGroupIdentify")?.addEventListener("click", () => startIdentificationFromGroups());
+  $("btnSwapFrontBack")?.addEventListener("click", () => swapFrontBack());
+  $("groupSensitivity")?.addEventListener("input", (e) => {
+    state.intakeThreshold = Number(e.target.value) || 0;
+    state.groupSplitOpen = null;
+    state.groupSplitPick = [];
+    regroupIntake();
+  });
+  $("groupSkuPrefix")?.addEventListener("input", (e) => {
+    state.skuPrefix = e.target.value.trim().toUpperCase();
+    if ($("batchSkuPrefix")) {
+      $("batchSkuPrefix").value = state.skuPrefix;
+      $("batchSkuPrefix").dataset.touched = "1";
+    }
   });
   $("btnSave")?.addEventListener("click", () => stageItem());
   $("btnManualOk")?.addEventListener("click", () => {
