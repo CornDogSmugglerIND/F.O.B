@@ -22,12 +22,18 @@ const state = {
   batchName: "",
   backsIncluded: true,
   skuPrefix: "ITM",
-  intakeMode: "list", // list | batch | grouping | identifying
+  intakeMode: "list", // list | batch | grouping | identifying | review
   intakeScans: [],
   intakeGroups: [],
   intakeThreshold: 5,
   groupSplitOpen: null,
   groupSplitPick: [],
+  intakeReviewRows: [],
+  intakeReviewFilter: "",
+  intakeReviewSelected: [],
+  intakeScanCount: 0,
+  intakeReviewStatus: "",
+  intakeExportSummary: null,
   filterIntake: "",
   filterScouter: "",
   filterSpaces: "",
@@ -701,6 +707,7 @@ function setIntakeMode(mode) {
   $("intakeBatch")?.classList.toggle("hidden", mode !== "batch");
   $("intakeGrouping")?.classList.toggle("hidden", mode !== "grouping");
   $("intakeIdentifying")?.classList.toggle("hidden", mode !== "identifying");
+  $("intakeReview")?.classList.toggle("hidden", mode !== "review");
 }
 
 function renderIntakeList() {
@@ -1164,6 +1171,8 @@ async function startIdentificationFromGroups() {
   const total = groups.length;
   let done = 0;
   const prefix = (state.skuPrefix || "").trim().toUpperCase();
+  const scanCount = state.intakeScans.length;
+  const rows = [];
   for (const g of groups) {
     setIdentifyProgress("Identifying", done, total);
     const front = g[0];
@@ -1172,6 +1181,12 @@ async function startIdentificationFromGroups() {
       : null;
     const photos = [front.url].concat(back?.url ? [back.url] : []);
     let title = (front.filename || "").replace(/\.[^.]+$/, "") || `Card ${done + 1}`;
+    let number = "";
+    let setName = "";
+    let setCode = "";
+    let variation = "";
+    let confidence = "Failed";
+    let message = "";
     try {
       const res = await fetch("/api/scouter/identify", {
         method: "POST",
@@ -1185,28 +1200,238 @@ async function startIdentificationFromGroups() {
         }),
       });
       const result = await res.json();
-      if (result.identity?.product_name) title = result.identity.product_name;
-      else if (result.message) setStatus(result.message);
+      message = result.message || "";
+      const idn = result.identity || {};
+      if (idn.product_name) title = idn.product_name;
+      number = idn.collector_number || idn.number || "";
+      setName = idn.set_name || idn.set || "";
+      setCode = idn.set_code || "";
+      variation = idn.finish || idn.variation || "";
+      confidence = mapIntakeConfidence(idn.confidence || result.confidence, !!idn.product_name);
     } catch (e) {
-      setStatus(`Identify failed: ${e.message}`);
+      message = `Identify failed: ${e.message}`;
+      confidence = "Failed";
     }
-    state.items.unshift({
+    const status = confidence === "High" ? "Approved" : "Needs Review";
+    rows.push({
       id: crypto.randomUUID(),
-      title,
-      barcode: null,
+      card_name: title,
+      number,
+      set: setName,
+      set_code: setCode,
+      variation,
+      condition: "NM",
       quantity: g.length,
-      category: state.category,
-      game: state.game,
-      batchName: state.batchName || null,
-      skuPrefix: prefix || null,
-      sku: prefix ? `${prefix}-${String(done + 1).padStart(3, "0")}` : null,
-      staged: true,
-      listingStatus: "sorted",
+      sku: prefix ? `${prefix}-${String(done + 1).padStart(3, "0")}` : "",
+      language: "English",
+      confidence,
+      status,
+      market_price: "",
+      suggested_price: "",
       photos: photos.map((dataUrl) => ({ dataUrl })),
-      createdAt: new Date().toISOString(),
+      message,
     });
     done += 1;
     setIdentifyProgress("Identifying", done, total);
+  }
+  state.intakeReviewRows = rows;
+  state.intakeScanCount = scanCount;
+  state.intakeReviewFilter = "";
+  state.intakeReviewSelected = [];
+  state.intakeExportSummary = null;
+  state.intakeReviewStatus = "Identification complete";
+  setIntakeMode("review");
+  renderIntakeReview();
+}
+
+function mapIntakeConfidence(raw, hasName) {
+  const c = String(raw || "").toLowerCase();
+  if (c === "high") return "High";
+  if (c === "medium") return "Medium";
+  if (c === "low") return "Low";
+  if (hasName) return "Medium";
+  return "Failed";
+}
+
+function intakeReviewVisible() {
+  const f = state.intakeReviewFilter;
+  let rows = [...state.intakeReviewRows];
+  if (f) rows = rows.filter((r) => r.confidence === f);
+  const order = { Failed: 0, Low: 1, Medium: 2, High: 3, "": 4 };
+  rows.sort(
+    (a, b) =>
+      (order[a.confidence] ?? 4) - (order[b.confidence] ?? 4) ||
+      String(a.card_name || "").localeCompare(String(b.card_name || "")),
+  );
+  return rows;
+}
+
+function renderIntakeReview() {
+  const rows = state.intakeReviewRows;
+  const visible = intakeReviewVisible();
+  const counts = { High: 0, Medium: 0, Low: 0, Failed: 0 };
+  rows.forEach((r) => {
+    counts[r.confidence] = (counts[r.confidence] || 0) + 1;
+  });
+  const need = counts.Medium + counts.Low + counts.Failed;
+  if ($("reviewStatScans")) $("reviewStatScans").textContent = String(state.intakeScanCount || 0);
+  if ($("reviewStatRows")) $("reviewStatRows").textContent = String(rows.length);
+  if ($("reviewStatNeed")) $("reviewStatNeed").textContent = String(need);
+  if ($("reviewStatNeed")) {
+    $("reviewStatNeed").style.color = need ? "var(--b44-bad, #ff4d6d)" : "var(--b44-cyan, #2bd9c0)";
+  }
+  ["High", "Medium", "Low", "Failed"].forEach((c) => {
+    const btn = $(`reviewFilter${c}`);
+    if (!btn) return;
+    btn.querySelector("[data-count]") && (btn.querySelector("[data-count]").textContent = String(counts[c] || 0));
+    btn.style.opacity = state.intakeReviewFilter && state.intakeReviewFilter !== c ? "0.4" : "1";
+    btn.classList.toggle("m-chip-on", state.intakeReviewFilter === c);
+  });
+  if ($("reviewSummary")) {
+    $("reviewSummary").textContent = `${state.intakeScanCount || 0} scans → ${rows.length} rows · ${counts.High} High · ${counts.Medium} Medium · ${counts.Low} Low · ${counts.Failed} Failed`;
+  }
+  if ($("reviewStatus")) $("reviewStatus").textContent = state.intakeReviewStatus || "";
+  const sum = state.intakeExportSummary;
+  const sumEl = $("reviewExportSummary");
+  if (sumEl) {
+    if (sum) {
+      sumEl.classList.remove("hidden");
+      sumEl.innerHTML = `<div class="v-label" style="color:var(--b44-cyan,#2bd9c0)">EXPORT SUMMARY</div>
+        <div style="margin-top:4px;font-size:12px;color:var(--b44-mid,#c9d8e2)">Exported ${sum.exported} rows · ${sum.held} held back (Not High: ${sum.reasons["Not High confidence"]}, Not approved: ${sum.reasons["Not approved"]}, Rejected: ${sum.reasons.Rejected}).</div>`;
+    } else sumEl.classList.add("hidden");
+  }
+  const body = $("reviewTableBody");
+  if (!body) return;
+  if (!visible.length) {
+    body.innerHTML = `<tr><td colspan="10" class="b44-review-empty">Nothing in this category</td></tr>`;
+    return;
+  }
+  body.innerHTML = visible
+    .map((r) => {
+      const edge =
+        r.confidence === "Low" || r.confidence === "Failed"
+          ? "bad"
+          : r.confidence === "Medium"
+            ? "gold"
+            : "";
+      const checked = state.intakeReviewSelected.includes(r.id) ? "checked" : "";
+      return `<tr class="b44-review-row ${edge}" data-row-id="${esc(r.id)}">
+        <td><input type="checkbox" data-rev-sel="${esc(r.id)}" ${checked} /></td>
+        <td class="b44-review-thumb">${r.photos?.[0]?.dataUrl ? `<img src="${r.photos[0].dataUrl}" alt="" />` : ""}</td>
+        <td><input class="b44-review-input" data-rev-field="card_name" data-id="${esc(r.id)}" value="${esc(r.card_name)}" /></td>
+        <td><input class="b44-review-input" data-rev-field="number" data-id="${esc(r.id)}" value="${esc(r.number)}" style="width:56px" /></td>
+        <td><input class="b44-review-input" data-rev-field="set" data-id="${esc(r.id)}" value="${esc(r.set)}" /></td>
+        <td>
+          <select class="b44-review-input" data-rev-field="condition" data-id="${esc(r.id)}">
+            ${["NM", "LP", "MP", "HP", "DMG"].map((c) => `<option value="${c}" ${r.condition === c ? "selected" : ""}>${c}</option>`).join("")}
+          </select>
+        </td>
+        <td>${esc(r.quantity)}</td>
+        <td><input class="b44-review-input" data-rev-field="sku" data-id="${esc(r.id)}" value="${esc(r.sku)}" style="width:88px" /></td>
+        <td><span class="b44-conf b44-conf-${esc(r.confidence)}">${esc(r.confidence)}</span></td>
+        <td>
+          <select class="b44-review-input" data-rev-field="status" data-id="${esc(r.id)}">
+            ${["Identified", "Needs Review", "Approved", "Rejected"].map((s) => `<option value="${s}" ${r.status === s ? "selected" : ""}>${s}</option>`).join("")}
+          </select>
+        </td>
+      </tr>`;
+    })
+    .join("");
+  body.querySelectorAll("[data-rev-sel]").forEach((el) => {
+    el.addEventListener("change", () => {
+      const id = el.dataset.revSel;
+      const set = new Set(state.intakeReviewSelected);
+      if (el.checked) set.add(id);
+      else set.delete(id);
+      state.intakeReviewSelected = [...set];
+    });
+  });
+  body.querySelectorAll("[data-rev-field]").forEach((el) => {
+    const apply = () => {
+      const row = state.intakeReviewRows.find((x) => x.id === el.dataset.id);
+      if (!row) return;
+      row[el.dataset.revField] = el.value;
+      if (el.dataset.revField === "status" || el.dataset.revField === "confidence") renderIntakeReview();
+    };
+    el.addEventListener("change", apply);
+    el.addEventListener("blur", apply);
+  });
+}
+
+function bulkReviewStatus(status, msg) {
+  const ids = state.intakeReviewSelected;
+  if (!ids.length) {
+    state.intakeReviewStatus = "Select rows first";
+    renderIntakeReview();
+    return;
+  }
+  state.intakeReviewRows.forEach((r) => {
+    if (ids.includes(r.id)) r.status = status;
+  });
+  state.intakeReviewSelected = [];
+  state.intakeReviewStatus = msg;
+  renderIntakeReview();
+}
+
+function exportIntakeDoubleHoloCsv() {
+  const all = state.intakeReviewRows;
+  const ready = all.filter((r) => r.confidence === "High" && r.status === "Approved");
+  const held = all.length - ready.length;
+  const reasons = {
+    "Not High confidence": all.filter((r) => r.confidence !== "High").length,
+    "Not approved": all.filter((r) => r.status !== "Approved").length,
+    Rejected: all.filter((r) => r.status === "Rejected").length,
+  };
+  const headers = ["Card Name", "Number", "Set", "Condition", "Quantity", "SKU", "Variation", "Language"];
+  const lines = [headers.join(",")].concat(
+    ready.map((r) =>
+      [r.card_name, r.number, r.set, r.condition, r.quantity, r.sku, r.variation, r.language]
+        .map(csvEscape)
+        .join(","),
+    ),
+  );
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  const name = (state.batchName || "BATCH").replace(/[^\w.-]+/g, "_");
+  a.download = `${name}-doubleholo-IMPORT-READY.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+  state.intakeExportSummary = { exported: ready.length, held, reasons };
+  state.intakeReviewStatus = `Exported ${ready.length}`;
+  renderIntakeReview();
+}
+
+function stageReviewToScouter() {
+  const ready = state.intakeReviewRows.filter((r) => r.status !== "Rejected");
+  if (!ready.length) {
+    state.intakeReviewStatus = "No rows to stage";
+    renderIntakeReview();
+    return;
+  }
+  for (const r of ready) {
+    state.items.unshift({
+      id: r.id,
+      title: r.card_name,
+      barcode: null,
+      quantity: r.quantity || 1,
+      category: state.category,
+      game: state.game,
+      batchName: state.batchName || null,
+      skuPrefix: state.skuPrefix || null,
+      sku: r.sku || null,
+      cardNumber: r.number || null,
+      setName: r.set || null,
+      variation: r.variation || null,
+      condition: (r.condition || "NM").toLowerCase() === "nm" ? "nm" : (r.condition || "nm").toLowerCase(),
+      language: r.language || "English",
+      staged: true,
+      listingStatus: "sorted",
+      photos: r.photos || [],
+      createdAt: new Date().toISOString(),
+    });
   }
   saveItems();
   resetDraft();
@@ -1376,6 +1601,12 @@ function resetDraft() {
   state.intakeThreshold = 5;
   state.groupSplitOpen = null;
   state.groupSplitPick = [];
+  state.intakeReviewRows = [];
+  state.intakeReviewFilter = "";
+  state.intakeReviewSelected = [];
+  state.intakeScanCount = 0;
+  state.intakeReviewStatus = "";
+  state.intakeExportSummary = null;
   if ($("manualTitle")) $("manualTitle").value = "";
   if ($("barcodeInput")) $("barcodeInput").value = "";
   if ($("batchName")) $("batchName").value = "";
@@ -2444,6 +2675,23 @@ function bind() {
   $("btnGroupNewBatch")?.addEventListener("click", () => openNewBatch());
   $("btnGroupIdentify")?.addEventListener("click", () => startIdentificationFromGroups());
   $("btnSwapFrontBack")?.addEventListener("click", () => swapFrontBack());
+  $("btnReviewNewBatch")?.addEventListener("click", () => openNewBatch());
+  $("btnReviewStage")?.addEventListener("click", () => stageReviewToScouter());
+  $("btnReviewDhCsv")?.addEventListener("click", () => exportIntakeDoubleHoloCsv());
+  $("btnReviewApprove")?.addEventListener("click", () => bulkReviewStatus("Approved", "Approved"));
+  $("btnReviewReject")?.addEventListener("click", () => bulkReviewStatus("Rejected", "Rejected"));
+  $("btnReviewFetchPrices")?.addEventListener("click", () => {
+    state.intakeReviewStatus =
+      "Fetch prices needs live scanFetchPrices — not wired on this device. Internet-sourced prices are estimates, not verified sold comps.";
+    renderIntakeReview();
+  });
+  document.querySelectorAll("[data-review-filter]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const v = btn.dataset.reviewFilter;
+      state.intakeReviewFilter = state.intakeReviewFilter === v ? "" : v;
+      renderIntakeReview();
+    });
+  });
   $("groupSensitivity")?.addEventListener("input", (e) => {
     state.intakeThreshold = Number(e.target.value) || 0;
     state.groupSplitOpen = null;

@@ -789,3 +789,97 @@ textarea.b44-input {
 .w-full {
   width: 100%;
 }
+
+/* Live Wle intake review */
+.b44-review-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+}
+.b44-conf-filter {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--b44-text, #fff);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  padding: 4px;
+}
+.b44-conf {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.b44-conf-High { color: var(--b44-cyan, #2bd9c0); }
+.b44-conf-Medium { color: var(--b44-gold-hi, #ffd98a); }
+.b44-conf-Low,
+.b44-conf-Failed { color: var(--b44-bad, #ff4d6d); }
+.b44-review-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.b44-review-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+.b44-review-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.b44-review-table th {
+  text-align: left;
+  padding: 8px 10px;
+  color: var(--b44-lo, #6f8697);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+}
+.b44-review-table td {
+  padding: 8px 10px;
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.b44-review-row.bad td:first-child {
+  box-shadow: inset 3px 0 0 var(--b44-bad, #ff4d6d);
+}
+.b44-review-row.gold td:first-child {
+  box-shadow: inset 3px 0 0 var(--b44-gold, #ffb43d);
+}
+.b44-review-thumb {
+  width: 36px;
+}
+.b44-review-thumb img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+}
+.b44-review-input {
+  width: 100%;
+  min-width: 64px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--b44-text, #fff);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.b44-review-empty {
+  text-align: center;
+  color: var(--b44-lo, #6f8697);
+  padding: 24px !important;
+}
