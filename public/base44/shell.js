@@ -148,14 +148,10 @@ async function lookupBarcode(code) {
   state.barcode = trimmed;
   setStatus("Looking up barcode…");
   try {
-    const res = await fetch("/api/scouter/lookup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ barcode: trimmed }),
-    });
+    const res = await fetch(`/api/scouter/barcode/${encodeURIComponent(trimmed)}`);
     const result = await res.json();
-    if (result.title || result.identity?.product_name) {
-      state.title = result.title || result.identity.product_name;
+    if (result.title || result.name || result.identity?.product_name) {
+      state.title = result.title || result.name || result.identity.product_name;
       if ($("manualTitle")) $("manualTitle").value = state.title;
       setStatus(`Barcode: ${state.title}`);
     } else {
