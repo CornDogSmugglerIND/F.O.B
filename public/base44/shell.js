@@ -70,6 +70,8 @@ const state = {
   itemPageId: null,
   itemPhotos: [],
   itemPageStatus: "",
+  itemMoveExpanded: {},
+  itemMoveAddParent: null,
 };
 
 const SPACES_KEY = "scouter-spaces-v1";
@@ -85,6 +87,23 @@ const SHIP_STAGES = [
   { key: "delivered", n: 5, label: "Delivered", next: null },
 ];
 
+/** Live fle carrier code → readout label (cle). */
+const CARRIER_LABELS = {
+  usps_standard_envelope: "eBay Std Envelope",
+  double_holo_envelope: "Double Holo Envelope",
+  fedex_ground: "FedEx Ground",
+  fedex_ground_economy: "FedEx Ground Economy",
+  other: "Other",
+};
+
+function carrierLabel(code) {
+  if (!code) return "NO CARRIER";
+  return CARRIER_LABELS[code] || code;
+}
+
+function activeShipments() {
+  return state.shipments.filter((s) => !s.archived);
+}
 
 const $ = (id) => document.getElementById(id);
 
@@ -580,6 +599,18 @@ const SPACE_KINDS = [
   { value: "page", label: "Page" },
   { value: "pocket", label: "Pocket" },
 ];
+
+const PACKAGE_TYPES = [
+  { value: "bubble_mailer", label: "Bubble Mailer" },
+  { value: "box", label: "Box" },
+  { value: "padded_envelope", label: "Padded Envelope" },
+  { value: "rigid_mailer", label: "Rigid Mailer" },
+  { value: "other", label: "Other" },
+];
+
+function packageTypeLabel(value) {
+  return PACKAGE_TYPES.find((p) => p.value === value)?.label || value || "Package";
+}
 
 function kindLabel(kind) {
   return SPACE_KINDS.find((k) => k.value === kind)?.label || "Warehouse";
@@ -1218,7 +1249,15 @@ function renderItemShipSummary(it) {
     root.innerHTML = "";
     return;
   }
+  const pkg = packageTypeLabel(preset.package_type || preset.packageType || "");
+  const dims =
+    preset.length || preset.width || preset.height
+      ? `${preset.length || 0}×${preset.width || 0}×${preset.height || 0}in`
+      : "";
   const bits = [
+    pkg,
+    preset.weight ? `${preset.weight}oz` : "",
+    dims,
     preset.carrier || "",
     preset.service || "",
     preset.cost != null && preset.cost !== "" ? itemMoney(preset.cost) : "",
@@ -1332,31 +1371,93 @@ function syncItemChrome(it) {
   setItemPageStatus(state.itemPageStatus);
 }
 
+function nextSpaceKind(kind) {
+  const values = SPACE_KINDS.map((k) => k.value);
+  const i = values.indexOf(kind);
+  return SPACE_KINDS[Math.min(Math.max(i, 0) + 1, values.length - 1)].value;
+}
+
+/** Live kK Storage Location picker — tree + add child. */
 function renderItemMovePanel(open) {
   const panel = $("itemMovePanel");
   if (!panel) return;
   if (!open) {
     panel.classList.add("hidden");
     panel.innerHTML = "";
+    state.itemMoveExpanded = {};
+    state.itemMoveAddParent = null;
     return;
   }
   loadSpaces();
   const it = currentItemPage();
   const cur = it?.spaceId || "";
+  if (!state.itemMoveExpanded) state.itemMoveExpanded = {};
   panel.classList.remove("hidden");
-  if (!state.spaces.length) {
-    panel.innerHTML = `<p class="b44-copy-soft" style="font-size:12px">No spaces yet. Create one in Storage.</p>`;
-    return;
-  }
-  panel.innerHTML =
-    `<div class="v-label" style="margin-bottom:8px">Move to space</div>` +
+
+  const kidsOf = (parentId) =>
     state.spaces
-      .map(
-        (s) =>
-          `<button type="button" class="m-btn ${s.id === cur ? "m-btn-primary" : ""}" data-item-move="${esc(s.id)}" style="width:100%;margin-bottom:6px;justify-content:flex-start">${esc(s.name)}</button>`,
-      )
-      .join("") +
-    `<button type="button" class="m-btn" data-item-move="" style="width:100%">Clear location</button>`;
+      .filter((s) => (s.parentId || s.parent_id || "") === (parentId || ""))
+      .sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { numeric: true }));
+
+  const roots = kidsOf("");
+  let html = `<div class="v-label" style="margin-bottom:8px">Storage Location</div>`;
+  if (!state.spaces.length) {
+    html += `<p class="b44-copy-soft" style="font-size:12px;margin-bottom:8px">No locations yet — create one below.</p>`;
+  }
+
+  const renderNode = (sp, depth) => {
+    const kids = kidsOf(sp.id);
+    const expanded = !!state.itemMoveExpanded[sp.id];
+    const pad = depth * 16;
+    const toggle =
+      kids.length > 0
+        ? `<button type="button" class="m-btn" data-move-toggle="${esc(sp.id)}" style="width:28px;padding:4px;min-width:28px">${expanded ? "▾" : "▸"}</button>`
+        : `<span style="display:inline-block;width:28px"></span>`;
+    html += `<div class="b44-move-row" style="display:flex;align-items:center;gap:4px;padding-left:${pad}px;margin-bottom:4px">
+      ${toggle}
+      <button type="button" class="m-btn ${sp.id === cur ? "m-btn-primary" : ""}" data-item-move="${esc(sp.id)}" style="flex:1;justify-content:flex-start">${esc(sp.name)} <span class="v-label" style="margin-left:8px;font-size:8px">${esc(kindLabel(sp.kind || sp.type))}</span></button>
+      <button type="button" class="m-btn" data-move-add="${esc(sp.id)}" title="Add child" style="width:28px;padding:4px;min-width:28px">+</button>
+    </div>`;
+    if (expanded) kids.forEach((k) => renderNode(k, depth + 1));
+  };
+  roots.forEach((r) => renderNode(r, 0));
+
+  if (state.itemMoveAddParent != null) {
+    const parent = state.itemMoveAddParent === "root" ? null : spaceById(state.itemMoveAddParent);
+    const defaultKind = parent
+      ? nextSpaceKind(parent.kind || parent.type || "warehouse")
+      : "warehouse";
+    const kindOpts = SPACE_KINDS.map(
+      (k) =>
+        `<option value="${esc(k.value)}" ${k.value === defaultKind ? "selected" : ""}>${esc(k.label)}</option>`,
+    ).join("");
+    html += `<div class="b44-toolbar" style="margin-top:10px;gap:8px;flex-wrap:wrap">
+      <select id="itemMoveNewKind" class="b44-input" style="width:auto">${kindOpts}</select>
+      <input id="itemMoveNewName" class="b44-input" type="text" placeholder="Name" style="flex:1;min-width:120px" />
+      <button type="button" class="m-btn m-btn-primary" id="btnItemMoveAddGo">Add</button>
+      <button type="button" class="m-btn" id="btnItemMoveAddCancel">Cancel</button>
+    </div>`;
+  } else {
+    html += `<button type="button" class="m-btn" data-move-add="root" style="margin-top:8px">+ New root location</button>`;
+  }
+
+  html += `<button type="button" class="m-btn" data-item-move="" style="width:100%;margin-top:8px">Clear location</button>`;
+  panel.innerHTML = html;
+
+  panel.querySelectorAll("[data-move-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.moveToggle;
+      state.itemMoveExpanded[id] = !state.itemMoveExpanded[id];
+      renderItemMovePanel(true);
+    });
+  });
+  panel.querySelectorAll("[data-move-add]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.itemMoveAddParent = btn.dataset.moveAdd;
+      renderItemMovePanel(true);
+      $("itemMoveNewName")?.focus();
+    });
+  });
   panel.querySelectorAll("[data-item-move]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const next = btn.dataset.itemMove || "";
@@ -1366,6 +1467,134 @@ function renderItemMovePanel(open) {
       renderItemMovePanel(false);
     });
   });
+  $("btnItemMoveAddCancel")?.addEventListener("click", () => {
+    state.itemMoveAddParent = null;
+    renderItemMovePanel(true);
+  });
+  $("btnItemMoveAddGo")?.addEventListener("click", () => {
+    const name = ($("itemMoveNewName")?.value || "").trim();
+    if (!name) return;
+    const kind = $("itemMoveNewKind")?.value || "warehouse";
+    const parentId = state.itemMoveAddParent === "root" ? "" : state.itemMoveAddParent || "";
+    loadSpaces();
+    const id = crypto.randomUUID();
+    state.spaces.unshift({
+      id,
+      name,
+      kind,
+      code: "",
+      parentId,
+      createdAt: new Date().toISOString(),
+    });
+    saveSpaces();
+    if (parentId) state.itemMoveExpanded[parentId] = true;
+    state.itemMoveAddParent = null;
+    fillItemSpaceOptions(cur);
+    renderItemMovePanel(true);
+  });
+  $("itemMoveNewName")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("btnItemMoveAddGo")?.click();
+  });
+}
+
+
+/** Live PK — Shipping Presets manage sheet (OK · Shipping package · Manage). */
+function closeItemShipManage() {
+  $("itemShipManageSheet")?.classList.add("hidden");
+  if ($("itemShipManageStatus")) $("itemShipManageStatus").textContent = "";
+}
+
+function openItemShipManage() {
+  renderItemShipManage();
+  $("itemShipManageSheet")?.classList.remove("hidden");
+  $("pkShipName")?.focus();
+}
+
+function renderItemShipManage() {
+  loadSettingsLocal();
+  const list = $("pkShipList");
+  const empty = $("pkShipEmpty");
+  if (!list) return;
+  if (!state.shipping.length) {
+    list.innerHTML = "";
+    if (empty) {
+      empty.classList.remove("hidden");
+      empty.textContent = "No presets yet. Create one below.";
+    }
+  } else {
+    if (empty) empty.classList.add("hidden");
+    list.innerHTML = state.shipping
+      .map((s) => {
+        const pkg = packageTypeLabel(s.package_type || s.packageType || "bubble_mailer");
+        const weight = s.weight ? ` · ${s.weight}oz` : "";
+        const dims =
+          s.length || s.width || s.height
+            ? ` · ${s.length || 0}×${s.width || 0}×${s.height || 0}in`
+            : "";
+        return `<div class="v-panel v-cut-sm p-3" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="flex:1;min-width:0">
+            <div class="v-readout v-emit-white" style="font-size:14px">${esc(s.name)}</div>
+            <div class="b44-copy-soft" style="font-size:12px;margin-top:2px">${esc(pkg)}${esc(weight)}${esc(dims)}</div>
+          </div>
+          <button type="button" class="m-btn" data-pk-del-ship="${esc(s.id)}" title="Delete">×</button>
+        </div>`;
+      })
+      .join("");
+    list.querySelectorAll("[data-pk-del-ship]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        loadSettingsLocal();
+        state.shipping = state.shipping.filter((s) => s.id !== btn.dataset.pkDelShip);
+        saveSettingsLocal();
+        const it = currentItemPage();
+        fillItemShipOptions(it?.shippingPresetId || it?.shipping_preset_id || "");
+        if (it) renderItemShipSummary(it);
+        renderItemShipManage();
+        if ($("itemShipManageStatus")) $("itemShipManageStatus").textContent = "Preset deleted";
+        if (state.settingsTab === "shipping") renderSettings();
+      });
+    });
+  }
+  if ($("pkShipName")) $("pkShipName").value = "";
+  if ($("pkShipPackageType")) $("pkShipPackageType").value = "bubble_mailer";
+  if ($("pkShipWeight")) $("pkShipWeight").value = "";
+  if ($("pkShipLength")) $("pkShipLength").value = "";
+  if ($("pkShipWidth")) $("pkShipWidth").value = "";
+  if ($("pkShipHeight")) $("pkShipHeight").value = "";
+}
+
+function createPkShipPreset() {
+  const name = ($("pkShipName")?.value || "").trim();
+  if (!name) {
+    if ($("itemShipManageStatus")) $("itemShipManageStatus").textContent = "Name is required";
+    return;
+  }
+  const package_type = $("pkShipPackageType")?.value || "bubble_mailer";
+  const weight = Number($("pkShipWeight")?.value || 0);
+  const length = Number($("pkShipLength")?.value || 0);
+  const width = Number($("pkShipWidth")?.value || 0);
+  const height = Number($("pkShipHeight")?.value || 0);
+  loadSettingsLocal();
+  state.shipping.unshift({
+    id: crypto.randomUUID(),
+    name,
+    package_type,
+    weight,
+    length,
+    width,
+    height,
+    carrier: "",
+    service: "",
+    cost: 0,
+    handling_days: 1,
+    is_default: state.shipping.length === 0,
+  });
+  saveSettingsLocal();
+  const it = currentItemPage();
+  fillItemShipOptions(it?.shippingPresetId || it?.shipping_preset_id || "");
+  if (it) renderItemShipSummary(it);
+  renderItemShipManage();
+  if ($("itemShipManageStatus")) $("itemShipManageStatus").textContent = "Preset created";
+  if (state.settingsTab === "shipping") renderSettings();
 }
 
 function renderItemPage(id) {
@@ -1398,6 +1627,7 @@ function renderItemPage(id) {
   syncItemChrome(it);
   renderItemPhotos();
   renderItemMovePanel(false);
+  closeItemShipManage();
   closeAssetSheet();
   closeScouterReadout();
 }
@@ -2834,8 +3064,9 @@ function renderChannel() {
   else closeChannelSheet();
 
   // Fulfilment stage counters + grouped rows (live fle/ld)
+  const ships = activeShipments();
   const counts = Object.fromEntries(SHIP_STAGES.map((s) => [s.key, 0]));
-  for (const sh of state.shipments) {
+  for (const sh of ships) {
     if (counts[sh.status] != null) counts[sh.status] += 1;
   }
   if ($("fulReady")) $("fulReady").textContent = pad2(counts.ready_to_ship);
@@ -2843,14 +3074,14 @@ function renderChannel() {
   if ($("fulTransit")) $("fulTransit").textContent = pad2(counts.in_transit);
   if ($("fulOut")) $("fulOut").textContent = pad2(counts.out_for_delivery);
   if ($("fulDelivered")) $("fulDelivered").textContent = pad2(counts.delivered);
-  const awaiting = state.shipments.filter((s) => s.status !== "delivered").length;
+  const awaiting = ships.filter((s) => s.status !== "delivered").length;
   if ($("fulPayout")) $("fulPayout").textContent = pad2(awaiting);
 
   const fulList = $("fulList");
   const fulEmpty = $("fulEmpty");
   if (fulList) {
     if (fulEmpty) {
-      fulEmpty.classList.toggle("hidden", state.shipments.length > 0);
+      fulEmpty.classList.toggle("hidden", ships.length > 0);
       const p = fulEmpty.querySelector("p");
       if (p) {
         p.textContent =
@@ -2859,27 +3090,28 @@ function renderChannel() {
     }
     const chunks = [];
     for (const stage of SHIP_STAGES) {
-      const rows = state.shipments.filter((sh) => sh.status === stage.key);
+      const rows = ships.filter((sh) => sh.status === stage.key);
       if (!rows.length) continue;
       chunks.push(
         `<div class="v-label" style="font-size:9px;margin:12px 0 6px;color:var(--b44-gold,#ffb43d)">STEP ${stage.n} · ${esc(stage.label)} · ${pad2(rows.length)}</div>`,
       );
       for (const sh of rows) {
         const next = nextShipStage(sh.status);
-        const price = Number(sh.salePrice);
+        const price = Number(sh.salePrice ?? sh.sale_price);
         const priceBit = Number.isFinite(price) && price > 0 ? money(price) : "—";
-        const carrier = sh.carrier || "NO CARRIER";
+        const carrier = carrierLabel(sh.carrier);
         let advance;
         if (sh.status === "delivered") {
-          const payout = sh.payoutReleaseAt
-            ? new Date(sh.payoutReleaseAt).toLocaleDateString("en-US", {
+          const payout = sh.payoutReleaseAt || sh.payout_release_date
+            ? new Date(sh.payoutReleaseAt || sh.payout_release_date).toLocaleDateString("en-US", {
                 month: "short",
                 day: "2-digit",
               })
             : "—";
           advance = `<span class="v-label">PAYOUT EST. ${esc(payout)}</span>`;
         } else if (next) {
-          advance = `<button type="button" class="m-btn m-btn-primary" data-advance-ship="${esc(sh.id)}">Advance to ${esc(shipStageLabel(next))}</button>`;
+          // Live fle advance control labels the next stage only (not "Advance to …").
+          advance = `<button type="button" class="m-btn m-btn-primary" data-advance-ship="${esc(sh.id)}">${esc(shipStageLabel(next))}</button>`;
         } else {
           advance = `<span class="v-label">Complete</span>`;
         }
@@ -2984,6 +3216,11 @@ function resetTemplateForm() {
 
 function resetShipForm() {
   if ($("shipName")) $("shipName").value = "";
+  if ($("shipPackageType")) $("shipPackageType").value = "bubble_mailer";
+  if ($("shipWeight")) $("shipWeight").value = "0";
+  if ($("shipLength")) $("shipLength").value = "0";
+  if ($("shipWidth")) $("shipWidth").value = "0";
+  if ($("shipHeight")) $("shipHeight").value = "0";
   if ($("shipCarrier")) $("shipCarrier").value = "";
   if ($("shipService")) $("shipService").value = "";
   if ($("shipCost")) $("shipCost").value = "0";
@@ -3026,11 +3263,30 @@ function templateCardHtml(t) {
 }
 
 function shipCardHtml(s) {
+  const pkg = packageTypeLabel(s.package_type || s.packageType || "bubble_mailer");
+  const dims =
+    s.length || s.width || s.height
+      ? `${s.length || 0}×${s.width || 0}×${s.height || 0}in`
+      : "";
   if (state.editingShipId === s.id) {
+    const pkgOpts = PACKAGE_TYPES.map(
+      (p) =>
+        `<option value="${esc(p.value)}" ${(s.package_type || s.packageType || "bubble_mailer") === p.value ? "selected" : ""}>${esc(p.label)}</option>`,
+    ).join("");
     return `<div class="v-panel v-cut-sm p-4" data-edit-ship="${esc(s.id)}">
       <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Name</label>
       <input class="b44-input" data-edit-ship-name value="${esc(s.name)}" />
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Package type</label>
+        <select class="b44-input" data-edit-ship-package>${pkgOpts}</select></div>
+        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Weight (oz)</label>
+        <input class="b44-input" type="number" step="0.1" data-edit-ship-weight value="${esc(String(s.weight ?? 0))}" /></div>
+        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Length (in)</label>
+        <input class="b44-input" type="number" step="0.1" data-edit-ship-length value="${esc(String(s.length ?? 0))}" /></div>
+        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Width (in)</label>
+        <input class="b44-input" type="number" step="0.1" data-edit-ship-width value="${esc(String(s.width ?? 0))}" /></div>
+        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Height (in)</label>
+        <input class="b44-input" type="number" step="0.1" data-edit-ship-height value="${esc(String(s.height ?? 0))}" /></div>
         <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Carrier</label>
         <input class="b44-input" data-edit-ship-carrier value="${esc(s.carrier || "")}" /></div>
         <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Service</label>
@@ -3054,12 +3310,15 @@ function shipCardHtml(s) {
     : "";
   const service = s.service ? ` · ${s.service}` : "";
   const handle = s.handling_days != null ? ` · ${s.handling_days}d` : "";
+  const weight = s.weight ? ` · ${s.weight}oz` : "";
+  const dimBit = dims ? ` · ${dims}` : "";
   return `<div class="v-panel v-cut-sm p-4">
     <div style="display:flex;justify-content:space-between;align-items:flex-start">${chip || "<span></span>"}
       <button type="button" class="m-btn" data-del-ship="${esc(s.id)}" title="Delete">×</button>
     </div>
     <div class="v-readout v-emit-white" style="font-size:15px;margin-top:8px">${esc(s.name)}</div>
-    <div class="b44-copy-soft" style="margin-top:6px;font-size:13px">${esc(s.carrier || "—")}${esc(service)} · $${esc(String(s.cost ?? 0))}${esc(handle)}</div>
+    <div class="b44-copy-soft" style="margin-top:6px;font-size:13px">${esc(pkg)}${esc(weight)}${esc(dimBit)}</div>
+    <div class="b44-copy-soft" style="margin-top:4px;font-size:12px">${esc(s.carrier || "—")}${esc(service)} · $${esc(String(s.cost ?? 0))}${esc(handle)}</div>
     <div class="b44-actions" style="margin-top:12px">
       <button type="button" class="m-btn" data-edit-ship-btn="${esc(s.id)}">Edit</button>
     </div>
@@ -3161,6 +3420,11 @@ function renderSettings() {
         const id = btn.dataset.saveShip;
         const name = card.querySelector("[data-edit-ship-name]")?.value?.trim();
         if (!name) return;
+        const package_type = card.querySelector("[data-edit-ship-package]")?.value || "bubble_mailer";
+        const weight = Number(card.querySelector("[data-edit-ship-weight]")?.value || 0);
+        const length = Number(card.querySelector("[data-edit-ship-length]")?.value || 0);
+        const width = Number(card.querySelector("[data-edit-ship-width]")?.value || 0);
+        const height = Number(card.querySelector("[data-edit-ship-height]")?.value || 0);
         const carrier = card.querySelector("[data-edit-ship-carrier]")?.value || "";
         const service = card.querySelector("[data-edit-ship-service]")?.value || "";
         const cost = Number(card.querySelector("[data-edit-ship-cost]")?.value || 0);
@@ -3170,7 +3434,22 @@ function renderSettings() {
           state.shipping = state.shipping.map((s) => ({ ...s, is_default: false }));
         }
         state.shipping = state.shipping.map((s) =>
-          s.id === id ? { ...s, name, carrier, service, cost, handling_days, is_default } : s,
+          s.id === id
+            ? {
+                ...s,
+                name,
+                package_type,
+                weight,
+                length,
+                width,
+                height,
+                carrier,
+                service,
+                cost,
+                handling_days,
+                is_default,
+              }
+            : s,
         );
         state.editingShipId = null;
         saveSettingsLocal();
@@ -3463,8 +3742,15 @@ function bind() {
     e.target.value = "";
   });
   $("btnItemShipManage")?.addEventListener("click", () => {
-    navigate("/settings");
-    setSettingsTab("shipping");
+    openItemShipManage();
+  });
+  $("btnItemShipManageClose")?.addEventListener("click", () => closeItemShipManage());
+  $("itemShipManageSheet")?.addEventListener("click", (e) => {
+    if (e.target === $("itemShipManageSheet")) closeItemShipManage();
+  });
+  $("btnPkShipCreate")?.addEventListener("click", () => createPkShipPreset());
+  $("pkShipName")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") createPkShipPreset();
   });
   $("itemTitle")?.addEventListener("change", (e) => patchItemField("title", e.target.value));
   $("itemNotes")?.addEventListener("change", (e) => patchItemField("notes", e.target.value));
@@ -3725,6 +4011,11 @@ function bind() {
     state.showTemplateForm = false;
     state.showShipForm = true;
     if ($("shipName")) $("shipName").value = "";
+    if ($("shipPackageType")) $("shipPackageType").value = "bubble_mailer";
+    if ($("shipWeight")) $("shipWeight").value = "0";
+    if ($("shipLength")) $("shipLength").value = "0";
+    if ($("shipWidth")) $("shipWidth").value = "0";
+    if ($("shipHeight")) $("shipHeight").value = "0";
     if ($("shipCarrier")) $("shipCarrier").value = "";
     if ($("shipService")) $("shipService").value = "";
     if ($("shipCost")) $("shipCost").value = "0";
@@ -3740,6 +4031,11 @@ function bind() {
   $("btnShipSave")?.addEventListener("click", () => {
     const name = ($("shipName")?.value || "").trim();
     if (!name) return;
+    const package_type = $("shipPackageType")?.value || "bubble_mailer";
+    const weight = Number($("shipWeight")?.value || 0);
+    const length = Number($("shipLength")?.value || 0);
+    const width = Number($("shipWidth")?.value || 0);
+    const height = Number($("shipHeight")?.value || 0);
     const carrier = ($("shipCarrier")?.value || "").trim();
     const service = ($("shipService")?.value || "").trim();
     const cost = Number($("shipCost")?.value || 0);
@@ -3752,6 +4048,11 @@ function bind() {
     state.shipping.unshift({
       id: crypto.randomUUID(),
       name,
+      package_type,
+      weight,
+      length,
+      width,
+      height,
       carrier,
       service,
       cost,
