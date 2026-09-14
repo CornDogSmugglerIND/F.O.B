@@ -26,6 +26,8 @@ const state = {
   filterScouter: "",
   filterSpaces: "",
   spaceTrail: [],
+  scouterMode: "pipeline", // pipeline | spaces — live tle breadcrumb
+  scouterStatus: "",
   lockedItemId: null,
   readoutStatus: "",
   shipments: [],
@@ -86,15 +88,325 @@ function money(n) {
 
 /** Live Si pipeline steps (tle). */
 const PIPE_STEPS = [
-  { key: "sorted", label: "Intake", match: (it) => !it.staged && it.listingStatus !== "listed" },
-  { key: "ready_to_list", label: "Listing Built", match: (it) => !!it.staged && it.listingStatus !== "listed" },
-  { key: "listed", label: "Listed", match: (it) => it.listingStatus === "listed" },
+  {
+    key: "sorted",
+    n: 1,
+    label: "Intake",
+    action: "Intake",
+    match: (it) => {
+      const s = it.listingStatus;
+      if (s === "listed" || s === "sold" || s === "error") return false;
+      if (s === "ready_to_list" || it.staged) return false;
+      return true;
+    },
+  },
+  {
+    key: "ready_to_list",
+    n: 2,
+    label: "Listing Built",
+    action: "Build",
+    match: (it) => it.listingStatus === "ready_to_list" || (!!it.staged && it.listingStatus !== "listed"),
+  },
+  {
+    key: "listed",
+    n: 3,
+    label: "Listed",
+    action: "Publish",
+    match: (it) => it.listingStatus === "listed",
+  },
 ];
 
 function itemPipeLabel(it) {
   if (it.listingStatus === "listed") return "Listed";
   if (it.listingStatus === "ready_to_list" || it.staged) return "Listing Built";
   return "Intake";
+}
+
+function itemPipeKey(it) {
+  const step = PIPE_STEPS.find((s) => s.match(it));
+  return step?.key || "sorted";
+}
+
+function setScouterStatus(msg) {
+  state.scouterStatus = msg || "";
+  if ($("scouterStatus")) $("scouterStatus").textContent = state.scouterStatus;
+}
+
+function setScouterMode(mode) {
+  state.scouterMode = mode === "spaces" ? "spaces" : "pipeline";
+  const pipe = state.scouterMode === "pipeline";
+  $("btnScoutPipeline")?.classList.toggle("m-btn-primary", pipe);
+  $("btnScoutSpaces")?.classList.toggle("m-btn-primary", !pipe);
+  document.querySelectorAll("[data-pipe-stat]").forEach((el) => el.classList.toggle("hidden", !pipe));
+  document.querySelectorAll("[data-space-stat]").forEach((el) => el.classList.toggle("hidden", pipe));
+  renderCollection();
+}
+
+function scouterItemCardHtml(it) {
+  const thumb = it.photos?.[0]?.dataUrl || "";
+  const sku = it.barcode || it.sku || "NO SKU";
+  const step = itemPipeLabel(it);
+  const price = money(it.marketValue);
+  const img = thumb
+    ? `<img src="${esc(thumb)}" alt="" draggable="false" />`
+    : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
+  return `<div class="v-panel v-cut-sm b44-item" data-open-item="${esc(it.id)}" draggable="true" style="cursor:pointer">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(step)} · ${esc(sku)} · ${esc(it.game || "PKM")}</span></div><div class="qty"><div class="v-readout v-emit-gold" style="font-size:14px">${esc(price)}</div><div>×${it.quantity || 1}</div></div></div>`;
+}
+
+function scouterGroupHtml(group) {
+  const cards = group.items.map(scouterItemCardHtml).join("");
+  const body = cards || `<div class="b44-copy-soft" style="font-size:12px;padding:8px 4px">Empty</div>`;
+  return `<section class="b44-scout-group" data-drop-key="${esc(group.key)}" data-drop-kind="${esc(group.kind)}">
+    <div class="b44-scout-group-head v-panel v-cut-sm px-3 py-2">
+      <div>
+        <div class="v-label" style="font-size:9px">${esc(group.sub)}</div>
+        <div class="v-readout" style="font-size:15px;margin-top:2px">${esc(group.label)} · ${pad2(group.items.length)}</div>
+      </div>
+    </div>
+    <div class="b44-scout-group-body">${body}</div>
+  </section>`;
+}
+
+function scouterPipelineGroups(rows) {
+  return PIPE_STEPS.map((step) => ({
+    key: step.key,
+    kind: "pipeline",
+    label: step.label,
+    sub: `STEP ${step.n} · ${step.action.toUpperCase()}`,
+    items: rows.filter((it) => itemPipeKey(it) === step.key),
+  }));
+}
+
+function scouterSpaceGroups(rows) {
+  loadSpaces();
+  const roots = state.spaces.filter((s) => !(s.parentId || s.parent_id));
+  const groups = roots.map((sp) => {
+    const childIds = new Set([
+      sp.id,
+      ...state.spaces.filter((c) => (c.parentId || c.parent_id) === sp.id).map((c) => c.id),
+    ]);
+    return {
+      key: sp.id,
+      kind: "space",
+      label: sp.name || "Space",
+      sub: sp.code ? `SPACE · ${sp.code}` : "SPACE",
+      items: rows.filter((it) => childIds.has(it.spaceId || "")),
+    };
+  });
+  groups.push({
+    key: "__unfiled__",
+    kind: "space",
+    label: "Unfiled",
+    sub: "NO SPACE",
+    items: rows.filter((it) => !it.spaceId),
+  });
+  return groups;
+}
+
+function moveScouterItem(itemId, kind, key) {
+  const it = state.items.find((x) => x.id === itemId);
+  if (!it) return;
+  if (kind === "pipeline") {
+    if (itemPipeKey(it) === key) return;
+    if (key === "sorted") {
+      it.staged = false;
+      it.listingStatus = "sorted";
+    } else if (key === "ready_to_list") {
+      it.staged = true;
+      it.listingStatus = "ready_to_list";
+    } else if (key === "listed") {
+      it.staged = true;
+      it.listingStatus = "listed";
+    }
+    const label = PIPE_STEPS.find((s) => s.key === key)?.label || key;
+    setScouterStatus(`${it.title || "Card"} → ${label}`);
+  } else {
+    const next = key === "__unfiled__" ? "" : key;
+    if ((it.spaceId || "") === next) return;
+    it.spaceId = next;
+    const name =
+      key === "__unfiled__"
+        ? "Unfiled"
+        : state.spaces.find((s) => s.id === key)?.name || "Space";
+    setScouterStatus(`Filed into ${name}`);
+  }
+  it.updatedAt = new Date().toISOString();
+  saveItems();
+  renderCollection();
+  renderSpaces();
+  updateSitrep();
+  if (state.lockedItemId === it.id) openScouterReadout(it.id);
+}
+
+function bindScouterGroupDnD(root) {
+  root.querySelectorAll("[data-open-item]").forEach((row) => {
+    row.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/scouter-item", row.dataset.openItem);
+      e.dataTransfer.effectAllowed = "move";
+      row.classList.add("b44-dragging");
+    });
+    row.addEventListener("dragend", () => row.classList.remove("b44-dragging"));
+    row.addEventListener("click", () => openScouterReadout(row.dataset.openItem));
+  });
+  root.querySelectorAll("[data-drop-key]").forEach((zone) => {
+    zone.addEventListener("dragover", (e) => {
+      if (![...e.dataTransfer.types].includes("text/scouter-item")) return;
+      e.preventDefault();
+      zone.classList.add("b44-drop-hot");
+    });
+    zone.addEventListener("dragleave", () => zone.classList.remove("b44-drop-hot"));
+    zone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      zone.classList.remove("b44-drop-hot");
+      const id = e.dataTransfer.getData("text/scouter-item");
+      if (!id) return;
+      moveScouterItem(id, zone.dataset.dropKind, zone.dataset.dropKey);
+    });
+  });
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Live tle photo drop → Intake cards on the scouter. */
+async function intakePhotosOntoScouter(fileList) {
+  const files = [...(fileList || [])].filter((f) => f.type?.startsWith("image/"));
+  if (!files.length) {
+    setScouterStatus("No photos — drop image files onto the scouter.");
+    return;
+  }
+  setScouterStatus(`Uploading ${files.length} photo${files.length === 1 ? "" : "s"}…`);
+  const stamp = new Date().toLocaleDateString("en-US");
+  const created = [];
+  for (let i = 0; i < files.length; i++) {
+    try {
+      const dataUrl = await readFileAsDataUrl(files[i]);
+      if (!dataUrl) continue;
+      created.push({
+        id: crypto.randomUUID(),
+        title: `Intake ${stamp} #${i + 1}`,
+        category: "raw_cards",
+        condition: "nm",
+        listingStatus: "sorted",
+        staged: false,
+        photos: [{ dataUrl, name: files[i].name }],
+        quantity: 1,
+        marketValue: 0,
+        purchasePrice: 0,
+        language: "English",
+        game: "PKM",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    } catch {
+      /* skip bad file */
+    }
+  }
+  if (!created.length) {
+    setScouterStatus("No photos uploaded — check the file and try again.");
+    return;
+  }
+  state.items = [...created, ...state.items];
+  saveItems();
+  setScouterStatus(`${created.length} card${created.length === 1 ? "" : "s"} on the scouter`);
+  renderCollection();
+  renderIntakeList();
+  updateSitrep();
+}
+
+function csvEscape(v) {
+  const s = String(v ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** Live tle Export — Listing Built + Listed → doubleholo-style CSV. */
+function exportScouterCsv() {
+  const rows = state.items.filter((it) =>
+    ["ready_to_list", "listed"].includes(it.listingStatus) || itemPipeLabel(it) === "Listing Built" || itemPipeLabel(it) === "Listed",
+  );
+  if (!rows.length) {
+    setScouterStatus("Nothing to export — move cards to Listing Built or Listed first.");
+    return;
+  }
+  const condMap = {
+    raw: "NM",
+    nm: "NM",
+    lp: "LP",
+    mp: "MP",
+    hp: "HP",
+    damaged: "DMG",
+    new: "NM",
+    used: "LP",
+    graded: "NM",
+  };
+  const headers = [
+    "Card Name",
+    "Number",
+    "Set",
+    "Condition",
+    "Quantity",
+    "SKU",
+    "Language",
+    "Variation",
+    "Graded",
+    "Grade",
+    "Grading Company",
+    "Acquisition Price",
+  ];
+  const lines = [headers.join(",")].concat(
+    rows.map((it) =>
+      [
+        it.title || "",
+        it.cardNumber || it.card_number || "",
+        it.setName || it.set_name || "",
+        condMap[it.condition] || "NM",
+        it.quantity || 1,
+        it.sku || it.barcode || "",
+        it.language || "English",
+        it.variation || "",
+        it.gradingCompany || it.grading_company ? "Yes" : "",
+        it.grade || "",
+        it.gradingCompany || it.grading_company || "",
+        it.purchasePrice || it.purchase_price || "",
+      ]
+        .map(csvEscape)
+        .join(","),
+    ),
+  );
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `doubleholo-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+  setScouterStatus(`Exported ${rows.length}`);
+}
+
+function bindScouterPhotoDrop() {
+  const glass = $("scouterGlass");
+  if (!glass || glass.dataset.dropBound === "1") return;
+  glass.dataset.dropBound = "1";
+  glass.addEventListener("dragover", (e) => {
+    if (![...e.dataTransfer.types].includes("Files")) return;
+    e.preventDefault();
+    glass.classList.add("b44-photo-drop");
+  });
+  glass.addEventListener("dragleave", () => glass.classList.remove("b44-photo-drop"));
+  glass.addEventListener("drop", (e) => {
+    glass.classList.remove("b44-photo-drop");
+    if (e.dataTransfer.files?.length) {
+      e.preventDefault();
+      intakePhotosOntoScouter(e.dataTransfer.files);
+    }
+  });
 }
 
 function loadItems() {
@@ -347,34 +659,36 @@ function renderCollection() {
   const intakeN = state.items.filter((it) => itemPipeLabel(it) === "Intake").length;
   const builtN = state.items.filter((it) => itemPipeLabel(it) === "Listing Built").length;
   const listedN = state.items.filter((it) => itemPipeLabel(it) === "Listed").length;
+  loadSpaces();
+  const onMap = state.items.filter((it) => !!it.spaceId).length;
+  const spaceRoots = state.spaces.filter((s) => !(s.parentId || s.parent_id)).length;
   const value = state.items
     .filter((it) => it.listingStatus !== "sold")
     .reduce((sum, it) => sum + (Number(it.marketValue) || 0) * (Number(it.quantity) || 1), 0);
   if ($("scoutStepIntake")) $("scoutStepIntake").textContent = pad2(intakeN);
   if ($("scoutStepBuilt")) $("scoutStepBuilt").textContent = pad2(builtN);
   if ($("scoutStepListed")) $("scoutStepListed").textContent = pad2(listedN);
+  if ($("scoutSpaceCount")) $("scoutSpaceCount").textContent = pad2(spaceRoots);
+  if ($("scoutOnMap")) $("scoutOnMap").textContent = pad2(onMap);
+  if ($("scouterCount")) $("scouterCount").textContent = pad2(state.items.length);
   if ($("scouterValue")) $("scouterValue").textContent = money(value);
+  if ($("scouterStatus") && state.scouterStatus) $("scouterStatus").textContent = state.scouterStatus;
+
+  const pipe = state.scouterMode !== "spaces";
+  $("btnScoutPipeline")?.classList.toggle("m-btn-primary", pipe);
+  $("btnScoutSpaces")?.classList.toggle("m-btn-primary", !pipe);
+  document.querySelectorAll("[data-pipe-stat]").forEach((el) => el.classList.toggle("hidden", !pipe));
+  document.querySelectorAll("[data-space-stat]").forEach((el) => el.classList.toggle("hidden", pipe));
+
   if (empty) empty.classList.toggle("hidden", rows.length > 0);
   if (!rows.length) {
     root.innerHTML = "";
     return;
   }
-  root.innerHTML = rows
-    .slice(0, 60)
-    .map((it) => {
-      const thumb = it.photos?.[0]?.dataUrl || "";
-      const sku = it.barcode || it.sku || "NO SKU";
-      const step = itemPipeLabel(it);
-      const price = money(it.marketValue);
-      const img = thumb
-        ? `<img src="${thumb}" alt="" />`
-        : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
-      return `<div class="v-panel v-cut-sm b44-item" data-open-item="${esc(it.id)}" style="cursor:pointer">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(step)} · ${esc(sku)} · ${esc(it.game || "PKM")}</span></div><div class="qty"><div class="v-readout v-emit-gold" style="font-size:14px">${esc(price)}</div><div>×${it.quantity || 1}</div></div></div>`;
-    })
-    .join("");
-  root.querySelectorAll("[data-open-item]").forEach((row) => {
-    row.addEventListener("click", () => openScouterReadout(row.dataset.openItem));
-  });
+
+  const groups = pipe ? scouterPipelineGroups(rows) : scouterSpaceGroups(rows);
+  root.innerHTML = `<div class="b44-scout-groups">${groups.map(scouterGroupHtml).join("")}</div>`;
+  bindScouterGroupDnD(root);
   if (state.lockedItemId) openScouterReadout(state.lockedItemId);
 }
 
@@ -1675,6 +1989,17 @@ function bind() {
     const path = location.hash.replace(/^#/, "") || "/scan-intake";
     navigate(path);
   });
+
+
+  $("btnScoutPipeline")?.addEventListener("click", () => setScouterMode("pipeline"));
+  $("btnScoutSpaces")?.addEventListener("click", () => setScouterMode("spaces"));
+  $("btnScouterExport")?.addEventListener("click", () => exportScouterCsv());
+  $("scouterPhotoInput")?.addEventListener("change", async (e) => {
+    await intakePhotosOntoScouter(e.target.files);
+    e.target.value = "";
+  });
+  bindScouterPhotoDrop();
+
 
   $("btnCloseReadout")?.addEventListener("click", () => closeScouterReadout());
   $("btnWriteListing")?.addEventListener("click", () => {

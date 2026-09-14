@@ -526,3 +526,42 @@ textarea.b44-input {
 .b44-readout-panel .m-btn-primary {
   width: 100%;
 }
+
+/* Live tle Scouter Pipeline / Spaces groups */
+.b44-scout-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.b44-scout-group {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.b44-scout-group.b44-drop-hot {
+  border-color: rgba(255, 180, 61, 0.55);
+  background: rgba(255, 180, 61, 0.06);
+}
+.b44-scout-group-head {
+  margin-bottom: 8px;
+}
+.b44-scout-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 12px;
+}
+.b44-item.b44-dragging {
+  opacity: 0.45;
+}
+#scouterGlass.b44-photo-drop {
+  outline: 1px dashed rgba(255, 180, 61, 0.7);
+  outline-offset: -6px;
+  background: rgba(255, 180, 61, 0.04);
+}
+.b44-mode-toggle {
+  display: inline-flex;
+  gap: 6px;
+}
