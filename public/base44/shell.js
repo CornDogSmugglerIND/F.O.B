@@ -2196,6 +2196,193 @@ function exportIntakeDoubleHoloCsv() {
   renderIntakeReview();
 }
 
+/** Live jle — fields mappable onto an eBay CSV header row (Ule). */
+const EBAY_CSV_FIELDS = [
+  "Card Name",
+  "Number",
+  "Set",
+  "Condition",
+  "Quantity",
+  "SKU",
+  "Variation",
+  "Language",
+  "Graded",
+  "Grade",
+  "Grading Company",
+  "Market Price",
+  "Suggested Price",
+];
+const EBAY_CSV_MAP_KEY = "scan_ebay_mapping";
+
+function loadEbayCsvMapping() {
+  try {
+    return JSON.parse(localStorage.getItem(EBAY_CSV_MAP_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function saveEbayCsvMapping(cfg) {
+  localStorage.setItem(EBAY_CSV_MAP_KEY, JSON.stringify(cfg));
+}
+
+/** Live Dle — resolve a review row value for a mapped jle field. */
+function ebayCsvFieldValue(row, field) {
+  const map = {
+    "Card Name": row.card_name,
+    Number: row.number,
+    Set: row.set,
+    Condition: row.condition,
+    Quantity: row.quantity,
+    SKU: row.sku,
+    Variation: row.variation,
+    Language: row.language,
+    Graded: row.graded ? "Yes" : "No",
+    Grade: row.grade,
+    "Grading Company": row.grading_company || row.gradingCompany,
+    "Market Price": row.market_price,
+    "Suggested Price": row.suggested_price,
+  };
+  return map[field] ?? "";
+}
+
+function intakeReviewExportReady() {
+  return (state.intakeReviewRows || []).filter(
+    (r) => r.confidence === "High" && r.status === "Approved",
+  );
+}
+
+/** Live Ole — build CSV text from eBay headers + mapping. */
+function buildEbayMappedCsv(rows, cfg) {
+  const headers = cfg?.headers || [];
+  const mapping = cfg?.mapping || {};
+  const lines = [headers.map(csvEscape).join(",")];
+  for (const row of rows) {
+    lines.push(
+      headers
+        .map((h) => csvEscape(mapping[h] ? ebayCsvFieldValue(row, mapping[h]) : ""))
+        .join(","),
+    );
+  }
+  return lines.join("\r\n");
+}
+
+function downloadCsvText(filename, text) {
+  const blob = new Blob(["\uFEFF" + text], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+
+function parseEbayHeaderInput(raw) {
+  return String(raw || "")
+    .split(",")
+    .map((h) => h.trim())
+    .filter(Boolean);
+}
+
+function renderEbayCsvMapRows() {
+  const root = $("ebayCsvMapRows");
+  const saveBtn = $("btnEbayCsvMapSave");
+  if (!root) return;
+  const headers = parseEbayHeaderInput($("ebayCsvHeaders")?.value);
+  const mapping = state.ebayCsvDraftMapping || {};
+  if (saveBtn) saveBtn.disabled = !headers.length;
+  if (!headers.length) {
+    root.innerHTML = "";
+    return;
+  }
+  const opts = EBAY_CSV_FIELDS.map(
+    (f) => `<option value="${esc(f)}">${esc(f)}</option>`,
+  ).join("");
+  root.innerHTML = headers
+    .map(
+      (h) => `<div style="display:flex;align-items:center;gap:8px">
+        <span class="b44-copy-soft" style="flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h)}</span>
+        <select class="b44-input" data-ebay-map-header="${esc(h)}" style="width:170px;font-size:11px">
+          <option value="">— none —</option>${opts}
+        </select>
+      </div>`,
+    )
+    .join("");
+  root.querySelectorAll("[data-ebay-map-header]").forEach((sel) => {
+    const h = sel.dataset.ebayMapHeader;
+    if (mapping[h]) sel.value = mapping[h];
+    sel.addEventListener("change", () => {
+      if (!state.ebayCsvDraftMapping) state.ebayCsvDraftMapping = {};
+      if (sel.value) state.ebayCsvDraftMapping[h] = sel.value;
+      else delete state.ebayCsvDraftMapping[h];
+    });
+  });
+}
+
+function openEbayCsvMapSheet() {
+  const saved = loadEbayCsvMapping();
+  state.ebayCsvDraftMapping = { ...(saved?.mapping || {}) };
+  if ($("ebayCsvHeaders")) {
+    $("ebayCsvHeaders").value = (saved?.headers || []).join(", ");
+  }
+  renderEbayCsvMapRows();
+  $("ebayCsvMapSheet")?.classList.remove("hidden");
+  $("ebayCsvHeaders")?.focus();
+}
+
+function closeEbayCsvMapSheet() {
+  $("ebayCsvMapSheet")?.classList.add("hidden");
+}
+
+function exportIntakeEbayCsv(cfg) {
+  if (!cfg?.headers?.length) {
+    openEbayCsvMapSheet();
+    return;
+  }
+  const ready = intakeReviewExportReady();
+  const held = (state.intakeReviewRows || []).length - ready.length;
+  const text = buildEbayMappedCsv(ready, cfg);
+  const name = (state.batchName || "BATCH").replace(/[^\w.-]+/g, "_");
+  downloadCsvText(`${name}-ebay-IMPORT-READY.csv`, text);
+  state.intakeExportSummary = {
+    exported: ready.length,
+    held,
+    reasons: {
+      "Not High confidence": (state.intakeReviewRows || []).filter((r) => r.confidence !== "High")
+        .length,
+      "Not approved": (state.intakeReviewRows || []).filter((r) => r.status !== "Approved").length,
+      Rejected: (state.intakeReviewRows || []).filter((r) => r.status === "Rejected").length,
+    },
+  };
+  state.intakeReviewStatus = `Exported ${ready.length} eBay CSV`;
+  renderIntakeReview();
+}
+
+/** Live be — use saved mapping, or open Ule when none. */
+function runIntakeEbayCsv() {
+  const saved = loadEbayCsvMapping();
+  if (!saved?.headers?.length) {
+    openEbayCsvMapSheet();
+    return;
+  }
+  exportIntakeEbayCsv(saved);
+}
+
+function saveEbayCsvMapAndExport() {
+  const headers = parseEbayHeaderInput($("ebayCsvHeaders")?.value);
+  if (!headers.length) return;
+  const mapping = { ...(state.ebayCsvDraftMapping || {}) };
+  // Drop mappings for headers that were removed from the paste.
+  Object.keys(mapping).forEach((h) => {
+    if (!headers.includes(h)) delete mapping[h];
+  });
+  const cfg = { headers, mapping };
+  saveEbayCsvMapping(cfg);
+  closeEbayCsvMapSheet();
+  exportIntakeEbayCsv(cfg);
+}
+
 function stageReviewToScouter() {
   const ready = state.intakeReviewRows.filter((r) => r.status !== "Rejected");
   if (!ready.length) {
@@ -2744,8 +2931,9 @@ function renderSpaces() {
     empty.classList.toggle("hidden", rows.length > 0);
     const label = empty.querySelector(".v-label");
     const p = empty.querySelector("p");
-    if (label) label.textContent = "No locations yet";
-    if (p) p.textContent = "No locations yet — create one below.";
+    // Live Spaces map empty (root or nested): Empty location + bin/shelf/tote hint.
+    if (label) label.textContent = "Empty location";
+    if (p) p.textContent = "Add a bin, shelf or tote to start mapping your shelves.";
   }
 
   root.innerHTML = rows
@@ -3952,6 +4140,14 @@ function bind() {
   $("btnReviewNewBatch")?.addEventListener("click", () => openNewBatch());
   $("btnReviewStage")?.addEventListener("click", () => stageReviewToScouter());
   $("btnReviewDhCsv")?.addEventListener("click", () => exportIntakeDoubleHoloCsv());
+  $("btnReviewEbayCsv")?.addEventListener("click", () => runIntakeEbayCsv());
+  $("btnEbayCsvMapClose")?.addEventListener("click", () => closeEbayCsvMapSheet());
+  $("btnEbayCsvMapCancel")?.addEventListener("click", () => closeEbayCsvMapSheet());
+  $("btnEbayCsvMapSave")?.addEventListener("click", () => saveEbayCsvMapAndExport());
+  $("ebayCsvHeaders")?.addEventListener("input", () => renderEbayCsvMapRows());
+  $("ebayCsvMapSheet")?.addEventListener("click", (e) => {
+    if (e.target === $("ebayCsvMapSheet")) closeEbayCsvMapSheet();
+  });
   $("btnReviewApprove")?.addEventListener("click", () => bulkReviewStatus("Approved", "Approved"));
   $("btnReviewReject")?.addEventListener("click", () => bulkReviewStatus("Rejected", "Rejected"));
   $("btnReviewFetchPrices")?.addEventListener("click", () => {
