@@ -212,10 +212,38 @@
               </div>
               <p class="b44-copy-soft" style="margin-top:10px;font-size:12px" id="channelActionStatus"></p>
             </div>
+            <div id="channelFilterBar" class="b44-toolbar hidden" style="margin-bottom:12px">
+              <div class="b44-filter" style="flex:1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
+                <input id="channelFilter" type="search" placeholder="Filter listings" autocomplete="off" />
+              </div>
+            </div>
+            <div id="channelHubs" class="hidden" style="display:flex;gap:10px;margin-bottom:12px">
+              <div class="v-panel v-cut-sm px-4 py-3" style="flex:1">
+                <div class="v-label" style="font-size:8px">Active · On market</div>
+                <div class="v-readout" style="font-size:18px;color:#5fe8d0" id="hubActive">00</div>
+              </div>
+              <div class="v-panel v-cut-sm px-4 py-3" style="flex:1">
+                <div class="v-label" style="font-size:8px">Ended · Off market</div>
+                <div class="v-readout" style="font-size:18px;color:#c9d8e2" id="hubEnded">00</div>
+              </div>
+            </div>
             <div id="channelList"></div>
             <div id="channelEmpty" class="v-panel v-cut b44-empty">
               <div class="v-label">Channel empty</div>
               <p>Connect eBay to see what's on the channel.</p>
+            </div>
+            <div id="channelSheet" class="v-panel v-cut p-4 hidden" style="margin-top:12px">
+              <div class="v-label" style="font-size:9px;color:var(--b44-gold,#ffb43d)" id="channelSheetSku">NO SKU</div>
+              <div class="v-readout v-emit-white" style="font-size:16px;margin-top:8px" id="channelSheetTitle">—</div>
+              <div class="v-readout v-emit-gold" style="font-size:22px;margin-top:8px" id="channelSheetPrice">$0.00</div>
+              <div class="b44-actions" style="margin-top:14px;flex-wrap:wrap">
+                <button type="button" class="m-btn m-btn-primary" id="btnChannelReprice">Reprice</button>
+                <button type="button" class="m-btn" id="btnChannelRelist">Relist</button>
+                <button type="button" class="m-btn" id="btnChannelEnd">End listing</button>
+                <button type="button" class="m-btn" id="btnChannelSheetClose">Close</button>
+              </div>
+              <p class="b44-copy-soft" style="margin-top:10px;font-size:12px" id="channelSheetStatus"></p>
             </div>
             <div class="b44-actions" style="margin-top:12px">
               <a class="m-btn" href="/listing-copy.html">Listing Copy</a>
@@ -358,9 +386,27 @@
                 <div class="v-label">Listing templates</div>
                 <button type="button" class="m-btn m-btn-primary" id="btnNewTemplate">New template</button>
               </div>
-              <div id="templateList" style="margin-top:12px"></div>
+              <div id="templateForm" class="v-panel v-cut-sm p-4 hidden" style="margin-top:12px">
+                <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end">
+                  <div>
+                    <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Name</label>
+                    <input id="tplName" class="b44-input" type="text" placeholder="e.g. Default" autocomplete="off" />
+                  </div>
+                  <div>
+                    <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Markup %</label>
+                    <input id="tplMarkup" class="b44-input" type="number" value="30" />
+                  </div>
+                  <label class="b44-copy-soft" style="display:flex;align-items:center;gap:8px;height:42px;font-size:13px">
+                    <input id="tplDefault" type="checkbox" /> Default
+                  </label>
+                </div>
+                <div class="b44-actions" style="margin-top:12px;justify-content:flex-end">
+                  <button type="button" class="m-btn" id="btnTplCancel">Cancel</button>
+                  <button type="button" class="m-btn m-btn-primary" id="btnTplSave">Save</button>
+                </div>
+              </div>
+              <div id="templateList" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div>
               <div id="templateEmpty" class="b44-copy-soft" style="margin-top:12px">No templates yet. Create one to apply default markup and policies.</div>
-              <p class="b44-copy-soft" style="margin-top:8px;font-size:12px">Live fields: name, markup %, default flag, title template, description template.</p>
             </div>
           </div>
 
@@ -370,7 +416,38 @@
                 <div class="v-label">Shipping presets</div>
                 <button type="button" class="m-btn m-btn-primary" id="btnNewShip">New preset</button>
               </div>
-              <div id="shipList" style="margin-top:12px"></div>
+              <div id="shipForm" class="v-panel v-cut-sm p-4 hidden" style="margin-top:12px">
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;align-items:end">
+                  <div>
+                    <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Name</label>
+                    <input id="shipName" class="b44-input" type="text" placeholder="e.g. USPS Priority" autocomplete="off" />
+                  </div>
+                  <div>
+                    <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Carrier</label>
+                    <input id="shipCarrier" class="b44-input" type="text" autocomplete="off" />
+                  </div>
+                  <div>
+                    <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Service</label>
+                    <input id="shipService" class="b44-input" type="text" autocomplete="off" />
+                  </div>
+                  <div>
+                    <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Cost ($)</label>
+                    <input id="shipCost" class="b44-input" type="number" value="0" />
+                  </div>
+                  <div>
+                    <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Handling days</label>
+                    <input id="shipHandle" class="b44-input" type="number" value="1" />
+                  </div>
+                  <label class="b44-copy-soft" style="display:flex;align-items:center;gap:8px;height:42px;font-size:13px">
+                    <input id="shipDefault" type="checkbox" /> Default
+                  </label>
+                </div>
+                <div class="b44-actions" style="margin-top:12px;justify-content:flex-end">
+                  <button type="button" class="m-btn" id="btnShipCancel">Cancel</button>
+                  <button type="button" class="m-btn m-btn-primary" id="btnShipSave">Save</button>
+                </div>
+              </div>
+              <div id="shipList" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div>
               <div id="shipEmpty" class="b44-copy-soft" style="margin-top:12px">No shipping presets yet. Add carriers and services to reuse on listings.</div>
             </div>
           </div>

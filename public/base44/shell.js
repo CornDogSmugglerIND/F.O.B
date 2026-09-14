@@ -31,10 +31,16 @@ const state = {
   ebayConnected: false,
   mcpClient: "claude",
   channelTab: "live",
+  channelFilter: "",
+  channelSheetId: null,
   settingsTab: "templates",
   templates: [],
   shipping: [],
   storageDefs: [],
+  showTemplateForm: false,
+  editingTemplateId: null,
+  showShipForm: false,
+  editingShipId: null,
 };
 
 const SPACES_KEY = "scouter-spaces-v1";
@@ -799,6 +805,103 @@ function fileCardIntoCurrentSpace() {
   updateSitrep();
 }
 
+
+/** Live ile hubs: fresh=Active on market, ended=Off market. */
+function channelHubKey(it) {
+  if (it.listingStatus === "ended" || it.channelStatus === "ended") return "ended";
+  if (it.listingStatus === "listed" || itemPipeLabel(it) === "Listed") return "fresh";
+  // Connected local port also surfaces built rows as not-yet-live actives.
+  if (itemPipeLabel(it) === "Listing Built") return "fresh";
+  return null;
+}
+
+function channelListingRow(it, hub) {
+  const status = hub === "ended" ? "Ended" : itemPipeLabel(it) === "Listed" ? "Active" : "Built, not live";
+  const sku = it.barcode || it.sku || "NO SKU";
+  const price = Number(it.marketValue ?? it.price);
+  const priceBit = Number.isFinite(price) && price > 0 ? ` · $${price.toFixed(2)}` : "";
+  const thumb = it.photos?.[0]?.dataUrl || "";
+  const img = thumb
+    ? `<img src="${thumb}" alt="" />`
+    : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
+  return `<div class="v-panel v-cut-sm b44-item" data-open-listing="${esc(it.id)}" style="cursor:pointer">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(status)} · ${esc(sku)}${priceBit}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
+}
+
+function openChannelSheet(id) {
+  const it = state.items.find((x) => x.id === id);
+  const sheet = $("channelSheet");
+  if (!it || !sheet) {
+    closeChannelSheet();
+    return;
+  }
+  state.channelSheetId = id;
+  sheet.classList.remove("hidden");
+  const sku = it.barcode || it.sku || "NO SKU";
+  if ($("channelSheetSku")) $("channelSheetSku").textContent = sku;
+  if ($("channelSheetTitle")) $("channelSheetTitle").textContent = it.title || "Untitled";
+  const price = Number(it.marketValue ?? it.price) || 0;
+  if ($("channelSheetPrice")) $("channelSheetPrice").textContent = money(price);
+  if ($("channelSheetStatus")) $("channelSheetStatus").textContent = "";
+  const ended = channelHubKey(it) === "ended";
+  $("btnChannelReprice")?.classList.toggle("hidden", ended);
+  $("btnChannelEnd")?.classList.toggle("hidden", ended);
+  $("btnChannelRelist")?.classList.toggle("hidden", !ended);
+}
+
+function closeChannelSheet() {
+  state.channelSheetId = null;
+  $("channelSheet")?.classList.add("hidden");
+}
+
+function channelSheetAction(kind) {
+  const it = state.items.find((x) => x.id === state.channelSheetId);
+  if (!it) return;
+  if (!state.ebayConnected) {
+    if ($("channelSheetStatus")) {
+      $("channelSheetStatus").textContent = "Connect eBay before listing actions.";
+    }
+    return;
+  }
+  if (kind === "reprice") {
+    const next = Number(prompt("New price ($)", String(it.marketValue ?? it.price ?? "")) || 0);
+    if (!next || next <= 0) return;
+    // Honest local port: update local value; live eBay reprice needs server creds.
+    it.marketValue = next;
+    it.price = next;
+    saveItems();
+    if ($("channelSheetStatus")) {
+      $("channelSheetStatus").textContent =
+        `Local price set to ${money(next)}. Live eBay reprice needs server credentials.`;
+    }
+    openChannelSheet(it.id);
+    renderChannel();
+    return;
+  }
+  if (kind === "relist") {
+    it.listingStatus = "listed";
+    it.channelStatus = "active";
+    saveItems();
+    if ($("channelSheetStatus")) {
+      $("channelSheetStatus").textContent =
+        "Marked Active locally. Live Relist needs server eBay credentials.";
+    }
+    openChannelSheet(it.id);
+    renderChannel();
+    return;
+  }
+  if (kind === "end") {
+    it.listingStatus = "ended";
+    it.channelStatus = "ended";
+    saveItems();
+    if ($("channelSheetStatus")) {
+      $("channelSheetStatus").textContent =
+        "Marked Ended locally. Live End listing needs server eBay credentials.";
+    }
+    openChannelSheet(it.id);
+    renderChannel();
+  }
+}
+
 function renderChannel() {
   loadShipments();
   const live = $("channelLive");
@@ -834,40 +937,66 @@ function renderChannel() {
     $("liveValue").textContent = money(liveVal);
   }
 
+  const filterBar = $("channelFilterBar");
+  const hubs = $("channelHubs");
+  if (filterBar) filterBar.classList.toggle("hidden", !(connected && state.channelTab === "live"));
+  if (hubs) hubs.classList.toggle("hidden", !(connected && state.channelTab === "live"));
+
   const list = $("channelList");
   const empty = $("channelEmpty");
   if (list) {
-    // Until real eBay sync exists, show local pipeline rows only when connected.
-    const rows = connected ? state.items.slice(0, 40) : [];
+    // Live nle hubs: Active (on market) / Ended (off market). Local port uses listingStatus.
+    const q = (state.channelFilter || "").trim().toLowerCase();
+    const pool = connected
+      ? state.items.filter((it) => {
+          const hub = channelHubKey(it);
+          if (!hub) return false;
+          if (!q) return true;
+          const hay = `${it.title || ""} ${it.barcode || ""} ${it.sku || ""}`.toLowerCase();
+          return hay.includes(q);
+        })
+      : [];
+    const active = pool.filter((it) => channelHubKey(it) === "fresh");
+    const ended = pool.filter((it) => channelHubKey(it) === "ended");
+    if ($("hubActive")) $("hubActive").textContent = pad2(active.length);
+    if ($("hubEnded")) $("hubEnded").textContent = pad2(ended.length);
+
     if (empty) {
-      empty.classList.toggle("hidden", !(state.channelTab === "live" && rows.length === 0));
+      empty.classList.toggle("hidden", !(state.channelTab === "live" && pool.length === 0));
       const label = empty.querySelector(".v-label");
       const p = empty.querySelector("p");
       if (label) label.textContent = "Channel empty";
       if (p) {
         p.textContent = connected
-          ? "Run a sync to pull your live listings."
+          ? q
+            ? "No listings match this filter."
+            : "Run a sync to pull your live listings."
           : "Connect eBay to see what's on the channel.";
       }
     }
     if (state.channelTab === "live") {
-      list.innerHTML = rows
-        .map((it) => {
-          const status = itemPipeLabel(it);
-          const sku = it.barcode || it.sku || "NO SKU";
-          const price = Number(it.marketValue ?? it.price);
-          const priceBit = Number.isFinite(price) && price > 0 ? ` · $${price.toFixed(2)}` : "";
-          const thumb = it.photos?.[0]?.dataUrl || "";
-          const img = thumb
-            ? `<img src="${thumb}" alt="" />`
-            : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
-          return `<div class="v-panel v-cut-sm b44-item">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(status)} · ${esc(sku)}${priceBit} · not published</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
-        })
-        .join("");
+      const chunks = [];
+      const pushHub = (key, title, rows) => {
+        if (!rows.length) return;
+        chunks.push(
+          `<div class="v-label" style="font-size:9px;margin:12px 0 6px;color:var(--b44-gold,#ffb43d)">${esc(title)} · ${pad2(rows.length)}</div>`,
+        );
+        for (const it of rows.slice(0, 40)) {
+          chunks.push(channelListingRow(it, key));
+        }
+      };
+      pushHub("fresh", "ACTIVE · ON MARKET", active);
+      pushHub("ended", "ENDED · OFF MARKET", ended);
+      list.innerHTML = chunks.join("");
+      list.querySelectorAll("[data-open-listing]").forEach((row) => {
+        row.addEventListener("click", () => openChannelSheet(row.dataset.openListing));
+      });
     } else {
       list.innerHTML = "";
     }
   }
+  if (state.channelSheetId) openChannelSheet(state.channelSheetId);
+  else closeChannelSheet();
 
   // Fulfilment stage counters + grouped rows (live fle/ld)
   const counts = Object.fromEntries(SHIP_STAGES.map((s) => [s.key, 0]));
@@ -994,7 +1123,6 @@ function saveSettingsLocal() {
       storageDefs: state.storageDefs,
     }),
   );
-  renderSettings();
 }
 
 function setSettingsTab(tab) {
@@ -1011,19 +1139,107 @@ function setSettingsTab(tab) {
 const DEFAULT_TITLE_TEMPLATE = "Pokémon [SET] - Pick Your Card! [RARITY] NM";
 const DEFAULT_DESC_TEMPLATE = "[TITLE]\n\n[BRAND_TAGLINE]";
 
+function resetTemplateForm() {
+  if ($("tplName")) $("tplName").value = "";
+  if ($("tplMarkup")) $("tplMarkup").value = "30";
+  if ($("tplDefault")) $("tplDefault").checked = false;
+  state.showTemplateForm = false;
+  $("templateForm")?.classList.add("hidden");
+}
+
+function resetShipForm() {
+  if ($("shipName")) $("shipName").value = "";
+  if ($("shipCarrier")) $("shipCarrier").value = "";
+  if ($("shipService")) $("shipService").value = "";
+  if ($("shipCost")) $("shipCost").value = "0";
+  if ($("shipHandle")) $("shipHandle").value = "1";
+  if ($("shipDefault")) $("shipDefault").checked = false;
+  state.showShipForm = false;
+  $("shipForm")?.classList.add("hidden");
+}
+
+function templateCardHtml(t) {
+  const markup = t.markup_percent ?? t.markup ?? 0;
+  const chip = t.is_default
+    ? `<span class="v-label" style="color:var(--b44-gold,#ffb43d)">DEFAULT</span>`
+    : "";
+  if (state.editingTemplateId === t.id) {
+    return `<div class="v-panel v-cut-sm p-4" data-edit-tpl="${esc(t.id)}">
+      <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Name</label>
+      <input class="b44-input" data-edit-tpl-name value="${esc(t.name)}" />
+      <label class="v-label" style="display:block;margin:10px 0 6px;font-size:9px">Markup %</label>
+      <input class="b44-input" type="number" data-edit-tpl-markup value="${esc(String(markup))}" />
+      <label class="b44-copy-soft" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px">
+        <input type="checkbox" data-edit-tpl-default ${t.is_default ? "checked" : ""} /> Default
+      </label>
+      <div class="b44-actions" style="margin-top:12px">
+        <button type="button" class="m-btn m-btn-primary" data-save-tpl="${esc(t.id)}">Save</button>
+        <button type="button" class="m-btn" data-cancel-tpl>Cancel</button>
+      </div>
+    </div>`;
+  }
+  return `<div class="v-panel v-cut-sm p-4">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">${chip || "<span></span>"}
+      <button type="button" class="m-btn" data-del-template="${esc(t.id)}" title="Delete">×</button>
+    </div>
+    <div class="v-readout v-emit-white" style="font-size:15px;margin-top:8px">${esc(t.name)}</div>
+    <div class="v-readout" style="font-size:22px;margin-top:6px">${esc(String(markup))}<span class="b44-copy-soft" style="font-size:14px">% markup</span></div>
+    <div class="b44-actions" style="margin-top:12px">
+      <button type="button" class="m-btn" data-edit-template="${esc(t.id)}">Edit</button>
+    </div>
+  </div>`;
+}
+
+function shipCardHtml(s) {
+  if (state.editingShipId === s.id) {
+    return `<div class="v-panel v-cut-sm p-4" data-edit-ship="${esc(s.id)}">
+      <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Name</label>
+      <input class="b44-input" data-edit-ship-name value="${esc(s.name)}" />
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Carrier</label>
+        <input class="b44-input" data-edit-ship-carrier value="${esc(s.carrier || "")}" /></div>
+        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Service</label>
+        <input class="b44-input" data-edit-ship-service value="${esc(s.service || "")}" /></div>
+        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Cost</label>
+        <input class="b44-input" type="number" data-edit-ship-cost value="${esc(String(s.cost ?? 0))}" /></div>
+        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Days</label>
+        <input class="b44-input" type="number" data-edit-ship-handle value="${esc(String(s.handling_days ?? 1))}" /></div>
+      </div>
+      <label class="b44-copy-soft" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px">
+        <input type="checkbox" data-edit-ship-default ${s.is_default ? "checked" : ""} /> Default
+      </label>
+      <div class="b44-actions" style="margin-top:12px">
+        <button type="button" class="m-btn m-btn-primary" data-save-ship="${esc(s.id)}">Save</button>
+        <button type="button" class="m-btn" data-cancel-ship>Cancel</button>
+      </div>
+    </div>`;
+  }
+  const chip = s.is_default
+    ? `<span class="v-label" style="color:var(--b44-gold,#ffb43d)">DEFAULT</span>`
+    : "";
+  const service = s.service ? ` · ${s.service}` : "";
+  const handle = s.handling_days != null ? ` · ${s.handling_days}d` : "";
+  return `<div class="v-panel v-cut-sm p-4">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">${chip || "<span></span>"}
+      <button type="button" class="m-btn" data-del-ship="${esc(s.id)}" title="Delete">×</button>
+    </div>
+    <div class="v-readout v-emit-white" style="font-size:15px;margin-top:8px">${esc(s.name)}</div>
+    <div class="b44-copy-soft" style="margin-top:6px;font-size:13px">${esc(s.carrier || "—")}${esc(service)} · $${esc(String(s.cost ?? 0))}${esc(handle)}</div>
+    <div class="b44-actions" style="margin-top:12px">
+      <button type="button" class="m-btn" data-edit-ship-btn="${esc(s.id)}">Edit</button>
+    </div>
+  </div>`;
+}
+
 function renderSettings() {
   loadSettingsLocal();
+  $("templateForm")?.classList.toggle("hidden", !state.showTemplateForm);
+  $("shipForm")?.classList.toggle("hidden", !state.showShipForm);
+
   const tRoot = $("templateList");
   const tEmpty = $("templateEmpty");
   if (tRoot) {
-    tRoot.innerHTML = state.templates
-      .map((t) => {
-        const markup = t.markup_percent ?? t.markup ?? 0;
-        const chip = t.is_default ? `<span class="v-label" style="color:var(--b44-gold,#ffb43d)">DEFAULT</span>` : "";
-        const title = t.title_template || DEFAULT_TITLE_TEMPLATE;
-        return `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(t.name)}</strong><span>Markup ${esc(String(markup))}% · ${esc(title)}</span></div><div class="qty" style="display:flex;gap:6px;align-items:center">${chip}<button type="button" class="m-btn" data-del-template="${esc(t.id)}">×</button></div></div>`;
-      })
-      .join("");
+    tRoot.innerHTML = state.templates.map(templateCardHtml).join("");
     if (tEmpty) {
       tEmpty.classList.toggle("hidden", state.templates.length > 0);
       tEmpty.textContent = "No templates yet. Create one to apply default markup and policies.";
@@ -1032,21 +1248,50 @@ function renderSettings() {
       btn.addEventListener("click", () => {
         loadSettingsLocal();
         state.templates = state.templates.filter((t) => t.id !== btn.dataset.delTemplate);
+        if (state.editingTemplateId === btn.dataset.delTemplate) state.editingTemplateId = null;
         saveSettingsLocal();
+        renderSettings();
+      });
+    });
+    tRoot.querySelectorAll("[data-edit-template]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.editingTemplateId = btn.dataset.editTemplate;
+        state.showTemplateForm = false;
+        renderSettings();
+      });
+    });
+    tRoot.querySelectorAll("[data-cancel-tpl]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.editingTemplateId = null;
+        renderSettings();
+      });
+    });
+    tRoot.querySelectorAll("[data-save-tpl]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const card = btn.closest("[data-edit-tpl]");
+        if (!card) return;
+        loadSettingsLocal();
+        const id = btn.dataset.saveTpl;
+        const name = card.querySelector("[data-edit-tpl-name]")?.value?.trim();
+        if (!name) return;
+        const markup_percent = Number(card.querySelector("[data-edit-tpl-markup]")?.value || 0);
+        const is_default = !!card.querySelector("[data-edit-tpl-default]")?.checked;
+        if (is_default) {
+          state.templates = state.templates.map((t) => ({ ...t, is_default: false }));
+        }
+        state.templates = state.templates.map((t) =>
+          t.id === id ? { ...t, name, markup_percent, is_default } : t,
+        );
+        state.editingTemplateId = null;
+        saveSettingsLocal();
+        renderSettings();
       });
     });
   }
   const sRoot = $("shipList");
   const sEmpty = $("shipEmpty");
   if (sRoot) {
-    sRoot.innerHTML = state.shipping
-      .map((s) => {
-        const chip = s.is_default ? `<span class="v-label" style="color:var(--b44-gold,#ffb43d)">DEFAULT</span>` : "";
-        const service = s.service ? ` · ${s.service}` : "";
-        const handle = s.handling_days != null ? ` · ${s.handling_days}d handle` : "";
-        return `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(s.name)}</strong><span>${esc(s.carrier || "")}${esc(service)} · $${esc(String(s.cost ?? 0))}${esc(handle)}</span></div><div class="qty" style="display:flex;gap:6px;align-items:center">${chip}<button type="button" class="m-btn" data-del-ship="${esc(s.id)}">×</button></div></div>`;
-      })
-      .join("");
+    sRoot.innerHTML = state.shipping.map(shipCardHtml).join("");
     if (sEmpty) {
       sEmpty.classList.toggle("hidden", state.shipping.length > 0);
       sEmpty.textContent = "No shipping presets yet. Add carriers and services to reuse on listings.";
@@ -1055,7 +1300,46 @@ function renderSettings() {
       btn.addEventListener("click", () => {
         loadSettingsLocal();
         state.shipping = state.shipping.filter((s) => s.id !== btn.dataset.delShip);
+        if (state.editingShipId === btn.dataset.delShip) state.editingShipId = null;
         saveSettingsLocal();
+        renderSettings();
+      });
+    });
+    sRoot.querySelectorAll("[data-edit-ship-btn]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.editingShipId = btn.dataset.editShipBtn;
+        state.showShipForm = false;
+        renderSettings();
+      });
+    });
+    sRoot.querySelectorAll("[data-cancel-ship]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.editingShipId = null;
+        renderSettings();
+      });
+    });
+    sRoot.querySelectorAll("[data-save-ship]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const card = btn.closest("[data-edit-ship]");
+        if (!card) return;
+        loadSettingsLocal();
+        const id = btn.dataset.saveShip;
+        const name = card.querySelector("[data-edit-ship-name]")?.value?.trim();
+        if (!name) return;
+        const carrier = card.querySelector("[data-edit-ship-carrier]")?.value || "";
+        const service = card.querySelector("[data-edit-ship-service]")?.value || "";
+        const cost = Number(card.querySelector("[data-edit-ship-cost]")?.value || 0);
+        const handling_days = Number(card.querySelector("[data-edit-ship-handle]")?.value || 1);
+        const is_default = !!card.querySelector("[data-edit-ship-default]")?.checked;
+        if (is_default) {
+          state.shipping = state.shipping.map((s) => ({ ...s, is_default: false }));
+        }
+        state.shipping = state.shipping.map((s) =>
+          s.id === id ? { ...s, name, carrier, service, cost, handling_days, is_default } : s,
+        );
+        state.editingShipId = null;
+        saveSettingsLocal();
+        renderSettings();
       });
     });
   }
@@ -1074,6 +1358,7 @@ function renderSettings() {
         loadSettingsLocal();
         state.storageDefs = state.storageDefs.filter((d) => d.id !== btn.dataset.delStorageDef);
         saveSettingsLocal();
+        renderSettings();
       });
     });
   }
@@ -1346,51 +1631,90 @@ function bind() {
     state.channelTab = "ship";
     renderChannel();
   });
+  $("channelFilter")?.addEventListener("input", (e) => {
+    state.channelFilter = e.target.value;
+    renderChannel();
+  });
+  $("btnChannelSheetClose")?.addEventListener("click", () => {
+    closeChannelSheet();
+  });
+  $("btnChannelReprice")?.addEventListener("click", () => channelSheetAction("reprice"));
+  $("btnChannelRelist")?.addEventListener("click", () => channelSheetAction("relist"));
+  $("btnChannelEnd")?.addEventListener("click", () => channelSheetAction("end"));
   
   document.querySelectorAll("[data-settings-tab]").forEach((btn) => {
     btn.addEventListener("click", () => setSettingsTab(btn.dataset.settingsTab));
   });
   $("btnNewTemplate")?.addEventListener("click", () => {
-    const name = prompt("Template name", "Default");
-    if (!name?.trim()) return;
-    const markup_percent = Number(prompt("Markup %", "30") || 0);
-    const makeDefault = confirm("Set as default template?");
-    const title_template =
-      prompt("Title template", DEFAULT_TITLE_TEMPLATE) || DEFAULT_TITLE_TEMPLATE;
-    const description_template =
-      prompt("Description template", DEFAULT_DESC_TEMPLATE) || DEFAULT_DESC_TEMPLATE;
+    state.editingTemplateId = null;
+    state.showShipForm = false;
+    state.showTemplateForm = true;
+    if ($("tplName")) $("tplName").value = "";
+    if ($("tplMarkup")) $("tplMarkup").value = "30";
+    if ($("tplDefault")) $("tplDefault").checked = false;
+    renderSettings();
+    $("tplName")?.focus();
+  });
+  $("btnTplCancel")?.addEventListener("click", () => {
+    resetTemplateForm();
+    renderSettings();
+  });
+  $("btnTplSave")?.addEventListener("click", () => {
+    const name = ($("tplName")?.value || "").trim();
+    if (!name) return;
+    const markup_percent = Number($("tplMarkup")?.value || 0);
+    const makeDefault = !!$("tplDefault")?.checked;
     loadSettingsLocal();
     if (makeDefault) {
       state.templates = state.templates.map((t) => ({ ...t, is_default: false }));
     }
     state.templates.unshift({
       id: crypto.randomUUID(),
-      name: name.trim(),
+      name,
       markup_percent,
       is_default: makeDefault || state.templates.length === 0,
-      title_template,
-      description_template,
+      title_template: DEFAULT_TITLE_TEMPLATE,
+      description_template: DEFAULT_DESC_TEMPLATE,
       pricing_type: "markup",
       price_floor: 1.77,
       round_to_nearest: 0.99,
     });
     saveSettingsLocal();
+    resetTemplateForm();
+    renderSettings();
   });
   $("btnNewShip")?.addEventListener("click", () => {
-    const name = prompt("Preset name", "USPS Priority");
-    if (!name?.trim()) return;
-    const carrier = prompt("Carrier", "USPS") || "";
-    const service = prompt("Service", "Priority Mail") || "";
-    const cost = Number(prompt("Cost ($)", "8.50") || 0);
-    const handling_days = Number(prompt("Handling days", "1") || 1);
-    const makeDefault = confirm("Set as default shipping preset?");
+    state.editingShipId = null;
+    state.showTemplateForm = false;
+    state.showShipForm = true;
+    if ($("shipName")) $("shipName").value = "";
+    if ($("shipCarrier")) $("shipCarrier").value = "";
+    if ($("shipService")) $("shipService").value = "";
+    if ($("shipCost")) $("shipCost").value = "0";
+    if ($("shipHandle")) $("shipHandle").value = "1";
+    if ($("shipDefault")) $("shipDefault").checked = false;
+    renderSettings();
+    $("shipName")?.focus();
+  });
+  $("btnShipCancel")?.addEventListener("click", () => {
+    resetShipForm();
+    renderSettings();
+  });
+  $("btnShipSave")?.addEventListener("click", () => {
+    const name = ($("shipName")?.value || "").trim();
+    if (!name) return;
+    const carrier = ($("shipCarrier")?.value || "").trim();
+    const service = ($("shipService")?.value || "").trim();
+    const cost = Number($("shipCost")?.value || 0);
+    const handling_days = Number($("shipHandle")?.value || 1);
+    const makeDefault = !!$("shipDefault")?.checked;
     loadSettingsLocal();
     if (makeDefault) {
       state.shipping = state.shipping.map((s) => ({ ...s, is_default: false }));
     }
     state.shipping.unshift({
       id: crypto.randomUUID(),
-      name: name.trim(),
+      name,
       carrier,
       service,
       cost,
@@ -1398,6 +1722,8 @@ function bind() {
       is_default: makeDefault || state.shipping.length === 0,
     });
     saveSettingsLocal();
+    resetShipForm();
+    renderSettings();
   });
   $("btnNewStorageDef")?.addEventListener("click", () => {
     const name = prompt("Location name", "Warehouse A");
@@ -1406,6 +1732,7 @@ function bind() {
     loadSettingsLocal();
     state.storageDefs.unshift({ id: crypto.randomUUID(), name: name.trim(), code });
     saveSettingsLocal();
+    renderSettings();
   });
   $("btnEbayDiag")?.addEventListener("click", () => runEbayDiagnostic());
   $("btnCopyMcp")?.addEventListener("click", async () => {
