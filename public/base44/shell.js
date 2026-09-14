@@ -26,6 +26,7 @@ const state = {
   filterScouter: "",
   filterSpaces: "",
   spaceTrail: [],
+  lockedItemId: null,
   channelTab: "live",
   settingsTab: "templates",
   templates: [],
@@ -81,7 +82,10 @@ function loadItems() {
   const n = pad2(state.items.length);
   if ($("statCount")) $("statCount").textContent = n;
   if ($("scouterCount")) $("scouterCount").textContent = n;
-  if ($("intakeValue")) $("intakeValue").textContent = n;
+  const intakeVal = state.items
+    .filter((it) => itemPipeLabel(it) === "Intake")
+    .reduce((sum, it) => sum + (Number(it.marketValue) || 0) * (Number(it.quantity) || 1), 0);
+  if ($("intakeValue")) $("intakeValue").textContent = money(intakeVal);
   if ($("cmdScouterCount")) $("cmdScouterCount").textContent = n;
   if ($("cmdToList")) $("cmdToList").textContent = n;
   if ($("pipeIntake")) $("pipeIntake").textContent = n;
@@ -216,6 +220,15 @@ function renderIntakeList() {
       .includes(q);
   });
   empty.classList.toggle("hidden", rows.length > 0);
+  if ($("intakeHint")) {
+    $("intakeHint").textContent = rows.length
+      ? "Click an item to build its listing, or open it."
+      : "Intake is empty — scan a barcode or drop a photo to bring inventory in.";
+  }
+  const intakeVal = state.items
+    .filter((it) => itemPipeLabel(it) === "Intake")
+    .reduce((sum, it) => sum + (Number(it.marketValue) || 0) * (Number(it.quantity) || 1), 0);
+  if ($("intakeValue")) $("intakeValue").textContent = money(intakeVal);
   root.innerHTML = rows
     .slice(0, 40)
     .map((it) => {
@@ -264,9 +277,41 @@ function renderCollection() {
       const img = thumb
         ? `<img src="${thumb}" alt="" />`
         : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
-      return `<div class="v-panel v-cut-sm b44-item">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(step)} · ${esc(sku)} · ${esc(it.game || "PKM")}</span></div><div class="qty"><div class="v-readout v-emit-gold" style="font-size:14px">${esc(price)}</div><div>×${it.quantity || 1}</div></div></div>`;
+      return `<div class="v-panel v-cut-sm b44-item" data-open-item="${esc(it.id)}" style="cursor:pointer">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(step)} · ${esc(sku)} · ${esc(it.game || "PKM")}</span></div><div class="qty"><div class="v-readout v-emit-gold" style="font-size:14px">${esc(price)}</div><div>×${it.quantity || 1}</div></div></div>`;
     })
     .join("");
+  root.querySelectorAll("[data-open-item]").forEach((row) => {
+    row.addEventListener("click", () => openScouterReadout(row.dataset.openItem));
+  });
+  if (state.lockedItemId) openScouterReadout(state.lockedItemId);
+}
+
+function openScouterReadout(id) {
+  const it = state.items.find((x) => x.id === id);
+  const panel = $("scouterReadout");
+  if (!it || !panel) {
+    closeScouterReadout();
+    return;
+  }
+  state.lockedItemId = it.id;
+  panel.classList.remove("hidden");
+  const step = itemPipeLabel(it);
+  if ($("readoutLock")) $("readoutLock").textContent = `LOCKED · ${step.toUpperCase()}`;
+  if ($("readoutTitle")) $("readoutTitle").textContent = it.title || "Untitled";
+  if ($("readoutPrice")) $("readoutPrice").textContent = money(it.marketValue);
+  if ($("readoutSku")) $("readoutSku").textContent = it.barcode || it.sku || "NO SKU";
+  if ($("readoutStatus")) $("readoutStatus").textContent = "";
+  if ($("btnAdvanceBuilt")) {
+    $("btnAdvanceBuilt").classList.toggle("hidden", step === "Listing Built" || step === "Listed");
+  }
+  if ($("btnWriteListing")) {
+    $("btnWriteListing").classList.toggle("hidden", step === "Listed");
+  }
+}
+
+function closeScouterReadout() {
+  state.lockedItemId = null;
+  $("scouterReadout")?.classList.add("hidden");
 }
 
 function renderPhotos() {
@@ -300,18 +345,32 @@ function setStatus(msg) {
   if ($("identifyStatus")) $("identifyStatus").textContent = msg;
 }
 
+function setIdentifyProgress(stage, done, total) {
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  if ($("identifyStage")) $("identifyStage").textContent = `${String(stage || "IDENTIFYING").toUpperCase()}…`;
+  if ($("identifyPct")) $("identifyPct").textContent = total ? `${done} / ${total}` : `${pct}%`;
+  if ($("identifyBar")) $("identifyBar").style.width = `${pct}%`;
+}
+
 async function addFiles(fileList) {
   const isImage = window.ScouterImage?.isImageFile ?? ((f) => f.type?.startsWith("image/"));
   const incoming = [...(fileList || [])].filter(isImage).slice(0, 8 - state.draftPhotos.length);
   if (!incoming.length) return;
+  setIntakeMode("identifying");
+  setIdentifyProgress("Uploading", 0, incoming.length);
   setStatus("Uploading…");
   const compressed = await window.ScouterImage.compressPhotos(incoming);
+  let done = 0;
   for (const file of compressed) {
     const dataUrl = await window.ScouterImage.fileToDataUrl(file);
     state.draftPhotos.push({ dataUrl, file });
+    done += 1;
+    setIdentifyProgress("Uploading", done, incoming.length);
   }
+  setIdentifyProgress("Deduping", 1, 1);
   renderPhotos();
   updateSave();
+  setIntakeMode("batch");
   setStatus(`${state.draftPhotos.length} scan(s) ready`);
 }
 
@@ -322,8 +381,7 @@ async function runIdentify() {
     return false;
   }
   setIntakeMode("identifying");
-  if ($("identifyStage")) $("identifyStage").textContent = "IDENTIFYING…";
-  if ($("identifyPct")) $("identifyPct").textContent = "…";
+  setIdentifyProgress("Identifying", 0, photos.length || 1);
   setStatus("IDENTIFYING…");
   try {
     const res = await fetch("/api/scouter/identify", {
@@ -337,6 +395,7 @@ async function runIdentify() {
       }),
     });
     const result = await res.json();
+    setIdentifyProgress("Identifying", photos.length || 1, photos.length || 1);
     setIntakeMode("batch");
     if (result.identity?.product_name) {
       state.title = result.identity.product_name;
@@ -679,6 +738,24 @@ function bind() {
     navigate(path);
   });
 
+  $("btnCloseReadout")?.addEventListener("click", () => closeScouterReadout());
+  $("btnWriteListing")?.addEventListener("click", () => {
+    if ($("readoutStatus")) {
+      $("readoutStatus").textContent =
+        "Listing engine isn't connected here yet — title/photos stay. Identify remains photo-first.";
+    }
+  });
+  $("btnAdvanceBuilt")?.addEventListener("click", () => {
+    const it = state.items.find((x) => x.id === state.lockedItemId);
+    if (!it) return;
+    it.staged = true;
+    it.updatedAt = new Date().toISOString();
+    saveItems();
+    openScouterReadout(it.id);
+  });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeScouterReadout();
+  });
   $("btnNewBatch")?.addEventListener("click", () => openNewBatch());
   $("btnCancelBatch")?.addEventListener("click", () => {
     resetDraft();

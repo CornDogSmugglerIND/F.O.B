@@ -97,6 +97,22 @@
               <a class="m-btn m-btn-primary" href="#/scan-intake">New batch</a>
             </div>
           </div>
+          <div id="scouterReadout" class="b44-readout-panel hidden">
+            <div class="v-panel v-cut p-4">
+              <div class="b44-toolbar" style="justify-content:space-between;margin-bottom:8px">
+                <div class="v-label" id="readoutLock" style="color:var(--b44-gold-hi,#ffd98a)">LOCKED · INTAKE</div>
+                <button type="button" class="m-btn" id="btnCloseReadout" title="Release lock (ESC)">×</button>
+              </div>
+              <div class="v-readout v-emit-white" style="font-size:18px;line-height:1.25" id="readoutTitle">Untitled</div>
+              <div class="v-readout v-emit-gold" style="font-size:24px;margin-top:10px" id="readoutPrice">$0.00</div>
+              <div class="v-label" style="margin-top:8px;font-size:9.5px" id="readoutSku">NO SKU</div>
+              <div class="b44-actions" style="margin-top:16px;flex-direction:column;align-items:stretch">
+                <button type="button" class="m-btn m-btn-primary" id="btnWriteListing">Write listing with AI</button>
+                <button type="button" class="m-btn" id="btnAdvanceBuilt">Mark Listing Built</button>
+              </div>
+              <p class="b44-copy-soft" style="margin-top:12px;font-size:12px" id="readoutStatus"></p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -181,8 +197,9 @@
             <div class="v-panel v-cut-sm px-4 py-3" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
               <div>
                 <div class="v-label" style="font-size:8px">Intake value</div>
-                <div class="v-readout v-emit-gold" id="intakeValue" style="font-size:18px">00</div>
+                <div class="v-readout v-emit-gold" id="intakeValue" style="font-size:18px">$0.00</div>
               </div>
+              <p class="b44-copy-soft" style="margin-left:auto;max-width:55%;text-align:right;font-size:12px" id="intakeHint">Intake is empty — scan a barcode or drop a photo to bring inventory in.</p>
             </div>
             <div class="b44-toolbar">
               <div class="b44-filter">
@@ -259,8 +276,10 @@
             <div class="v-panel v-cut b44-identifying">
               <div class="b44-spin" aria-hidden="true"></div>
               <div class="v-label" style="margin-top:16px;color:var(--b44-gold-hi,#ffd98a)" id="identifyStage">IDENTIFYING…</div>
-              <div class="v-readout v-emit-white" style="font-size:18px;margin-top:8px" id="identifyPct">0%</div>
-              <div class="v-label" style="margin-top:8px">Rows appear live — a refresh won't lose completed work.</div>
+              <div class="b44-progress" aria-hidden="true"><div class="b44-progress-bar" id="identifyBar" style="width:0%"></div></div>
+              <div class="v-readout v-emit-white" style="font-size:18px;margin-top:10px" id="identifyPct">0 / 0</div>
+              <div class="v-label" style="margin-top:8px">rows written</div>
+              <div class="b44-copy-soft" style="margin-top:12px">Rows appear live — a refresh won't lose completed work.</div>
             </div>
           </div>
         </div>

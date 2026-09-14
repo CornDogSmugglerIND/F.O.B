@@ -459,3 +459,27 @@ body.b44 {
   text-decoration: none;
   color: inherit;
 }
+
+.b44-progress {
+  width: min(420px, 90%);
+  height: 8px;
+  margin-top: 16px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+.b44-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffd98a, #ffb43d);
+  transition: width 0.2s ease;
+}
+.b44-readout-panel {
+  position: sticky;
+  bottom: calc(72px + var(--safe-bottom));
+  margin-top: 12px;
+  z-index: 20;
+}
+.b44-readout-panel .m-btn-primary {
+  width: 100%;
+}
