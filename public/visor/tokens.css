@@ -1,0 +1,24 @@
+/* Command tokens — single source. Do not hardcode colors elsewhere. */
+:root {
+  --hud-bg: #07080a;
+  --hud-panel: #0e1113;
+  --hud-raised: #151a1d;
+
+  --hud-amber: #f2a03d;
+  --hud-amber-hot: #ffc46b;
+  --hud-amber-dim: rgba(242, 160, 61, 0.34);
+
+  --hud-teal: #2e6b6e;
+  --hud-teal-dim: rgba(46, 107, 110, 0.3);
+
+  --hud-text: #e8edef;
+  --hud-text-dim: #8a959b;
+  --hud-text-mute: #5a6469;
+
+  --hud-danger: #ff4d6d;
+  --hud-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --hud-ms: 200ms;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}

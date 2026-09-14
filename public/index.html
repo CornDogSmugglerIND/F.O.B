@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#050507" />
-  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#07080A" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -12,172 +11,184 @@
   <link rel="manifest" href="/manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Orbitron:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/scouter.css?v=25" />
-  <link rel="stylesheet" href="/hud-visor.css?v=28" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/visor/tokens.css?v=1" />
+  <link rel="stylesheet" href="/visor/hud.css?v=1" />
 </head>
-<body class="handheld">
-  <div class="ambient" aria-hidden="true">
-    <div class="ambient-orb ambient-orb-1"></div>
-    <div class="ambient-orb ambient-orb-2"></div>
-    <div class="ambient-orb ambient-orb-3"></div>
-  </div>
+<body class="hud">
+  <!-- SCOUTER — camera IS the screen -->
+  <section id="viewScan" class="view active" aria-label="Scouter">
+    <div class="cam-stage" id="camStage">
+      <video id="liveCam" playsinline muted autoplay></video>
+      <img id="stillPreview" class="hidden" alt="" />
+      <div class="cam-idle" id="camIdle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <span>Allow camera · or add from gallery</span>
+      </div>
+      <div class="reticle" aria-hidden="true">
+        <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+      </div>
 
-  <div id="app" class="shell v-glass handheld-shell">
-    <div class="v-sweep" aria-hidden="true"></div>
-
-    <section id="viewCapture" class="view active handheld-scout">
-      <header class="hh-top">
-        <div class="hh-brand">
-          <span class="hh-mark">SCOUTER</span>
-          <span class="hh-sub v-label">Coalition H.U.D</span>
+      <header class="edge-top">
+        <div>
+          <div class="brand-mark chrome">Scouter</div>
+          <span class="brand-sub">Coalition H.U.D</span>
         </div>
-        <div class="hh-pip" aria-live="polite">
-          <span class="hh-pip-dot"></span>
-          <span class="v-readout v-emit-gold" id="statCount">00</span>
+        <div class="pip" aria-live="polite">
+          <span class="pip-dot"></span>
+          <span class="pip-n chrome" id="statCount">00</span>
         </div>
       </header>
 
-      <button type="button" class="hh-viewfinder" id="btnCamera" aria-label="Take photo">
-        <div class="hh-vf-frame" id="viewfinderFace">
-          <div class="hh-reticle" aria-hidden="true">
-            <span class="hh-corner hh-tl"></span>
-            <span class="hh-corner hh-tr"></span>
-            <span class="hh-corner hh-bl"></span>
-            <span class="hh-corner hh-br"></span>
-          </div>
-          <div class="hh-vf-idle" id="viewfinderIdle">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            <span class="v-label">Tap to shoot</span>
-          </div>
-          <img id="viewfinderPreview" class="hh-vf-preview hidden" alt="" />
-        </div>
-        <div class="hh-photo-strip no-scrollbar" id="photoGrid"></div>
-        <span class="hh-photo-count v-label" id="photoCountLbl">0 photos</span>
-      </button>
+      <div class="status-line" id="identifyStatus">Photos in · tap ID</div>
+      <div class="photo-strip" id="photoGrid"></div>
 
-      <div class="hh-actions">
-        <button type="button" class="hh-act hh-act-gold" id="btnShutter">
-          <span class="hh-act-icon" aria-hidden="true">●</span>
-          CAPTURE
-        </button>
-        <button type="button" class="hh-act" id="btnIdentify">
-          <span class="hh-act-icon" aria-hidden="true">◎</span>
-          ID
-        </button>
+      <div class="edge-tools">
+        <button type="button" class="tool-btn" id="btnGallery" title="Gallery">＋</button>
+        <button type="button" class="tool-btn" id="btnMore" title="More">···</button>
+        <button type="button" class="tool-btn" id="btnScan" title="Scan barcode">▥</button>
       </div>
 
-      <div class="hh-id">
-        <div class="status-strip" id="identifyStatus">Drop or take photos · tap ID</div>
-        <div class="identify-result hidden" id="identifyResult" aria-live="polite">
-          <div class="v-label" id="identifyPhaseLbl">IDLE</div>
-          <div class="identify-result-title" id="identifyResultTitle">—</div>
-          <div class="identify-result-meta v-label" id="identifyResultMeta"></div>
-          <div class="identify-candidates hidden" id="identifyCandidates"></div>
-        </div>
-        <div class="hh-id-row hh-title-row" id="manualRow">
-          <input class="m-input" id="manualTitle" placeholder="Manual title (backup if ID misses)" autocomplete="off" />
-          <button type="button" class="m-btn" id="btnManualOk">Set</button>
-        </div>
+      <div class="thumb-dock">
+        <button type="button" class="dock-btn" id="btnShutter"><span class="glyph">●</span>Shoot</button>
+        <button type="button" class="dock-btn primary" id="btnIdentify"><span class="glyph">◎</span>ID</button>
+        <button type="button" class="dock-btn" id="btnSave" disabled><span class="glyph">▸</span>Stage</button>
       </div>
+    </div>
+  </section>
 
-      <div class="hh-barcode-block" id="barcodeBlock">
-        <div class="v-label">BARCODE</div>
-        <div class="hh-id-row">
-          <input class="m-input hh-barcode" id="barcodeInput" placeholder="UPC / EAN" inputmode="numeric" autocomplete="off" enterkeyhint="search" />
-          <button type="button" class="m-btn hh-lookup" id="btnLookup">Lookup</button>
+  <!-- SIFT -->
+  <section id="viewIntake" class="view" aria-label="Sift">
+    <div class="list-view">
+      <div class="list-head">
+        <div>
+          <h1 class="chrome">Sift</h1>
+          <div class="sub">Review · stage</div>
         </div>
-        <button type="button" class="hh-act hh-barcode-scan" id="btnScan">
-          <span class="hh-act-icon" aria-hidden="true">▥</span>
-          SCAN
-        </button>
+        <button type="button" class="ghost-btn" data-go="scan">New</button>
       </div>
-
-      <div class="hh-meta">
-        <div class="qty-control">
-          <button type="button" class="qty-btn" id="qtyMinus" aria-label="Decrease qty">−</button>
-          <output class="qty-val" id="qtyVal">1</output>
-          <button type="button" class="qty-btn" id="qtyPlus" aria-label="Increase qty">+</button>
-        </div>
-        <div class="chip-row no-scrollbar" id="categoryChips"></div>
-      </div>
-
-      <label class="hh-stage">
-        <input type="checkbox" id="stagedFlag" checked />
-        <span>STAGE for desktop</span>
-      </label>
-
-      <button type="button" class="m-btn m-btn-primary m-btn-cut-wide hh-commit" id="btnSave" disabled>Add to rail</button>
-
-      <button type="button" class="hh-gallery" id="btnGallery">Add from gallery</button>
-      <input type="hidden" id="fieldNotes" value="" />
-      <button type="button" class="hidden" id="btnManual" tabindex="-1" aria-hidden="true"></button>
-      <div class="hidden" id="pageHero"></div>
-      <span class="hidden" id="pageTitle"></span>
-      <span class="hidden" id="pageEyebrow"></span>
-      <span class="hidden" id="pageSub"></span>
-      <div class="hidden" id="photoDrop"></div>
-      <div class="hidden" id="intakeBar"></div>
-      <div class="hidden" id="railToolbar"></div>
-      <div class="hidden" id="saveBar"></div>
-      <button type="button" class="hidden" id="btnNewScan"></button>
-      <button type="button" class="hidden" id="btnExport"></button>
-      <button type="button" class="hidden" id="btnImport"></button>
-      <input type="file" id="importFile" accept="application/json,.json" hidden />
-    </section>
-
-    <section id="viewCollection" class="view handheld-rail">
-      <header class="hh-top">
-        <div class="hh-brand">
-          <span class="hh-mark">RAIL</span>
-          <span class="hh-sub v-label">Sift · stage</span>
-        </div>
-        <button type="button" class="m-btn m-btn-primary" id="btnRailNew" style="padding:10px 14px;font-size:12px">New</button>
-      </header>
-      <div class="rail-search hh-rail-search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        <input type="search" id="railFilter" placeholder="Filter rail" autocomplete="off" />
+      <div class="search">
+        <input type="search" id="railFilter" placeholder="Filter items" autocomplete="off" />
       </div>
       <div id="collectionRoot"></div>
-    </section>
+    </div>
+  </section>
 
-    <nav class="bottom-nav" aria-label="Scouter">
-      <button type="button" class="nav-tab active" data-view="capture">
-        <span class="nav-tab-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        </span>
-        Scout
-      </button>
-      <button type="button" class="nav-tab" data-view="collection">
-        <span class="nav-tab-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-        </span>
-        Rail
-      </button>
-    </nav>
+  <!-- INVENTORY -->
+  <section id="viewList" class="view" aria-label="Inventory">
+    <div class="list-view">
+      <div class="list-head">
+        <div>
+          <h1 class="chrome">Inventory</h1>
+          <div class="sub">Staged · desktop handoff</div>
+        </div>
+        <span class="sub" id="listReadyLbl">00</span>
+      </div>
+      <div class="panel">
+        <p>Staged batch goes to desktop. Scouter does not list.</p>
+        <div class="row-btns">
+          <button type="button" class="ghost-btn" id="btnExportStaged">Export staged</button>
+          <a class="ghost-btn" href="/listing-copy.html">Listing Copy</a>
+        </div>
+        <div class="status-line" id="handoffNote" style="position:static;margin-top:12px;bottom:auto">No staged items yet</div>
+      </div>
+      <div id="listRail" style="margin-top:14px"></div>
+      <details class="panel">
+        <summary class="sub" style="cursor:pointer">Systems · backup</summary>
+        <div class="row-btns" style="margin-top:12px">
+          <button type="button" class="ghost-btn" id="btnExport">Export</button>
+          <button type="button" class="ghost-btn" id="btnImport">Import</button>
+          <button type="button" class="ghost-btn" id="btnWipe">Wipe</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json,.json" hidden />
+      </details>
+    </div>
+  </section>
+
+  <!-- Sheet: secondary intake controls -->
+  <div class="sheet" id="moreSheet" aria-hidden="true">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title chrome">Intake</div>
+
+    <div class="identify-box hidden" id="identifyResult">
+      <div class="phase chrome" id="identifyPhaseLbl">IDLE</div>
+      <div class="title" id="identifyResultTitle">—</div>
+      <div class="meta" id="identifyResultMeta"></div>
+      <div class="candidates hidden" id="identifyCandidates"></div>
+    </div>
+
+    <div class="sheet-row" id="manualRow">
+      <input class="field" id="manualTitle" placeholder="Manual title if ID misses" autocomplete="off" />
+      <button type="button" class="ghost-btn" id="btnManualOk">Set</button>
+    </div>
+
+    <div class="qty-row">
+      <button type="button" id="qtyMinus" aria-label="Decrease">−</button>
+      <output id="qtyVal">1</output>
+      <button type="button" id="qtyPlus" aria-label="Increase">+</button>
+    </div>
+    <div class="chips" id="categoryChips"></div>
+
+    <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:14px;color:var(--hud-text-dim)">
+      <input type="checkbox" id="stagedFlag" checked />
+      Stage for desktop
+    </label>
+
+    <div class="sheet-title chrome" style="margin-top:8px">Barcode · separate</div>
+    <div class="sheet-row">
+      <input class="field" id="barcodeInput" placeholder="UPC / EAN" inputmode="numeric" autocomplete="off" />
+      <button type="button" class="ghost-btn" id="btnLookup">Lookup</button>
+    </div>
+
+    <button type="button" class="sheet-close chrome" id="btnSheetClose">Close</button>
   </div>
+
+  <nav class="bottom-nav" aria-label="Primary">
+    <button type="button" class="nav-tab" data-view="intake">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+      Sift
+    </button>
+    <button type="button" class="nav-tab active" data-view="scan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      Scouter
+    </button>
+    <button type="button" class="nav-tab" data-view="list">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      Inventory
+    </button>
+  </nav>
 
   <input type="file" id="inputCamera" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" capture="environment" multiple hidden />
   <input type="file" id="inputGallery" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" multiple hidden />
+  <input type="hidden" id="fieldNotes" value="" />
+
+  <!-- stubs kept for shared logic -->
+  <div class="hidden" id="pageHero"><span id="pageEyebrow"></span><span id="pageTitle"></span><span id="pageSub"></span></div>
+  <div class="hidden" id="intakeBar"><span id="statCountDup"></span></div>
+  <div class="hidden" id="saveBar"></div>
+  <div class="hidden" id="photoDrop"></div>
+  <div class="hidden" id="viewCommand"><span id="cmdPhotos">00</span><span id="cmdReady">00</span><span id="cmdItems">00</span><div id="cmdRail"></div></div>
+  <div class="hidden" id="viewSystems"></div>
+  <button type="button" class="hidden" id="btnManual"></button>
+  <button type="button" class="hidden" id="btnNewScan"></button>
+  <button type="button" class="hidden" id="btnCamera"></button>
+  <div class="hidden" id="viewfinderIdle"></div>
+  <img class="hidden" id="viewfinderPreview" alt="" />
+  <span class="hidden" id="photoCountLbl"></span>
+  <div class="hidden" id="railToolbar"></div>
+  <div class="hidden" id="systemsNote"></div>
 
   <div class="scan-overlay" id="scanOverlay">
     <div id="scanReader" class="scan-reader"></div>
     <video id="scanVideo" playsinline muted autoplay hidden></video>
-    <p class="scan-hint v-label">Align barcode in frame</p>
-    <button type="button" class="m-btn" id="btnScanClose">Cancel</button>
-  </div>
-
-  <div class="drag-overlay" id="dragOverlay" aria-hidden="true">
-    <div class="drag-overlay-inner">
-      <svg class="drag-overlay-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <div class="v-label drag-overlay-label">Release to intake</div>
-    </div>
+    <p class="scan-hint chrome">Align barcode</p>
+    <button type="button" class="ghost-btn" id="btnScanClose">Cancel</button>
   </div>
 
   <div class="toast" id="toast"></div>
 
   <script src="/lib/html5-qrcode.min.js?v=24"></script>
   <script src="/lib/image.js?v=24"></script>
-  <script src="/scouter.js?v=25"></script>
+  <script src="/visor/app.js?v=1"></script>
 </body>
 </html>
