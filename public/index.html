@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=9" />
+  <link rel="stylesheet" href="/base44/shell.css?v=10" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -648,8 +648,31 @@
   <div id="assetSheet" class="b44-modal hidden" role="dialog" aria-modal="true">
     <div class="v-panel v-cut b44-modal-panel" id="assetSheetPanel">
       <div class="b44-toolbar" style="justify-content:space-between;margin-bottom:14px">
-        <div class="v-label" id="assetSheetTitle">// NEW ASSET</div>
+        <div>
+          <div class="v-label" id="assetSheetEyebrow">ASSET</div>
+          <div class="v-label" id="assetSheetTitle" style="margin-top:4px;font-size:11px;letter-spacing:0.08em">// NEW ASSET</div>
+        </div>
         <button type="button" class="m-btn" id="btnAssetClose" title="Close">×</button>
+      </div>
+      <div class="b44-asset-econ" id="assetEconStrip">
+        <div>
+          <div class="v-label" style="font-size:9px">MARKET</div>
+          <div class="v-readout v-emit-gold" style="font-size:22px" id="assetEconMarket">$0.00</div>
+        </div>
+        <div>
+          <div class="v-label" style="font-size:9px">COST</div>
+          <div class="v-readout" style="font-size:15px;color:var(--b44-lo,#6f8697)" id="assetEconCost">$0.00</div>
+        </div>
+        <div>
+          <div class="v-label" style="font-size:9px">PROFIT</div>
+          <div class="v-readout" style="font-size:16px" id="assetEconProfit">+$0.00</div>
+        </div>
+      </div>
+      <div class="b44-asset-actions hidden" id="assetEditActions">
+        <button type="button" class="m-btn" id="btnAssetToScouter">To scouter</button>
+        <button type="button" class="m-btn" id="btnAssetDuplicate">Duplicate</button>
+        <button type="button" class="m-btn" id="btnAssetArchive">Archive</button>
+        <button type="button" class="m-btn" id="btnAssetDelete">Delete</button>
       </div>
       <div style="display:grid;gap:12px">
         <div>
@@ -797,6 +820,8 @@
       <p class="b44-copy-soft" style="margin-top:12px;text-align:center;font-size:11px">Showing downscaled scan (1200px). Full 600 DPI lazy upload is a pending seam.</p>
       <div class="b44-actions" style="justify-content:center;margin-top:12px">
         <button type="button" class="m-btn m-btn-primary" id="btnFleApply">Apply candidate → High</button>
+        <button type="button" class="m-btn m-btn-go" id="btnFleVerify">Verify — approve</button>
+        <button type="button" class="m-btn" id="btnFleSendReview">Send to review</button>
       </div>
     </div>
   </div>
@@ -836,6 +861,6 @@
   </div>
 
   <script src="/lib/image.js?v=24"></script>
-  <script src="/base44/shell.js?v=9"></script>
+  <script src="/base44/shell.js?v=10"></script>
 </body>
 </html>

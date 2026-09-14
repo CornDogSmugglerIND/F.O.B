@@ -75,6 +75,12 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /Catalog match/);
     assert.match(html, /id="fleSheet"/);
     assert.match(html, /id="unSheet"/);
+    assert.match(html, /MARKET/);
+    assert.match(html, /COST/);
+    assert.match(html, /PROFIT/);
+    assert.match(html, /Verify — approve/);
+    assert.match(html, /To scouter/);
+    assert.match(html, /Duplicate/);
     assert.match(html, /Rail · Step 0/);
     assert.match(html, /STEP 1 · INTAKE/);
     assert.match(html, /STEP 2 · BUILD/);
@@ -144,6 +150,10 @@ test("GET /hud.html serves Base44 port shell", async () => {
     assert.match(html, /Catalog match/);
     assert.match(html, /id="fleSheet"/);
     assert.match(html, /id="unSheet"/);
+    assert.match(html, /MARKET/);
+    assert.match(html, /PROFIT/);
+    assert.match(html, /Verify — approve/);
+    assert.match(html, /To scouter/);
     assert.doesNotMatch(html, /Add to rail/);
     assert.doesNotMatch(html, />Rail</);
   } finally {

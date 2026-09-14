@@ -757,18 +757,19 @@ function renderCollection() {
   if (!root) return;
   const q = state.filterScouter.trim().toLowerCase();
   const rows = state.items.filter((it) => {
+    if (it.archived) return false;
     if (!q) return true;
     const hay = `${it.title || ""} ${it.barcode || ""} ${it.sku || ""} ${it.game || ""}`.toLowerCase();
     return hay.includes(q);
   });
-  const intakeN = state.items.filter((it) => itemPipeLabel(it) === "Intake").length;
-  const builtN = state.items.filter((it) => itemPipeLabel(it) === "Listing Built").length;
-  const listedN = state.items.filter((it) => itemPipeLabel(it) === "Listed").length;
+  const intakeN = state.items.filter((it) => !it.archived && itemPipeLabel(it) === "Intake").length;
+  const builtN = state.items.filter((it) => !it.archived && itemPipeLabel(it) === "Listing Built").length;
+  const listedN = state.items.filter((it) => !it.archived && itemPipeLabel(it) === "Listed").length;
   loadSpaces();
-  const onMap = state.items.filter((it) => !!it.spaceId).length;
+  const onMap = state.items.filter((it) => !it.archived && !!it.spaceId).length;
   const spaceRoots = state.spaces.filter((s) => !(s.parentId || s.parent_id)).length;
   const value = state.items
-    .filter((it) => it.listingStatus !== "sold")
+    .filter((it) => !it.archived && it.listingStatus !== "sold")
     .reduce((sum, it) => sum + (Number(it.marketValue) || 0) * (Number(it.quantity) || 1), 0);
   if ($("scoutStepIntake")) $("scoutStepIntake").textContent = pad2(intakeN);
   if ($("scoutStepBuilt")) $("scoutStepBuilt").textContent = pad2(builtN);
@@ -875,7 +876,55 @@ function renderAssetThumbs() {
   });
 }
 
-/** Live VN Open card / New asset sheet. */
+/** Live VN Open card / New asset sheet — OK MARKET/COST/PROFIT + edit actions. */
+function moneyUsd(n) {
+  return (
+    "$" +
+    Number(n || 0).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  );
+}
+
+function assetCategoryLabel(value) {
+  const map = {
+    pokemon_sealed: "Pokemon Sealed",
+    graded_slabs: "Graded Slabs",
+    raw_cards: "Raw Cards",
+    sports_cards: "Sports Cards",
+    other: "Other",
+  };
+  return map[value] || "Asset";
+}
+
+function assetPhaseLabel(phase) {
+  const map = {
+    sorted: "INTAKE",
+    photographed: "INTAKE",
+    ready_to_list: "READY",
+    listed: "LIVE",
+    sold: "SOLD",
+    error: "ERROR",
+  };
+  return map[phase] || "INTAKE";
+}
+
+function updateAssetEconomics() {
+  const market = Number($("assetMarket")?.value || 0) || 0;
+  const cost = Number($("assetPurchase")?.value || 0) || 0;
+  const profit = market - cost;
+  if ($("assetEconMarket")) $("assetEconMarket").textContent = moneyUsd(market);
+  if ($("assetEconCost")) $("assetEconCost").textContent = moneyUsd(cost);
+  if ($("assetEconProfit")) {
+    $("assetEconProfit").textContent = `${profit >= 0 ? "+" : ""}${moneyUsd(profit)}`;
+    $("assetEconProfit").style.color = profit >= 0 ? "var(--b44-gold-hi,#ffd98a)" : "var(--b44-bad,#ff4d6d)";
+  }
+  const cat = assetCategoryLabel($("assetCategory")?.value || "other");
+  const phase = assetPhaseLabel($("assetPhase")?.value || "sorted");
+  if ($("assetSheetEyebrow")) $("assetSheetEyebrow").textContent = `${cat} · ${phase}`;
+}
+
 function openAssetSheet(item) {
   state.assetEditId = item?.id || null;
   state.assetPhotos = Array.isArray(item?.photos)
@@ -884,6 +933,7 @@ function openAssetSheet(item) {
   if ($("assetSheetTitle")) {
     $("assetSheetTitle").textContent = item?.id ? "// EDIT ASSET" : "// NEW ASSET";
   }
+  $("assetEditActions")?.classList.toggle("hidden", !item?.id);
   if ($("assetTitle")) $("assetTitle").value = item?.title || "";
   if ($("assetCategory")) $("assetCategory").value = item?.category || "other";
   if ($("assetCondition")) $("assetCondition").value = item?.condition || "raw";
@@ -901,6 +951,7 @@ function openAssetSheet(item) {
   if ($("assetNotes")) $("assetNotes").value = item?.notes || "";
   fillAssetSpaceOptions(item?.spaceId || item?.storage_location_id || "");
   if ($("assetSheetStatus")) $("assetSheetStatus").textContent = "";
+  updateAssetEconomics();
   renderAssetThumbs();
   $("assetSheet")?.classList.remove("hidden");
   $("assetTitle")?.focus();
@@ -910,6 +961,54 @@ function closeAssetSheet() {
   state.assetEditId = null;
   state.assetPhotos = [];
   $("assetSheet")?.classList.add("hidden");
+}
+
+function duplicateAsset() {
+  const it = state.items.find((x) => x.id === state.assetEditId);
+  if (!it) return;
+  const copy = {
+    ...structuredClone(it),
+    id: crypto.randomUUID(),
+    title: `${it.title || "Untitled"} (Copy)`,
+    listingStatus: "sorted",
+    staged: false,
+    liveChannel: "",
+    archived: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  state.items.unshift(copy);
+  saveItems();
+  if ($("assetSheetStatus")) $("assetSheetStatus").textContent = "Duplicated";
+  closeAssetSheet();
+  openScouterReadout(copy.id);
+  renderCollection();
+  updateSitrep();
+}
+
+function archiveAsset() {
+  const it = state.items.find((x) => x.id === state.assetEditId);
+  if (!it) return;
+  it.archived = true;
+  it.updatedAt = new Date().toISOString();
+  saveItems();
+  if ($("assetSheetStatus")) $("assetSheetStatus").textContent = "Archived";
+  closeAssetSheet();
+  closeScouterReadout();
+  renderCollection();
+  updateSitrep();
+}
+
+function deleteAsset() {
+  const id = state.assetEditId;
+  if (!id) return;
+  state.items = state.items.filter((x) => x.id !== id);
+  saveItems();
+  if ($("assetSheetStatus")) $("assetSheetStatus").textContent = "Item deleted";
+  closeAssetSheet();
+  closeScouterReadout();
+  renderCollection();
+  updateSitrep();
 }
 
 function saveAssetSheet() {
@@ -1541,6 +1640,19 @@ function applyFlePick() {
   row.confidence = "High";
   row.status = "Approved";
   state.intakeReviewStatus = "Candidate applied → High";
+  closeFleSheet();
+  renderIntakeReview();
+}
+
+/** Live Ble verify actions from candidate sheet. */
+function verifyFleRow(status) {
+  const row = state.intakeReviewRows.find((r) => r.id === state.fleRowId);
+  if (!row) return;
+  row.status = status;
+  if (status === "Approved" && row.confidence !== "High") {
+    // Keep confidence; verify is status-only like live F()
+  }
+  state.intakeReviewStatus = status === "Approved" ? "Verified — approved" : "Sent to review";
   closeFleSheet();
   renderIntakeReview();
 }
@@ -2808,6 +2920,21 @@ function bind() {
     renderFleSheet();
   });
   $("btnFleApply")?.addEventListener("click", () => applyFlePick());
+  $("btnFleVerify")?.addEventListener("click", () => verifyFleRow("Approved"));
+  $("btnFleSendReview")?.addEventListener("click", () => verifyFleRow("Needs Review"));
+  $("btnAssetToScouter")?.addEventListener("click", () => {
+    const id = state.assetEditId;
+    if (!id) return;
+    closeAssetSheet();
+    openScouterReadout(id);
+  });
+  $("btnAssetDuplicate")?.addEventListener("click", () => duplicateAsset());
+  $("btnAssetArchive")?.addEventListener("click", () => archiveAsset());
+  $("btnAssetDelete")?.addEventListener("click", () => deleteAsset());
+  $("assetMarket")?.addEventListener("input", () => updateAssetEconomics());
+  $("assetPurchase")?.addEventListener("input", () => updateAssetEconomics());
+  $("assetCategory")?.addEventListener("change", () => updateAssetEconomics());
+  $("assetPhase")?.addEventListener("change", () => updateAssetEconomics());
   $("btnUnClose")?.addEventListener("click", () => closeUnSheet());
   $("unSheet")?.addEventListener("click", (e) => {
     if (e.target === $("unSheet")) closeUnSheet();
