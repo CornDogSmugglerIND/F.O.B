@@ -1357,3 +1357,95 @@ textarea.b44-input {
 }
 
 .b44-cr-preview-meta { min-width: 0; flex: 1; }
+
+/* Live Xre DEMO / LIVE toggle */
+#btnScoutDemo {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: #6f8697;
+  background: rgba(255,255,255,0.04);
+  border: 0;
+  cursor: pointer;
+}
+#btnScoutDemo.is-demo {
+  color: #ffd98a;
+}
+.b44-scout-group-head-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.b44-scout-phase-mark {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  background: radial-gradient(circle at 32% 26%, rgba(255,255,255,0.2), color-mix(in srgb, var(--phase) 14%, transparent) 32%, rgba(0,0,0,0.62) 72%);
+  box-shadow: inset 0 0 0 1.5px var(--phase), 0 0 20px -8px var(--phase);
+}
+.b44-scout-group-count {
+  font-size: 26px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.b44-scout-group-rail {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+  scrollbar-width: thin;
+}
+.b44-scout-tile-card {
+  flex: 0 0 auto;
+  width: 108px;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+.b44-scout-tile-card .b44-scout-tile-img {
+  width: 108px;
+  height: 151px;
+  border-radius: 0;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  background: #0a0e14;
+  border: 1px solid rgba(255,255,255,0.1);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.b44-scout-tile-card .b44-scout-tile-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.b44-scout-tile-card .b44-scout-tile-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 10px;
+  padding: 2px 5px;
+  background: rgba(0,0,0,0.65);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.b44-scout-tile-card .b44-scout-tile-title {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.b44-scout-tile-card .b44-scout-tile-sub {
+  margin-top: 2px;
+  font-size: 10px;
+  color: #6f8697;
+}

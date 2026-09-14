@@ -47,6 +47,7 @@ const state = {
   filterSpaces: "",
   spaceTrail: [],
   scouterMode: "pipeline", // pipeline | spaces — live tle breadcrumb
+  scouterDemo: false, // live Xre DEMO / LIVE
   scouterStatus: "",
   lockedItemId: null,
   readoutStatus: "",
@@ -213,6 +214,51 @@ function groupFrontsByHash(fronts, threshold = 5) {
   return groups;
 }
 
+
+/** Live Xre DEMO inventory (YK → ZK), mapped to F.O.B item shape — display only. */
+const DEMO_SCOUTER_ITEMS = [
+  { id: "d01", title: "Charizard ex 223/197 · Obsidian Flames SIR", sku: "PKM-0412", barcode: "PKM-0412", marketValue: 289.99, purchasePrice: 92, quantity: 1, listingStatus: "sorted", category: "raw_cards", game: "PKM", photos: [], __demo: true },
+  { id: "d02", title: "Umbreon VMAX Alt Art · Evolving Skies", sku: "PKM-0511", barcode: "PKM-0511", marketValue: 412.5, purchasePrice: 180, quantity: 1, listingStatus: "sorted", category: "raw_cards", game: "PKM", photos: [], __demo: true },
+  { id: "d03", title: "Monkey D. Luffy OP01-003 · Leader Parallel", sku: "OP-0117", barcode: "OP-0117", marketValue: 78, purchasePrice: 22.5, quantity: 1, listingStatus: "sorted", category: "raw_cards", game: "OP", photos: [], __demo: true },
+  { id: "d04", title: "Connor Bedard RC · Upper Deck Young Guns", sku: "HKY-0204", barcode: "HKY-0204", marketValue: 145, purchasePrice: 40, quantity: 1, listingStatus: "sorted", category: "sports_cards", game: "HKY", photos: [], __demo: true },
+  { id: "d05", title: "Vegeta SSB · Dragon Ball Super Zenkai", sku: "DBS-0331", barcode: "DBS-0331", marketValue: 34.99, purchasePrice: 8, quantity: 2, listingStatus: "sorted", category: "raw_cards", game: "DBS", photos: [], __demo: true },
+  { id: "d06", title: "Moonbreon PSA 9 · Evolving Skies 215/203", sku: "PKM-0602", barcode: "PKM-0602", marketValue: 640, purchasePrice: 310, quantity: 1, listingStatus: "sorted", category: "graded_slabs", game: "PKM", photos: [], __demo: true },
+  { id: "d07", title: "Shanks OP09-118 · Manga Rare", sku: "OP-0288", barcode: "OP-0288", marketValue: 520, purchasePrice: 240, quantity: 1, listingStatus: "sorted", category: "raw_cards", game: "OP", photos: [], __demo: true },
+  { id: "d08", title: "Pokemon 151 UPC · Sealed", sku: "PKM-SEAL-08", barcode: "PKM-SEAL-08", marketValue: 149.99, purchasePrice: 89.99, quantity: 3, listingStatus: "sorted", category: "pokemon_sealed", game: "PKM", photos: [], __demo: true },
+  { id: "d09", title: "Gogeta SSB · Dragon Stars Action Figure", sku: "DBZ-0088", barcode: "DBZ-0088", marketValue: 24.99, purchasePrice: 6, quantity: 1, listingStatus: "sorted", category: "other", game: "DBZ", photos: [], __demo: true },
+  { id: "d10", title: "Dark Magneton #28 · 2000 Rocket PSA 9", sku: "PKM-0028", barcode: "PKM-0028", marketValue: 210, purchasePrice: 74, quantity: 1, listingStatus: "ready_to_list", category: "graded_slabs", game: "PKM", photos: [], staged: true, __demo: true },
+  { id: "d11", title: "Zoro OP01-025 · Super Rare", sku: "OP-0125", barcode: "OP-0125", marketValue: 42, purchasePrice: 11, quantity: 1, listingStatus: "ready_to_list", category: "raw_cards", game: "OP", photos: [], staged: true, __demo: true },
+  { id: "d12", title: "Auston Matthews · SP Authentic Auto", sku: "HKY-0611", barcode: "HKY-0611", marketValue: 320, purchasePrice: 155, quantity: 1, listingStatus: "ready_to_list", category: "sports_cards", game: "HKY", photos: [], staged: true, __demo: true },
+  { id: "d13", title: "Raikou V Alt Art · Brilliant Stars", sku: "PKM-0733", barcode: "PKM-0733", marketValue: 96, purchasePrice: 34, quantity: 1, listingStatus: "ready_to_list", category: "raw_cards", game: "PKM", photos: [], staged: true, __demo: true },
+  { id: "d14", title: "Giratina VSTAR Gold · Lost Origin", sku: "PKM-0812", barcode: "PKM-0812", marketValue: 118, purchasePrice: 46, quantity: 1, listingStatus: "listed", category: "raw_cards", game: "PKM", photos: [], liveChannel: "ebay", __demo: true },
+  { id: "d15", title: "Nami OP01-016 · Alt Art", sku: "OP-0316", barcode: "OP-0316", marketValue: 67.5, purchasePrice: 20, quantity: 1, listingStatus: "listed", category: "raw_cards", game: "OP", photos: [], liveChannel: "ebay", __demo: true },
+  { id: "d16", title: "Broly Full Power · DBS Fusion World", sku: "DBS-0442", barcode: "DBS-0442", marketValue: 88, purchasePrice: 29, quantity: 1, listingStatus: "listed", category: "raw_cards", game: "DBS", photos: [], liveChannel: "courtyard", __demo: true },
+  { id: "d17", title: "Lugia V Alt Art PSA 10 · Silver Tempest", sku: "PKM-0901", barcode: "PKM-0901", marketValue: 745, purchasePrice: 380, quantity: 1, listingStatus: "listed", category: "graded_slabs", game: "PKM", photos: [], liveChannel: "ebay", __demo: true },
+  { id: "d18", title: "Bandai One Piece OP-07 Booster Box", sku: "OP-SEAL-07", barcode: "OP-SEAL-07", marketValue: 132, purchasePrice: 96, quantity: 4, listingStatus: "listed", category: "pokemon_sealed", game: "OP", photos: [], liveChannel: "ebay", __demo: true },
+];
+
+const PHASE_COLORS = {
+  sorted: "#C9D8E2",
+  ready_to_list: "#FFB43D",
+  listed: "#5FE8D0",
+  space: "#8FA3AD",
+};
+
+function scouterViewItems() {
+  return state.scouterDemo ? DEMO_SCOUTER_ITEMS : state.items;
+}
+
+function setScouterDemo(on) {
+  state.scouterDemo = !!on;
+  const btn = $("btnScoutDemo");
+  if (btn) {
+    btn.textContent = state.scouterDemo ? "DEMO" : "LIVE";
+    btn.classList.toggle("is-demo", state.scouterDemo);
+  }
+  setScouterStatus(state.scouterDemo ? "Demo inventory — LIVE data untouched" : "");
+  renderCollection();
+}
+
 /** Live Si pipeline steps (tle). */
 const PIPE_STEPS = [
   {
@@ -280,14 +326,43 @@ function scouterItemCardHtml(it) {
   return `<div class="v-panel v-cut-sm b44-item" data-open-item="${esc(it.id)}" draggable="true" style="cursor:pointer">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(step)} · ${esc(sku)} · ${esc(it.game || "PKM")}</span></div><div class="qty"><div class="v-readout v-emit-gold" style="font-size:14px">${esc(price)}</div><div>×${it.quantity || 1}</div></div></div>`;
 }
 
+function scouterTileCardHtml(it, phaseColor) {
+  const thumb = it.photos?.[0]?.dataUrl || "";
+  const price = money(it.marketValue);
+  const qty = Number(it.quantity) || 1;
+  const img = thumb
+    ? `<img src="${esc(thumb)}" alt="" draggable="false" />`
+    : `<span class="b44-copy-soft" style="font-size:10px">no img</span>`;
+  const badge = qty > 1 ? `<span class="b44-scout-tile-badge">×${qty}</span>` : "";
+  return `<button type="button" class="b44-scout-tile-card" data-open-item="${esc(it.id)}" draggable="${it.__demo ? "false" : "true"}" style="--phase:${esc(phaseColor)}">
+    <div class="b44-scout-tile-img" style="box-shadow:inset 0 0 0 1px color-mix(in srgb, ${esc(phaseColor)} 35%, transparent)">${img}${badge}</div>
+    <div class="b44-scout-tile-title">${esc(it.title || "Untitled")}</div>
+    <div class="b44-scout-tile-sub">${esc(price)}</div>
+  </button>`;
+}
+
 function scouterGroupHtml(group) {
-  const cards = group.items.map(scouterItemCardHtml).join("");
-  const body = cards || `<div class="b44-copy-soft" style="font-size:12px;padding:8px 4px">Empty</div>`;
-  return `<section class="b44-scout-group" data-drop-key="${esc(group.key)}" data-drop-kind="${esc(group.kind)}">
+  const phaseColor = PHASE_COLORS[group.key] || PHASE_COLORS.space;
+  const useTiles = group.kind === "pipeline";
+  const cards = useTiles
+    ? group.items.slice(0, 14).map((it) => scouterTileCardHtml(it, phaseColor)).join("")
+    : group.items.map(scouterItemCardHtml).join("");
+  const more = useTiles && group.items.length > 14
+    ? `<div class="b44-scout-tile-card" style="width:64px;justify-content:center;display:flex;align-items:center"><div class="b44-scout-tile-img" style="width:64px;height:151px;color:${esc(phaseColor)}">+${group.items.length - 14}</div></div>`
+    : "";
+  const empty = `<div class="b44-copy-soft" style="font-size:12px;padding:8px 4px">Empty</div>`;
+  const body = cards
+    ? (useTiles ? `<div class="b44-scout-group-rail">${cards}${more}</div>` : cards)
+    : empty;
+  return `<section class="b44-scout-group" data-drop-key="${esc(group.key)}" data-drop-kind="${esc(group.kind)}" style="--phase:${esc(phaseColor)}">
     <div class="b44-scout-group-head v-panel v-cut-sm px-3 py-2">
-      <div>
-        <div class="v-label" style="font-size:9px">${esc(group.sub)}</div>
-        <div class="v-readout" style="font-size:15px;margin-top:2px">${esc(group.label)} · ${pad2(group.items.length)}</div>
+      <div class="b44-scout-group-head-row">
+        <div class="b44-scout-phase-mark" style="--phase:${esc(phaseColor)}" aria-hidden="true"></div>
+        <div style="min-width:0;flex:1">
+          <div class="v-label" style="font-size:8.5px">${esc(group.sub)}</div>
+          <div class="v-readout" style="font-size:15px;line-height:1.1;margin-top:2px">${esc(group.label)}</div>
+        </div>
+        <div class="v-readout b44-scout-group-count" style="color:${group.items.length ? esc(phaseColor) : "#6f8697"}">${pad2(group.items.length)}</div>
       </div>
     </div>
     <div class="b44-scout-group-body">${body}</div>
@@ -874,30 +949,37 @@ function renderCollection() {
   const root = $("collectionRoot");
   const empty = $("scouterEmpty");
   if (!root) return;
+  const source = scouterViewItems();
   const q = state.filterScouter.trim().toLowerCase();
-  const rows = state.items.filter((it) => {
+  const rows = source.filter((it) => {
     if (it.archived) return false;
+    if (it.listingStatus === "sold" || it.listingStatus === "error") return false;
     if (!q) return true;
     const hay = `${it.title || ""} ${it.barcode || ""} ${it.sku || ""} ${it.game || ""}`.toLowerCase();
     return hay.includes(q);
   });
-  const intakeN = state.items.filter((it) => !it.archived && itemPipeLabel(it) === "Intake").length;
-  const builtN = state.items.filter((it) => !it.archived && itemPipeLabel(it) === "Listing Built").length;
-  const listedN = state.items.filter((it) => !it.archived && itemPipeLabel(it) === "Listed").length;
+  const intakeN = source.filter((it) => !it.archived && itemPipeLabel(it) === "Intake").length;
+  const builtN = source.filter((it) => !it.archived && itemPipeLabel(it) === "Listing Built").length;
+  const listedN = source.filter((it) => !it.archived && itemPipeLabel(it) === "Listed").length;
   loadSpaces();
-  const onMap = state.items.filter((it) => !it.archived && !!it.spaceId).length;
+  const onMap = source.filter((it) => !it.archived && !!it.spaceId).length;
   const spaceRoots = state.spaces.filter((s) => !(s.parentId || s.parent_id)).length;
-  const value = state.items
-    .filter((it) => !it.archived && it.listingStatus !== "sold")
+  const value = source
+    .filter((it) => !it.archived && it.listingStatus !== "sold" && it.listingStatus !== "error")
     .reduce((sum, it) => sum + (Number(it.marketValue) || 0) * (Number(it.quantity) || 1), 0);
   if ($("scoutStepIntake")) $("scoutStepIntake").textContent = pad2(intakeN);
   if ($("scoutStepBuilt")) $("scoutStepBuilt").textContent = pad2(builtN);
   if ($("scoutStepListed")) $("scoutStepListed").textContent = pad2(listedN);
   if ($("scoutSpaceCount")) $("scoutSpaceCount").textContent = pad2(spaceRoots);
   if ($("scoutOnMap")) $("scoutOnMap").textContent = pad2(onMap);
-  if ($("scouterCount")) $("scouterCount").textContent = pad2(state.items.length);
+  if ($("scouterCount")) $("scouterCount").textContent = pad2(rows.length);
   if ($("scouterValue")) $("scouterValue").textContent = money(value);
-  if ($("scouterStatus") && state.scouterStatus) $("scouterStatus").textContent = state.scouterStatus;
+  const demoBtn = $("btnScoutDemo");
+  if (demoBtn) {
+    demoBtn.textContent = state.scouterDemo ? "DEMO" : "LIVE";
+    demoBtn.classList.toggle("is-demo", !!state.scouterDemo);
+  }
+    if ($("scouterStatus") && state.scouterStatus) $("scouterStatus").textContent = state.scouterStatus;
 
   const pipe = state.scouterMode !== "spaces";
   $("btnScoutPipeline")?.classList.toggle("m-btn-primary", pipe);
@@ -918,7 +1000,7 @@ function renderCollection() {
 }
 
 function openScouterReadout(id) {
-  const it = state.items.find((x) => x.id === id);
+  const it = scouterViewItems().find((x) => x.id === id);
   const panel = $("scouterReadout");
   if (!it || !panel) {
     closeScouterReadout();
@@ -4245,6 +4327,10 @@ function bind() {
 
 
   $("btnScoutPipeline")?.addEventListener("click", () => setScouterMode("pipeline"));
+  $("btnScoutDemo")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setScouterDemo(!state.scouterDemo);
+  });
   $("btnScouterManual")?.addEventListener("click", () => openAssetSheet(null));
   $("btnScouterScan")?.addEventListener("click", () => openBarcodeSheet());
   $("btnBarcodeClose")?.addEventListener("click", () => closeBarcodeSheet());

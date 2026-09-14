@@ -91,6 +91,8 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /Scan/);
     assert.match(html, /BARCODE/);
     assert.match(html, /Manual entry/);
+    assert.match(html, /id="btnScoutDemo"/);
+    assert.match(html, />LIVE</);
     assert.match(html, /id="barcodeSheet"/);
     assert.match(html, /Barcode Scanner/);
     assert.match(html, /Auto-add each scan without preview/);
