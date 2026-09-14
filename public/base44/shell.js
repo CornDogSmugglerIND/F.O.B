@@ -591,6 +591,7 @@ function updateSitrep() {
   renderCmdAttention(cards);
 }
 
+/** Live P2 — Move / storage-tree add-child kinds (no bin). */
 const SPACE_KINDS = [
   { value: "warehouse", label: "Warehouse" },
   { value: "room", label: "Room" },
@@ -599,6 +600,18 @@ const SPACE_KINDS = [
   { value: "binder", label: "Binder" },
   { value: "page", label: "Page" },
   { value: "pocket", label: "Pocket" },
+];
+
+/** Live Iq — Spaces map create-modal types (includes bin). */
+const SPACE_MAP_KINDS = [
+  "warehouse",
+  "room",
+  "shelf",
+  "bin",
+  "tote",
+  "binder",
+  "page",
+  "pocket",
 ];
 
 const PACKAGE_TYPES = [
@@ -614,7 +627,59 @@ function packageTypeLabel(value) {
 }
 
 function kindLabel(kind) {
+  if (SPACE_MAP_KINDS.includes(kind)) {
+    return kind.charAt(0).toUpperCase() + kind.slice(1);
+  }
   return SPACE_KINDS.find((k) => k.value === kind)?.label || "Warehouse";
+}
+
+function currentSpaceParentName() {
+  const parentId = currentSpaceParentId();
+  if (!parentId) return "ALL STORAGE";
+  return spaceById(parentId)?.name || "ALL STORAGE";
+}
+
+function fillSpaceCreateKindOptions() {
+  const sel = $("spaceCreateKind");
+  if (!sel) return;
+  sel.innerHTML = SPACE_MAP_KINDS.map(
+    (k) => `<option value="${esc(k)}" style="background:#04070C">${esc(k)}</option>`,
+  ).join("");
+  sel.value = "bin";
+}
+
+function openSpaceCreateModal() {
+  fillSpaceCreateKindOptions();
+  if ($("spaceCreateName")) $("spaceCreateName").value = "";
+  if ($("spaceCreateCode")) $("spaceCreateCode").value = "";
+  if ($("spaceCreateParentLabel")) {
+    $("spaceCreateParentLabel").textContent = `New location in ${currentSpaceParentName()}`;
+  }
+  $("spaceCreateSheet")?.classList.remove("hidden");
+  $("spaceCreateName")?.focus();
+}
+
+function closeSpaceCreateModal() {
+  $("spaceCreateSheet")?.classList.add("hidden");
+}
+
+function submitSpaceCreateModal() {
+  const name = ($("spaceCreateName")?.value || "").trim();
+  if (!name) return;
+  const kindRaw = ($("spaceCreateKind")?.value || "bin").trim().toLowerCase();
+  const kind = SPACE_MAP_KINDS.includes(kindRaw) ? kindRaw : "bin";
+  const code = ($("spaceCreateCode")?.value || "").trim();
+  loadSpaces();
+  state.spaces.unshift({
+    id: crypto.randomUUID(),
+    name,
+    kind,
+    code,
+    parentId: currentSpaceParentId(),
+    createdAt: new Date().toISOString(),
+  });
+  saveSpaces();
+  closeSpaceCreateModal();
 }
 
 /** Live $K attention cards — only emit when count > 0. */
@@ -3974,27 +4039,15 @@ function bind() {
     renderSpaces();
   });
   $("btnFileHere")?.addEventListener("click", () => fileCardIntoCurrentSpace());
-  $("btnAddSpace")?.addEventListener("click", () => {
-    const name = prompt("Location name", "Warehouse A");
-    if (!name?.trim()) return;
-    const kindRaw = prompt(
-      "Kind (warehouse / room / shelf / tote / binder / page / pocket)",
-      "warehouse",
-    );
-    const kind = SPACE_KINDS.some((k) => k.value === (kindRaw || "").trim().toLowerCase())
-      ? (kindRaw || "").trim().toLowerCase()
-      : "warehouse";
-    const code = (prompt("Code (optional)", "") || "").trim();
-    loadSpaces();
-    state.spaces.unshift({
-      id: crypto.randomUUID(),
-      name: name.trim(),
-      kind,
-      code,
-      parentId: currentSpaceParentId(),
-      createdAt: new Date().toISOString(),
-    });
-    saveSpaces();
+  $("btnAddSpace")?.addEventListener("click", () => openSpaceCreateModal());
+  $("btnSpaceCreateClose")?.addEventListener("click", () => closeSpaceCreateModal());
+  $("btnSpaceCreateSave")?.addEventListener("click", () => submitSpaceCreateModal());
+  $("spaceCreateName")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submitSpaceCreateModal();
+    if (e.key === "Escape") closeSpaceCreateModal();
+  });
+  $("spaceCreateSheet")?.addEventListener("click", (e) => {
+    if (e.target === $("spaceCreateSheet")) closeSpaceCreateModal();
   });
   $("spaceFilter")?.addEventListener("input", (e) => {
     state.filterSpaces = e.target.value;
