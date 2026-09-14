@@ -74,6 +74,9 @@ const state = {
   itemPageStatus: "",
   itemMoveExpanded: {},
   itemMoveAddParent: null,
+  intakePickId: null,
+  intakePickHubKey: null,
+  intakePickStatus: "",
 };
 
 const SPACES_KEY = "scouter-spaces-v1";
@@ -914,38 +917,143 @@ function setIntakeMode(mode) {
   $("intakeReview")?.classList.toggle("hidden", mode !== "review");
 }
 
+/** Live df + FR — Intake map hubs (qle / Xle). */
+
+/** Live df + FR — Intake map hubs (qle / Xle). */
+const INTAKE_HUBS = [
+  { key: "pokemon_sealed", label: "Pokemon Sealed", core: "#FFB43D", hi: "#FFD98A" },
+  { key: "graded_slabs", label: "Graded Slabs", core: "#2BD9C0", hi: "#8FF6E8" },
+  { key: "raw_cards", label: "Raw Cards", core: "#8FA3AD", hi: "#FFFFFF" },
+  { key: "sports_cards", label: "Sports Cards", core: "#8FA3AD", hi: "#FFFFFF" },
+  { key: "other", label: "Other", core: "#2BD9C0", hi: "#8FF6E8" },
+];
+
+function intakeMapItems() {
+  return state.items.filter((it) => !it.archived && itemPipeLabel(it) === "Intake");
+}
+
+function intakeItemCategory(it) {
+  const key = String(it.category || "other");
+  return INTAKE_HUBS.some((h) => h.key === key) ? key : "other";
+}
+
+function intakeHubsFromItems(rows) {
+  return INTAKE_HUBS.map((hub) => {
+    const items = rows.filter((it) => intakeItemCategory(it) === hub.key);
+    return { ...hub, sub: "Intake", total: items.length, items };
+  }).filter((hub) => hub.total > 0);
+}
+
+function intakeTileHtml(it, hub) {
+  const thumb = it.photos?.[0]?.dataUrl || "";
+  const price = money(Number(it.marketValue ?? it.price) || 0);
+  const qty = Number(it.quantity) || 1;
+  const img = thumb
+    ? `<img src="${esc(thumb)}" alt="" draggable="false" />`
+    : `<span class="b44-copy-soft" style="font-size:10px">no img</span>`;
+  const badge = qty > 1 ? `<span class="b44-scout-tile-badge">×${qty}</span>` : "";
+  return `<button type="button" class="b44-scout-tile-card b44-intake-tile" data-intake-pick="${esc(it.id)}" data-intake-hub="${esc(hub.key)}" style="--phase:${esc(hub.core)};--phase-hi:${esc(hub.hi)}">
+    <div class="b44-scout-tile-img" style="box-shadow:inset 0 0 0 1px color-mix(in srgb, ${esc(hub.core)} 40%, transparent)">${img}${badge}</div>
+    <div class="b44-scout-tile-title">${esc(it.title || "Untitled")}</div>
+    <div class="b44-scout-tile-sub" style="color:${esc(hub.hi)}">${esc(price)}</div>
+  </button>`;
+}
+
+function intakeHubSectionHtml(hub) {
+  const count = hub.items.length;
+  const countColor = count ? hub.hi : "#6F8697";
+  const shown = hub.items.slice(0, 14);
+  const more =
+    hub.items.length > shown.length
+      ? `<div class="b44-scout-tile-card" style="width:72px;justify-content:center;display:flex;align-items:center"><div class="b44-scout-tile-img" style="width:72px;height:162px;color:${esc(hub.hi)}">+${hub.items.length - shown.length}</div></div>`
+      : "";
+  const body = count
+    ? `<div class="b44-scout-group-rail">${shown.map((it) => intakeTileHtml(it, hub)).join("")}${more}</div>`
+    : `<div class="b44-channel-hub-empty v-label">Nothing in this category</div>`;
+  return `<section class="b44-channel-hub b44-intake-hub" data-intake-hub="${esc(hub.key)}">
+    <div class="b44-channel-hub-head">
+      <span class="b44-channel-hub-dot" style="background:${esc(hub.core)};box-shadow:0 0 10px 1px ${esc(hub.core)}"></span>
+      <span class="v-label" style="font-size:9px">${esc(hub.sub.toUpperCase())}</span>
+      <span class="b44-channel-hub-label">${esc(hub.label)}</span>
+      <span class="v-readout b44-channel-hub-count" style="color:${esc(countColor)}">${pad2(count)}</span>
+    </div>
+    ${body}
+  </section>`;
+}
+
+function closeIntakePick() {
+  state.intakePickId = null;
+  state.intakePickHubKey = null;
+  state.intakePickStatus = "";
+  $("intakePickSheet")?.classList.add("hidden");
+}
+
+function openIntakePick(id, hubKey) {
+  const it = state.items.find((x) => x.id === id);
+  const sheet = $("intakePickSheet");
+  if (!it || !sheet) {
+    closeIntakePick();
+    return;
+  }
+  const hub = INTAKE_HUBS.find((h) => h.key === (hubKey || intakeItemCategory(it))) || INTAKE_HUBS[4];
+  state.intakePickId = it.id;
+  state.intakePickHubKey = hub.key;
+  sheet.classList.remove("hidden");
+  if ($("intakePickEyebrow")) $("intakePickEyebrow").textContent = `${hub.label.toUpperCase()} · INTAKE`;
+  if ($("intakePickTitle")) $("intakePickTitle").textContent = it.title || "Untitled";
+  if ($("intakePickPrice")) $("intakePickPrice").textContent = money(Number(it.marketValue ?? it.price) || 0);
+  if ($("intakePickSku")) $("intakePickSku").textContent = it.sku || it.barcode || "NO SKU";
+  if ($("intakePickStatus")) $("intakePickStatus").textContent = state.intakePickStatus || "";
+}
+
+function buildIntakeListing() {
+  const it = state.items.find((x) => x.id === state.intakePickId);
+  if (!it) return;
+  // Live qle onAdvance: listing_status → ready_to_list; toast `${title} → Listing Built`
+  it.listingStatus = "ready_to_list";
+  it.staged = true;
+  it.updatedAt = new Date().toISOString();
+  saveItems();
+  const msg = `${it.title || "Untitled"} → Listing Built`;
+  state.intakePickStatus = msg;
+  closeIntakePick();
+  renderIntakeList();
+  setScouterStatus(msg);
+}
+
+function openIntakeCard() {
+  const id = state.intakePickId;
+  if (!id) return;
+  closeIntakePick();
+  navigate(`/item/${id}`);
+}
+
 function renderIntakeList() {
-  const root = $("intakeBatches");
+  const root = $("intakeHubs");
   const empty = $("intakeEmpty");
   if (!root || !empty) return;
-  const q = state.filterIntake.trim().toLowerCase();
-  const rows = state.items.filter((it) => {
+  const q = String(state.filterIntake || "").trim().toLowerCase();
+  const pool = intakeMapItems().filter((it) => {
     if (!q) return true;
-    return String(it.title || "")
-      .toLowerCase()
-      .includes(q);
+    const hay = `${it.title || ""} ${it.sku || ""} ${it.barcode || ""}`.toLowerCase();
+    return hay.includes(q);
   });
-  empty.classList.toggle("hidden", rows.length > 0);
-  if ($("intakeHint")) {
-    $("intakeHint").textContent = rows.length
-      ? "Click an item to build its listing, or open it."
-      : "Intake is empty — scan a barcode or drop a photo to bring inventory in.";
-  }
-  const intakeVal = state.items
-    .filter((it) => itemPipeLabel(it) === "Intake")
-    .reduce((sum, it) => sum + (Number(it.marketValue) || 0) * (Number(it.quantity) || 1), 0);
+  const hubs = intakeHubsFromItems(pool);
+  const intakeVal = pool.reduce(
+    (sum, it) => sum + (Number(it.marketValue ?? it.price) || 0) * (Number(it.quantity) || 1),
+    0,
+  );
   if ($("intakeValue")) $("intakeValue").textContent = money(intakeVal);
-  root.innerHTML = rows
-    .slice(0, 40)
-    .map((it) => {
-      const thumb = it.photos?.[0]?.dataUrl || "";
-      const badge = itemPipeLabel(it);
-      const img = thumb
-        ? `<img src="${thumb}" alt="" />`
-        : `<div style="width:48px;height:48px;border-radius:8px;background:#0a0e14;border:1px solid rgba(255,255,255,0.1)"></div>`;
-      return `<div class="v-panel v-cut-sm b44-item">${img}<div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(badge)} · ${esc(it.game || "PKM")}</span></div><div class="qty">×${it.quantity || 1}</div></div>`;
-    })
-    .join("");
+  empty.classList.toggle("hidden", pool.length > 0);
+  root.innerHTML = hubs.map(intakeHubSectionHtml).join("");
+  root.querySelectorAll("[data-intake-pick]").forEach((btn) => {
+    btn.addEventListener("click", () => openIntakePick(btn.dataset.intakePick, btn.dataset.intakeHub));
+  });
+  if (state.intakePickId && pool.some((it) => it.id === state.intakePickId)) {
+    openIntakePick(state.intakePickId, state.intakePickHubKey);
+  } else if (state.intakePickId) {
+    closeIntakePick();
+  }
 }
 
 function renderCollection() {
@@ -4681,6 +4789,9 @@ function bind() {
     state.filterIntake = e.target.value;
     renderIntakeList();
   });
+  $("btnIntakePickClose")?.addEventListener("click", () => closeIntakePick());
+  $("btnIntakeBuildListing")?.addEventListener("click", () => buildIntakeListing());
+  $("btnIntakeOpenCard")?.addEventListener("click", () => openIntakeCard());
   $("scouterFilter")?.addEventListener("input", (e) => {
     state.filterScouter = e.target.value;
     renderCollection();
