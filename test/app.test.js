@@ -47,19 +47,39 @@ test("GET / serves Scouter frontend", async () => {
     const res = await fetch(`${baseUrl}/`);
     const html = await res.text();
     assert.match(html, /Coalition H\.U\.D/);
-    assert.match(html, /Add to rail/);
+    assert.match(html, /Stage item/);
     assert.match(html, /SCOUTER/);
     assert.match(html, /hh-viewfinder/);
-    assert.match(html, /scouter\.css\?v=25/);
+    assert.match(html, /scouter\.css\?v=26/);
     assert.match(html, /stagedFlag/);
     assert.match(html, /CAPTURE/);
     assert.match(html, /btnIdentify/);
     assert.match(html, /SCAN/);
     assert.match(html, /Lookup/);
     assert.match(html, /hh-barcode-block/);
+    assert.match(html, />\s*Staged\s*</);
+    assert.doesNotMatch(html, />RAIL</);
+    assert.doesNotMatch(html, />\s*Rail\s*</);
+    assert.doesNotMatch(html, /Add to rail/i);
+    assert.doesNotMatch(html, /Filter rail/i);
     assert.doesNotMatch(html, /Drop a folder of scans/);
     assert.doesNotMatch(html, />Export</);
     assert.doesNotMatch(html, />Import</);
+  } finally {
+    await close();
+  }
+});
+
+test("CAPTURE uses amber hairline, not a school-bus yellow fill", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const res = await fetch(`${baseUrl}/scouter.css`);
+    const css = await res.text();
+    const goldRule = css.match(/\.hh-act-gold\s*\{[^}]+\}/);
+    assert.ok(goldRule, "expected .hh-act-gold rule");
+    assert.doesNotMatch(goldRule[0], /#f5c518/i);
+    assert.doesNotMatch(goldRule[0], /#ffe566/i);
+    assert.match(goldRule[0], /242,\s*160,\s*61/);
   } finally {
     await close();
   }
