@@ -4014,9 +4014,15 @@ function renderUnSheet() {
         .join("");
     }
     if ($("unShipSku")) {
-      $("unShipSku").textContent = `SHIP · ${d.shipping_method || "Standard"} · SKU · ${d.sku || "—"}`;
+      // Live UN: separate SHIP · / SKU · chips
+      const ship = d.shipping_method || "Standard";
+      const sku = d.sku || "—";
+      $("unShipSku").innerHTML = `<span><span class="b44-copy-soft">SHIP · </span>${esc(ship)}</span><span style="margin-left:auto"><span class="b44-copy-soft">SKU · </span>${esc(sku)}</span>`;
     }
-    if ($("unPriceBasis")) $("unPriceBasis").textContent = d.ai_price_basis ? `⊕ ${d.ai_price_basis}` : "";
+    if ($("unPriceBasis")) {
+      $("unPriceBasis").textContent = d.ai_price_basis ? `⊕ ${d.ai_price_basis}` : "";
+      $("unPriceBasis").classList.toggle("hidden", !d.ai_price_basis);
+    }
   }
 }
 
@@ -4046,26 +4052,46 @@ function saveUnDraft() {
     renderUnSheet();
     return;
   }
-  try {
-    it.title = d.title || it.title;
-    if (d.price != null) it.marketValue = Number(d.price) || it.marketValue;
-    if (d.sku) it.sku = d.sku;
-    it.listingStatus = "ready_to_list";
-    it.staged = true;
-    it.updatedAt = new Date().toISOString();
-    saveItems();
-    state.readoutStatus = "Draft saved → Ready to List";
-    closeUnSheet();
-    if (state.lockedItemId) openScouterReadout(state.lockedItemId);
-    renderCollection();
-    updateSitrep();
-    showToast("Draft saved → Ready to List", "ok");
-  } catch {
-    // Live UN: ht.error("Failed to save draft")
-    state.unStatus = "Failed to save draft";
-    showToast("Failed to save draft", "err");
-    renderUnSheet();
+  const btn = $("btnUnSave");
+  const prev = btn?.innerHTML;
+  if (btn) {
+    btn.disabled = true;
+    // Live UN: spinning " SAVING…"
+    btn.innerHTML = `<span class="b44-spin" style="width:14px;height:14px;display:inline-block;vertical-align:-2px;margin-right:8px"></span> SAVING…`;
   }
+  // Pull edits from done-phase fields (live form state)
+  if ($("unDraftTitle")) d.title = $("unDraftTitle").value.trim() || d.title;
+  if ($("unDraftPrice")) {
+    const p = Number($("unDraftPrice").value);
+    if (Number.isFinite(p)) d.price = p;
+  }
+  window.setTimeout(() => {
+    try {
+      it.title = d.title || it.title;
+      if (d.price != null) it.marketValue = Number(d.price) || it.marketValue;
+      if (d.sku) it.sku = d.sku;
+      it.listingStatus = "ready_to_list";
+      it.staged = true;
+      it.updatedAt = new Date().toISOString();
+      saveItems();
+      state.readoutStatus = "Draft saved → Ready to List";
+      closeUnSheet();
+      if (state.lockedItemId) openScouterReadout(state.lockedItemId);
+      renderCollection();
+      updateSitrep();
+      showToast("Draft saved → Ready to List", "ok");
+    } catch {
+      // Live UN: ht.error("Failed to save draft")
+      state.unStatus = "Failed to save draft";
+      showToast("Failed to save draft", "err");
+      renderUnSheet();
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = prev || "SAVE DRAFT → READY TO LIST";
+      }
+    }
+  }, 280);
 }
 
 function renderPhotos() {
@@ -5407,24 +5433,6 @@ function advanceShipment(id) {
     // Live fle: ht.error("Update failed")
     showToast("Update failed", "err");
   }
-}
-
-function addPackedOrder() {
-  const title = prompt("Order title", "Packed card lot");
-  if (!title?.trim()) return;
-  const sale = Number(prompt("Sale price ($)", "24.99") || 0);
-  loadShipments();
-  state.shipments.unshift({
-    id: crypto.randomUUID(),
-    title: title.trim(),
-    salePrice: sale,
-    status: "ready_to_ship",
-    createdAt: new Date().toISOString(),
-  });
-  saveShipments();
-  state.channelTab = "ship";
-  closeFulSheet();
-  renderChannel();
 }
 
 const SETTINGS_KEY = "scouter-settings-v1";
@@ -7023,7 +7031,6 @@ function bind() {
     setChannelStatus("Policies load needs live eBay credentials on the server.");
     showToast("Request failed", "err");
   });
-  $("btnAddShipment")?.addEventListener("click", () => addPackedOrder());
   $("btnFulSheetClose")?.addEventListener("click", () => closeFulSheet());
   $("btnFulAdvance")?.addEventListener("click", () => {
     if (state.fulSheetId) advanceShipment(state.fulSheetId);

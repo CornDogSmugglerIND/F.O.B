@@ -268,6 +268,7 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /id="unMeta"/);
     assert.match(html, /id="btnUnRetry"/);
     assert.match(html, />TRY AGAIN</);
+    assert.match(shellJs, /SAVING…/);
     assert.match(shellJs, /PHOTO\$\{n === 1 \? "" : "S"\}/);
     assert.doesNotMatch(html, /id="unPhotoCount"/);
     assert.match(html, /New Preset/);
@@ -296,6 +297,8 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(shellJs, /D ON MARKET/);
     assert.doesNotMatch(shellJs, /OFF MARKET/);
     assert.match(html, /id="fulHubs"/);
+    assert.doesNotMatch(html, /Add packed order/);
+    assert.doesNotMatch(html, /id="btnAddShipment"/);
     assert.match(shellJs, /STEP \$\{stage\.n\}/);
     assert.match(html, /from Listings or eBay Sync/);
     assert.match(html, /id="fulSheet"/);
