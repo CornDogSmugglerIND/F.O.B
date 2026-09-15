@@ -232,6 +232,7 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /Start the conversation to structure your scan batch/);
     assert.match(html, /id="scanAssistForm"/);
     assert.match(html, /scan-assistant/);
+    assert.doesNotMatch(html, /href="#\/scan-assistant">Scan assistant</);
     assert.match(html, /No shipments yet/);
     assert.match(html, /Packages appear here once an order is created from Listings or eBay Sync./);
     assert.match(html, /b44-ful-empty-icon/);
