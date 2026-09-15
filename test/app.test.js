@@ -189,6 +189,12 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /FULFILMENT/);
     assert.match(html, /Listing templates/);
     assert.match(html, /Shipping presets/);
+    assert.match(html, /Handling days/);
+    assert.match(html, /Cost \(\$\)/);
+    assert.match(html, /No shipping presets yet/);
+    assert.match(html, /Add carriers and services to reuse on listings/);
+    assert.doesNotMatch(html, /id="shipPackageType"/);
+    assert.doesNotMatch(html, /id="shipWeight"/);
     assert.match(html, /eBay Diagnostic/);
     assert.match(html, /Agent Connect/);
     assert.match(html, /Connect an AI assistant/);

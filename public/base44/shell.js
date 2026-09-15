@@ -4874,12 +4874,8 @@ function resetTemplateForm() {
 }
 
 function resetShipForm() {
+  // Live Settings shipping form: Name / Carrier / Service / Cost / Handling days / Default only.
   if ($("shipName")) $("shipName").value = "";
-  if ($("shipPackageType")) $("shipPackageType").value = "bubble_mailer";
-  if ($("shipWeight")) $("shipWeight").value = "0";
-  if ($("shipLength")) $("shipLength").value = "0";
-  if ($("shipWidth")) $("shipWidth").value = "0";
-  if ($("shipHeight")) $("shipHeight").value = "0";
   if ($("shipCarrier")) $("shipCarrier").value = "";
   if ($("shipService")) $("shipService").value = "";
   if ($("shipCost")) $("shipCost").value = "0";
@@ -4951,38 +4947,20 @@ function templateCardHtml(t) {
   </div>`;
 }
 
+/** Live Settings shipping card — Name / Carrier / Service / Cost / Handling days / Default (no package dims). */
 function shipCardHtml(s) {
-  const pkg = packageTypeLabel(s.package_type || s.packageType || "bubble_mailer");
-  const dims =
-    s.length || s.width || s.height
-      ? `${s.length || 0}×${s.width || 0}×${s.height || 0}in`
-      : "";
   if (state.editingShipId === s.id) {
-    const pkgOpts = PACKAGE_TYPES.map(
-      (p) =>
-        `<option value="${esc(p.value)}" ${(s.package_type || s.packageType || "bubble_mailer") === p.value ? "selected" : ""}>${esc(p.label)}</option>`,
-    ).join("");
     return `<div class="v-panel v-cut-sm p-4" data-edit-ship="${esc(s.id)}">
       <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Name</label>
       <input class="b44-input" data-edit-ship-name value="${esc(s.name)}" />
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Package type</label>
-        <select class="b44-input" data-edit-ship-package>${pkgOpts}</select></div>
-        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Weight (oz)</label>
-        <input class="b44-input" type="number" step="0.1" data-edit-ship-weight value="${esc(String(s.weight ?? 0))}" /></div>
-        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Length (in)</label>
-        <input class="b44-input" type="number" step="0.1" data-edit-ship-length value="${esc(String(s.length ?? 0))}" /></div>
-        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Width (in)</label>
-        <input class="b44-input" type="number" step="0.1" data-edit-ship-width value="${esc(String(s.width ?? 0))}" /></div>
-        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Height (in)</label>
-        <input class="b44-input" type="number" step="0.1" data-edit-ship-height value="${esc(String(s.height ?? 0))}" /></div>
         <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Carrier</label>
         <input class="b44-input" data-edit-ship-carrier value="${esc(s.carrier || "")}" /></div>
         <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Service</label>
         <input class="b44-input" data-edit-ship-service value="${esc(s.service || "")}" /></div>
-        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Cost</label>
+        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Cost ($)</label>
         <input class="b44-input" type="number" data-edit-ship-cost value="${esc(String(s.cost ?? 0))}" /></div>
-        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Days</label>
+        <div><label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Handling days</label>
         <input class="b44-input" type="number" data-edit-ship-handle value="${esc(String(s.handling_days ?? 1))}" /></div>
       </div>
       <label class="b44-copy-soft" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px">
@@ -4998,16 +4976,14 @@ function shipCardHtml(s) {
     ? `<span class="v-label" style="color:var(--b44-gold,#ffb43d)">DEFAULT</span>`
     : "";
   const service = s.service ? ` · ${s.service}` : "";
-  const handle = s.handling_days != null ? ` · ${s.handling_days}d` : "";
-  const weight = s.weight ? ` · ${s.weight}oz` : "";
-  const dimBit = dims ? ` · ${dims}` : "";
+  const handle = s.handling_days != null ? ` · ${s.handling_days}d handle` : "";
   return `<div class="v-panel v-cut-sm p-4">
     <div style="display:flex;justify-content:space-between;align-items:flex-start">${chip || "<span></span>"}
       <button type="button" class="m-btn" data-del-ship="${esc(s.id)}" title="Delete">×</button>
     </div>
     <div class="v-readout v-emit-white" style="font-size:15px;margin-top:8px">${esc(s.name)}</div>
-    <div class="b44-copy-soft" style="margin-top:6px;font-size:13px">${esc(pkg)}${esc(weight)}${esc(dimBit)}</div>
-    <div class="b44-copy-soft" style="margin-top:4px;font-size:12px">${esc(s.carrier || "—")}${esc(service)} · $${esc(String(s.cost ?? 0))}${esc(handle)}</div>
+    <div class="b44-copy-soft" style="margin-top:6px;font-size:13px">${esc(s.carrier || "—")}${esc(service)}</div>
+    <div class="b44-copy-soft" style="margin-top:4px;font-size:12px">$${esc(String(s.cost ?? 0))}${esc(handle)}</div>
     <div class="b44-actions" style="margin-top:12px">
       <button type="button" class="m-btn" data-edit-ship-btn="${esc(s.id)}">Edit</button>
     </div>
@@ -5109,11 +5085,6 @@ function renderSettings() {
         const id = btn.dataset.saveShip;
         const name = card.querySelector("[data-edit-ship-name]")?.value?.trim();
         if (!name) return;
-        const package_type = card.querySelector("[data-edit-ship-package]")?.value || "bubble_mailer";
-        const weight = Number(card.querySelector("[data-edit-ship-weight]")?.value || 0);
-        const length = Number(card.querySelector("[data-edit-ship-length]")?.value || 0);
-        const width = Number(card.querySelector("[data-edit-ship-width]")?.value || 0);
-        const height = Number(card.querySelector("[data-edit-ship-height]")?.value || 0);
         const carrier = card.querySelector("[data-edit-ship-carrier]")?.value || "";
         const service = card.querySelector("[data-edit-ship-service]")?.value || "";
         const cost = Number(card.querySelector("[data-edit-ship-cost]")?.value || 0);
@@ -5127,11 +5098,6 @@ function renderSettings() {
             ? {
                 ...s,
                 name,
-                package_type,
-                weight,
-                length,
-                width,
-                height,
                 carrier,
                 service,
                 cost,
@@ -6152,11 +6118,6 @@ function bind() {
     state.showTemplateForm = false;
     state.showShipForm = true;
     if ($("shipName")) $("shipName").value = "";
-    if ($("shipPackageType")) $("shipPackageType").value = "bubble_mailer";
-    if ($("shipWeight")) $("shipWeight").value = "0";
-    if ($("shipLength")) $("shipLength").value = "0";
-    if ($("shipWidth")) $("shipWidth").value = "0";
-    if ($("shipHeight")) $("shipHeight").value = "0";
     if ($("shipCarrier")) $("shipCarrier").value = "";
     if ($("shipService")) $("shipService").value = "";
     if ($("shipCost")) $("shipCost").value = "0";
@@ -6172,11 +6133,7 @@ function bind() {
   $("btnShipSave")?.addEventListener("click", () => {
     const name = ($("shipName")?.value || "").trim();
     if (!name) return;
-    const package_type = $("shipPackageType")?.value || "bubble_mailer";
-    const weight = Number($("shipWeight")?.value || 0);
-    const length = Number($("shipLength")?.value || 0);
-    const width = Number($("shipWidth")?.value || 0);
-    const height = Number($("shipHeight")?.value || 0);
+    // Live Settings shipping preset fields only (package dims live on item PK sheet).
     const carrier = ($("shipCarrier")?.value || "").trim();
     const service = ($("shipService")?.value || "").trim();
     const cost = Number($("shipCost")?.value || 0);
@@ -6189,11 +6146,6 @@ function bind() {
     state.shipping.unshift({
       id: crypto.randomUUID(),
       name,
-      package_type,
-      weight,
-      length,
-      width,
-      height,
       carrier,
       service,
       cost,
