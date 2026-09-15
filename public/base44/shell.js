@@ -3418,8 +3418,9 @@ function renderIntakeReview() {
   if (sumEl) {
     if (sum) {
       sumEl.classList.remove("hidden");
+      const rescans = sum.rescans != null ? sum.rescans : (state.intakeReviewRescan || []).length;
       sumEl.innerHTML = `<div class="v-label" style="color:var(--b44-cyan,#2bd9c0)">EXPORT SUMMARY</div>
-        <div style="margin-top:4px;font-size:12px;color:var(--b44-mid,#c9d8e2)">Exported ${sum.exported} rows · ${sum.held} held back (Not High: ${sum.reasons["Not High confidence"]}, Not approved: ${sum.reasons["Not approved"]}, Rejected: ${sum.reasons.Rejected}).</div>`;
+        <div style="margin-top:4px;font-size:12px;color:var(--b44-mid,#c9d8e2)">Exported ${sum.exported} rows · ${sum.held} held back (Not High: ${sum.reasons["Not High confidence"]}, Not approved: ${sum.reasons["Not approved"]}, Rejected: ${sum.reasons.Rejected}) · ${rescans} scans flagged for rescan.</div>`;
     } else sumEl.classList.add("hidden");
   }
   const body = $("reviewTableBody");
@@ -3635,7 +3636,12 @@ function exportIntakeDoubleHoloCsv() {
   a.click();
   a.remove();
   URL.revokeObjectURL(a.href);
-  state.intakeExportSummary = { exported: ready.length, held, reasons };
+  state.intakeExportSummary = {
+    exported: ready.length,
+    held,
+    reasons,
+    rescans: (state.intakeReviewRescan || []).length,
+  };
   state.intakeReviewStatus = `Exported ${ready.length}`;
   renderIntakeReview();
   showToast(`Exported ${ready.length} rows`, "ok");
@@ -3799,6 +3805,7 @@ function exportIntakeEbayCsv(cfg) {
       "Not approved": (state.intakeReviewRows || []).filter((r) => r.status !== "Approved").length,
       Rejected: (state.intakeReviewRows || []).filter((r) => r.status === "Rejected").length,
     },
+    rescans: (state.intakeReviewRescan || []).length,
   };
   state.intakeReviewStatus = `Exported ${ready.length} eBay CSV`;
   renderIntakeReview();
