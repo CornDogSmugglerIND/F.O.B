@@ -223,6 +223,8 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(shellJs, /publishIntakeHud/);
     assert.match(shellJs, /Location removed/);
     assert.match(shellJs, /Relisted on eBay/);
+    assert.match(shellJs, /Enter a valid price/);
+    assert.match(shellJs, /Could not create/);
     assert.match(shellJs, /Listing ended/);
     assert.match(shellJs, /Repriced →/);
     assert.match(shellJs, /Identification complete/);

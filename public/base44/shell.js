@@ -884,7 +884,10 @@ function closeSpaceCreateModal() {
 
 function submitSpaceCreateModal() {
   const name = ($("spaceCreateName")?.value || "").trim();
-  if (!name) return;
+  if (!name) {
+    showToast("Could not create", "err");
+    return;
+  }
   const kindRaw = ($("spaceCreateKind")?.value || "bin").trim().toLowerCase();
   const kind = SPACE_MAP_KINDS.includes(kindRaw) ? kindRaw : "bin";
   const code = ($("spaceCreateCode")?.value || "").trim();
@@ -4605,6 +4608,8 @@ function applyChannelReprice() {
   const next = Number($("channelRepriceInput")?.value || 0);
   if (!next || next <= 0) {
     state.channelSheetStatus = "Enter a valid price.";
+    // Live nle: ht.error("Enter a valid price")
+    showToast("Enter a valid price", "err");
     openChannelSheet(it.id);
     setChannelRepriceOpen(true);
     return;
