@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=33" />
+  <link rel="stylesheet" href="/base44/shell.css?v=34" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -450,7 +450,12 @@
                 <div class="v-label" style="font-size:9.5px;color:var(--b44-gold,#ffb43d)" id="channelSheetEyebrow">ACTIVE · 0D ON MARKET</div>
                 <button type="button" class="m-btn" id="btnChannelSheetClose" title="Release lock (ESC)">× RELEASE LOCK</button>
               </div>
-              <div class="v-label" style="font-size:9px" id="channelSheetSku">NO SKU</div>
+                            <div class="b44-toolbar" style="justify-content:space-between;margin-bottom:8px" id="channelSheetPager">
+                <button type="button" class="v-label" id="btnChannelPrev" style="font-size:11px;background:transparent;border:0;cursor:pointer;color:inherit;padding:0">‹ PREV</button>
+                <span class="v-label" id="channelSheetPagerLabel" style="font-size:9.5px;color:var(--b44-lo,#6f8697)">1 / 1</span>
+                <button type="button" class="v-label" id="btnChannelNext" style="font-size:11px;background:transparent;border:0;cursor:pointer;color:inherit;padding:0">NEXT ›</button>
+              </div>
+<div class="v-label" style="font-size:9px" id="channelSheetSku">NO SKU</div>
               <div class="v-readout v-emit-white" style="font-size:16px;margin-top:8px;line-height:1.25" id="channelSheetTitle">—</div>
               <div class="v-readout v-emit-gold" style="font-size:26px;margin-top:10px" id="channelSheetPrice">$0.00</div>
               <a class="b44-copy-soft hidden" style="display:inline-flex;margin-top:8px;font-size:12px;color:var(--b44-olive-hi,#9fbf6a)" id="channelSheetEbay" href="#" target="_blank" rel="noreferrer">View on eBay ↗</a>
@@ -478,7 +483,7 @@
             <div id="fulHubs"></div>
             <div id="fulEmpty" class="v-panel v-cut b44-empty">
               <div class="v-label">No shipments yet</div>
-              <p>Packages appear here once an order is created from Listings or eBay Sync.</p>
+              <p>Packages appear here once an order is created.</p>
             </div>
             <div id="fulSheet" class="v-panel v-cut p-4 hidden" style="margin-top:12px">
               <div class="b44-toolbar" style="justify-content:space-between;margin-bottom:8px">
@@ -1368,7 +1373,7 @@
 
   <script src="/lib/image.js?v=24"></script>
   <script src="/lib/html5-qrcode.min.js"></script>
-  <script src="/base44/shell.js?v=33"></script>
+  <script src="/base44/shell.js?v=34"></script>
 
 </body>
 </html>

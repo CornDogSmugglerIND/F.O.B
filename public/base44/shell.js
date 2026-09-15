@@ -3545,6 +3545,31 @@ function channelHubSectionHtml(hub, rows) {
   </section>`;
 }
 
+/** Live sle pager pool: filtered listings sorted by pushed/created date. */
+function channelSheetPool() {
+  const q = (state.channelFilter || "").trim().toLowerCase();
+  const pool = state.items.filter((it) => {
+    if (!channelHubKey(it)) return false;
+    if (!q) return true;
+    const hay = `${it.title || ""} ${it.barcode || ""} ${it.sku || ""}`.toLowerCase();
+    return hay.includes(q);
+  });
+  return pool.slice().sort((a, b) => {
+    const ta = new Date(a.pushedAt || a.pushed_date || a.createdAt || a.created_date || 0).getTime();
+    const tb = new Date(b.pushedAt || b.pushed_date || b.createdAt || b.created_date || 0).getTime();
+    return ta - tb;
+  });
+}
+
+/** Live sle Ne(±1): wrap through the locked Channel readout list. */
+function channelSheetStep(delta) {
+  const le = channelSheetPool();
+  const be = state.channelSheetId ? le.findIndex((x) => x.id === state.channelSheetId) : -1;
+  if (be === -1 || !le.length) return;
+  const next = (be + delta + le.length) % le.length;
+  openChannelSheet(le[next].id);
+}
+
 function openChannelSheet(id) {
   const it = state.items.find((x) => x.id === id);
   const sheet = $("channelSheet");
@@ -3563,6 +3588,12 @@ function openChannelSheet(id) {
     $("channelSheetEyebrow").textContent = ended
       ? `${hubLabel} · OFF MARKET`
       : `${hubLabel} · ${age}D ON MARKET`;
+  }
+  const pool = channelSheetPool();
+  const idx = pool.findIndex((x) => x.id === id);
+  if ($("channelSheetPagerLabel")) {
+    $("channelSheetPagerLabel").textContent =
+      idx >= 0 && pool.length ? `${idx + 1} / ${pool.length}` : "—";
   }
   const sku = it.barcode || it.sku || "NO SKU";
   if ($("channelSheetSku")) $("channelSheetSku").textContent = sku;
@@ -3779,7 +3810,7 @@ function renderChannel() {
     const label = fulEmpty.querySelector(".v-label");
     const p = fulEmpty.querySelector("p");
     if (label) label.textContent = "No shipments yet";
-    if (p) p.textContent = "Packages appear here once an order is created from Listings or eBay Sync.";
+    if (p) p.textContent = "Packages appear here once an order is created.";
   }
   if (fulHubs) {
     const chunks = [];
@@ -4872,20 +4903,27 @@ function bind() {
       openScouterReadout(it.id);
       return;
     }
+    // Live tle be(): require a built listing (draft / ready_to_list) before publish.
+    const step = itemPipeLabel(it);
+    const status = it.listingStatus || "";
+    if (!(status === "ready_to_list" || step === "Listing Built")) {
+      state.readoutStatus = "No listing built yet — run the AI writer on this card first";
+      openScouterReadout(it.id);
+      return;
+    }
     const btn = $("btnPublishEbay");
     // Live tle Publish button shows Publishing… while the request runs.
     if (btn) {
       btn.textContent = "Publishing…";
       btn.disabled = true;
     }
-    // Honest local port: mark Listed locally after brief chrome; live publish needs server eBay creds.
+    // Local port: mark Listed; live ebayPublishListing needs server eBay creds.
     window.setTimeout(() => {
       it.staged = true;
       it.listingStatus = "listed";
       it.updatedAt = new Date().toISOString();
       saveItems();
-      state.readoutStatus =
-        "Marked Listed locally. Live Publish to eBay needs server credentials.";
+      state.readoutStatus = `${it.title || "Untitled"} is live on eBay`;
       if (btn) btn.disabled = false;
       openScouterReadout(it.id);
       renderCollection();
@@ -4989,6 +5027,9 @@ function bind() {
       else if (!$("assetSheet")?.classList.contains("hidden")) closeAssetSheet();
       else if (state.intakePickId || !$("intakePickSheet")?.classList.contains("hidden")) {
         closeIntakePick();
+      } else if (state.channelSheetId || !$("channelSheet")?.classList.contains("hidden")) {
+        // Live SS readout close control is titled "Release lock (ESC)".
+        closeChannelSheet();
       } else closeScouterReadout();
     }
   });
@@ -5136,6 +5177,8 @@ function bind() {
   $("btnChannelSheetClose")?.addEventListener("click", () => {
     closeChannelSheet();
   });
+  $("btnChannelPrev")?.addEventListener("click", () => channelSheetStep(-1));
+  $("btnChannelNext")?.addEventListener("click", () => channelSheetStep(1));
   $("btnChannelReprice")?.addEventListener("click", () => channelSheetAction("reprice"));
   $("btnChannelRelist")?.addEventListener("click", () => channelSheetAction("relist"));
   $("btnChannelEnd")?.addEventListener("click", () => channelSheetAction("end"));
