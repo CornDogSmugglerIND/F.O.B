@@ -144,7 +144,7 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /Storage Map/);
     const shellJs = await (await fetch(`${baseUrl}/base44/shell.js`)).text();
     assert.match(shellJs, /label: "Scouter"/);
-    assert.match(shellJs, /label: "Pipeline"/);
+    assert.match(shellJs, /pipeMode \? "Pipeline" : "Spaces"/);
     assert.match(shellJs, /label: "Intake"/);
     assert.match(shellJs, /label: "Listing Built"/);
     assert.match(shellJs, /label: "Scouter value"/);
