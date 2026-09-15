@@ -1094,6 +1094,7 @@ function setIntakeMode(mode) {
   $("intakeList")?.classList.toggle("hidden", mode !== "list");
   $("intakeBatch")?.classList.toggle("hidden", mode !== "batch");
   $("intakeGrouping")?.classList.toggle("hidden", mode !== "grouping");
+  $("intakeProcessing")?.classList.toggle("hidden", mode !== "processing");
   $("intakeIdentifying")?.classList.toggle("hidden", mode !== "identifying");
   $("intakeReview")?.classList.toggle("hidden", mode !== "review");
   if (mode === "batch" || mode === "grouping" || mode === "review") syncBatchChromeTitles();
@@ -3048,8 +3049,8 @@ async function startIntakeToGrouping() {
     $("batchOddWarn")?.classList.remove("hidden");
     return;
   }
-  setIntakeMode("identifying");
-  setIdentifyProgress("Hashing", 0, photos.length);
+  setIntakeMode("processing");
+  setProcessingProgress("Uploading", 0, photos.length);
   const scans = [];
   for (let z = 0; z < photos.length; z++) {
     const p = photos[z];
@@ -3067,9 +3068,9 @@ async function startIntakeToGrouping() {
       isFront: !state.backsIncluded || z % 2 === 0,
       pair: state.backsIncluded ? Math.floor(z / 2) : z,
     });
-    setIdentifyProgress("Hashing", z + 1, photos.length);
+    setProcessingProgress("Uploading", z + 1, photos.length);
   }
-  setIdentifyProgress("Deduping", 1, 1);
+  setProcessingProgress("Deduping", 1, 1);
   state.intakeScans = scans;
   state.intakeThreshold = 5;
   state.groupSplitOpen = null;
@@ -3090,13 +3091,13 @@ async function startIdentificationFromGroups() {
     return;
   }
   setIntakeMode("identifying");
+  setIdentifyingRows(0);
   const total = groups.length;
   let done = 0;
   const prefix = (state.skuPrefix || "").trim().toUpperCase();
   const scanCount = state.intakeScans.length;
   const rows = [];
   for (const g of groups) {
-    setIdentifyProgress("Identifying", done, total);
     const front = g[0];
     const back = state.backsIncluded
       ? state.intakeScans.find((s) => s.pair === front.pair && !s.isFront)
@@ -3168,7 +3169,7 @@ async function startIdentificationFromGroups() {
       message,
     });
     done += 1;
-    setIdentifyProgress("Identifying", done, total);
+    setIdentifyingRows(done);
   }
   state.intakeReviewRows = rows;
   state.intakeScanCount = scanCount;
@@ -4118,11 +4119,17 @@ function setStatus(msg) {
   if ($("identifyStatus")) $("identifyStatus").textContent = msg;
 }
 
-function setIdentifyProgress(stage, done, total) {
+/** Live Kle — processing stage + bar + done/total. */
+function setProcessingProgress(stage, done, total) {
   const pct = total ? Math.round((done / total) * 100) : 0;
-  if ($("identifyStage")) $("identifyStage").textContent = `${String(stage || "IDENTIFYING").toUpperCase()}…`;
-  if ($("identifyPct")) $("identifyPct").textContent = total ? `${done} / ${total}` : `${pct}%`;
-  if ($("identifyBar")) $("identifyBar").style.width = `${pct}%`;
+  if ($("processStage")) $("processStage").textContent = `${String(stage || "UPLOADING").toUpperCase()}…`;
+  if ($("processPct")) $("processPct").textContent = `${done} / ${total}`;
+  if ($("processBar")) $("processBar").style.width = `${pct}%`;
+}
+
+/** Live identifying panel — fixed IDENTIFYING… + rows written count (no bar). */
+function setIdentifyingRows(done) {
+  if ($("identifyRows")) $("identifyRows").textContent = String(done ?? 0);
 }
 
 async function addFiles(fileList) {
@@ -4130,8 +4137,8 @@ async function addFiles(fileList) {
   // Live Mle accepts up to 200 JPGs at a time.
   const incoming = [...(fileList || [])].filter(isImage).slice(0, 200 - state.draftPhotos.length);
   if (!incoming.length) return;
-  setIntakeMode("identifying");
-  setIdentifyProgress("Uploading", 0, incoming.length);
+  setIntakeMode("processing");
+  setProcessingProgress("Uploading", 0, incoming.length);
   setStatus("Uploading…");
   const compressed = await window.ScouterImage.compressPhotos(incoming);
   let done = 0;
@@ -4139,9 +4146,9 @@ async function addFiles(fileList) {
     const dataUrl = await window.ScouterImage.fileToDataUrl(file);
     state.draftPhotos.push({ dataUrl, file });
     done += 1;
-    setIdentifyProgress("Uploading", done, incoming.length);
+    setProcessingProgress("Uploading", done, incoming.length);
   }
-  setIdentifyProgress("Deduping", 1, 1);
+  setProcessingProgress("Deduping", 1, 1);
   renderPhotos();
   updateSave();
   setIntakeMode("batch");
@@ -4155,7 +4162,7 @@ async function runIdentify() {
     return false;
   }
   setIntakeMode("identifying");
-  setIdentifyProgress("Identifying", 0, photos.length || 1);
+  setIdentifyingRows(0);
   setStatus("IDENTIFYING…");
   try {
     const res = await fetch("/api/scouter/identify", {
@@ -4169,7 +4176,7 @@ async function runIdentify() {
       }),
     });
     const result = await res.json();
-    setIdentifyProgress("Identifying", photos.length || 1, photos.length || 1);
+    setIdentifyingRows(photos.length || 1);
     setIntakeMode("batch");
     if (result.identity?.product_name) {
       state.title = result.identity.product_name;

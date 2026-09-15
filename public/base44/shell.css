@@ -400,6 +400,19 @@ body.b44 {
   justify-content: center;
   padding: 48px 16px;
   text-align: center;
+  min-height: 320px;
+}
+
+.b44-process-count {
+  margin-top: 8px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--b44-lo, #6f8697);
+}
+
+.b44-identify-rows {
+  font-size: 30px;
+  margin-top: 12px;
 }
 
 .b44-spin {
