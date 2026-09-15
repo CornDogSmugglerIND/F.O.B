@@ -5144,21 +5144,29 @@ function renderSettings() {
           const code = d.code || d.location_code || "";
           const desc = d.description || "";
           const count = storageDefItemCount(d);
+          // Live vle storage card: MapPin tile, hover trash, code chip, Package + N items.
           const codeChip = code
-            ? `<div class="v-label" style="display:inline-block;margin-top:6px;padding:2px 8px;border:1px solid rgba(255,255,255,0.12);font-size:11px">${esc(code)}</div>`
+            ? `<div class="b44-storage-code m-mono">${esc(code)}</div>`
             : "";
           const descBit = desc
-            ? `<p class="b44-copy-soft" style="margin-top:8px;font-size:13px;line-height:1.4">${esc(desc)}</p>`
+            ? `<p class="b44-copy-soft" style="margin-top:8px;font-size:13px;font-weight:500;line-height:1.4">${esc(desc)}</p>`
             : "";
-          return `<div class="v-panel v-cut-sm p-4">
+          return `<div class="v-panel v-cut-sm p-4 b44-settings-card b44-storage-card">
             <div style="display:flex;justify-content:space-between;align-items:flex-start">
-              <div class="v-label" style="font-size:9px">LOCATION</div>
-              <button type="button" class="m-btn" data-del-storage-def="${esc(d.id)}" title="Delete">×</button>
+              <div class="b44-settings-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+              </div>
+              <button type="button" class="m-btn m-btn-danger b44-storage-card-del" data-del-storage-def="${esc(d.id)}" title="Delete" aria-label="Delete storage location" style="padding:8px 10px">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+              </button>
             </div>
-            <div class="v-readout v-emit-white" style="font-size:15px;margin-top:8px">${esc(d.name)}</div>
+            <div class="v-readout v-emit-white" style="font-size:15px;font-weight:600;margin-top:12px">${esc(d.name)}</div>
             ${codeChip}
             ${descBit}
-            <div class="b44-copy-soft" style="margin-top:12px;font-size:13px">${pad2(count)} items</div>
+            <div class="b44-copy-soft" style="margin-top:16px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="m7.5 4.2 9 5.2"/></svg>
+              ${esc(String(count || 0))} items
+            </div>
           </div>`;
         })
         .join("");

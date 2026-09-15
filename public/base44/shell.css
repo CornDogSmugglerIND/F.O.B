@@ -624,6 +624,25 @@ textarea.b44-input {
 .b44-settings-card-icon svg {
   display: block;
 }
+/* Live Settings storage card: code chip + hover-reveal delete */
+.b44-storage-code {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #14181b;
+  border: 1px solid #232a2e;
+  color: #8a928f;
+  font-size: 12px;
+}
+.b44-storage-card-del {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.b44-storage-card:hover .b44-storage-card-del,
+.b44-storage-card:focus-within .b44-storage-card-del {
+  opacity: 1;
+}
 .b44-warn {
   margin: 10px 0;
   padding: 10px 12px;
