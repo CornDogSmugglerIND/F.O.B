@@ -785,6 +785,9 @@ function updateSitrep() {
         { label: "Inventory", value: pad2(inventory), color: "var(--b44-gold-hi)", big: true },
       ],
     });
+  } else if (state.route === "/inventory") {
+    // Keep tle→Zc HUD in sync when sitrep refreshes after mutations.
+    publishScouterHud();
   }
 
   renderCmdAttention(cards);
@@ -964,7 +967,8 @@ function renderCmdAttention(cards) {
   if (!root) return;
   const list = cards || buildCmdAttention();
   if (!list.length) {
-    root.innerHTML = `<div class="v-panel v-cut-sm p-4" style="text-align:center"><div class="v-readout" style="font-size:18px;color:#5fe8d0">All clear</div><p class="b44-copy-soft" style="margin-top:8px">Nothing is blocked, errored, or sitting untouched.</p></div>`;
+    // Live XK empty body is sitrepTitle/sitrepHint — don't duplicate All clear here.
+    root.innerHTML = "";
     return;
   }
   root.innerHTML = list
@@ -1002,7 +1006,7 @@ function navigate(route) {
   if ($("pageBrand")) $("pageBrand").textContent = meta.brand;
   syncDeskNav(path);
   updateEbayPill();
-  if (path !== "/" && path !== "/command" && path !== "/storage") clearHud();
+  if (path !== "/" && path !== "/command" && path !== "/storage" && path !== "/inventory") clearHud();
   const hashBase = itemMatch ? `/item/${encodeURIComponent(itemId)}` : path;
   const hash = query ? `#${hashBase}?${query}` : `#${hashBase}`;
   if (location.hash !== hash) history.replaceState(null, "", hash);
@@ -1014,6 +1018,8 @@ function navigate(route) {
   if (path === "/channel") renderChannel();
   if (path === "/" || path === "/command") updateSitrep();
   if (path === "/scan-assistant") renderScanAssistant();
+  // Live tle: inventory owns Zc→BX HUD via renderCollection.
+  if (path === "/inventory") renderCollection();
   // Live Command New card → /inventory?add=1 opens VN sheet.
   if (path === "/inventory" && /(?:^|&)add=1(?:&|$)/.test(query)) {
     openAssetSheet(null);
@@ -1253,10 +1259,10 @@ function renderCollection() {
   const builtN = source.filter((it) => !it.archived && itemPipeLabel(it) === "Listing Built").length;
   const listedN = source.filter((it) => !it.archived && itemPipeLabel(it) === "Listed").length;
   loadSpaces();
-  const onMap = source.filter((it) => !it.archived && !!it.spaceId).length;
+  const onMap = source.filter((it) => !it.archived).length; // live tle On map = all view items
   const spaceRoots = state.spaces.filter((s) => !(s.parentId || s.parent_id)).length;
   const value = source
-    .filter((it) => !it.archived && it.listingStatus !== "sold" && it.listingStatus !== "error")
+    .filter((it) => !it.archived && it.listingStatus !== "sold")
     .reduce((sum, it) => sum + (Number(it.marketValue) || 0) * (Number(it.quantity) || 1), 0);
   if ($("scoutStepIntake")) $("scoutStepIntake").textContent = pad2(intakeN);
   if ($("scoutStepBuilt")) $("scoutStepBuilt").textContent = pad2(builtN);
@@ -1265,6 +1271,9 @@ function renderCollection() {
   if ($("scoutOnMap")) $("scoutOnMap").textContent = pad2(onMap);
   if ($("scouterCount")) $("scouterCount").textContent = pad2(rows.length);
   if ($("scouterValue")) $("scouterValue").textContent = money(value);
+
+  publishScouterHud({ intakeN, builtN, listedN, spaceRoots, onMap, value });
+
   const demoBtn = $("btnScoutDemo");
   if (demoBtn) {
     demoBtn.textContent = state.scouterDemo ? "DEMO" : "LIVE";
@@ -1288,6 +1297,43 @@ function renderCollection() {
   root.innerHTML = `<div class="b44-scout-groups">${groups.map(scouterGroupHtml).join("")}</div>`;
   bindScouterGroupDnD(root);
   if (state.lockedItemId) openScouterReadout(state.lockedItemId);
+}
+
+/** Live tle → Zc → BX HUD (breadcrumb + Ne stats). STEP labels stay on group headers only. */
+function publishScouterHud(counts) {
+  if (state.route !== "/inventory" && !$("view-inventory")?.classList.contains("active")) return;
+  let intakeN; let builtN; let listedN; let spaceRoots; let onMap; let value;
+  if (counts) {
+    ({ intakeN, builtN, listedN, spaceRoots, onMap, value } = counts);
+  } else {
+    const source = scouterViewItems();
+    intakeN = source.filter((it) => !it.archived && itemPipeLabel(it) === "Intake").length;
+    builtN = source.filter((it) => !it.archived && itemPipeLabel(it) === "Listing Built").length;
+    listedN = source.filter((it) => !it.archived && itemPipeLabel(it) === "Listed").length;
+    loadSpaces();
+    onMap = source.filter((it) => !it.archived).length;
+    spaceRoots = state.spaces.filter((s) => !(s.parentId || s.parent_id)).length;
+    value = source
+      .filter((it) => !it.archived && it.listingStatus !== "sold")
+      .reduce((sum, it) => sum + (Number(it.marketValue) || 0) * (Number(it.quantity) || 1), 0);
+  }
+  const pipeMode = state.scouterMode !== "spaces";
+  const hudStats = pipeMode
+    ? [
+        { label: "Intake", value: pad2(intakeN), color: "var(--b44-mid)" },
+        { label: "Listing Built", value: pad2(builtN), color: "var(--b44-gold-hi)" },
+        { label: "Listed", value: pad2(listedN), color: "var(--b44-green-hi)" },
+        { label: "Scouter value", value: money(value), color: "var(--b44-gold-hi)", big: true },
+      ]
+    : [
+        { label: "Spaces", value: pad2(spaceRoots), color: "var(--b44-tan-hi, var(--b44-mid))" },
+        { label: "On map", value: pad2(onMap), color: "var(--b44-mid)" },
+        { label: "Scouter value", value: money(value), color: "var(--b44-gold-hi)", big: true },
+      ];
+  setHud({
+    breadcrumb: [{ label: "Scouter" }, { label: pipeMode ? "Pipeline" : "Spaces" }],
+    stats: hudStats,
+  });
 }
 
 function openScouterReadout(id) {

@@ -106,10 +106,12 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /To scouter/);
     assert.match(html, /Duplicate/);
     assert.match(html, /Rail · Step 0/);
-    assert.match(html, /STEP 1 · INTAKE/);
-    assert.match(html, /STEP 2 · BUILD/);
+    assert.match(html, />Intake</);
+    assert.match(html, /Listing Built/);
     assert.match(html, /ON SCOUTER/);
-    assert.match(html, /SCOUTER VALUE/);
+    assert.match(html, /Scouter value/);
+    assert.match(html, /b44-scouter-pipe/);
+    assert.match(html, /Listing Built/);
     assert.match(html, /Photo/);
     assert.match(html, /SNAP/);
     assert.match(html, /Scan/);
@@ -141,6 +143,11 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /No collections yet\./);
     assert.match(html, /Storage Map/);
     const shellJs = await (await fetch(`${baseUrl}/base44/shell.js`)).text();
+    assert.match(shellJs, /label: "Scouter"/);
+    assert.match(shellJs, /label: "Pipeline"/);
+    assert.match(shellJs, /label: "Intake"/);
+    assert.match(shellJs, /label: "Listing Built"/);
+    assert.match(shellJs, /label: "Scouter value"/);
     assert.match(shellJs, /b44-space-tile/);
     assert.match(shellJs, /ITEMS/);
     assert.match(shellJs, /Set photo/);

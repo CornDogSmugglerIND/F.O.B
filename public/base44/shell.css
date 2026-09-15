@@ -2445,3 +2445,9 @@ textarea.b44-input {
   line-height: 1.35;
 }
 .b44-cmd-actions { margin-left: auto; }
+
+
+/* Live tle: pipeline/spaces stats live in BX HUD on desktop; keep strip for phone. */
+@media (min-width: 1024px) {
+  .b44-scouter-pipe { display: none !important; }
+}
