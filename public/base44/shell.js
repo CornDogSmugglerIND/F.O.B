@@ -51,7 +51,6 @@ const state = {
   unDraft: null,
   unStatus: "",
   filterIntake: "",
-  filterScouter: "",
   filterSpaces: "",
   spaceTrail: [],
   spaceTreeOpen: {}, // id → bool — live Ak expand state
@@ -588,74 +587,6 @@ async function intakePhotosOntoScouter(fileList) {
 function csvEscape(v) {
   const s = String(v ?? "");
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-/** Live tle Export — Listing Built + Listed → doubleholo-style CSV. */
-function exportScouterCsv() {
-  const rows = state.items.filter((it) =>
-    ["ready_to_list", "listed"].includes(it.listingStatus) || itemPipeLabel(it) === "Listing Built" || itemPipeLabel(it) === "Listed",
-  );
-  if (!rows.length) {
-    setScouterStatus("Nothing to export — move cards to Listing Built or Listed first.");
-    // Live tle Export: ht.error("Nothing to export")
-    showToast("Nothing to export", "err");
-    return;
-  }
-  const condMap = {
-    raw: "NM",
-    nm: "NM",
-    lp: "LP",
-    mp: "MP",
-    hp: "HP",
-    damaged: "DMG",
-    new: "NM",
-    used: "LP",
-    graded: "NM",
-  };
-  const headers = [
-    "Card Name",
-    "Number",
-    "Set",
-    "Condition",
-    "Quantity",
-    "SKU",
-    "Language",
-    "Variation",
-    "Graded",
-    "Grade",
-    "Grading Company",
-    "Acquisition Price",
-  ];
-  const lines = [headers.join(",")].concat(
-    rows.map((it) =>
-      [
-        it.title || "",
-        it.cardNumber || it.card_number || "",
-        it.setName || it.set_name || "",
-        condMap[it.condition] || "NM",
-        it.quantity || 1,
-        it.sku || it.barcode || "",
-        it.language || "English",
-        it.variation || "",
-        it.gradingCompany || it.grading_company ? "Yes" : "",
-        it.grade || "",
-        it.gradingCompany || it.grading_company || "",
-        it.purchasePrice || it.purchase_price || "",
-      ]
-        .map(csvEscape)
-        .join(","),
-    ),
-  );
-  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `doubleholo-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(a.href);
-  setScouterStatus(`Exported ${rows.length}`);
-  showToast(`Exported ${rows.length}`, "ok");
 }
 
 function setScouterReleaseOverlay(on) {
@@ -1662,13 +1593,11 @@ function renderCollection() {
   const empty = $("scouterEmpty");
   if (!root) return;
   const source = scouterViewItems();
-  const q = state.filterScouter.trim().toLowerCase();
+  // Live tle: no Filter scouter / Export CSV toolbar — show all non-archived pipeline rows.
   const rows = source.filter((it) => {
     if (it.archived) return false;
     if (it.listingStatus === "sold" || it.listingStatus === "error") return false;
-    if (!q) return true;
-    const hay = `${it.title || ""} ${it.barcode || ""} ${it.sku || ""} ${it.game || ""}`.toLowerCase();
-    return hay.includes(q);
+    return true;
   });
   const intakeN = source.filter((it) => !it.archived && itemPipeLabel(it) === "Intake").length;
   const builtN = source.filter((it) => !it.archived && itemPipeLabel(it) === "Listing Built").length;
@@ -6312,7 +6241,6 @@ function bind() {
   });
 
   $("btnScoutSpaces")?.addEventListener("click", () => setScouterMode("spaces"));
-  $("btnScouterExport")?.addEventListener("click", () => exportScouterCsv());
   $("scouterPhotoInput")?.addEventListener("change", async (e) => {
     await intakePhotosOntoScouter(e.target.files);
     e.target.value = "";
@@ -6669,10 +6597,6 @@ function bind() {
   $("btnIntakePickClose")?.addEventListener("click", () => closeIntakePick());
   $("btnIntakeBuildListing")?.addEventListener("click", () => buildIntakeListing());
   $("btnIntakeOpenCard")?.addEventListener("click", () => openIntakeCard());
-  $("scouterFilter")?.addEventListener("input", (e) => {
-    state.filterScouter = e.target.value;
-    renderCollection();
-  });
 
   bindDropZone();
   bindSpaceCoverInput();

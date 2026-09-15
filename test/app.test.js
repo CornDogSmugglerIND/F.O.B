@@ -280,7 +280,10 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(shellJs, /Preset created/);
     assert.match(shellJs, /Preset deleted/);
     assert.match(shellJs, /Name is required/);
-    assert.match(shellJs, /Nothing to export/);
+    // Live tle has no Filter scouter / Export CSV toolbar (orphaned "Nothing to export" in live is unwired).
+    assert.doesNotMatch(html, /id="scouterFilter"/);
+    assert.doesNotMatch(html, /id="btnScouterExport"/);
+    assert.doesNotMatch(html, /Filter scouter/);
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
     assert.match(shellJs, /No listing built yet — run the AI writer on this card first/);
     assert.match(shellJs, /Product lookup failed/);
