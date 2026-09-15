@@ -54,6 +54,7 @@ const state = {
   filterScouter: "",
   filterSpaces: "",
   spaceTrail: [],
+  spaceTreeOpen: {}, // id → bool — live Ak expand state
   scouterMode: "pipeline", // pipeline | spaces — live tle breadcrumb
   scouterDemo: false, // live Xre DEMO / LIVE
   scouterStatus: "",
@@ -788,6 +789,8 @@ function updateSitrep() {
   } else if (state.route === "/inventory") {
     // Keep tle→Zc HUD in sync when sitrep refreshes after mutations.
     publishScouterHud();
+  } else if (state.route === "/storage") {
+    publishStorageHud();
   }
 
   renderCmdAttention(cards);
@@ -3850,6 +3853,122 @@ function bindSpaceCoverInput() {
   });
 }
 
+function spaceChildrenOf(parentId) {
+  return state.spaces
+    .filter((s) => (s.parentId || s.parent_id || "") === (parentId || ""))
+    .sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { numeric: true }));
+}
+
+function spacePathIds(id) {
+  const path = [];
+  let cur = spaceById(id);
+  const guard = new Set();
+  while (cur && !guard.has(cur.id)) {
+    path.unshift(cur.id);
+    guard.add(cur.id);
+    cur = spaceById(cur.parentId || cur.parent_id);
+  }
+  return path;
+}
+
+/** Live kq → Zc → BX HUD (Warehouse crumb + Sub-locations / Items here / Unsorted / Value). */
+function publishStorageHud(counts) {
+  if (state.route !== "/storage" && !$("view-storage")?.classList.contains("active")) return;
+  let subN;
+  let itemsHereN;
+  let unsortedN;
+  let value;
+  if (counts) {
+    ({ subN, itemsHereN, unsortedN, value } = counts);
+  } else {
+    loadSpaces();
+    const parentId = currentSpaceParentId();
+    const unfiled = state.items.filter((it) => !it.spaceId);
+    const filed = state.items.filter((it) => !!it.spaceId);
+    const cardsHere = itemsInSpace(parentId);
+    subN = spaceChildrenOf(parentId).length;
+    // Live root: Items here + Value = filed items; nested = items at this location.
+    itemsHereN = parentId ? cardsHere.length : filed.length;
+    unsortedN = unfiled.length;
+    value = spaceValue(parentId ? cardsHere : filed);
+  }
+  const trail = state.spaceTrail.map((id) => {
+    const sp = spaceById(id);
+    return { label: sp?.name || "…" };
+  });
+  setHud({
+    breadcrumb: [{ label: "Warehouse" }, ...trail],
+    stats: [
+      { label: "Sub-locations", value: pad2(subN), color: "var(--b44-tan-hi, var(--b44-mid))" },
+      { label: "Items here", value: pad2(itemsHereN), color: "var(--b44-olive-hi, var(--b44-gold-hi))" },
+      {
+        label: "Unsorted",
+        value: pad2(unsortedN),
+        color: unsortedN ? "var(--b44-bad-hi)" : "var(--b44-lo)",
+      },
+      { label: "Value", value: money(value), color: "var(--b44-gold-hi)", big: true },
+    ],
+  });
+}
+
+/** Live Ak row — recursive Storage Map tree. */
+function spaceMapRowHtml(sp, depth, trailIds) {
+  const kids = spaceChildrenOf(sp.id);
+  const onTrail = trailIds.includes(sp.id);
+  const open = !!(state.spaceTreeOpen[sp.id] || onTrail);
+  const count = spaceSubtreeStats(sp.id).count;
+  const pad = 6 + depth * 16;
+  const chevron = kids.length
+    ? `<button type="button" class="b44-space-map-chev" data-toggle-space="${esc(sp.id)}" aria-label="Toggle">${open ? "▾" : "▸"}</button>`
+    : `<span class="b44-space-map-chev-gap"></span>`;
+  const kidsHtml = open
+    ? kids.map((c) => spaceMapRowHtml(c, depth + 1, trailIds)).join("")
+    : "";
+  return `<div class="b44-space-map-node">
+    <button type="button" class="b44-space-map-row${onTrail ? " is-on" : ""}" data-nav-space="${esc(sp.id)}" style="padding-left:${pad}px">
+      ${chevron}
+      <span class="b44-space-map-ico" aria-hidden="true"></span>
+      <span class="b44-space-map-name">${esc(sp.name || "Untitled")}</span>
+      <span class="b44-space-map-count">${count > 0 ? esc(String(count)) : ""}</span>
+    </button>
+    ${kidsHtml}
+  </div>`;
+}
+
+function renderSpaceMapTree(unsortedN) {
+  const host = $("spaceMapTree");
+  if (!host) return;
+  const trailIds = state.spaceTrail.slice();
+  const atRoot = !trailIds.length;
+  const roots = spaceChildrenOf("");
+  const tree = roots.map((sp) => spaceMapRowHtml(sp, 0, trailIds)).join("");
+  const unsorted = `<button type="button" class="b44-space-map-row b44-space-map-unsorted${atRoot ? " is-on" : ""}" data-nav-space="">
+    <span class="b44-space-map-chev-gap"></span>
+    <span class="b44-space-map-ico is-bad" aria-hidden="true"></span>
+    <span class="b44-space-map-name">Unsorted</span>
+    <span class="b44-space-map-count is-bad">${esc(String(unsortedN))}</span>
+  </button>`;
+  host.innerHTML = `${tree}${unsorted}`;
+  host.querySelectorAll("[data-toggle-space]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.toggleSpace;
+      state.spaceTreeOpen[id] = !state.spaceTreeOpen[id];
+      renderSpaceMapTree(unsortedN);
+    });
+  });
+  host.querySelectorAll("[data-nav-space]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      if (e.target.closest("[data-toggle-space]")) return;
+      const id = btn.dataset.navSpace || "";
+      state.spaceTrail = id ? spacePathIds(id) : [];
+      // Live Ak: navigating a node expands it.
+      if (id) state.spaceTreeOpen[id] = true;
+      renderSpaces();
+    });
+  });
+}
+
 function renderSpaces() {
   loadSpaces();
   const root = $("spaceList");
@@ -3857,39 +3976,50 @@ function renderSpaces() {
   if (!root) return;
   const parentId = currentSpaceParentId();
   const q = (state.filterSpaces || "").trim().toLowerCase();
-  const rows = state.spaces
-    .filter((s) => (s.parentId || "") === parentId)
-    .filter((s) => {
-      if (!q) return true;
-      const hay = `${s.name || ""} ${s.code || ""} ${s.kind || ""}`.toLowerCase();
-      return hay.includes(q);
-    })
-    .sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { numeric: true }));
-  const totalHere = state.spaces.filter((s) => (s.parentId || "") === parentId).length;
-  if ($("spaceCount")) $("spaceCount").textContent = pad2(totalHere);
+  const rows = spaceChildrenOf(parentId).filter((s) => {
+    if (!q) return true;
+    const hay = `${s.name || ""} ${s.code || ""} ${s.kind || ""}`.toLowerCase();
+    return hay.includes(q);
+  });
+  const totalHere = rows.length;
+  const totalSpaces = state.spaces.length;
+  if ($("spaceCount")) $("spaceCount").textContent = pad2(totalSpaces);
+  if ($("spaceCountDesk")) $("spaceCountDesk").textContent = pad2(totalSpaces);
   if ($("spaceSubCount")) $("spaceSubCount").textContent = pad2(totalHere);
 
   const cardsHere = itemsInSpace(parentId);
   const unfiled = state.items.filter((it) => !it.spaceId);
-  if ($("spaceCardCount")) $("spaceCardCount").textContent = pad2(cardsHere.length);
-  if ($("spaceValue")) $("spaceValue").textContent = money(spaceValue(cardsHere));
+  const filed = state.items.filter((it) => !!it.spaceId);
+  // Live kq root: Items here + Value count filed items; nested = items at this location.
+  const itemsHereN = parentId ? cardsHere.length : filed.length;
+  const valueHere = spaceValue(parentId ? cardsHere : filed);
+  if ($("spaceCardCount")) $("spaceCardCount").textContent = pad2(itemsHereN);
+  if ($("spaceValue")) $("spaceValue").textContent = money(valueHere);
   if ($("spaceUnfiled")) $("spaceUnfiled").textContent = pad2(unfiled.length);
 
   const crumb = parentId
     ? state.spaceTrail.map((id) => {
         const sp = spaceById(id);
-        return sp?.code ? `${sp.code} · ${sp.name}` : sp?.name || "…";
+        return sp?.name || "…";
       }).join(" / ")
     : "ALL STORAGE";
   if ($("spaceBreadcrumb")) $("spaceBreadcrumb").textContent = crumb;
   $("btnSpaceUp")?.classList.toggle("hidden", !parentId);
   $("btnFileHere")?.classList.toggle("hidden", !parentId);
 
+  publishStorageHud({
+    subN: totalHere,
+    itemsHereN,
+    unsortedN: unfiled.length,
+    value: valueHere,
+  });
+  renderSpaceMapTree(unfiled.length);
+
   if (empty) {
     empty.classList.toggle("hidden", rows.length > 0);
     const label = empty.querySelector(".v-label");
     const p = empty.querySelector("p");
-    // Live Spaces map empty (root or nested): Empty location + bin/shelf/tote hint.
+    // Live Pq empty: Empty location + bin/shelf/tote hint.
     if (label) label.textContent = "Empty location";
     if (p) p.textContent = "Add a bin, shelf or tote to start mapping your shelves.";
   }
@@ -3978,10 +4108,13 @@ function renderSpaces() {
   const itemsEmpty = $("spaceItemsEmpty");
   const itemsLabel = $("spaceItemsLabel");
   if (itemsLabel) {
-    // Live Pq root rail: "Unsorted · No Location · {n}"; nested: items at this location.
-    itemsLabel.textContent = parentId
-      ? "ITEMS HERE"
-      : `Unsorted · No Location · ${unfiled.length}`;
+    // Live Pq: "Loose in {name|here} · n" nested; "Unsorted · No Location · n" at root.
+    if (parentId) {
+      const hereName = spaceById(parentId)?.name || "here";
+      itemsLabel.textContent = `Loose in ${hereName} · ${cardsHere.length}`;
+    } else {
+      itemsLabel.textContent = `Unsorted · No Location · ${unfiled.length}`;
+    }
   }
   if (itemsRoot) {
     const list = parentId ? cardsHere : unfiled;
