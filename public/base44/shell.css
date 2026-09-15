@@ -319,6 +319,14 @@ body.b44 {
   cursor: not-allowed;
 }
 
+/* Live settings card Delete is icon-only beside Edit (not flex-1). */
+.b44-actions .m-btn.m-btn-danger {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
 .b44-status {
   margin-top: 12px;
   font-family: Inter, sans-serif;
