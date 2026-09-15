@@ -212,7 +212,7 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /id="scanAssistForm"/);
     assert.match(html, /scan-assistant/);
     assert.match(html, /No shipments yet/);
-    assert.match(html, /Packages appear here once an order is created\./);
+    assert.match(html, /Packages appear here once an order is created from Listings or eBay Sync./);
     assert.match(html, /b44-ful-empty-icon/);
     assert.match(shellJs, /DROP HERE/);
     assert.match(html, /DROP IMAGES HERE/);
@@ -290,6 +290,10 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(shellJs, /D ON MARKET/);
     assert.doesNotMatch(shellJs, /OFF MARKET/);
     assert.match(html, /id="fulHubs"/);
+    assert.match(shellJs, /STEP \$\{stage\.n\}/);
+    assert.match(shellJs, /STEP \$\{stage\.n\}/);
+    assert.match(html, /from Listings or eBay Sync/);
+    assert.doesNotMatch(html, /Packages appear here once an order is created\.(?! from)/);
     assert.match(html, /id="fulSheet"/);
     assert.match(html, /id="btnFulAdvance"/);
     assert.match(html, /System/);

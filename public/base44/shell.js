@@ -100,7 +100,7 @@ const COLLECTIONS_KEY = "scouter-collections-v1";
 const SHIPS_KEY = "scouter-shipments-v1";
 const EBAY_KEY = "scouter-ebay-connected-v1";
 
-/** Live ale/l_ mobile fulfilment hubs (Channel · FULFILMENT). */
+/** Live fle/ld desk fulfilment hubs (Channel · FULFILMENT). */
 const SHIP_STAGES = [
   { key: "ready_to_ship", n: 1, label: "Ready to ship", next: "dropped_off", core: "#8FA3AD", hi: "#FFFFFF" },
   { key: "dropped_off", n: 2, label: "Dropped at carrier", next: "in_transit", core: "#8FA3AD", hi: "#FFFFFF" },
@@ -5258,7 +5258,7 @@ function renderChannel() {
   const fulHubs = $("fulHubs");
   const fulEmpty = $("fulEmpty");
   if (fulEmpty) {
-    // Live fle empty: Truck icon + No shipments yet + Packages appear…
+    // Live fle empty: Truck icon + No shipments yet + Packages appear… from Listings or eBay Sync.
     fulEmpty.classList.toggle("hidden", ships.length > 0);
   }
   if (fulHubs) {
@@ -5302,9 +5302,12 @@ function fulHubSectionHtml(stage, rows) {
       ? `<div class="b44-scout-tile-card" style="width:60px;justify-content:center;display:flex;align-items:center"><div class="b44-scout-tile-img" style="width:60px;height:196px;color:${esc(stage.hi)}">+${rows.length - shown.length}</div></div>`
       : "";
   const body = `<div class="b44-scout-group-rail">${shown.map((sh) => fulTileHtml(sh, stage)).join("")}${more}</div>`;
+  // Live fle → Wre: sub `STEP ${n}` above stage label
+  const sub = `STEP ${stage.n}`;
   return `<section class="b44-channel-hub" data-ful-hub="${esc(stage.key)}">
     <div class="b44-channel-hub-head">
       <span class="b44-channel-hub-dot" style="background:${esc(stage.core)};box-shadow:0 0 10px 1px ${esc(stage.core)}"></span>
+      <span class="v-label" style="font-size:9px">${esc(sub)}</span>
       <span class="b44-channel-hub-label">${esc(stage.label)}</span>
       <span class="v-readout b44-channel-hub-count" style="color:${esc(stage.hi)}">${pad2(count)}</span>
     </div>
