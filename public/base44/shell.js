@@ -15,6 +15,8 @@ const state = {
   route: "/scan-intake",
   items: [],
   spaces: [],
+  collections: [],
+  itemCollectionsOpen: false,
   draftPhotos: [],
   title: "",
   barcode: "",
@@ -84,6 +86,7 @@ const state = {
 };
 
 const SPACES_KEY = "scouter-spaces-v1";
+const COLLECTIONS_KEY = "scouter-collections-v1";
 const SHIPS_KEY = "scouter-shipments-v1";
 const EBAY_KEY = "scouter-ebay-connected-v1";
 
@@ -1931,6 +1934,68 @@ function createPkShipPreset() {
   if (state.settingsTab === "shipping") renderSettings();
 }
 
+function loadCollections() {
+  try {
+    const raw = localStorage.getItem(COLLECTIONS_KEY);
+    state.collections = raw ? JSON.parse(raw) : [];
+  } catch {
+    state.collections = [];
+  }
+  if (!Array.isArray(state.collections)) state.collections = [];
+}
+
+function saveCollections() {
+  localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(state.collections));
+}
+
+/** Live OK item Collections field — empty shows "No collections yet." */
+function renderItemCollections(it) {
+  loadCollections();
+  const ids = Array.isArray(it?.collectionIds)
+    ? it.collectionIds
+    : Array.isArray(it?.collection_ids)
+      ? it.collection_ids
+      : [];
+  const n = ids.filter((id) => state.collections.some((c) => c.id === id)).length;
+  if ($("itemCollectionsSummary")) $("itemCollectionsSummary").textContent = `${n} selected`;
+  const panel = $("itemCollectionsPanel");
+  const empty = $("itemCollectionsEmpty");
+  const list = $("itemCollectionsList");
+  if (panel) panel.classList.toggle("hidden", !state.itemCollectionsOpen);
+  if (empty) empty.classList.toggle("hidden", state.collections.length > 0);
+  if (list) {
+    list.innerHTML = state.collections
+      .map((c) => {
+        const on = ids.includes(c.id);
+        return `<label class="b44-item-collection-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;cursor:pointer">
+          <input type="checkbox" data-collection-id="${esc(c.id)}" ${on ? "checked" : ""} />
+          <span style="font-size:13px;color:var(--b44-mid,#8a9eab)">${esc(c.name || "Untitled")}</span>
+        </label>`;
+      })
+      .join("");
+    list.querySelectorAll("[data-collection-id]").forEach((box) => {
+      box.addEventListener("change", () => {
+        const cur = currentItemPage();
+        if (!cur) return;
+        const set = new Set(
+          Array.isArray(cur.collectionIds)
+            ? cur.collectionIds
+            : Array.isArray(cur.collection_ids)
+              ? cur.collection_ids
+              : [],
+        );
+        if (box.checked) set.add(box.dataset.collectionId);
+        else set.delete(box.dataset.collectionId);
+        cur.collectionIds = [...set];
+        cur.collection_ids = cur.collectionIds;
+        cur.updatedAt = new Date().toISOString();
+        saveItems();
+        renderItemCollections(cur);
+      });
+    });
+  }
+}
+
 function renderItemPage(id) {
   const it = state.items.find((x) => x.id === id);
   if (!it) {
@@ -1951,6 +2016,8 @@ function renderItemPage(id) {
   if ($("itemPhase")) $("itemPhase").value = phase;
   if ($("itemChannel")) $("itemChannel").value = it.liveChannel || it.live_channel || "";
   fillItemSpaceOptions(it.spaceId || it.storage_location_id || "");
+  state.itemCollectionsOpen = false;
+  renderItemCollections(it);
   if ($("itemNotes")) $("itemNotes").value = it.notes || "";
   if ($("itemPurchase")) $("itemPurchase").value = String(it.purchasePrice ?? it.purchase_price ?? 0);
   if ($("itemMarket")) $("itemMarket").value = String(it.marketValue ?? it.market_value ?? 0);
@@ -4822,6 +4889,12 @@ function bind() {
   });
   $("itemTitle")?.addEventListener("change", (e) => patchItemField("title", e.target.value));
   $("itemNotes")?.addEventListener("change", (e) => patchItemField("notes", e.target.value));
+  $("btnItemCollections")?.addEventListener("click", () => {
+    state.itemCollectionsOpen = !state.itemCollectionsOpen;
+    const it = currentItemPage();
+    if (it) renderItemCollections(it);
+  });
+  $("ebayWarn")?.addEventListener("click", () => navigate("/settings"));
   $("itemCategory")?.addEventListener("change", (e) => patchItemField("category", e.target.value));
   $("itemPhase")?.addEventListener("change", (e) => patchItemField("listingStatus", e.target.value));
   $("itemChannel")?.addEventListener("change", (e) => patchItemField("liveChannel", e.target.value));
@@ -5291,6 +5364,7 @@ function bind() {
 }
 
 loadItems();
+loadCollections();
 loadSettingsLocal();
 bind();
 setIntakeMode("list");
