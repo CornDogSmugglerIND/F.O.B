@@ -562,7 +562,7 @@ async function intakePhotosOntoScouter(fileList) {
   }
   setScouterUploadHud(null);
   if (!created.length) {
-    setScouterStatus("No photos uploaded — check the file and try again.");
+    setScouterStatus("No photos uploaded — check the file and try again");
     // Live tle: ht.error("No photos uploaded — check the file and try again")
     showToast("No photos uploaded — check the file and try again", "err");
     return;
@@ -1074,7 +1074,8 @@ function submitScanAssist() {
   if (input) input.value = "";
   $("scanAssistEmpty")?.classList.add("hidden");
   if ($("scanAssistStatus")) {
-    $("scanAssistStatus").textContent = "Agent not connected in this shell.";
+    // Live _he body is MCP-backed — port keeps chrome only; no invent status line.
+    $("scanAssistStatus").textContent = "";
   }
   msgs.scrollTop = msgs.scrollHeight;
 }
@@ -1942,10 +1943,8 @@ function deleteAsset() {
 
 function saveAssetSheet() {
   const title = ($("assetTitle")?.value || "").trim();
-  if (!title) {
-    if ($("assetSheetStatus")) $("assetSheetStatus").textContent = "Title is required.";
-    return;
-  }
+  // Live New card / asset save has no invent required-title status line.
+  if (!title) return;
   const phase = $("assetPhase")?.value || "sorted";
   const qty = Number($("assetQty")?.value || 1) || 1;
   const marketValue = Number($("assetMarket")?.value || 0) || 0;
@@ -4119,12 +4118,10 @@ async function runIdentify() {
 
 async function lookupBarcode(code) {
   const trimmed = String(code || "").trim();
-  if (!trimmed) {
-    setStatus("Enter a barcode");
-    return;
-  }
+  // Live CR Look up: empty submit is a silent no-op.
+  if (!trimmed) return;
   state.barcode = trimmed;
-  setStatus("Looking up barcode…");
+  setStatus(`Looking up ${trimmed}…`);
   try {
     const res = await fetch(`/api/scouter/barcode/${encodeURIComponent(trimmed)}`);
     const result = await res.json();
@@ -4160,7 +4157,8 @@ function stageItem() {
   state.items.unshift(item);
   saveItems();
   resetDraft();
-  setStatus("Staged");
+  // Live has no "Staged" status after this path.
+  setStatus("");
   setIntakeMode("list");
   navigate("/inventory");
 }
@@ -6070,10 +6068,7 @@ async function crLookup(code) {
 async function crAddItem(draft, code) {
   const d = draft || crReadDraftFromForm();
   const title = (d.title || "").trim();
-  if (!title) {
-    setScouterStatus("Title is required.");
-    return false;
-  }
+  // Live CR Add item uses the title as-is — no invent required-title guard toast.
   try {
     const image = d.imageUrl || crState.photoDataUrl || "";
     const photos = image ? [{ dataUrl: image, name: "barcode" }] : [];

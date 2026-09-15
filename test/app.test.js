@@ -301,6 +301,14 @@ test("GET / serves Base44 port shell", async () => {
     assert.doesNotMatch(shellJs, /No groups to identify/);
     assert.doesNotMatch(shellJs, /Drop a folder of scans · or click to browse/);
     assert.doesNotMatch(shellJs, /No photos — drop image files onto the scouter/);
+    // Live CR barcode: Looking up {code}…; no invent Enter/Staged/Title required/agent status.
+    assert.doesNotMatch(shellJs, /Enter a barcode/);
+    assert.doesNotMatch(shellJs, /Looking up barcode…/);
+    assert.doesNotMatch(shellJs, /setStatus\("Staged"\)/);
+    assert.doesNotMatch(shellJs, /Title is required/);
+    assert.doesNotMatch(shellJs, /Agent not connected in this shell/);
+    assert.doesNotMatch(html, /aria-label="Desktop command bar"/);
+    assert.doesNotMatch(html, /aria-label="Confidence filter"/);
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
     assert.match(shellJs, /No listing built yet — run the AI writer on this card first/);
     assert.match(shellJs, /Product lookup failed/);
