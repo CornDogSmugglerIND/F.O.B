@@ -254,6 +254,12 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(shellJs, /Verified — approved/);
     assert.match(shellJs, /Failed to add item/);
     assert.match(shellJs, /Publish failed:/);
+    assert.match(shellJs, /Preset created/);
+    assert.match(shellJs, /Preset deleted/);
+    assert.match(shellJs, /Name is required/);
+    assert.match(shellJs, /Nothing to export/);
+    assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
+    assert.match(shellJs, /No listing built yet — run the AI writer on this card first/);
     assert.match(html, /New Preset/);
     assert.match(html, /Shipping Presets/);
     assert.match(html, /b44-pk-ship-create/);

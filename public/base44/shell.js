@@ -594,6 +594,8 @@ function exportScouterCsv() {
   );
   if (!rows.length) {
     setScouterStatus("Nothing to export — move cards to Listing Built or Listed first.");
+    // Live tle Export: ht.error("Nothing to export")
+    showToast("Nothing to export", "err");
     return;
   }
   const condMap = {
@@ -2409,7 +2411,10 @@ async function publishItemEbay() {
     return;
   }
   if ((it.listingStatus || "") !== "ready_to_list") {
-    setItemPageStatus("No listing built yet — run Write listing with AI first");
+    // Live tle be(): ht.error("No listing built yet — run the AI writer on this card first")
+    const msg = "No listing built yet — run the AI writer on this card first";
+    setItemPageStatus(msg);
+    showToast(msg, "err");
     return;
   }
   const btn = $("btnItemPublishEbay");
@@ -2623,6 +2628,8 @@ function renderItemShipManage() {
         if (it) renderItemShipSummary(it);
         renderItemShipManage();
         if ($("itemShipManageStatus")) $("itemShipManageStatus").textContent = "Preset deleted";
+        // Live PK: ht.success("Preset deleted")
+        showToast("Preset deleted", "ok");
         if (state.settingsTab === "shipping") renderSettings();
       });
     });
@@ -2641,6 +2648,8 @@ function createPkShipPreset() {
   const name = ($("pkShipName")?.value || "").trim();
   if (!name) {
     if ($("itemShipManageStatus")) $("itemShipManageStatus").textContent = "Name is required";
+    // Live PK: ht.error("Name is required")
+    showToast("Name is required", "err");
     return;
   }
   btn?.classList.add("is-busy");
@@ -2672,6 +2681,8 @@ function createPkShipPreset() {
     if (it) renderItemShipSummary(it);
     renderItemShipManage();
     if ($("itemShipManageStatus")) $("itemShipManageStatus").textContent = "Preset created";
+    // Live PK: ht.success("Preset created")
+    showToast("Preset created", "ok");
     if (state.settingsTab === "shipping") renderSettings();
   } finally {
     btn?.classList.remove("is-busy");
@@ -3016,7 +3027,10 @@ async function startIntakeToGrouping() {
     return;
   }
   if (state.backsIncluded && photos.length % 2 !== 0) {
-    setStatus(`Odd file count (${photos.length}) — front/back pairing would misalign. Add or remove a scan.`);
+    const oddMsg = `Odd file count (${photos.length}) — front/back pairing would misalign. Add or remove a scan.`;
+    setStatus(oddMsg);
+    // Live Yle: ht.error(`Odd file count (${…}) — …`)
+    showToast(oddMsg, "err");
     $("batchOddWarn")?.classList.remove("hidden");
     return;
   }
@@ -3049,7 +3063,10 @@ async function startIntakeToGrouping() {
   regroupIntake();
   const cards = scans.filter((s) => s.isFront).length;
   setIntakeMode("grouping");
-  setStatus(`${cards} cards → ${state.intakeGroups.length} unique`);
+  const groupMsg = `${cards} cards → ${state.intakeGroups.length} unique`;
+  setStatus(groupMsg);
+  // Live Yle: ht.success(`${n} cards → ${m} unique`)
+  showToast(groupMsg, "ok");
 }
 
 async function startIdentificationFromGroups() {
@@ -6400,7 +6417,9 @@ function bind() {
     const step = itemPipeLabel(it);
     const status = it.listingStatus || "";
     if (!(status === "ready_to_list" || step === "Listing Built")) {
+      // Live tle be(): ht.error("No listing built yet — run the AI writer on this card first")
       state.readoutStatus = "No listing built yet — run the AI writer on this card first";
+      showToast(state.readoutStatus, "err");
       openScouterReadout(it.id);
       return;
     }
