@@ -368,6 +368,19 @@ test("GET / serves Base44 port shell", async () => {
     assert.doesNotMatch(shellJs, /assetSheetStatus"\)\) \$\{?"Archived"/);
     assert.doesNotMatch(shellJs, /textContent = "Archived"/);
     assert.match(shellJs, /showToast\(`\$\{it\.title \|\| "Untitled"\} is live on eBay`/);
+    // Live toast-only group/ship/UN invent removals (?v=105).
+    assert.doesNotMatch(shellJs, /setStatus\("Group split"\)/);
+    assert.doesNotMatch(shellJs, /setStatus\("Front ↔ back swapped"\)/);
+    assert.doesNotMatch(shellJs, /setStatus\(groupMsg\)/);
+    assert.doesNotMatch(shellJs, /setStatus\(oddMsg\)/);
+    assert.doesNotMatch(shellJs, /itemShipManageStatus"\)\) \$\{?"Preset deleted"/);
+    assert.doesNotMatch(shellJs, /textContent = "Preset deleted"/);
+    assert.doesNotMatch(shellJs, /textContent = "Preset created"/);
+    assert.doesNotMatch(shellJs, /textContent = "Name is required"/);
+    assert.doesNotMatch(shellJs, /unStatus = "AI engine failed/);
+    assert.doesNotMatch(shellJs, /unStatus = "Failed to save draft"/);
+    assert.doesNotMatch(shellJs, /readoutStatus = "Draft saved/);
+    assert.match(shellJs, /showToast\("Draft saved → Ready to List", "ok"\)/);
 
 
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);

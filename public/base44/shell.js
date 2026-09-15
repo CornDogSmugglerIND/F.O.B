@@ -2561,8 +2561,7 @@ function renderItemShipManage() {
         fillItemShipOptions(it?.shippingPresetId || it?.shipping_preset_id || "");
         if (it) renderItemShipSummary(it);
         renderItemShipManage();
-        if ($("itemShipManageStatus")) $("itemShipManageStatus").textContent = "Preset deleted";
-        // Live PK: ht.success("Preset deleted")
+        // Live PK: ht.success("Preset deleted") — toast only.
         showToast("Preset deleted", "ok");
         if (state.settingsTab === "shipping") renderSettings();
       });
@@ -2581,8 +2580,7 @@ function createPkShipPreset() {
   if (btn?.classList.contains("is-busy")) return;
   const name = ($("pkShipName")?.value || "").trim();
   if (!name) {
-    if ($("itemShipManageStatus")) $("itemShipManageStatus").textContent = "Name is required";
-    // Live PK: ht.error("Name is required")
+    // Live PK: ht.error("Name is required") — toast only.
     showToast("Name is required", "err");
     return;
   }
@@ -2614,8 +2612,7 @@ function createPkShipPreset() {
     fillItemShipOptions(it?.shippingPresetId || it?.shipping_preset_id || "");
     if (it) renderItemShipSummary(it);
     renderItemShipManage();
-    if ($("itemShipManageStatus")) $("itemShipManageStatus").textContent = "Preset created";
-    // Live PK: ht.success("Preset created")
+    // Live PK: ht.success("Preset created") — toast only.
     showToast("Preset created", "ok");
     if (state.settingsTab === "shipping") renderSettings();
   } finally {
@@ -2937,7 +2934,7 @@ function splitIntakeGroup(gi, ids) {
   state.groupSplitOpen = null;
   state.groupSplitPick = [];
   renderGrouping();
-  setStatus("Group split");
+  // Live: ht.success("Group split") — toast only.
   showToast("Group split", "ok");
 }
 
@@ -2946,7 +2943,7 @@ function swapFrontBack() {
   state.groupSplitOpen = null;
   state.groupSplitPick = [];
   regroupIntake();
-  setStatus("Front ↔ back swapped");
+  // Live: ht.success("Front ↔ back swapped") — toast only.
   showToast("Front ↔ back swapped", "ok");
 }
 
@@ -2956,8 +2953,7 @@ async function startIntakeToGrouping() {
   if (!photos.length) return;
   if (state.backsIncluded && photos.length % 2 !== 0) {
     const oddMsg = `Odd file count (${photos.length}) — front/back pairing would misalign. Add or remove a scan.`;
-    setStatus(oddMsg);
-    // Live Yle: ht.error(`Odd file count (${…}) — …`)
+    // Live Yle: ht.error — toast + #batchOddWarn only (no invent identifyStatus).
     showToast(oddMsg, "err");
     $("batchOddWarn")?.classList.remove("hidden");
     return;
@@ -2992,8 +2988,7 @@ async function startIntakeToGrouping() {
   const cards = scans.filter((s) => s.isFront).length;
   setIntakeMode("grouping");
   const groupMsg = `${cards} cards → ${state.intakeGroups.length} unique`;
-  setStatus(groupMsg);
-  // Live Yle: ht.success(`${n} cards → ${m} unique`)
+  // Live Yle: ht.success(`${n} cards → ${m} unique`) — toast only.
   showToast(groupMsg, "ok");
 }
 
@@ -3936,8 +3931,8 @@ async function runUnEngine() {
   await new Promise((r) => setTimeout(r, 400));
   state.unPhase = "error";
   state.unDraft = null;
-  // Live UN: ht.error("AI engine failed — check item data") — no invent device-gate suffix.
-  state.unStatus = "AI engine failed — check item data";
+  // Live UN: ht.error("AI engine failed — check item data") — toast + phase only.
+  state.unStatus = "";
   showToast("AI engine failed — check item data", "err");
   renderUnSheet();
 }
@@ -3946,8 +3941,8 @@ function saveUnDraft() {
   const it = state.items.find((x) => x.id === state.unItemId);
   const d = state.unDraft;
   if (!it || !d) {
-    state.unStatus = "Failed to save draft";
-    // Live UN: ht.error("Failed to save draft")
+    // Live UN: ht.error("Failed to save draft") — toast only.
+    state.unStatus = "";
     showToast("Failed to save draft", "err");
     renderUnSheet();
     return;
@@ -3974,7 +3969,7 @@ function saveUnDraft() {
       it.staged = true;
       it.updatedAt = new Date().toISOString();
       saveItems();
-      state.readoutStatus = "Draft saved → Ready to List";
+      // Live UN: ht.success("Draft saved → Ready to List") then close — toast only, no invent readout.
       closeUnSheet();
       if (state.lockedItemId) openScouterReadout(state.lockedItemId);
       renderCollection();
@@ -3982,7 +3977,7 @@ function saveUnDraft() {
       showToast("Draft saved → Ready to List", "ok");
     } catch {
       // Live UN: ht.error("Failed to save draft")
-      state.unStatus = "Failed to save draft";
+      state.unStatus = "";
       showToast("Failed to save draft", "err");
       renderUnSheet();
     } finally {
