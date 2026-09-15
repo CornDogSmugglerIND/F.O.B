@@ -215,6 +215,8 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /Packages appear here once an order is created\./);
     assert.match(html, /b44-ful-empty-icon/);
     assert.match(shellJs, /DROP HERE/);
+    assert.match(html, /DROP IMAGES HERE/);
+    assert.match(html, /b44-asset-drop/);
     assert.match(html, /id="fulStats"/);
     assert.match(html, /PACKAGE ·/);
     assert.match(html, /PAYOUT EST\./);

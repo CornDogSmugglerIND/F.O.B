@@ -1619,18 +1619,24 @@ function saveAssetSheet() {
 }
 
 async function addAssetImageFiles(fileList) {
-  const files = [...(fileList || [])];
-  for (const file of files) {
-    if (!file.type?.startsWith("image/")) continue;
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-    if (dataUrl) state.assetPhotos.push({ dataUrl, name: file.name });
+  const drop = $("btnAssetAddImages");
+  drop?.classList.add("is-busy");
+  try {
+    const files = [...(fileList || [])];
+    for (const file of files) {
+      if (!file.type?.startsWith("image/")) continue;
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+      if (dataUrl) state.assetPhotos.push({ dataUrl, name: file.name });
+    }
+    renderAssetThumbs();
+  } finally {
+    drop?.classList.remove("is-busy");
   }
-  renderAssetThumbs();
 }
 
 
@@ -5921,7 +5927,7 @@ function bind() {
   $("btnAssetClose")?.addEventListener("click", () => closeAssetSheet());
   $("btnAssetCancel")?.addEventListener("click", () => closeAssetSheet());
   $("btnAssetSave")?.addEventListener("click", () => saveAssetSheet());
-  $("btnAssetAddImages")?.addEventListener("click", () => $("assetImages")?.click());
+  // Live: label[for=assetImages] opens the picker; busy chrome via addAssetImageFiles.
   $("assetImages")?.addEventListener("change", async (e) => {
     await addAssetImageFiles(e.target.files);
     e.target.value = "";

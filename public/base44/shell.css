@@ -3074,3 +3074,51 @@ textarea.b44-input {
 .b44-scout-group.b44-drop-hot .b44-scout-drop-here {
   display: block;
 }
+
+/* Live asset sheet Images drop — dashed zone + Upload + DROP IMAGES HERE */
+.b44-asset-drop {
+  display: block;
+  border: 1px dashed #232a2e;
+  padding: 16px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.b44-asset-drop:hover {
+  border-color: #4f9e7a;
+}
+.b44-asset-drop-idle,
+.b44-asset-drop-busy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.b44-asset-drop.is-busy .b44-asset-drop-idle {
+  display: none;
+}
+.b44-asset-drop.is-busy .b44-asset-drop-busy {
+  display: flex;
+}
+.b44-asset-drop-busy.hidden {
+  display: none;
+}
+.b44-asset-drop.is-busy .b44-asset-drop-busy.hidden {
+  display: flex;
+}
+.b44-asset-drop-icon {
+  display: block;
+  margin: 0 auto;
+  color: #6a6a7a;
+}
+.b44-asset-drop-label {
+  display: block;
+  margin-top: 4px;
+}
+.b44-asset-drop-spin {
+  display: block;
+  margin: 0 auto;
+  color: #4f9e7a;
+  animation: b44-spin 0.8s linear infinite;
+}
