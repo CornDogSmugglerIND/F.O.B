@@ -325,6 +325,16 @@ test("GET / serves Base44 port shell", async () => {
     assert.doesNotMatch(shellJs, /Marked Ended locally/);
     assert.match(shellJs, /Relist failed/);
     assert.match(shellJs, /End failed/);
+    // Live yle/UN/Mle/CR invent removals (?v=100).
+    assert.match(shellJs, /Diagnostic call failed/);
+    assert.doesNotMatch(shellJs, /Connect it on Channel first/);
+    assert.doesNotMatch(shellJs, /server credentials missing/);
+    assert.doesNotMatch(shellJs, /Listing engine isn't connected on this device/);
+    assert.doesNotMatch(shellJs, /this shell shows the live chrome/);
+    assert.doesNotMatch(shellJs, /scan\(s\) ready/);
+    assert.match(shellJs, /\$\{state\.draftPhotos\.length\} scans ready/);
+    assert.doesNotMatch(shellJs, /Photos kept/);
+    assert.doesNotMatch(shellJs, /Lookup failed:/);
 
 
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);

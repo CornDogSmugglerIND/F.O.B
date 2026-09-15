@@ -1066,17 +1066,10 @@ function submitScanAssist() {
   user.className = "b44-assist-msg b44-assist-msg-user";
   user.textContent = text;
   msgs.appendChild(user);
-  const bot = document.createElement("div");
-  bot.className = "b44-assist-msg b44-assist-msg-assistant";
-  bot.textContent =
-    "Scan Batch Assistant needs the live MCP agent (scan_batch_assistant) on the server — this shell shows the live chrome and empty state only.";
-  msgs.appendChild(bot);
+  // Live _he: yhe MCP agent reply — no invent assistant copy in this shell.
   if (input) input.value = "";
   $("scanAssistEmpty")?.classList.add("hidden");
-  if ($("scanAssistStatus")) {
-    // Live _he body is MCP-backed — port keeps chrome only; no invent status line.
-    $("scanAssistStatus").textContent = "";
-  }
+  if ($("scanAssistStatus")) $("scanAssistStatus").textContent = "";
   msgs.scrollTop = msgs.scrollHeight;
 }
 
@@ -3947,12 +3940,12 @@ async function runUnEngine() {
   state.unPhase = "running";
   state.unStatus = "";
   renderUnSheet();
-  // Live sie() needs Base44 listing AI — not wired here. Fail honestly like live error path.
+  // Live sie() needs Base44 listing AI — not wired here. Fail like live error path.
   await new Promise((r) => setTimeout(r, 400));
   state.unPhase = "error";
   state.unDraft = null;
-  // Live UN: ht.error("AI engine failed — check item data")
-  state.unStatus = "AI engine failed — check item data. Listing engine isn't connected on this device.";
+  // Live UN: ht.error("AI engine failed — check item data") — no invent device-gate suffix.
+  state.unStatus = "AI engine failed — check item data";
   showToast("AI engine failed — check item data", "err");
   renderUnSheet();
 }
@@ -4075,7 +4068,8 @@ async function addFiles(fileList) {
   renderPhotos();
   updateSave();
   setIntakeMode("batch");
-  setStatus(`${state.draftPhotos.length} scan(s) ready`);
+  // Live Mle: "{n} scans ready"
+  setStatus(`${state.draftPhotos.length} scans ready`);
 }
 
 async function runIdentify() {
@@ -4105,12 +4099,12 @@ async function runIdentify() {
       updateSave();
       return true;
     }
-    setStatus(result.message || "No match — set Manual. Photos kept.");
+    setStatus(result.message || "No match found");
     updateSave();
     return false;
   } catch (e) {
     setIntakeMode("batch");
-    setStatus(`Identify failed: ${e.message}. Photos kept.`);
+    setStatus("No match found");
     updateSave();
     return false;
   }
@@ -4133,7 +4127,9 @@ async function lookupBarcode(code) {
       setStatus(result.message || result.error || "No barcode match");
     }
   } catch (e) {
-    setStatus(`Lookup failed: ${e.message}`);
+    // Live CR: ht.error("Product lookup failed")
+    setStatus("Product lookup failed");
+    showToast("Product lookup failed", "err");
   }
   updateSave();
 }
@@ -5796,38 +5792,14 @@ function runEbayDiagnostic() {
     result.innerHTML = "";
   }
   setEbayDiagBusy(true);
-  // Local port: no server ebayDiagnostic function — honest chrome shaped like live yle.
+  // Live yle: invoke ebayDiagnostic — no server here → catch "Diagnostic call failed".
   window.setTimeout(() => {
     setEbayDiagBusy(false);
-    if (!state.ebayConnected) {
-      showEbayDiagError("Diagnostic call failed — eBay isn't connected. Connect it on Channel first.");
-      return;
+    if (result) {
+      result.classList.add("hidden");
+      result.innerHTML = "";
     }
-    const listed = state.items.filter((it) => itemPipeLabel(it) === "Listed").length;
-    showEbayDiagError("");
-    if (!result) return;
-    result.classList.remove("hidden");
-    const buckets = [
-      { bucket: "Active", ack: "Failure", error: "eBay API not called — server credentials missing.", total_entries: null },
-      { bucket: "Unsold", ack: "Failure", error: "eBay API not called — server credentials missing.", total_entries: null },
-    ];
-    result.innerHTML =
-      `<div class="b44-ebay-diag-sync">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7fb069" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-        <span>Synced in Coalition HUD right now: <b>${esc(String(listed))}</b> listings</span>
-      </div>` +
-      buckets
-        .map(
-          (a) => `<div class="b44-ebay-diag-bucket">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <span style="font-size:13px;font-weight:600;color:#e8e4dc">${esc(a.bucket)}</span>
-          <span style="font-size:12px;color:${a.ack === "Success" ? "#7fb069" : "#d97757"}">${esc(a.ack)}</span>
-        </div>
-        ${a.error ? `<div style="font-size:12px;color:#d97757;margin-top:4px">${esc(a.error)}</div>` : ""}
-        ${a.total_entries != null ? `<div style="font-size:12px;color:#9a9488;margin-top:4px">eBay reports <b style="color:#e8e4dc">${esc(String(a.total_entries))}</b> total in this bucket</div>` : ""}
-      </div>`,
-        )
-        .join("");
+    showEbayDiagError("Diagnostic call failed");
   }, 350);
 }
 
