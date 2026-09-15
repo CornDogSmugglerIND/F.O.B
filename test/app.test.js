@@ -309,6 +309,9 @@ test("GET / serves Base44 port shell", async () => {
     assert.doesNotMatch(shellJs, /Agent not connected in this shell/);
     assert.doesNotMatch(html, /aria-label="Desktop command bar"/);
     assert.doesNotMatch(html, /aria-label="Confidence filter"/);
+    // Live Agent Connect Copy toggles Copied/Copy only — invent failure label removed.
+    assert.doesNotMatch(shellJs, /textContent = "Copy failed"/);
+
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
     assert.match(shellJs, /No listing built yet — run the AI writer on this card first/);
     assert.match(shellJs, /Product lookup failed/);

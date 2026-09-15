@@ -6758,11 +6758,7 @@ function bind() {
         if ($("btnCopyMcp")) $("btnCopyMcp").textContent = "Copy";
       }, 1800);
     } catch {
-      // Live has no status line here — fall back to button label.
-      if ($("btnCopyMcp")) $("btnCopyMcp").textContent = "Copy failed";
-      window.setTimeout(() => {
-        if ($("btnCopyMcp")) $("btnCopyMcp").textContent = "Copy";
-      }, 1800);
+      // Live Agent Connect Copy: catch is empty — button stays Copy.
     }
   });
   document.querySelectorAll("[data-mcp-client]").forEach((btn) => {
