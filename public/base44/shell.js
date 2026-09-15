@@ -2534,7 +2534,6 @@ function renderItemMovePanel(open) {
     html += `<button type="button" class="m-btn" data-move-add="root" style="margin-top:8px">+ New root location</button>`;
   }
 
-  html += `<button type="button" class="m-btn" data-item-move="" style="width:100%;margin-top:8px">Clear location</button>`;
   panel.innerHTML = html;
 
   panel.querySelectorAll("[data-move-toggle]").forEach((btn) => {
@@ -2556,7 +2555,7 @@ function renderItemMovePanel(open) {
       const next = btn.dataset.itemMove || "";
       if ($("itemSpace")) $("itemSpace").value = next;
       patchItemField("spaceId", next);
-      setItemPageStatus(next ? "Location updated" : "Location cleared");
+      // Live kK onSelect: update storage_location_id and close — no toast
       renderItemMovePanel(false);
     });
   });

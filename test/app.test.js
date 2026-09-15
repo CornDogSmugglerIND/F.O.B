@@ -114,6 +114,9 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /Same card — approve/);
     assert.match(html, /Not a match/);
     assert.match(html, /To scouter/);
+    assert.match(html, /id="btnItemBack"/);
+    assert.match(html, />BACK</);
+    assert.doesNotMatch(html, /← Scouter/);
     assert.match(html, /Duplicate/);
     assert.match(html, /Rail · Step 0/);
     assert.match(html, />Intake</);
