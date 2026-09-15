@@ -3138,7 +3138,7 @@ function renderSpaces() {
       const cards = itemsInSpace(s.id).length;
       const bits = [`${code}${esc(kind)}`];
       if (kids) bits.push(`${kids} inside`);
-      if (cards) bits.push(`${cards} card${cards === 1 ? "" : "s"}`);
+      if (cards) bits.push(`${cards} item${cards === 1 ? "" : "s"}`);
       return `<div class="v-panel v-cut-sm b44-item" data-open-space="${esc(s.id)}" style="cursor:pointer"><div class="meta"><strong>${esc(s.name)}</strong><span>${bits.join(" · ")}</span></div><button type="button" class="m-btn" data-del-space="${esc(s.id)}">×</button></div>`;
     })
     .join("");
@@ -3179,17 +3179,22 @@ function renderSpaces() {
   const itemsEmpty = $("spaceItemsEmpty");
   const itemsLabel = $("spaceItemsLabel");
   if (itemsLabel) {
-    itemsLabel.textContent = parentId ? "CARDS HERE" : "UNFILED CARDS";
+    // Live Pq root rail: "Unsorted · No Location · {n}"; nested: items at this location.
+    itemsLabel.textContent = parentId
+      ? "ITEMS HERE"
+      : `Unsorted · No Location · ${unfiled.length}`;
   }
   if (itemsRoot) {
     const list = parentId ? cardsHere : unfiled;
     if (itemsEmpty) {
       itemsEmpty.classList.toggle("hidden", list.length > 0);
+      const lab = itemsEmpty.querySelector(".v-label");
       const p = itemsEmpty.querySelector("p");
+      if (lab) lab.textContent = parentId ? "No items here" : "No unsorted items";
       if (p) {
         p.textContent = parentId
-          ? "Cards filed into this location show up here."
-          : "Cards with no location sit here until you file them.";
+          ? "Items filed into this location show up here."
+          : "Items with no location sit here until you file them.";
       }
     }
     itemsRoot.innerHTML = list
@@ -3882,7 +3887,7 @@ function renderSettings() {
     tRoot.innerHTML = state.templates.map(templateCardHtml).join("");
     if (tEmpty) {
       tEmpty.classList.toggle("hidden", state.templates.length > 0);
-      tEmpty.textContent = "No templates yet. Create one to apply default markup and policies.";
+      tEmpty.innerHTML = `<div class="v-label" style="font-size:14px;font-weight:600;color:#E8EDEA;text-transform:none;letter-spacing:0">No templates yet</div><p class="b44-copy-soft" style="margin-top:4px;font-size:13px">Create one to apply default markup and policies.</p>`;
     }
     tRoot.querySelectorAll("[data-del-template]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -3934,7 +3939,7 @@ function renderSettings() {
     sRoot.innerHTML = state.shipping.map(shipCardHtml).join("");
     if (sEmpty) {
       sEmpty.classList.toggle("hidden", state.shipping.length > 0);
-      sEmpty.textContent = "No shipping presets yet. Add carriers and services to reuse on listings.";
+      sEmpty.innerHTML = `<div class="v-label" style="font-size:14px;font-weight:600;color:#E8EDEA;text-transform:none;letter-spacing:0">No shipping presets yet</div><p class="b44-copy-soft" style="margin-top:4px;font-size:13px">Add carriers and services to reuse on listings.</p>`;
     }
     sRoot.querySelectorAll("[data-del-ship]").forEach((btn) => {
       btn.addEventListener("click", () => {
