@@ -5337,7 +5337,6 @@ function setSettingsTab(tab) {
   const agent = tab === "agent";
   $("settingsSystemHead")?.classList.toggle("hidden", agent);
   $("settingsAgentHead")?.classList.toggle("hidden", !agent);
-  $("settingsPhonePanel")?.classList.toggle("hidden", agent);
   if (agent) refreshAiConnect();
 }
 
@@ -6858,40 +6857,6 @@ function bind() {
   $("btnFulSheetClose")?.addEventListener("click", () => closeFulSheet());
   $("btnFulAdvance")?.addEventListener("click", () => {
     if (state.fulSheetId) advanceShipment(state.fulSheetId);
-  });
-
-  $("btnExport")?.addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify({ items: state.items }, null, 2)], {
-      type: "application/json",
-    });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `coalition-intake-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-  });
-  $("btnImport")?.addEventListener("click", () => $("importFile").click());
-  $("importFile")?.addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result || ""));
-        const incoming = Array.isArray(parsed) ? parsed : parsed.items;
-        if (!Array.isArray(incoming)) throw new Error("Invalid file");
-        state.items = incoming;
-        saveItems();
-      } catch (err) {
-        setStatus(err.message || "Import failed");
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  });
-  $("btnWipe")?.addEventListener("click", () => {
-    if (!confirm("Wipe local intake on this phone?")) return;
-    state.items = [];
-    saveItems();
   });
 }
 

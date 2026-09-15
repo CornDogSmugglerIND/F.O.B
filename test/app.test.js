@@ -287,6 +287,10 @@ test("GET / serves Base44 port shell", async () => {
     // Live Pq Spaces has no Filter spaces search — Back + Add location only.
     assert.doesNotMatch(html, /id="spaceFilter"/);
     assert.doesNotMatch(html, /Filter spaces/);
+    // Live Settings has no This phone Export/Import/Wipe panel.
+    assert.doesNotMatch(html, /id="settingsPhonePanel"/);
+    assert.doesNotMatch(html, /This phone/);
+    assert.doesNotMatch(html, /id="btnWipe"/);
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
     assert.match(shellJs, /No listing built yet — run the AI writer on this card first/);
     assert.match(shellJs, /Product lookup failed/);
