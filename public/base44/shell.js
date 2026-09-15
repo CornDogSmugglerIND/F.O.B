@@ -892,6 +892,8 @@ function submitSpaceCreateModal() {
   });
   saveSpaces();
   closeSpaceCreateModal();
+  // Live Iq Spaces Map create toast: "{name} created"
+  showToast(`${name} created`, "ok");
 }
 
 /** Live $K attention cards — only emit when count > 0. */
@@ -1580,6 +1582,7 @@ function duplicateAsset() {
   openScouterReadout(copy.id);
   renderCollection();
   updateSitrep();
+  showToast("Duplicated", "ok");
 }
 
 function archiveAsset() {
@@ -1611,6 +1614,7 @@ function deleteAsset() {
       closeScouterReadout();
       renderCollection();
       updateSitrep();
+      showToast("Item deleted", "ok");
     },
   });
 }
@@ -2161,6 +2165,8 @@ function renderItemMovePanel(open) {
     state.itemMoveAddParent = null;
     fillItemSpaceOptions(cur);
     renderItemMovePanel(true);
+    // Live kK / tree create toast
+    showToast("Location added", "ok");
   });
   $("itemMoveNewName")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") $("btnItemMoveAddGo")?.click();
@@ -2397,6 +2403,7 @@ function duplicateItemPage() {
   updateSitrep();
   navigate(`/item/${copy.id}`);
   setItemPageStatus("Duplicated");
+  showToast("Duplicated", "ok");
 }
 
 function archiveItemPage() {
@@ -2429,6 +2436,7 @@ function deleteItemPage() {
       state.itemPhotos = [];
       renderCollection();
       updateSitrep();
+      showToast("Item deleted", "ok");
       navigate("/");
     },
   });
@@ -4206,6 +4214,8 @@ function renderSpaces() {
       state.spaces = state.spaces.filter((s) => !drop.has(s.id));
       state.spaceTrail = state.spaceTrail.filter((x) => !drop.has(x));
       saveSpaces();
+      // Live Rq / Iq remove toast
+      showToast("Location removed", "ok");
     });
   });
 
