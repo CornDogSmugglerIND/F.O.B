@@ -160,6 +160,13 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(shellJs, /label: "Unsorted"/);
     assert.match(shellJs, /function publishStorageHud/);
     assert.match(shellJs, /function publishChannelHud/);
+    assert.match(html, /id="settingsAgentHead"/);
+    assert.match(html, /id="settingsSystemHead"/);
+    assert.match(html, /m-chip m-chip-on/);
+    assert.match(html, /Assistants cache the tool list/);
+    assert.match(html, /OAuth — each client signs you in here/);
+    assert.doesNotMatch(html, /id="aiConnectStatus"/);
+    assert.match(shellJs, /settingsAgentHead/);
     assert.match(shellJs, /label: "Live listings"/);
     assert.match(shellJs, /label: "Live value"/);
     assert.match(shellJs, /label: "Fulfilment"/);

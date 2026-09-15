@@ -4826,6 +4826,12 @@ function setSettingsTab(tab) {
   ["templates", "shipping", "storage", "diagnostic", "agent"].forEach((id) => {
     $(`settings-${id}`)?.classList.toggle("hidden", id !== tab);
   });
+  // Live ble: agent tab drops System Settings chrome and uses Agent Connect page head.
+  const agent = tab === "agent";
+  $("settingsSystemHead")?.classList.toggle("hidden", agent);
+  $("settingsAgentHead")?.classList.toggle("hidden", !agent);
+  $("settingsPhonePanel")?.classList.toggle("hidden", agent);
+  if (agent) refreshAiConnect();
 }
 
 /** Live xo listing-template defaults. */
@@ -5213,45 +5219,31 @@ function mcpServerUrl() {
 function renderMcpClient(key) {
   state.mcpClient = key in MCP_CLIENTS ? key : "claude";
   document.querySelectorAll("[data-mcp-client]").forEach((btn) => {
-    btn.classList.toggle("m-btn-primary", btn.dataset.mcpClient === state.mcpClient);
+    const on = btn.dataset.mcpClient === state.mcpClient;
+    btn.classList.toggle("m-chip-on", on);
+    btn.classList.toggle("m-btn-primary", false);
   });
   const client = MCP_CLIENTS[state.mcpClient];
   const root = $("mcpClientSteps");
   if (!root || !client) return;
+  // Live wle: client label + numbered 01… steps in gold mono.
   root.innerHTML =
-    `<div class="v-label" style="font-size:9px;margin-bottom:8px">${esc(client.label)}</div>` +
-    `<ol style="margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px">` +
+    `<div style="font-family:Inter,system-ui,sans-serif;font-size:16px;font-weight:700;color:#E8EDEA;margin-bottom:16px">${esc(client.label)}</div>` +
+    `<ol style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px">` +
     client.steps
       .map(
         (step, i) =>
-          `<li><span class="v-label" style="font-size:10px;margin-right:6px">${String(i + 1).padStart(2, "0")}</span>${esc(step)}</li>`,
+          `<li style="display:flex;align-items:flex-start;gap:12px"><span class="m-mono" style="flex-shrink:0;width:22px;text-align:right;font-size:13px;font-weight:700;color:var(--b44-gold,#ffb43d)">${String(i + 1).padStart(2, "0")}</span><span style="font-family:Inter,system-ui,sans-serif;font-size:14px;line-height:1.55;color:var(--b44-mid,#c9d8e2)">${esc(step)}</span></li>`,
       )
       .join("") +
     `</ol>`;
 }
 
-async function refreshAiConnect() {
+function refreshAiConnect() {
+  // Live wle: URL + client steps only (no Identify status line).
   if ($("mcpServerUrl")) $("mcpServerUrl").textContent = mcpServerUrl();
   if (!state.mcpClient) state.mcpClient = "claude";
   renderMcpClient(state.mcpClient);
-  const status = $("aiConnectStatus");
-  if (!status) return;
-  status.textContent = "Checking photo Identify…";
-  try {
-    const res = await fetch("/api/scouter/identify/status");
-    const data = await res.json();
-    if (data.photoSearchReady) {
-      status.textContent =
-        "Photo Identify ready on this server. MCP clients can also connect with the URL above.";
-    } else {
-      status.textContent =
-        data.setupTask ||
-        "Photo Identify needs ANTHROPIC_API_KEY on the server. Photos still save — ID stays honest until the key is set.";
-    }
-  } catch {
-    status.textContent =
-      "Could not reach Identify status. Photos still save locally; reconnect and try again.";
-  }
 }
 
 function runEbayDiagnostic() {
@@ -6228,9 +6220,11 @@ function bind() {
         if ($("btnCopyMcp")) $("btnCopyMcp").textContent = "Copy";
       }, 1800);
     } catch {
-      if ($("aiConnectStatus")) {
-        $("aiConnectStatus").textContent = "Could not copy — select the URL and copy manually.";
-      }
+      // Live has no status line here — fall back to button label.
+      if ($("btnCopyMcp")) $("btnCopyMcp").textContent = "Copy failed";
+      window.setTimeout(() => {
+        if ($("btnCopyMcp")) $("btnCopyMcp").textContent = "Copy";
+      }, 1800);
     }
   });
   document.querySelectorAll("[data-mcp-client]").forEach((btn) => {
