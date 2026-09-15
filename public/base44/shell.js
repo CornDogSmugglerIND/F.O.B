@@ -3460,11 +3460,8 @@ function renderIntakeReview() {
 
 function bulkReviewStatus(status, msg) {
   const ids = state.intakeReviewSelected;
-  if (!ids.length) {
-    state.intakeReviewStatus = "Select rows first";
-    renderIntakeReview();
-    return;
-  }
+  // Live Wle H(): empty selection is a silent no-op (no invent status line).
+  if (!ids.length) return;
   try {
     state.intakeReviewRows.forEach((r) => {
       if (ids.includes(r.id)) r.status = status;
@@ -3497,11 +3494,8 @@ function bulkReviewCondition(condition) {
 
 function bulkReviewDelete() {
   const ids = new Set(state.intakeReviewSelected);
-  if (!ids.size) {
-    state.intakeReviewStatus = "Select rows first";
-    renderIntakeReview();
-    return;
-  }
+  // Live Wle ne(): if (!s.length) silent no-op.
+  if (!ids.size) return;
   try {
     state.intakeReviewRows = state.intakeReviewRows.filter((r) => !ids.has(r.id));
     state.intakeReviewSelected = [];
@@ -3529,10 +3523,11 @@ async function copyReviewRescanList() {
     .flatMap((r) => r.source_files || [r.card_name || r.title || r.id]);
   try {
     await navigator.clipboard.writeText(names.join("\n"));
+    // Live Wle me(): ht.success(`Copied ${n} filenames to rescan`) — no invent clipboard-blocked status.
     state.intakeReviewStatus = `Copied ${names.length} filenames to rescan`;
     showToast(`Copied ${names.length} filenames to rescan`, "ok");
   } catch {
-    state.intakeReviewStatus = `Rescan list (${names.length}) — clipboard blocked`;
+    /* live writeText has no invent failure status */
   }
   renderIntakeReview();
 }
@@ -4124,7 +4119,9 @@ async function lookupBarcode(code) {
       if ($("manualTitle")) $("manualTitle").value = state.title;
       setStatus(`Barcode: ${state.title}`);
     } else {
-      setStatus(result.message || result.error || "No barcode match");
+      // Live CR empty lookup → stay on scan; toast like product miss.
+      setStatus("Product lookup failed");
+      showToast("Product lookup failed", "err");
     }
   } catch (e) {
     // Live CR: ht.error("Product lookup failed")
@@ -5885,7 +5882,8 @@ async function crStartScanner() {
     return;
   }
   if (typeof Html5Qrcode === "undefined") {
-    crSetCamMsg("Barcode scanner library missing. Enter the barcode manually below.");
+    // Live CR uses in-bundle decoder — no invent "library missing" line; same manual fallback copy.
+    crSetCamMsg("Camera isn't available in this browser. Enter the barcode manually below.");
     return;
   }
   const scanner = new Html5Qrcode("crScannerHost", { verbose: false });
@@ -6255,7 +6253,8 @@ function bind() {
     }
     it.updatedAt = new Date().toISOString();
     saveItems();
-    state.readoutStatus = `Moved to ${next.label}.`;
+    // Live zN phase push: ht.success(`Pushed to ${I.label}`) — no invent "Moved to" readout.
+    showToast(`Pushed to ${next.label}`, "ok");
     openScouterReadout(it.id);
     renderCollection();
     updateSitrep();

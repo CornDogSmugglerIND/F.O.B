@@ -335,6 +335,13 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(shellJs, /\$\{state\.draftPhotos\.length\} scans ready/);
     assert.doesNotMatch(shellJs, /Photos kept/);
     assert.doesNotMatch(shellJs, /Lookup failed:/);
+    // Live Wle/CR/scouter invent removals (?v=101).
+    assert.doesNotMatch(shellJs, /Select rows first/);
+    assert.doesNotMatch(shellJs, /clipboard blocked/);
+    assert.doesNotMatch(shellJs, /Barcode scanner library missing/);
+    assert.doesNotMatch(shellJs, /Moved to \$\{next\.label\}/);
+    assert.doesNotMatch(shellJs, /No barcode match/);
+    assert.match(shellJs, /Pushed to \$\{next\.label\}/);
 
 
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
