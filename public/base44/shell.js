@@ -370,7 +370,7 @@ function scouterGroupHtml(group) {
   const more = useTiles && group.items.length > 14
     ? `<div class="b44-scout-tile-card" style="width:64px;justify-content:center;display:flex;align-items:center"><div class="b44-scout-tile-img" style="width:64px;height:151px;color:${esc(phaseColor)}">+${group.items.length - 14}</div></div>`
     : "";
-  const empty = `<div class="b44-copy-soft" style="font-size:12px;padding:8px 4px">Empty</div>`;
+  const empty = `<div class="b44-scout-group-empty v-label">Empty</div>`;
   const body = cards
     ? (useTiles ? `<div class="b44-scout-group-rail">${cards}${more}</div>` : cards)
     : empty;
