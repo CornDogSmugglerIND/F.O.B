@@ -4031,11 +4031,7 @@ function renderSpaces() {
 
   if (empty) {
     empty.classList.toggle("hidden", rows.length > 0);
-    const label = empty.querySelector(".v-label");
-    const p = empty.querySelector("p");
-    // Live Pq empty: Empty location + bin/shelf/tote hint.
-    if (label) label.textContent = "Empty location";
-    if (p) p.textContent = "Add a bin, shelf or tote to start mapping your shelves.";
+    // Live Pq empty: Boxes icon + Empty location + bin/shelf/tote hint (static HTML).
   }
 
   // Live Rq photo tiles — 3:4 cover, kind·code badge, count/ITEMS/value, Set photo / Remove.

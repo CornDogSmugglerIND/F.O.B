@@ -2952,3 +2952,34 @@ textarea.b44-input {
   font-size: 14px;
   color: var(--b44-mid, #c9d8e2);
 }
+
+/* Live Storage empty location (Boxes + tan/olive glow) */
+.b44-space-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 64px 16px;
+}
+.b44-space-empty.hidden {
+  display: none;
+}
+.b44-space-empty-icon {
+  color: #8fa3ad;
+  opacity: 0.6;
+  filter: drop-shadow(0 0 14px #ffffff);
+}
+.b44-space-empty-icon svg {
+  display: block;
+}
+.b44-space-empty-label {
+  margin-top: 16px;
+  font-size: 12px;
+}
+.b44-space-empty-sub {
+  margin-top: 6px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--b44-mid, #c9d8e2);
+}

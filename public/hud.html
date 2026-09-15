@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=57" />
+  <link rel="stylesheet" href="/base44/shell.css?v=58" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -420,11 +420,14 @@
               <button type="button" class="m-btn hidden" id="btnFileHere">File card here</button>
             </div>
             <div id="spaceList"></div>
-            <div id="spaceEmpty" class="v-panel v-cut b44-empty">
-              <div class="v-label">Empty location</div>
-              <p>Add a bin, shelf or tote to start mapping your shelves.</p>
+            <div id="spaceEmpty" class="b44-space-empty">
+              <div class="b44-space-empty-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/><path d="m7 16.5-4.74-2.85"/><path d="m7 16.5 5-3"/><path d="M7 16.5v5.17"/><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/><path d="m17 16.5-5-3"/><path d="m17 16.5 4.74-2.85"/><path d="M17 16.5v5.17"/><path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/><path d="M12 8 7.26 5.15"/><path d="m12 8 4.74-2.85"/><path d="M12 13.5V8"/></svg>
+              </div>
+              <div class="v-label b44-space-empty-label">Empty location</div>
+              <div class="b44-space-empty-sub">Add a bin, shelf or tote to start mapping your shelves.</div>
             </div>
-            <div class="v-label" style="font-size:9px;margin:16px 0 6px;color:var(--b44-gold,#ffb43d)" id="spaceItemsLabel">Unsorted · No Location · 0</div>
+<div class="v-label" style="font-size:9px;margin:16px 0 6px;color:var(--b44-gold,#ffb43d)" id="spaceItemsLabel">Unsorted · No Location · 0</div>
             <div id="spaceItems"></div>
             <div id="spaceItemsEmpty" class="v-panel v-cut b44-empty hidden">
               <div class="v-label">No items here</div>
@@ -1468,7 +1471,7 @@
 
   <script src="/lib/image.js?v=24"></script>
   <script src="/lib/html5-qrcode.min.js"></script>
-  <script src="/base44/shell.js?v=57"></script>
+  <script src="/base44/shell.js?v=58"></script>
 
 </body>
 </html>
