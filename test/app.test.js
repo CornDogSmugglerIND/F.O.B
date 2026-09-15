@@ -230,6 +230,18 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(shellJs, /Relisted on eBay/);
     assert.match(shellJs, /Enter a valid price/);
     assert.match(shellJs, /Could not create/);
+    assert.match(shellJs, /Update failed/);
+    assert.match(shellJs, /Could not remove/);
+    assert.match(shellJs, /Push failed/);
+    assert.match(shellJs, /Could not advance that item/);
+    assert.match(shellJs, /Added: \$\{title\}/);
+    assert.match(html, /btnIntakePickClose" title="Release lock \(ESC\)"/);
+    assert.match(shellJs, /Could not move item/);
+    assert.match(shellJs, /Save failed/);
+    assert.match(shellJs, /Relist failed/);
+    assert.match(shellJs, /End failed/);
+    assert.match(shellJs, /Reprice failed/);
+    assert.match(shellJs, /Identification failed:/);
     assert.match(shellJs, /Listing ended/);
     assert.match(shellJs, /Repriced →/);
     assert.match(shellJs, /Identification complete/);

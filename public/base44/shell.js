@@ -433,38 +433,43 @@ function scouterSpaceGroups(rows) {
 function moveScouterItem(itemId, kind, key) {
   const it = state.items.find((x) => x.id === itemId);
   if (!it) return;
-  if (kind === "pipeline") {
-    if (itemPipeKey(it) === key) return;
-    if (key === "sorted") {
-      it.staged = false;
-      it.listingStatus = "sorted";
-    } else if (key === "ready_to_list") {
-      it.staged = true;
-      it.listingStatus = "ready_to_list";
-    } else if (key === "listed") {
-      it.staged = true;
-      it.listingStatus = "listed";
+  try {
+    if (kind === "pipeline") {
+      if (itemPipeKey(it) === key) return;
+      if (key === "sorted") {
+        it.staged = false;
+        it.listingStatus = "sorted";
+      } else if (key === "ready_to_list") {
+        it.staged = true;
+        it.listingStatus = "ready_to_list";
+      } else if (key === "listed") {
+        it.staged = true;
+        it.listingStatus = "listed";
+      }
+      const label = PIPE_STEPS.find((s) => s.key === key)?.label || key;
+      setScouterStatus(`${it.title || "Card"} → ${label}`);
+      showToast(`${it.title || "Card"} → ${label}`, "ok");
+    } else {
+      const next = key === "__unfiled__" ? "" : key;
+      if ((it.spaceId || "") === next) return;
+      it.spaceId = next;
+      const name =
+        key === "__unfiled__"
+          ? "Unfiled"
+          : state.spaces.find((s) => s.id === key)?.name || "Space";
+      setScouterStatus(`Filed into ${name}`);
+      showToast(`Filed into ${name}`, "ok");
     }
-    const label = PIPE_STEPS.find((s) => s.key === key)?.label || key;
-    setScouterStatus(`${it.title || "Card"} → ${label}`);
-    showToast(`${it.title || "Card"} → ${label}`, "ok");
-  } else {
-    const next = key === "__unfiled__" ? "" : key;
-    if ((it.spaceId || "") === next) return;
-    it.spaceId = next;
-    const name =
-      key === "__unfiled__"
-        ? "Unfiled"
-        : state.spaces.find((s) => s.id === key)?.name || "Space";
-    setScouterStatus(`Filed into ${name}`);
-    showToast(`Filed into ${name}`, "ok");
+    it.updatedAt = new Date().toISOString();
+    saveItems();
+    renderCollection();
+    renderSpaces();
+    updateSitrep();
+    if (state.lockedItemId === it.id) openScouterReadout(it.id);
+  } catch {
+    // Live tle drop: ht.error("Could not move that item")
+    showToast("Could not move that item", "err");
   }
-  it.updatedAt = new Date().toISOString();
-  saveItems();
-  renderCollection();
-  renderSpaces();
-  updateSitrep();
-  if (state.lockedItemId === it.id) openScouterReadout(it.id);
 }
 
 function bindScouterGroupDnD(root) {
@@ -1545,17 +1550,22 @@ function updateIntakeHint(poolLen) {
 function buildIntakeListing() {
   const it = state.items.find((x) => x.id === state.intakePickId);
   if (!it) return;
-  // Live qle onAdvance: listing_status → ready_to_list; toast `${title} → Listing Built`
-  it.listingStatus = "ready_to_list";
-  it.staged = true;
-  it.updatedAt = new Date().toISOString();
-  saveItems();
-  const msg = `${it.title || "Untitled"} → Listing Built`;
-  state.intakePickStatus = msg;
-  closeIntakePick();
-  renderIntakeList();
-  setScouterStatus(msg);
-  showToast(msg, "ok");
+  try {
+    // Live qle onAdvance: listing_status → ready_to_list; toast `${title} → Listing Built`
+    it.listingStatus = "ready_to_list";
+    it.staged = true;
+    it.updatedAt = new Date().toISOString();
+    saveItems();
+    const msg = `${it.title || "Untitled"} → Listing Built`;
+    state.intakePickStatus = msg;
+    closeIntakePick();
+    renderIntakeList();
+    setScouterStatus(msg);
+    showToast(msg, "ok");
+  } catch {
+    // Live qle: ht.error("Could not advance that item")
+    showToast("Could not advance that item", "err");
+  }
 }
 
 function openIntakeCard() {
@@ -2263,16 +2273,21 @@ async function addItemImageFiles(fileList) {
 function patchItemField(key, value) {
   const it = currentItemPage();
   if (!it) return;
-  it[key] = value;
-  it.updatedAt = new Date().toISOString();
-  if (key === "listingStatus") {
-    it.staged = value === "ready_to_list" || value === "listed";
+  try {
+    it[key] = value;
+    it.updatedAt = new Date().toISOString();
+    if (key === "listingStatus") {
+      it.staged = value === "ready_to_list" || value === "listed";
+    }
+    saveItems();
+    updateItemEconomics(it);
+    syncItemChrome(it);
+    renderCollection();
+    updateSitrep();
+  } catch {
+    // Live item sheet: ht.error("Save failed") / move: "Could not move item"
+    showToast(key === "spaceId" ? "Could not move item" : "Save failed", "err");
   }
-  saveItems();
-  updateItemEconomics(it);
-  syncItemChrome(it);
-  renderCollection();
-  updateSitrep();
 }
 
 function syncItemChrome(it) {
@@ -2363,6 +2378,9 @@ async function pushItemPhase() {
     syncItemChrome(it);
     renderCollection();
     updateSitrep();
+  } catch {
+    // Live item push: ht.error("Push failed")
+    showToast("Push failed", "err");
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -3070,8 +3088,10 @@ async function startIdentificationFromGroups() {
         image_url: c.image_url || c.imageUrl || null,
       }));
     } catch (e) {
-      message = `Identify failed: ${e.message}`;
+      message = `Identification failed: ${e.message}`;
       confidence = "Failed";
+      // Live scanIdentify catch: ht.error("Identification failed: " + …)
+      showToast(message, "err");
     }
     const status = confidence === "High" ? "Approved" : "Needs Review";
     rows.push({
@@ -4574,13 +4594,21 @@ function renderSpaces() {
         }
       }
       // Live: clearing a bin leaves cards unfiled.
-      state.items = state.items.map((it) => (drop.has(it.spaceId || "") ? { ...it, spaceId: "" } : it));
-      saveItems();
-      state.spaces = state.spaces.filter((s) => !drop.has(s.id));
-      state.spaceTrail = state.spaceTrail.filter((x) => !drop.has(x));
-      saveSpaces();
-      // Live Rq / Iq remove toast
-      showToast("Location removed", "ok");
+      try {
+        state.items = state.items.map((it) => (drop.has(it.spaceId || "") ? { ...it, spaceId: "" } : it));
+        saveItems();
+        state.spaces = state.spaces.filter((s) => !drop.has(s.id));
+        state.spaceTrail = state.spaceTrail.filter((x) => !drop.has(x));
+        saveSpaces();
+        // Live Rq / Iq remove toast
+        showToast("Location removed", "ok");
+        renderSpaces();
+        renderCollection();
+        updateSitrep();
+      } catch {
+        // Live Rq: ht.error("Could not remove")
+        showToast("Could not remove", "err");
+      }
     });
   });
 
@@ -4625,10 +4653,15 @@ function renderSpaces() {
       btn.addEventListener("click", () => {
         const it = state.items.find((x) => x.id === btn.dataset.unfile);
         if (!it) return;
-        it.spaceId = "";
-        saveItems();
-        renderSpaces();
-        updateSitrep();
+        try {
+          it.spaceId = "";
+          saveItems();
+          renderSpaces();
+          updateSitrep();
+        } catch {
+          // Live Rq: ht.error("Could not move item")
+          showToast("Could not move item", "err");
+        }
       });
     });
   }
@@ -4649,10 +4682,17 @@ function fileCardIntoCurrentSpace() {
   const pick = prompt(`File which unfiled card into this location?\n${names}\n\nEnter number`, "1");
   const idx = Number(pick) - 1;
   if (!Number.isInteger(idx) || idx < 0 || idx >= unfiled.length) return;
-  unfiled[idx].spaceId = parentId;
-  saveItems();
-  renderSpaces();
-  updateSitrep();
+  try {
+    unfiled[idx].spaceId = parentId;
+    saveItems();
+    const name = spaceById(parentId)?.name || "Space";
+    showToast(`Filed into ${name}`, "ok");
+    renderSpaces();
+    updateSitrep();
+  } catch {
+    // Live Rq: ht.error("Could not move item")
+    showToast("Could not move item", "err");
+  }
 }
 
 
@@ -4958,17 +4998,22 @@ function applyChannelReprice() {
     return;
   }
   // Honest local port: update local value; live eBay reprice needs server creds.
-  it.marketValue = next;
-  it.price = next;
-  it.updatedAt = new Date().toISOString();
-  saveItems();
-  state.channelSheetStatus =
-    `Local price set to ${money(next)}. Live eBay reprice needs server credentials.`;
-  // Live nle success toast copy
-  showToast(`Repriced → $${next.toFixed(2)}`, "ok");
-  setChannelRepriceOpen(false);
-  openChannelSheet(it.id);
-  renderChannel();
+  try {
+    it.marketValue = next;
+    it.price = next;
+    it.updatedAt = new Date().toISOString();
+    saveItems();
+    state.channelSheetStatus =
+      `Local price set to ${money(next)}. Live eBay reprice needs server credentials.`;
+    // Live nle success toast copy
+    showToast(`Repriced → $${next.toFixed(2)}`, "ok");
+    setChannelRepriceOpen(false);
+    openChannelSheet(it.id);
+    renderChannel();
+  } catch {
+    // Live nle: ht.error("Reprice failed")
+    showToast("Reprice failed", "err");
+  }
 }
 
 function channelSheetAction(kind) {
@@ -4985,28 +5030,38 @@ function channelSheetAction(kind) {
     return;
   }
   if (kind === "relist") {
-    it.listingStatus = "listed";
-    it.channelStatus = "active";
-    it.pushedAt = new Date().toISOString();
-    it.updatedAt = new Date().toISOString();
-    saveItems();
-    state.channelSheetStatus =
-      "Marked Active locally. Live Relist needs server eBay credentials.";
-    showToast("Relisted on eBay", "ok");
-    openChannelSheet(it.id);
-    renderChannel();
+    try {
+      it.listingStatus = "listed";
+      it.channelStatus = "active";
+      it.pushedAt = new Date().toISOString();
+      it.updatedAt = new Date().toISOString();
+      saveItems();
+      state.channelSheetStatus =
+        "Marked Active locally. Live Relist needs server eBay credentials.";
+      showToast("Relisted on eBay", "ok");
+      openChannelSheet(it.id);
+      renderChannel();
+    } catch {
+      // Live nle: ht.error("Relist failed")
+      showToast("Relist failed", "err");
+    }
     return;
   }
   if (kind === "end") {
-    it.listingStatus = "ended";
-    it.channelStatus = "ended";
-    it.updatedAt = new Date().toISOString();
-    saveItems();
-    state.channelSheetStatus =
-      "Marked Ended locally. Live End listing needs server eBay credentials.";
-    showToast("Listing ended", "ok");
-    openChannelSheet(it.id);
-    renderChannel();
+    try {
+      it.listingStatus = "ended";
+      it.channelStatus = "ended";
+      it.updatedAt = new Date().toISOString();
+      saveItems();
+      state.channelSheetStatus =
+        "Marked Ended locally. Live End listing needs server eBay credentials.";
+      showToast("Listing ended", "ok");
+      openChannelSheet(it.id);
+      renderChannel();
+    } catch {
+      // Live nle: ht.error("End failed")
+      showToast("End failed", "err");
+    }
   }
 }
 
@@ -5243,22 +5298,30 @@ function advanceShipment(id) {
   if (!sh) return;
   const next = nextShipStage(sh.status);
   if (!next) return;
-  sh.status = next;
-  sh.updatedAt = new Date().toISOString();
-  if (next === "dropped_off") sh.droppedOffAt = sh.updatedAt;
-  if (next === "delivered") {
-    sh.deliveredAt = sh.updatedAt;
-    const payout = new Date();
-    payout.setDate(payout.getDate() + 4);
-    sh.payoutReleaseAt = payout.toISOString();
+  try {
+    sh.status = next;
+    sh.updatedAt = new Date().toISOString();
+    if (next === "dropped_off") sh.droppedOffAt = sh.updatedAt;
+    if (next === "delivered") {
+      sh.deliveredAt = sh.updatedAt;
+      const payout = new Date();
+      payout.setDate(payout.getDate() + 4);
+      sh.payoutReleaseAt = payout.toISOString();
+    }
+    saveShipments();
+    // Live ale closes the package sheet after a successful advance.
+    closeFulSheet();
+    const label = shipStageLabel(next);
+    if ($("channelActionStatus")) {
+      $("channelActionStatus").textContent = `Advanced to ${label}.`;
+    }
+    // Live fle: ht.success(stage.label || "Updated")
+    showToast(label || "Updated", "ok");
+    renderChannel();
+  } catch {
+    // Live fle: ht.error("Update failed")
+    showToast("Update failed", "err");
   }
-  saveShipments();
-  // Live ale closes the package sheet after a successful advance.
-  closeFulSheet();
-  if ($("channelActionStatus")) {
-    $("channelActionStatus").textContent = `Advanced to ${shipStageLabel(next)}.`;
-  }
-  renderChannel();
 }
 
 function addPackedOrder() {
@@ -6086,6 +6149,8 @@ async function crAddItem(draft, code) {
   crState.lastTitle = title;
   crUpdateAddedBadge();
   setScouterStatus(`Added: ${title}`);
+  // Live CR: ht.success(`Added: ${title}`)
+  showToast(`Added: ${title}`, "ok");
   renderCollection();
   renderIntakeList();
   updateSitrep();
@@ -6420,7 +6485,10 @@ function bind() {
       else if (!$("fleSheet")?.classList.contains("hidden")) closeFleSheet();
       else if (!$("unSheet")?.classList.contains("hidden")) closeUnSheet();
       else if (!$("assetSheet")?.classList.contains("hidden")) closeAssetSheet();
-      else if (state.intakePickId || !$("intakePickSheet")?.classList.contains("hidden")) {
+      else if (state.fulSheetId || !$("fulSheet")?.classList.contains("hidden")) {
+        // Live fle readout close is titled "Release lock (ESC)".
+        closeFulSheet();
+      } else if (state.intakePickId || !$("intakePickSheet")?.classList.contains("hidden")) {
         closeIntakePick();
       } else if (state.channelSheetId || !$("channelSheet")?.classList.contains("hidden")) {
         // Live SS readout close control is titled "Release lock (ESC)".
