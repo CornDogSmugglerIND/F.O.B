@@ -1219,6 +1219,26 @@ textarea.b44-input {
   background: linear-gradient(180deg, rgba(255, 217, 138, 0.18), rgba(255, 180, 61, 0.08) 46%, rgba(0, 0, 0, 0.4));
   color: var(--b44-gold-hi, #ffd98a);
 }
+.b44-un-retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(143, 163, 173, 0.55);
+  color: var(--b44-mid, #8a9aa8);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.b44-un-retry:hover {
+  opacity: 0.85;
+}
 .b44-un-save {
   margin-top: 14px;
   border: 1px solid rgba(43, 217, 192, 0.45);

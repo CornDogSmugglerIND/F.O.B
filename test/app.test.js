@@ -238,6 +238,7 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /btnIntakePickClose" title="Release lock \(ESC\)"/);
     assert.match(shellJs, /Could not move item/);
     assert.match(shellJs, /Save failed/);
+    assert.match(shellJs, /Failed to save/);
     assert.match(shellJs, /Relist failed/);
     assert.match(shellJs, /End failed/);
     assert.match(shellJs, /Reprice failed/);
@@ -259,11 +260,16 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(shellJs, /Name is required/);
     assert.match(shellJs, /Nothing to export/);
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
-        assert.match(shellJs, /No listing built yet — run the AI writer on this card first/);
+    assert.match(shellJs, /No listing built yet — run the AI writer on this card first/);
     assert.match(shellJs, /Product lookup failed/);
     assert.match(shellJs, /Image upload failed/);
     assert.match(shellJs, /AI engine failed — check item data/);
     assert.match(shellJs, /Failed to save draft/);
+    assert.match(html, /id="unMeta"/);
+    assert.match(html, /id="btnUnRetry"/);
+    assert.match(html, />TRY AGAIN</);
+    assert.match(shellJs, /PHOTO\$\{n === 1 \? "" : "S"\}/);
+    assert.doesNotMatch(html, /id="unPhotoCount"/);
     assert.match(html, /New Preset/);
     assert.match(html, /Shipping Presets/);
     assert.match(html, /b44-pk-ship-create/);

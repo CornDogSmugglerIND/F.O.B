@@ -6411,6 +6411,13 @@ function bind() {
     if (e.target === $("unSheet")) closeUnSheet();
   });
   $("btnUnRun")?.addEventListener("click", () => runUnEngine());
+  $("btnUnRetry")?.addEventListener("click", () => {
+    // Live UN error TRY AGAIN → idle
+    state.unPhase = "idle";
+    state.unStatus = "";
+    state.unDraft = null;
+    renderUnSheet();
+  });
   $("btnUnSave")?.addEventListener("click", () => saveUnDraft());
   $("btnMovePhase")?.addEventListener("click", () => {
     const it = state.items.find((x) => x.id === state.lockedItemId);
