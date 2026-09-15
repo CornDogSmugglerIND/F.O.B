@@ -85,7 +85,7 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /STEP 1 · INTAKE/);
     assert.match(html, /STEP 2 · BUILD/);
     assert.match(html, /ON SCOUTER/);
-    assert.match(html, />VALUE</);
+    assert.match(html, /SCOUTER VALUE/);
     assert.match(html, /Photo/);
     assert.match(html, /SNAP/);
     assert.match(html, /Scan/);
@@ -140,7 +140,9 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /id="scanAssistForm"/);
     assert.match(html, /scan-assistant/);
     assert.match(html, /No shipments yet/);
-    assert.match(html, /Packages appear here once an order is created\./);
+    assert.match(html, /Packages appear here once an order is created from Listings or eBay Sync\./);
+    assert.match(html, /Filter listings/);
+    assert.match(html, /× RELEASE LOCK/);
     assert.match(html, /id="fulHubs"/);
     assert.match(html, /id="fulSheet"/);
     assert.match(html, /id="btnFulAdvance"/);

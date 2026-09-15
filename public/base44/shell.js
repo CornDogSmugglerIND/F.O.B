@@ -93,8 +93,8 @@ const EBAY_KEY = "scouter-ebay-connected-v1";
 /** Live ale/l_ mobile fulfilment hubs (Channel · FULFILMENT). */
 const SHIP_STAGES = [
   { key: "ready_to_ship", n: 1, label: "Ready to ship", next: "dropped_off", core: "#8FA3AD", hi: "#FFFFFF" },
-  { key: "dropped_off", n: 2, label: "Dropped off", next: "in_transit", core: "#8FA3AD", hi: "#FFFFFF" },
-  { key: "in_transit", n: 3, label: "In transit", next: "out_for_delivery", core: "#FFB43D", hi: "#FFD98A" },
+  { key: "dropped_off", n: 2, label: "Dropped at carrier", next: "in_transit", core: "#8FA3AD", hi: "#FFFFFF" },
+  { key: "in_transit", n: 3, label: "Carrier scanned", next: "out_for_delivery", core: "#FFB43D", hi: "#FFD98A" },
   { key: "out_for_delivery", n: 4, label: "Out for delivery", next: "delivered", core: "#2BD9C0", hi: "#8FF6E8" },
   { key: "delivered", n: 5, label: "Delivered", next: null, core: "#2BD9C0", hi: "#8FF6E8" },
 ];
@@ -3749,7 +3749,7 @@ function renderChannel() {
     const label = fulEmpty.querySelector(".v-label");
     const p = fulEmpty.querySelector("p");
     if (label) label.textContent = "No shipments yet";
-    if (p) p.textContent = "Packages appear here once an order is created.";
+    if (p) p.textContent = "Packages appear here once an order is created from Listings or eBay Sync.";
   }
   if (fulHubs) {
     const chunks = [];
