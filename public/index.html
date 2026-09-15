@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=44" />
+  <link rel="stylesheet" href="/base44/shell.css?v=45" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -441,24 +441,10 @@
             <button type="button" class="m-btn" data-channel-tab="ship" id="tabShip">FULFILMENT</button>
           </div>
           <div id="channelLive">
-            <div class="v-panel v-cut-sm px-4 py-3" style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div class="v-panel v-cut-sm px-4 py-3 b44-channel-live-value" style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
               <span id="liveValueStatus" class="b44-live-status" aria-hidden="true"></span>
               <div class="v-label" style="font-size:9px">LIVE VALUE</div>
               <div class="v-readout v-emit-gold" style="font-size:22px;margin-left:auto" id="liveValue">$0.00</div>
-            </div>
-            <div class="v-panel v-cut-sm px-4 py-3" style="display:flex;gap:16px;margin-bottom:12px">
-              <div>
-                <div class="v-label" style="font-size:8px">Intake</div>
-                <div class="v-readout" style="font-size:16px;color:#c9d8e2" id="pipeIntake">00</div>
-              </div>
-              <div>
-                <div class="v-label" style="font-size:8px">Listing Built</div>
-                <div class="v-readout v-emit-gold" style="font-size:16px" id="pipeReady">00</div>
-              </div>
-              <div>
-                <div class="v-label" style="font-size:8px">Listed</div>
-                <div class="v-readout" style="font-size:16px;color:#5fe8d0" id="pipeListed">00</div>
-              </div>
             </div>
             <div class="v-panel v-cut-sm p-4" style="margin-bottom:12px" id="ebayConnectPanel">
               <div class="v-label" style="font-size:9px;color:var(--b44-gold,#ffb43d)">Channel</div>
@@ -528,7 +514,7 @@
             <div class="b44-toolbar" style="margin-bottom:12px">
               <button type="button" class="m-btn m-btn-primary" id="btnAddShipment">Add packed order</button>
             </div>
-            <div id="fulStats" class="b44-ful-stats" aria-label="Fulfilment stats"></div>
+            <div id="fulStats" class="b44-ful-stats b44-channel-ful-stats" aria-label="Fulfilment stats"></div>
             <div id="fulHubs"></div>
             <div id="fulEmpty" class="v-panel v-cut b44-empty">
               <div class="v-label">No shipments yet</div>
@@ -1490,7 +1476,7 @@
 
   <script src="/lib/image.js?v=24"></script>
   <script src="/lib/html5-qrcode.min.js"></script>
-  <script src="/base44/shell.js?v=44"></script>
+  <script src="/base44/shell.js?v=45"></script>
 
 </body>
 </html>

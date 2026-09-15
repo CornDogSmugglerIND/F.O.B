@@ -2571,3 +2571,10 @@ textarea.b44-input {
   .b44-storage-filter { display: none; }
   .b44-storage-main { padding-left: 8px; }
 }
+
+/* Live sle/fle: desk Zc→BX owns Channel stats; body chrome stays for phone (nle/ale). */
+@media (min-width: 1024px) {
+  .b44-channel-live-value { display: none !important; }
+  .b44-channel-ful-stats { display: none !important; }
+}
+

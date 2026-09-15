@@ -139,6 +139,10 @@ function pad2(n) {
   return String(n).padStart(2, "0");
 }
 
+function pad3(n) {
+  return String(n).padStart(3, "0");
+}
+
 function money(n) {
   return "$" + Number(n || 0).toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -791,6 +795,8 @@ function updateSitrep() {
     publishScouterHud();
   } else if (state.route === "/storage") {
     publishStorageHud();
+  } else if (state.route === "/channel") {
+    publishChannelHud();
   }
 
   renderCmdAttention(cards);
@@ -1009,7 +1015,15 @@ function navigate(route) {
   if ($("pageBrand")) $("pageBrand").textContent = meta.brand;
   syncDeskNav(path);
   updateEbayPill();
-  if (path !== "/" && path !== "/command" && path !== "/storage" && path !== "/inventory") clearHud();
+  if (
+    path !== "/" &&
+    path !== "/command" &&
+    path !== "/storage" &&
+    path !== "/inventory" &&
+    path !== "/channel"
+  ) {
+    clearHud();
+  }
   const hashBase = itemMatch ? `/item/${encodeURIComponent(itemId)}` : path;
   const hash = query ? `#${hashBase}?${query}` : `#${hashBase}`;
   if (location.hash !== hash) history.replaceState(null, "", hash);
@@ -4229,6 +4243,52 @@ const CHANNEL_HUBS = [
   { key: "ended", label: "Ended", sub: "Off market", core: "#8FA3AD", hi: "#FFFFFF" },
 ];
 
+/** Live sle/fle → Zc → BX HUD (Live listings / Fulfilment). */
+function publishChannelHud() {
+  if (state.route !== "/channel" && !$("view-channel")?.classList.contains("active")) return;
+  if (state.channelTab === "ship") {
+    loadShipments();
+    const ships = activeShipments();
+    const awaiting = ships.filter((sh) => sh.status !== "delivered").length;
+    setHud({
+      breadcrumb: [{ label: "Fulfilment" }],
+      stats: [
+        ...SHIP_STAGES.map((stage) => {
+          const n = ships.filter((sh) => sh.status === stage.key).length;
+          return { label: stage.label, value: pad2(n), color: stage.hi };
+        }),
+        {
+          label: "Awaiting payout",
+          value: pad2(awaiting),
+          color: "var(--b44-gold-hi)",
+          big: true,
+        },
+      ],
+    });
+    return;
+  }
+  const fresh = state.items.filter((it) => channelHubKey(it) === "fresh");
+  const ended = state.items.filter((it) => channelHubKey(it) === "ended");
+  // Live Fe: sum price of active listings (no qty multiply).
+  const liveVal = fresh.reduce(
+    (sum, it) => sum + (Number(it.marketValue ?? it.price) || 0),
+    0,
+  );
+  setHud({
+    breadcrumb: [{ label: "Live listings" }],
+    stats: [
+      { label: "Active", value: pad3(fresh.length), color: CHANNEL_HUBS[0].hi },
+      { label: "Ended", value: pad3(ended.length), color: CHANNEL_HUBS[1].hi },
+      {
+        label: "Live value",
+        value: money(liveVal),
+        color: "var(--b44-gold-hi)",
+        big: true,
+      },
+    ],
+  });
+}
+
 /** Live Ma tile for Channel hub rails — age badge + price sub. */
 function channelListingTileHtml(it, hub) {
   const core = hub.core;
@@ -4460,13 +4520,6 @@ function renderChannel() {
   $("tabLive")?.classList.toggle("m-btn-primary", state.channelTab === "live");
   $("tabShip")?.classList.toggle("m-btn-primary", state.channelTab === "ship");
 
-  const intake = state.items.filter((it) => itemPipeLabel(it) === "Intake").length;
-  const ready = state.items.filter((it) => itemPipeLabel(it) === "Listing Built").length;
-  const listed = state.items.filter((it) => itemPipeLabel(it) === "Listed").length;
-  if ($("pipeIntake")) $("pipeIntake").textContent = pad2(intake);
-  if ($("pipeReady")) $("pipeReady").textContent = pad2(ready);
-  if ($("pipeListed")) $("pipeListed").textContent = pad2(listed);
-
   // Live nle: Connect alone when offline; Filter+Sync when connected; Photos/Policies/Token footer.
   const connected = !!state.ebayConnected;
   $("btnEbayConnect")?.classList.toggle("hidden", connected);
@@ -4604,6 +4657,9 @@ function renderChannel() {
   }
   if (state.fulSheetId) openFulSheet(state.fulSheetId);
   else closeFulSheet();
+
+  // Live sle/fle: Zc→BX owns desk stats; keep body #fulStats / LIVE VALUE for phone.
+  publishChannelHud();
 }
 
 function fulTileHtml(sh, stage) {

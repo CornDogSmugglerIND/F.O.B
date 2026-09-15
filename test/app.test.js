@@ -143,6 +143,8 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /No collections yet\./);
     assert.match(html, /Storage Map/);
     assert.match(html, /id="spaceMapTree"/);
+    assert.match(html, /b44-channel-live-value/);
+    assert.match(html, /b44-channel-ful-stats/);
     assert.match(html, /Sub-locations/);
     assert.match(html, /Items here/);
     assert.match(html, /Unsorted/);
@@ -157,6 +159,12 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(shellJs, /label: "Items here"/);
     assert.match(shellJs, /label: "Unsorted"/);
     assert.match(shellJs, /function publishStorageHud/);
+    assert.match(shellJs, /function publishChannelHud/);
+    assert.match(shellJs, /label: "Live listings"/);
+    assert.match(shellJs, /label: "Live value"/);
+    assert.match(shellJs, /label: "Fulfilment"/);
+    assert.match(shellJs, /label: "Awaiting payout"/);
+    assert.match(shellJs, /padStart\(3,/);
     assert.match(shellJs, /Loose in /);
     assert.match(shellJs, /Unsorted · No Location ·/);
     assert.match(shellJs, /b44-space-tile/);
