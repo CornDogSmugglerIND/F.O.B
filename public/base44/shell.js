@@ -3353,6 +3353,7 @@ function renderReviewPreview() {
         row.set_code = cand.set_code || row.set_code;
         row.confidence = "High";
         row.status = "Approved";
+        row.catalog_candidates = [];
         state.intakeReviewStatus = "Candidate applied → High";
         renderIntakeReview();
         showToast("Candidate applied → High", "ok");
@@ -3927,31 +3928,29 @@ function renderFleSheet() {
       .join("");
     rowEl.querySelectorAll("[data-fle-cand]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        state.flePickId = btn.dataset.fleCand;
-        renderFleSheet();
+        const cand = cands.find((c) => c.id === btn.dataset.fleCand);
+        if (!cand) return;
+        // Live Ble/Fle: click candidate applies immediately (toast Candidate applied → High)
+        applyFleCandidate(cand);
       });
     });
   }
 }
 
-function applyFlePick() {
+/** Live Wle onPick / ae — apply catalog candidate → High + Approved. */
+function applyFleCandidate(pick) {
   const row = state.intakeReviewRows.find((r) => r.id === state.fleRowId);
-  if (!row) return;
-  const pick = (row.catalog_candidates || []).find((c) => c.id === state.flePickId);
-  if (!pick) {
-    state.intakeReviewStatus = "No candidate to apply";
-    closeFleSheet();
-    renderIntakeReview();
-    return;
-  }
+  if (!row || !pick) return;
+  state.flePickId = pick.id;
   row.card_name = pick.name || row.card_name;
   row.number = pick.number || row.number;
   row.set = pick.set || row.set;
   row.set_code = pick.set_code || row.set_code;
   row.confidence = "High";
   row.status = "Approved";
+  row.catalog_candidates = [];
   state.intakeReviewStatus = "Candidate applied → High";
-  closeFleSheet();
+  renderFleSheet();
   renderIntakeReview();
   showToast("Candidate applied → High", "ok");
 }
@@ -6406,7 +6405,6 @@ function bind() {
     state.fleFace = "back";
     renderFleSheet();
   });
-  $("btnFleApply")?.addEventListener("click", () => applyFlePick());
   $("btnFleVerify")?.addEventListener("click", () => verifyFleRow("Approved"));
   $("btnFleSendReview")?.addEventListener("click", () => verifyFleRow("Needs Review"));
   $("btnAssetToScouter")?.addEventListener("click", () => {
