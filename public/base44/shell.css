@@ -1092,6 +1092,21 @@ textarea.b44-input {
   border-radius: 6px;
   font-size: 12px;
 }
+.b44-review-mkt {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--b44-gold-hi, #ffd98a);
+  white-space: nowrap;
+}
+.b44-review-sugg {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--b44-green-hi, #8ff6e8);
+  white-space: nowrap;
+}
+.b44-review-sugg.is-low {
+  color: var(--b44-bad-hi, #ff9aae);
+}
 .b44-review-empty {
   text-align: center;
   color: var(--b44-lo, #6f8697);
