@@ -4955,7 +4955,7 @@ function templateCardHtml(t) {
   </div>`;
 }
 
-/** Live Settings shipping card — Name / Carrier / Service / Cost / Handling days / Default (no package dims). */
+/** Live Settings shipping card — Truck tile, Default chip, carrier·service, $cost · Nd, icon Edit+Delete. */
 function shipCardHtml(s) {
   if (state.editingShipId === s.id) {
     return `<div class="v-panel v-cut-sm p-4" data-edit-ship="${esc(s.id)}">
@@ -4980,20 +4980,32 @@ function shipCardHtml(s) {
       </div>
     </div>`;
   }
-  const chip = s.is_default
-    ? `<span class="v-label" style="color:var(--b44-gold,#ffb43d)">DEFAULT</span>`
-    : "";
-  const service = s.service ? ` · ${s.service}` : "";
-  const handle = s.handling_days != null ? ` · ${s.handling_days}d handle` : "";
-  return `<div class="v-panel v-cut-sm p-4">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">${chip || "<span></span>"}
-      <button type="button" class="m-btn" data-del-ship="${esc(s.id)}" title="Delete">×</button>
+  const chip = s.is_default ? `<span class="m-chip m-chip-on">Default</span>` : "";
+  const cost = Number(s.cost || 0).toFixed(2);
+  const days = s.handling_days ?? 1;
+  return `<div class="v-panel v-cut-sm p-4 b44-settings-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div class="b44-settings-card-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+      </div>
+      ${chip}
     </div>
-    <div class="v-readout v-emit-white" style="font-size:15px;margin-top:8px">${esc(s.name)}</div>
-    <div class="b44-copy-soft" style="margin-top:6px;font-size:13px">${esc(s.carrier || "—")}${esc(service)}</div>
-    <div class="b44-copy-soft" style="margin-top:4px;font-size:12px">$${esc(String(s.cost ?? 0))}${esc(handle)}</div>
-    <div class="b44-actions" style="margin-top:12px">
-      <button type="button" class="m-btn" data-edit-ship-btn="${esc(s.id)}">Edit</button>
+    <div class="v-readout v-emit-white" style="font-size:15px;font-weight:600;margin-top:12px">${esc(s.name)}</div>
+    <div class="b44-copy-soft" style="margin-top:4px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px">
+      <span>${esc(s.carrier || "—")}</span>
+      <span style="color:#232A2E">·</span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.service || "—")}</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;gap:8px">
+      <div class="v-readout" style="font-size:18px;font-weight:700">$${esc(cost)}<span class="b44-copy-soft" style="font-size:12px;font-weight:500"> · ${esc(String(days))}d</span></div>
+      <div class="b44-actions" style="margin:0;flex-wrap:nowrap">
+        <button type="button" class="m-btn" data-edit-ship-btn="${esc(s.id)}" title="Edit" aria-label="Edit shipping preset" style="flex:0;min-width:0;padding-left:12px;padding-right:12px">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
+        <button type="button" class="m-btn m-btn-danger" data-del-ship="${esc(s.id)}" title="Delete" aria-label="Delete shipping preset">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        </button>
+      </div>
     </div>
   </div>`;
 }
