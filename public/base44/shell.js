@@ -2879,13 +2879,9 @@ function setBatchGame(code) {
   document.querySelectorAll("#batchGameChips [data-game]").forEach((btn) => {
     btn.classList.toggle("m-chip-on", btn.dataset.game === hit.code);
   });
-  if (!state.skuPrefix || INTAKE_GAMES.some((g) => g.code === state.skuPrefix)) {
-    // keep manual prefix unless it still looks like a default game code
-  }
-  if (!($("batchSkuPrefix")?.dataset.touched === "1")) {
-    state.skuPrefix = hit.code === "PKM" ? "PKM" : hit.code;
-    if ($("batchSkuPrefix")) $("batchSkuPrefix").value = state.skuPrefix;
-  }
+  // Live Mle: SKU prefix derived from game (Yle[game]||"ITM") — no Mle SKU field
+  state.skuPrefix = hit.code === "PKM" ? "PKM" : hit.code;
+  if ($("groupSkuPrefix")) $("groupSkuPrefix").value = state.skuPrefix;
 }
 
 function updateBatchScanChrome() {
@@ -4266,13 +4262,7 @@ function resetDraft() {
   state.intakeScanCount = 0;
   state.intakeReviewStatus = "";
   state.intakeExportSummary = null;
-  if ($("manualTitle")) $("manualTitle").value = "";
-  if ($("barcodeInput")) $("barcodeInput").value = "";
   if ($("batchName")) $("batchName").value = "";
-  if ($("batchSkuPrefix")) {
-    $("batchSkuPrefix").value = "";
-    delete $("batchSkuPrefix").dataset.touched;
-  }
   if ($("groupSkuPrefix")) $("groupSkuPrefix").value = "";
   if ($("backsIncluded")) $("backsIncluded").checked = false;
   renderPhotos();
@@ -4289,10 +4279,6 @@ function openNewBatch() {
   state.skuPrefix = "PKM";
   if ($("batchName")) $("batchName").value = state.batchName;
   if ($("batchTitle")) $("batchTitle").textContent = state.batchName;
-  if ($("batchSkuPrefix")) {
-    $("batchSkuPrefix").value = "PKM";
-    delete $("batchSkuPrefix").dataset.touched;
-  }
   if ($("backsIncluded")) $("backsIncluded").checked = true;
   setBatchGame("PKM");
   setIntakeMode("batch");
@@ -6702,23 +6688,6 @@ function bind() {
   });
   $("groupSkuPrefix")?.addEventListener("input", (e) => {
     state.skuPrefix = e.target.value.trim().toUpperCase();
-    if ($("batchSkuPrefix")) {
-      $("batchSkuPrefix").value = state.skuPrefix;
-      $("batchSkuPrefix").dataset.touched = "1";
-    }
-  });
-  $("btnSave")?.addEventListener("click", () => stageItem());
-  $("btnManualOk")?.addEventListener("click", () => {
-    state.title = ($("manualTitle")?.value || "").trim();
-    updateSave();
-    if (state.title) setStatus(`Title set: ${state.title}`);
-  });
-  $("btnLookup")?.addEventListener("click", () => lookupBarcode($("barcodeInput")?.value));
-  $("barcodeInput")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      lookupBarcode($("barcodeInput").value);
-    }
   });
   $("batchName")?.addEventListener("input", (e) => {
     state.batchName = e.target.value;
@@ -6737,10 +6706,6 @@ function bind() {
     if (!btn) return;
     setBatchGame(btn.dataset.game);
   });
-  $("batchSkuPrefix")?.addEventListener("input", (e) => {
-    e.target.dataset.touched = "1";
-    state.skuPrefix = e.target.value.trim().toUpperCase();
-  });
 
   $("intakeFilter")?.addEventListener("input", (e) => {
     state.filterIntake = e.target.value;
@@ -6758,10 +6723,6 @@ function bind() {
   $("scouterFilter")?.addEventListener("input", (e) => {
     state.filterScouter = e.target.value;
     renderCollection();
-  });
-  $("manualTitle")?.addEventListener("input", (e) => {
-    state.title = e.target.value.trim();
-    updateSave();
   });
 
   bindDropZone();

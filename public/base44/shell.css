@@ -809,6 +809,17 @@ textarea.b44-input {
   font-size: 12px;
   color: var(--b44-gold-hi, #ffd98a);
 }
+.b44-batch-ready-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.b44-batch-ready-row .b44-scan-ready {
+  margin-top: 0;
+}
 .b44-odd-inline {
   color: var(--b44-bad, #ff4d6d);
   margin-left: 4px;

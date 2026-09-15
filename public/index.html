@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=77" />
+  <link rel="stylesheet" href="/base44/shell.css?v=78" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -617,10 +617,6 @@
                   <button type="button" class="m-chip" data-game="ITM">Other</button>
                 </div>
               </div>
-              <div class="b44-field">
-                <label for="batchSkuPrefix">SKU prefix</label>
-                <input id="batchSkuPrefix" type="text" maxlength="12" placeholder="ITM" autocomplete="off" style="width:120px;text-transform:uppercase" />
-              </div>
               <label class="b44-check">
                 <input type="checkbox" id="backsIncluded" checked />
                 <span>
@@ -636,29 +632,13 @@
                 <p id="dropZoneHint">or click to browse — 2400×2400 JPGs, up to 200 at a time</p>
               </div>
               <div id="photoGrid" class="b44-thumbs"></div>
-              <div class="b44-status" id="identifyStatus">Add photos · then Start intake</div>
-              <div class="b44-scan-ready" id="batchScanReady">0 scans ready</div>
-              <div class="b44-field">
-                <label for="barcodeInput">Barcode shortcut</label>
-                <div style="display:flex;gap:8px">
-                  <input id="barcodeInput" type="text" placeholder="UPC / EAN" inputmode="numeric" style="flex:1" />
-                  <button type="button" class="m-btn" id="btnLookup">Lookup</button>
-                </div>
-              </div>
-              <div class="b44-field">
-                <label for="manualTitle">Manual title</label>
-                <div style="display:flex;gap:8px">
-                  <input id="manualTitle" type="text" placeholder="Set when ID misses" style="flex:1" />
-                  <button type="button" class="m-btn" id="btnManualOk">Set</button>
-                </div>
-              </div>
-              <div class="b44-actions">
-                <button type="button" class="m-btn" id="btnCancelBatch">Back</button>
-                <button type="button" class="m-btn" id="btnIdentify">ID</button>
+              <div class="b44-status" id="identifyStatus"></div>
+              <div class="b44-batch-ready-row">
+                <div class="b44-scan-ready" id="batchScanReady">0 scans ready</div>
                 <button type="button" class="m-btn m-btn-primary" id="btnStartIntake" disabled>Start intake</button>
               </div>
               <div class="b44-actions">
-                <button type="button" class="m-btn m-btn-go" id="btnSave" disabled>Stage to Scouter</button>
+                <button type="button" class="m-btn" id="btnCancelBatch">Back</button>
               </div>
             </div>
           </div>
@@ -1491,7 +1471,7 @@
 
   <script src="/lib/image.js?v=24"></script>
   <script src="/lib/html5-qrcode.min.js"></script>
-  <script src="/base44/shell.js?v=77"></script>
+  <script src="/base44/shell.js?v=78"></script>
 
 </body>
 </html>

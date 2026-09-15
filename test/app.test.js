@@ -297,6 +297,11 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(shellJs, /D ON MARKET/);
     assert.doesNotMatch(shellJs, /OFF MARKET/);
     assert.match(html, /id="fulHubs"/);
+    assert.doesNotMatch(html, /Barcode shortcut/);
+    assert.doesNotMatch(html, /Manual title/);
+    assert.doesNotMatch(html, /id="btnIdentify"/);
+    assert.doesNotMatch(html, /id="batchSkuPrefix"/);
+    assert.match(html, /b44-batch-ready-row/);
     assert.doesNotMatch(html, /Add packed order/);
     assert.doesNotMatch(html, /id="btnAddShipment"/);
     assert.match(shellJs, /STEP \$\{stage\.n\}/);
