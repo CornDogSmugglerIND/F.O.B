@@ -1743,3 +1743,66 @@ textarea.b44-input {
   border-radius: 8px;
   padding: 4px 0;
 }
+
+
+/* Live $le / Wle review chrome */
+.b44-review-factor-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.b44-review-factor-field .b44-input {
+  width: 64px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.b44-review-price-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11px;
+  color: var(--b44-bad-hi, #ff6b81);
+}
+.b44-review-alert-summary {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--b44-gold-hi, #ffd98a);
+}
+.b44-review-alert-block { margin-top: 8px; }
+.b44-review-alert-bad {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--b44-bad-hi, #ff6b81);
+}
+.b44-review-alert-gold {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--b44-gold-hi, #ffd98a);
+}
+.b44-review-alert-detail,
+.b44-review-alert-files {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--b44-mid, #8fa3ad);
+}
+.b44-review-alert-files {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--b44-lo, #6f8697);
+}
+.b44-review-bulk.is-active {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 10px;
+  border: 1px solid rgba(255, 180, 61, 0.25);
+  border-radius: 8px;
+  background: rgba(4, 7, 12, 0.92);
+}
+.b44-review-bulk #reviewBulkCount {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--b44-gold-hi, #ffd98a);
+}

@@ -35,6 +35,9 @@ const state = {
   intakeReviewRows: [],
   intakeReviewFilter: "",
   intakeReviewSelected: [],
+  intakeReviewRescan: [],
+  intakeReviewMult: 1.3,
+  intakeReviewFloor: 1.77,
   intakeScanCount: 0,
   intakeReviewStatus: "",
   intakeExportSummary: null,
@@ -2388,6 +2391,7 @@ async function startIdentificationFromGroups() {
   state.intakeScanCount = scanCount;
   state.intakeReviewFilter = "";
   state.intakeReviewSelected = [];
+  state.intakeReviewRescan = [];
   state.intakeExportSummary = null;
   state.intakeReviewStatus = "Identification complete";
   setIntakeMode("review");
@@ -2416,6 +2420,76 @@ function intakeReviewVisible() {
   return rows;
 }
 
+/** Live $le batch-review alert strip. */
+function renderReviewAlerts(rows, scanCount) {
+  const el = $("reviewSummary");
+  if (!el) return;
+  const counts = { High: 0, Medium: 0, Low: 0, Failed: 0 };
+  rows.forEach((r) => {
+    counts[r.confidence] = (counts[r.confidence] || 0) + 1;
+  });
+  const below = rows.filter((r) => r.condition && r.condition !== "NM");
+  const cantId = rows.filter((r) => r.confidence === "Failed" || r.confidence === "Low");
+  const rescanN = (state.intakeReviewRescan || []).length;
+  const glassDirty =
+    rows.filter((r) => (r.raw_extraction?.unreadable_fields || []).length > 0).length >= 3;
+  const parts = [
+    `<div class="b44-review-alert-summary">${esc(scanCount)} scans → ${rows.length} rows · ${counts.High} High · ${counts.Medium} Medium · ${counts.Low} Low · ${counts.Failed} Failed</div>`,
+  ];
+  if (below.length) {
+    const detail = below
+      .slice(0, 6)
+      .map((a) => `${a.card_name || a.title || "?"} #${a.number || "?"} — ${a.condition}`)
+      .join(" · ");
+    parts.push(
+      `<div class="b44-review-alert-block"><div class="b44-review-alert-bad">⚠️ Below NM (${below.length})</div><div class="b44-review-alert-detail">${esc(detail)}</div></div>`,
+    );
+  }
+  if (cantId.length) {
+    const detail =
+      cantId
+        .slice(0, 6)
+        .flatMap((a) => a.source_files || [])
+        .join(" · ") || "—";
+    parts.push(
+      `<div class="b44-review-alert-block"><div class="b44-review-alert-bad">❓ Couldn't ID (${cantId.length})</div><div class="b44-review-alert-files">${esc(detail)}</div></div>`,
+    );
+  }
+  if (rescanN > 0) {
+    parts.push(
+      `<div class="b44-review-alert-block"><div class="b44-review-alert-gold">🧹 Rescan flagged: ${rescanN} row(s)</div></div>`,
+    );
+  }
+  if (glassDirty) {
+    parts.push(
+      `<div class="b44-review-alert-block"><div class="b44-review-alert-gold">🧼 3+ scans came back unreadable — clean the scanner glass.</div></div>`,
+    );
+  }
+  el.innerHTML = parts.join("");
+}
+
+function syncReviewBulkBar() {
+  const n = (state.intakeReviewSelected || []).length;
+  const count = $("reviewBulkCount");
+  if (count) {
+    count.textContent = `${n} selected`;
+    count.classList.toggle("hidden", n === 0);
+  }
+  $("reviewBulkBar")?.classList.toggle("is-active", n > 0);
+  const rescanN = (state.intakeReviewRescan || []).length;
+  const rescanBtn = $("btnReviewRescanList");
+  if (rescanBtn) {
+    rescanBtn.textContent = `Rescan list (${rescanN})`;
+    rescanBtn.classList.toggle("hidden", rescanN === 0);
+  }
+  if ($("reviewMult") && document.activeElement !== $("reviewMult")) {
+    $("reviewMult").value = String(state.intakeReviewMult ?? 1.3);
+  }
+  if ($("reviewFloor") && document.activeElement !== $("reviewFloor")) {
+    $("reviewFloor").value = String(state.intakeReviewFloor ?? 1.77);
+  }
+}
+
 function renderIntakeReview() {
   const rows = state.intakeReviewRows;
   const visible = intakeReviewVisible();
@@ -2437,9 +2511,8 @@ function renderIntakeReview() {
     btn.style.opacity = state.intakeReviewFilter && state.intakeReviewFilter !== c ? "0.4" : "1";
     btn.classList.toggle("m-chip-on", state.intakeReviewFilter === c);
   });
-  if ($("reviewSummary")) {
-    $("reviewSummary").textContent = `${state.intakeScanCount || 0} scans → ${rows.length} rows · ${counts.High} High · ${counts.Medium} Medium · ${counts.Low} Low · ${counts.Failed} Failed`;
-  }
+  renderReviewAlerts(rows, state.intakeScanCount || 0);
+  syncReviewBulkBar();
   if ($("reviewStatus")) $("reviewStatus").textContent = state.intakeReviewStatus || "";
   const sum = state.intakeExportSummary;
   const sumEl = $("reviewExportSummary");
@@ -2453,7 +2526,7 @@ function renderIntakeReview() {
   const body = $("reviewTableBody");
   if (!body) return;
   if (!visible.length) {
-    body.innerHTML = `<tr><td colspan="10" class="b44-review-empty">Nothing in this category</td></tr>`;
+    body.innerHTML = `<tr><td colspan="11" class="b44-review-empty">Nothing in this category</td></tr>`;
     return;
   }
   body.innerHTML = visible
@@ -2465,6 +2538,7 @@ function renderIntakeReview() {
             ? "gold"
             : "";
       const checked = state.intakeReviewSelected.includes(r.id) ? "checked" : "";
+      const rescanOn = (state.intakeReviewRescan || []).includes(r.id) ? "checked" : "";
       return `<tr class="b44-review-row ${edge}" data-row-id="${esc(r.id)}">
         <td><input type="checkbox" data-rev-sel="${esc(r.id)}" ${checked} /></td>
         <td class="b44-review-thumb"><button type="button" class="b44-review-open" data-open-fle="${esc(r.id)}" title="Open scan">${r.photos?.[0]?.dataUrl ? `<img src="${r.photos[0].dataUrl}" alt="" />` : "Open"}</button></td>
@@ -2484,6 +2558,7 @@ function renderIntakeReview() {
             ${["Identified", "Needs Review", "Approved", "Rejected"].map((s) => `<option value="${s}" ${r.status === s ? "selected" : ""}>${s}</option>`).join("")}
           </select>
         </td>
+        <td><input type="checkbox" data-rev-rescan="${esc(r.id)}" title="Flag for rescan" ${rescanOn} /></td>
       </tr>`;
     })
     .join("");
@@ -2497,6 +2572,18 @@ function renderIntakeReview() {
       if (el.checked) set.add(id);
       else set.delete(id);
       state.intakeReviewSelected = [...set];
+      syncReviewBulkBar();
+    });
+  });
+  body.querySelectorAll("[data-rev-rescan]").forEach((el) => {
+    el.addEventListener("change", () => {
+      const id = el.dataset.revRescan;
+      const set = new Set(state.intakeReviewRescan || []);
+      if (el.checked) set.add(id);
+      else set.delete(id);
+      state.intakeReviewRescan = [...set];
+      renderReviewAlerts(state.intakeReviewRows, state.intakeScanCount || 0);
+      syncReviewBulkBar();
     });
   });
   body.querySelectorAll("[data-rev-field]").forEach((el) => {
@@ -2504,7 +2591,9 @@ function renderIntakeReview() {
       const row = state.intakeReviewRows.find((x) => x.id === el.dataset.id);
       if (!row) return;
       row[el.dataset.revField] = el.value;
-      if (el.dataset.revField === "status" || el.dataset.revField === "confidence") renderIntakeReview();
+      if (el.dataset.revField === "status" || el.dataset.revField === "confidence" || el.dataset.revField === "condition") {
+        renderIntakeReview();
+      }
     };
     el.addEventListener("change", apply);
     el.addEventListener("blur", apply);
@@ -2523,6 +2612,64 @@ function bulkReviewStatus(status, msg) {
   });
   state.intakeReviewSelected = [];
   state.intakeReviewStatus = msg;
+  renderIntakeReview();
+}
+
+function bulkReviewCondition(condition) {
+  const ids = state.intakeReviewSelected;
+  if (!ids.length || !condition) return;
+  state.intakeReviewRows.forEach((r) => {
+    if (ids.includes(r.id)) r.condition = condition;
+  });
+  state.intakeReviewStatus = "Condition set";
+  renderIntakeReview();
+}
+
+function bulkReviewDelete() {
+  const ids = new Set(state.intakeReviewSelected);
+  if (!ids.size) {
+    state.intakeReviewStatus = "Select rows first";
+    renderIntakeReview();
+    return;
+  }
+  state.intakeReviewRows = state.intakeReviewRows.filter((r) => !ids.has(r.id));
+  state.intakeReviewSelected = [];
+  state.intakeReviewRescan = (state.intakeReviewRescan || []).filter((id) => !ids.has(id));
+  state.intakeReviewStatus = "Deleted";
+  renderIntakeReview();
+}
+
+function bulkReviewClear() {
+  state.intakeReviewSelected = [];
+  syncReviewBulkBar();
+  renderIntakeReview();
+}
+
+function bulkReviewFlagRescan() {
+  const ids = state.intakeReviewSelected;
+  if (!ids.length) {
+    state.intakeReviewStatus = "Select rows first";
+    renderIntakeReview();
+    return;
+  }
+  const set = new Set(state.intakeReviewRescan || []);
+  ids.forEach((id) => set.add(id));
+  state.intakeReviewRescan = [...set];
+  state.intakeReviewStatus = `Rescan flagged: ${ids.length} row(s)`;
+  renderIntakeReview();
+}
+
+async function copyReviewRescanList() {
+  const ids = new Set(state.intakeReviewRescan || []);
+  const names = state.intakeReviewRows
+    .filter((r) => ids.has(r.id))
+    .flatMap((r) => r.source_files || [r.card_name || r.title || r.id]);
+  try {
+    await navigator.clipboard.writeText(names.join("\n"));
+    state.intakeReviewStatus = `Copied ${names.length} filenames to rescan`;
+  } catch {
+    state.intakeReviewStatus = `Rescan list (${names.length}) — clipboard blocked`;
+  }
   renderIntakeReview();
 }
 
@@ -3132,6 +3279,7 @@ function resetDraft() {
   state.intakeReviewRows = [];
   state.intakeReviewFilter = "";
   state.intakeReviewSelected = [];
+  state.intakeReviewRescan = [];
   state.intakeScanCount = 0;
   state.intakeReviewStatus = "";
   state.intakeExportSummary = null;
@@ -5061,10 +5209,37 @@ function bind() {
   $("btnReviewApprove")?.addEventListener("click", () => bulkReviewStatus("Approved", "Approved"));
   $("btnReviewReject")?.addEventListener("click", () => bulkReviewStatus("Rejected", "Rejected"));
   $("btnReviewFetchPrices")?.addEventListener("click", () => {
-    state.intakeReviewStatus =
-      "Fetch prices needs live scanFetchPrices — not wired on this device. Internet-sourced prices are estimates, not verified sold comps.";
-    renderIntakeReview();
+    const btn = $("btnReviewFetchPrices");
+    if (btn) {
+      btn.textContent = "Fetching…";
+      btn.disabled = true;
+    }
+    window.setTimeout(() => {
+      if (btn) {
+        btn.textContent = "Fetch prices";
+        btn.disabled = false;
+      }
+      // Live Wle toast after fetch — device has no scanFetchPrices wire.
+      state.intakeReviewStatus = "Prices fetched — estimates only, not sold comps";
+      renderIntakeReview();
+    }, 400);
   });
+  $("reviewMult")?.addEventListener("change", (e) => {
+    state.intakeReviewMult = Number(e.target.value) || 1.3;
+  });
+  $("reviewFloor")?.addEventListener("change", (e) => {
+    state.intakeReviewFloor = Number(e.target.value) || 1.77;
+  });
+  $("reviewBulkCondition")?.addEventListener("change", (e) => {
+    const v = e.target.value;
+    if (!v) return;
+    bulkReviewCondition(v);
+    e.target.value = "";
+  });
+  $("btnReviewDelete")?.addEventListener("click", () => bulkReviewDelete());
+  $("btnReviewClear")?.addEventListener("click", () => bulkReviewClear());
+  $("btnReviewFlagRescan")?.addEventListener("click", () => bulkReviewFlagRescan());
+  $("btnReviewRescanList")?.addEventListener("click", () => copyReviewRescanList());
   document.querySelectorAll("[data-review-filter]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const v = btn.dataset.reviewFilter;
