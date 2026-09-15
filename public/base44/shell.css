@@ -3223,7 +3223,11 @@ textarea.b44-input {
   display: block;
 }
 
-/* Live DK confirm dialog */
+/* Live DK confirm dialog — above other modals */
+#confirmSheet {
+  z-index: 260;
+  align-items: flex-start;
+}
 .b44-confirm-panel {
   width: 100%;
   max-width: 24rem;
