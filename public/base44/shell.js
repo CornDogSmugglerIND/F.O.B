@@ -3582,21 +3582,7 @@ function bulkReviewClear() {
   renderIntakeReview();
 }
 
-function bulkReviewFlagRescan() {
-  const ids = state.intakeReviewSelected;
-  if (!ids.length) {
-    state.intakeReviewStatus = "Select rows first";
-    renderIntakeReview();
-    return;
-  }
-  const set = new Set(state.intakeReviewRescan || []);
-  ids.forEach((id) => set.add(id));
-  state.intakeReviewRescan = [...set];
-  state.intakeReviewStatus = `Rescan flagged: ${ids.length} row(s)`;
-  renderIntakeReview();
-}
-
-async function copyReviewRescanList() {
+function copyReviewRescanList() {
   const ids = new Set(state.intakeReviewRescan || []);
   const names = state.intakeReviewRows
     .filter((r) => ids.has(r.id))
@@ -3835,41 +3821,6 @@ function saveEbayCsvMapAndExport() {
   saveEbayCsvMapping(cfg);
   closeEbayCsvMapSheet();
   exportIntakeEbayCsv(cfg);
-}
-
-function stageReviewToScouter() {
-  const ready = state.intakeReviewRows.filter((r) => r.status !== "Rejected");
-  if (!ready.length) {
-    state.intakeReviewStatus = "No rows to stage";
-    renderIntakeReview();
-    return;
-  }
-  for (const r of ready) {
-    state.items.unshift({
-      id: r.id,
-      title: r.card_name,
-      barcode: null,
-      quantity: r.quantity || 1,
-      category: state.category,
-      game: state.game,
-      batchName: state.batchName || null,
-      skuPrefix: state.skuPrefix || null,
-      sku: r.sku || null,
-      cardNumber: r.number || null,
-      setName: r.set || null,
-      variation: r.variation || null,
-      condition: (r.condition || "NM").toLowerCase() === "nm" ? "nm" : (r.condition || "nm").toLowerCase(),
-      language: r.language || "English",
-      staged: true,
-      listingStatus: "sorted",
-      photos: r.photos || [],
-      createdAt: new Date().toISOString(),
-    });
-  }
-  saveItems();
-  resetDraft();
-  setIntakeMode("list");
-  navigate("/inventory");
 }
 
 /** Live Fle — catalog candidate sheet from Intake review. */
@@ -6628,7 +6579,6 @@ function bind() {
   $("btnGroupIdentify")?.addEventListener("click", () => startIdentificationFromGroups());
   $("btnSwapFrontBack")?.addEventListener("click", () => swapFrontBack());
   $("btnReviewNewBatch")?.addEventListener("click", () => openNewBatch());
-  $("btnReviewStage")?.addEventListener("click", () => stageReviewToScouter());
   $("btnReviewDhCsv")?.addEventListener("click", () => exportIntakeDoubleHoloCsv());
   $("btnReviewEbayCsv")?.addEventListener("click", () => runIntakeEbayCsv());
   $("btnEbayCsvMapClose")?.addEventListener("click", () => closeEbayCsvMapSheet());
@@ -6678,7 +6628,6 @@ function bind() {
   });
   $("btnReviewDelete")?.addEventListener("click", () => bulkReviewDelete());
   $("btnReviewClear")?.addEventListener("click", () => bulkReviewClear());
-  $("btnReviewFlagRescan")?.addEventListener("click", () => bulkReviewFlagRescan());
   $("btnReviewRescanList")?.addEventListener("click", () => copyReviewRescanList());
   $("btnReviewPreviewFront")?.addEventListener("click", () => {
     state.reviewPreviewFace = "front";
