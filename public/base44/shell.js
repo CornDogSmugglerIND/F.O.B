@@ -1558,13 +1558,21 @@ function archiveAsset() {
 function deleteAsset() {
   const id = state.assetEditId;
   if (!id) return;
-  state.items = state.items.filter((x) => x.id !== id);
-  saveItems();
-  if ($("assetSheetStatus")) $("assetSheetStatus").textContent = "Item deleted";
-  closeAssetSheet();
-  closeScouterReadout();
-  renderCollection();
-  updateSitrep();
+  openConfirmDialog({
+    title: "Delete item",
+    message: "This permanently deletes the item. This cannot be undone.",
+    confirmLabel: "Delete",
+    danger: true,
+    onConfirm: () => {
+      state.items = state.items.filter((x) => x.id !== id);
+      saveItems();
+      if ($("assetSheetStatus")) $("assetSheetStatus").textContent = "Item deleted";
+      closeAssetSheet();
+      closeScouterReadout();
+      renderCollection();
+      updateSitrep();
+    },
+  });
 }
 
 function saveAssetSheet() {
@@ -2369,16 +2377,46 @@ function archiveItemPage() {
 function deleteItemPage() {
   const id = state.itemPageId;
   if (!id) return;
-  if (!confirm("This permanently deletes the item. This cannot be undone.")) return;
-  state.items = state.items.filter((x) => x.id !== id);
-  saveItems();
-  state.itemPageId = null;
-  state.itemPhotos = [];
-  renderCollection();
-  updateSitrep();
-  navigate("/");
+  openConfirmDialog({
+    title: "Delete item",
+    message: "This permanently deletes the item. This cannot be undone.",
+    confirmLabel: "Delete",
+    danger: true,
+    onConfirm: () => {
+      state.items = state.items.filter((x) => x.id !== id);
+      saveItems();
+      state.itemPageId = null;
+      state.itemPhotos = [];
+      renderCollection();
+      updateSitrep();
+      navigate("/");
+    },
+  });
 }
 
+
+/** Live DK confirm dialog — title + message + Cancel / confirm. */
+let confirmDialogOnConfirm = null;
+
+function closeConfirmDialog() {
+  confirmDialogOnConfirm = null;
+  $("confirmSheet")?.classList.add("hidden");
+}
+
+function openConfirmDialog({ title, message, confirmLabel = "Confirm", danger = false, onConfirm }) {
+  confirmDialogOnConfirm = typeof onConfirm === "function" ? onConfirm : null;
+  if ($("confirmTitle")) $("confirmTitle").textContent = title || "Confirm";
+  if ($("confirmMessage")) {
+    $("confirmMessage").textContent = message || "";
+    $("confirmMessage").classList.toggle("hidden", !message);
+  }
+  const ok = $("btnConfirmOk");
+  if (ok) {
+    ok.textContent = confirmLabel || "Confirm";
+    ok.classList.toggle("is-danger", !!danger);
+  }
+  $("confirmSheet")?.classList.remove("hidden");
+}
 
 function setBatchGame(code) {
   const hit = INTAKE_GAMES.find((g) => g.code === code) || INTAKE_GAMES[0];
@@ -5946,9 +5984,19 @@ function bind() {
   $("assetSheet")?.addEventListener("click", (e) => {
     if (e.target === $("assetSheet")) closeAssetSheet();
   });
+  $("btnConfirmCancel")?.addEventListener("click", () => closeConfirmDialog());
+  $("btnConfirmOk")?.addEventListener("click", () => {
+    const fn = confirmDialogOnConfirm;
+    closeConfirmDialog();
+    if (fn) fn();
+  });
+  $("confirmSheet")?.addEventListener("click", (e) => {
+    if (e.target === $("confirmSheet")) closeConfirmDialog();
+  });
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      if (!$("fleSheet")?.classList.contains("hidden")) closeFleSheet();
+      if (!$("confirmSheet")?.classList.contains("hidden")) closeConfirmDialog();
+      else if (!$("fleSheet")?.classList.contains("hidden")) closeFleSheet();
       else if (!$("unSheet")?.classList.contains("hidden")) closeUnSheet();
       else if (!$("assetSheet")?.classList.contains("hidden")) closeAssetSheet();
       else if (state.intakePickId || !$("intakePickSheet")?.classList.contains("hidden")) {
