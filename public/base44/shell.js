@@ -4023,7 +4023,9 @@ async function runUnEngine() {
   await new Promise((r) => setTimeout(r, 400));
   state.unPhase = "error";
   state.unDraft = null;
+  // Live UN: ht.error("AI engine failed — check item data")
   state.unStatus = "AI engine failed — check item data. Listing engine isn't connected on this device.";
+  showToast("AI engine failed — check item data", "err");
   renderUnSheet();
 }
 
@@ -4032,22 +4034,31 @@ function saveUnDraft() {
   const d = state.unDraft;
   if (!it || !d) {
     state.unStatus = "Failed to save draft";
+    // Live UN: ht.error("Failed to save draft")
+    showToast("Failed to save draft", "err");
     renderUnSheet();
     return;
   }
-  it.title = d.title || it.title;
-  if (d.price != null) it.marketValue = Number(d.price) || it.marketValue;
-  if (d.sku) it.sku = d.sku;
-  it.listingStatus = "ready_to_list";
-  it.staged = true;
-  it.updatedAt = new Date().toISOString();
-  saveItems();
-  state.readoutStatus = "Draft saved → Ready to List";
-  closeUnSheet();
-  if (state.lockedItemId) openScouterReadout(state.lockedItemId);
-  renderCollection();
-  updateSitrep();
-  showToast("Draft saved → Ready to List", "ok");
+  try {
+    it.title = d.title || it.title;
+    if (d.price != null) it.marketValue = Number(d.price) || it.marketValue;
+    if (d.sku) it.sku = d.sku;
+    it.listingStatus = "ready_to_list";
+    it.staged = true;
+    it.updatedAt = new Date().toISOString();
+    saveItems();
+    state.readoutStatus = "Draft saved → Ready to List";
+    closeUnSheet();
+    if (state.lockedItemId) openScouterReadout(state.lockedItemId);
+    renderCollection();
+    updateSitrep();
+    showToast("Draft saved → Ready to List", "ok");
+  } catch {
+    // Live UN: ht.error("Failed to save draft")
+    state.unStatus = "Failed to save draft";
+    showToast("Failed to save draft", "err");
+    renderUnSheet();
+  }
 }
 
 function renderPhotos() {
@@ -6171,6 +6182,8 @@ async function crLookup(code) {
     }
   } catch (e) {
     setScouterStatus(`Product lookup failed: ${e.message || e}`);
+    // Live CR: ht.error("Product lookup failed")
+    showToast("Product lookup failed", "err");
     crShowPane("scan");
     crState.lastDecoded = "";
     await crStartScanner();
@@ -6336,6 +6349,8 @@ function bind() {
       }
     } catch (_) {
       setScouterStatus("Image upload failed");
+      // Live CR: ht.error("Image upload failed")
+      showToast("Image upload failed", "err");
     }
   });
 
