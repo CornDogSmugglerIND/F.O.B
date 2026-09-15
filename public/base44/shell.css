@@ -3122,3 +3122,103 @@ textarea.b44-input {
   color: #4f9e7a;
   animation: b44-spin 0.8s linear infinite;
 }
+
+/* Live PK Shipping Presets manage sheet */
+.b44-pk-ship-title {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 300;
+  color: #e8edea;
+  letter-spacing: 0.01em;
+}
+.b44-pk-ship-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.b44-pk-ship-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.b44-pk-ship-row-name {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+}
+.b44-pk-ship-row-meta {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 2px;
+}
+.b44-pk-ship-row-del {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.b44-pk-ship-row-del:hover {
+  color: #fca5a5;
+}
+.b44-pk-ship-new {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.b44-pk-ship-new-label {
+  margin: 0 0 12px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+}
+.b44-pk-ship-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.b44-pk-ship-input:focus {
+  border-color: #4f9e7a;
+  outline: none;
+}
+.b44-pk-ship-create {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: #14181b;
+  border: 1px solid #4f9e7a;
+  color: #4f9e7a;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.b44-pk-ship-create:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.b44-pk-ship-create.is-busy .b44-pk-ship-create-ico {
+  display: none;
+}
+.b44-pk-ship-create.is-busy .b44-pk-ship-create-spin {
+  display: block;
+  animation: b44-spin 0.8s linear infinite;
+}
+.b44-pk-ship-create-spin.hidden {
+  display: none;
+}
+.b44-pk-ship-create.is-busy .b44-pk-ship-create-spin.hidden {
+  display: block;
+}

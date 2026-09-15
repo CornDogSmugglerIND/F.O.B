@@ -2153,12 +2153,14 @@ function renderItemShipManage() {
           s.length || s.width || s.height
             ? ` · ${s.length || 0}×${s.width || 0}×${s.height || 0}in`
             : "";
-        return `<div class="v-panel v-cut-sm p-3" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        return `<div class="b44-pk-ship-row">
           <div style="flex:1;min-width:0">
-            <div class="v-readout v-emit-white" style="font-size:14px">${esc(s.name)}</div>
-            <div class="b44-copy-soft" style="font-size:12px;margin-top:2px">${esc(pkg)}${esc(weight)}${esc(dims)}</div>
+            <div class="b44-pk-ship-row-name">${esc(s.name)}</div>
+            <div class="b44-pk-ship-row-meta">${esc(pkg)}${esc(weight)}${esc(dims)}</div>
           </div>
-          <button type="button" class="m-btn" data-pk-del-ship="${esc(s.id)}" title="Delete">×</button>
+          <button type="button" class="b44-pk-ship-row-del" data-pk-del-ship="${esc(s.id)}" title="Delete" aria-label="Delete preset">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+          </button>
         </div>`;
       })
       .join("");
@@ -2185,38 +2187,47 @@ function renderItemShipManage() {
 }
 
 function createPkShipPreset() {
+  const btn = $("btnPkShipCreate");
+  if (btn?.classList.contains("is-busy")) return;
   const name = ($("pkShipName")?.value || "").trim();
   if (!name) {
     if ($("itemShipManageStatus")) $("itemShipManageStatus").textContent = "Name is required";
     return;
   }
-  const package_type = $("pkShipPackageType")?.value || "bubble_mailer";
-  const weight = Number($("pkShipWeight")?.value || 0);
-  const length = Number($("pkShipLength")?.value || 0);
-  const width = Number($("pkShipWidth")?.value || 0);
-  const height = Number($("pkShipHeight")?.value || 0);
-  loadSettingsLocal();
-  state.shipping.unshift({
-    id: crypto.randomUUID(),
-    name,
-    package_type,
-    weight,
-    length,
-    width,
-    height,
-    carrier: "",
-    service: "",
-    cost: 0,
-    handling_days: 1,
-    is_default: state.shipping.length === 0,
-  });
-  saveSettingsLocal();
-  const it = currentItemPage();
-  fillItemShipOptions(it?.shippingPresetId || it?.shipping_preset_id || "");
-  if (it) renderItemShipSummary(it);
-  renderItemShipManage();
-  if ($("itemShipManageStatus")) $("itemShipManageStatus").textContent = "Preset created";
-  if (state.settingsTab === "shipping") renderSettings();
+  btn?.classList.add("is-busy");
+  if (btn) btn.disabled = true;
+  try {
+    const package_type = $("pkShipPackageType")?.value || "bubble_mailer";
+    const weight = Number($("pkShipWeight")?.value || 0);
+    const length = Number($("pkShipLength")?.value || 0);
+    const width = Number($("pkShipWidth")?.value || 0);
+    const height = Number($("pkShipHeight")?.value || 0);
+    loadSettingsLocal();
+    state.shipping.unshift({
+      id: crypto.randomUUID(),
+      name,
+      package_type,
+      weight,
+      length,
+      width,
+      height,
+      carrier: "",
+      service: "",
+      cost: 0,
+      handling_days: 1,
+      is_default: state.shipping.length === 0,
+    });
+    saveSettingsLocal();
+    const it = currentItemPage();
+    fillItemShipOptions(it?.shippingPresetId || it?.shipping_preset_id || "");
+    if (it) renderItemShipSummary(it);
+    renderItemShipManage();
+    if ($("itemShipManageStatus")) $("itemShipManageStatus").textContent = "Preset created";
+    if (state.settingsTab === "shipping") renderSettings();
+  } finally {
+    btn?.classList.remove("is-busy");
+    if (btn) btn.disabled = false;
+  }
 }
 
 function loadCollections() {
