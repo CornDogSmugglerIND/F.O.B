@@ -4915,11 +4915,10 @@ function storageDefItemCount(def) {
 }
 
 
+/** Live Listing templates card — icon tile, Default chip, big markup, Edit + Delete. */
 function templateCardHtml(t) {
   const markup = t.markup_percent ?? t.markup ?? 0;
-  const chip = t.is_default
-    ? `<span class="v-label" style="color:var(--b44-gold,#ffb43d)">DEFAULT</span>`
-    : "";
+  const chip = t.is_default ? `<span class="m-chip m-chip-on">Default</span>` : "";
   if (state.editingTemplateId === t.id) {
     return `<div class="v-panel v-cut-sm p-4" data-edit-tpl="${esc(t.id)}">
       <label class="v-label" style="display:block;margin-bottom:6px;font-size:9px">Name</label>
@@ -4935,14 +4934,23 @@ function templateCardHtml(t) {
       </div>
     </div>`;
   }
-  return `<div class="v-panel v-cut-sm p-4">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">${chip || "<span></span>"}
-      <button type="button" class="m-btn" data-del-template="${esc(t.id)}" title="Delete">×</button>
+  return `<div class="v-panel v-cut-sm p-4 b44-settings-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div class="b44-settings-card-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>
+      </div>
+      ${chip}
     </div>
-    <div class="v-readout v-emit-white" style="font-size:15px;margin-top:8px">${esc(t.name)}</div>
-    <div class="v-readout" style="font-size:22px;margin-top:6px">${esc(String(markup))}<span class="b44-copy-soft" style="font-size:14px">% markup</span></div>
-    <div class="b44-actions" style="margin-top:12px">
-      <button type="button" class="m-btn" data-edit-template="${esc(t.id)}">Edit</button>
+    <div class="v-readout v-emit-white" style="font-size:15px;font-weight:600;margin-top:12px">${esc(t.name)}</div>
+    <div class="v-readout" style="font-size:22px;font-weight:700;margin-top:4px">${esc(String(markup))}<span class="b44-copy-soft" style="font-size:14px;font-weight:600">%</span> <span class="b44-copy-soft" style="font-size:12px;font-weight:500">markup</span></div>
+    <div class="b44-actions" style="margin-top:16px;align-items:center">
+      <button type="button" class="m-btn" style="flex:1" data-edit-template="${esc(t.id)}">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        Edit
+      </button>
+      <button type="button" class="m-btn m-btn-danger" data-del-template="${esc(t.id)}" title="Delete" aria-label="Delete template">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+      </button>
     </div>
   </div>`;
 }
