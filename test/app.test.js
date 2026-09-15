@@ -219,6 +219,8 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /id="confirmSheet"/);
     assert.match(shellJs, /Delete item/);
     assert.match(shellJs, /openConfirmDialog/);
+    assert.match(shellJs, /Intake value/);
+    assert.match(shellJs, /publishIntakeHud/);
     assert.match(html, /New Preset/);
     assert.match(html, /Shipping Presets/);
     assert.match(html, /b44-pk-ship-create/);

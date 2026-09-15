@@ -1036,6 +1036,8 @@ function navigate(route) {
   if (path === "/channel") renderChannel();
   if (path === "/" || path === "/command") updateSitrep();
   if (path === "/scan-assistant") renderScanAssistant();
+  // Live qle: intake owns Zc→BX HUD via renderIntakeList.
+  if (path === "/scan-intake") renderIntakeList();
   // Live tle: inventory owns Zc→BX HUD via renderCollection.
   if (path === "/inventory") renderCollection();
   // Live Command New card → /inventory?add=1 opens VN sheet.
@@ -1249,6 +1251,7 @@ function renderIntakeList() {
   if ($("intakeValue")) $("intakeValue").textContent = money(intakeVal);
   empty.classList.toggle("hidden", pool.length > 0);
   updateIntakeHint(pool.length);
+  publishIntakeHud(hubs, intakeVal);
   root.innerHTML = hubs.map(intakeHubSectionHtml).join("");
   root.querySelectorAll("[data-intake-pick]").forEach((btn) => {
     btn.addEventListener("click", () => openIntakePick(btn.dataset.intakePick, btn.dataset.intakeHub));
@@ -1351,6 +1354,43 @@ function publishScouterHud(counts) {
   setHud({
     breadcrumb: [{ label: "Scouter" }, { label: pipeMode ? "Pipeline" : "Spaces" }],
     stats: hudStats,
+  });
+}
+
+/** Live qle → Zc → BX HUD (Intake crumb + hub counts + Intake value). */
+function publishIntakeHud(hubs, intakeVal) {
+  if (state.route !== "/scan-intake" && !$("view-intake")?.classList.contains("active")) return;
+  const list =
+    hubs ||
+    intakeHubsFromItems(
+      intakeMapItems().filter((it) => {
+        const q = String(state.filterIntake || "").trim().toLowerCase();
+        if (!q) return true;
+        const hay = `${it.title || ""} ${it.sku || ""} ${it.barcode || ""}`.toLowerCase();
+        return hay.includes(q);
+      }),
+    );
+  let value = intakeVal;
+  if (typeof value !== "number") {
+    value = intakeMapItems().reduce(
+      (sum, it) => sum + (Number(it.marketValue ?? it.price) || 0) * (Number(it.quantity) || 1),
+      0,
+    );
+  }
+  const stats = list.map((h) => ({
+    label: h.label,
+    value: pad2(h.total),
+    color: h.hi,
+  }));
+  stats.push({
+    label: "Intake value",
+    value: money(value),
+    color: "var(--b44-gold-hi)",
+    big: true,
+  });
+  setHud({
+    breadcrumb: [{ label: "Intake" }],
+    stats,
   });
 }
 
