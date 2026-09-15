@@ -89,6 +89,10 @@ const state = {
   intakePickId: null,
   intakePickHubKey: null,
   intakePickStatus: "",
+  /** Live zre spin angles per Intake hub key (desk orbit). */
+  intakeOrbitSpin: {},
+  /** Live zre focus (dim other hubs). */
+  intakeOrbitFocus: null,
 };
 
 const SPACES_KEY = "scouter-spaces-v1";
@@ -1173,12 +1177,326 @@ function intakeHubSectionHtml(hub) {
   </section>`;
 }
 
+/** Live St.all — octagonal hub clip. */
+function clipPathAll(n = 13) {
+  return `polygon(${n}px 0%, calc(100% - ${n}px) 0%, 100% ${n}px, 100% calc(100% - ${n}px), calc(100% - ${n}px) 100%, ${n}px 100%, 0% calc(100% - ${n}px), 0% ${n}px)`;
+}
+
+/** Live St.tl_br — node clip. */
+function clipPathTlBr(n = 13) {
+  return `polygon(${n}px 0%, 100% 0%, 100% calc(100% - ${n}px), calc(100% - ${n}px) 100%, 0% 100%, 0% ${n}px)`;
+}
+
+/** Live uf — hub/node glow box-shadow. */
+function glowBox(core, hi, t = 0) {
+  const r = Math.max(0, Math.min(2, t | 0));
+  const i = [26, 42, 62][r];
+  const s = [58, 88, 124][r];
+  const o = [0.18, 0.26, 0.34][r];
+  const a = [0.06, 0.16, 0.34][r];
+  return [
+    `inset 0 1px 0 rgba(255,255,255,${o})`,
+    `inset 0 0 26px -12px ${hi}`,
+    `0 0 0 1px rgba(255,255,255,${a})`,
+    `0 0 ${i}px -14px ${hi}`,
+    `0 0 ${s}px -26px ${core}`,
+    "0 18px 42px -18px rgba(0,0,0,0.95)",
+  ].join(", ");
+}
+
+/** Live Gl — hub face radial. */
+function hubFaceGrad(hi) {
+  return `radial-gradient(circle at 32% 24%, rgba(255,255,255,0.22), ${hi}26 30%, rgba(0,0,0,0.66) 72%)`;
+}
+
+const CHEV_LEFT =
+  '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>';
+const CHEV_RIGHT =
+  '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+
+/** Live desk Intake uses Gre; without WebGL live falls back to zre (SPIN orbit). Port = zre. */
+function intakeDeskOrbit() {
+  return typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
+}
+
+let intakeOrbitRaf = 0;
+let intakeOrbitLastTs = 0;
+let intakeOrbitHubsCache = [];
+
+function stopIntakeOrbitAnim() {
+  if (intakeOrbitRaf) {
+    cancelAnimationFrame(intakeOrbitRaf);
+    intakeOrbitRaf = 0;
+  }
+  intakeOrbitLastTs = 0;
+}
+
+function bumpIntakeOrbitSpin(key, dir) {
+  const cur = state.intakeOrbitSpin[key] || 0;
+  state.intakeOrbitSpin = { ...state.intakeOrbitSpin, [key]: cur + dir * 0.62 };
+  if (intakeOrbitHubsCache.length) applyIntakeOrbitPositions(intakeOrbitHubsCache);
+}
+
+function intakeOrbitDim(stage) {
+  const rect = stage.getBoundingClientRect();
+  return {
+    w: Math.max(320, rect.width || stage.clientWidth || 960),
+    h: Math.max(420, rect.height || stage.clientHeight || 520),
+  };
+}
+
+/** Live zre layout math (cap 10). */
+function intakeOrbitLayout(hubs, dim) {
+  const L = hubs.length || 1;
+  const B = dim.w / L;
+  const j = dim.h * 0.44;
+  const q = Math.max(74, Math.min(104, B * 0.24));
+  const rx = Math.min(B * 0.3, dim.h * 0.24);
+  const K = rx * 0.42;
+  const ee = Math.max(46, Math.min(76, B * 0.17));
+  const cap = 10;
+  return hubs.map((G, ae) => {
+    const F = B * ae + B / 2;
+    const X = L === 1 ? 0.5 : ae / (L - 1);
+    const ue = j - Math.sin(X * Math.PI) * (dim.h * 0.05);
+    const H = ue + K * 0.34;
+    const ne = (G.items || []).slice(0, cap);
+    const se = ne.length;
+    const le = state.intakeOrbitSpin[G.key] || 0;
+    const be = ne.map((Ne, me) => {
+      const Fe = (me / Math.max(1, se)) * Math.PI * 2 + le;
+      const te = Math.sin(Fe);
+      const Ce = (te + 1) / 2;
+      return {
+        it: Ne,
+        x: F + Math.cos(Fe) * rx,
+        y: H + te * K,
+        scale: 0.62 + Ce * 0.5,
+        depth: Ce,
+        z: 10 + Math.round(Ce * 40),
+      };
+    });
+    return {
+      g: G,
+      cx: F,
+      hy: ue,
+      oy: H,
+      hubSize: q,
+      rx,
+      ry: K,
+      nodeBase: ee,
+      nodes: be,
+      over: (G.items || []).length - ne.length,
+    };
+  });
+}
+
+function intakeOrbitNodeHtml(node, layoutHub, lockedId) {
+  const hub = layoutHub.g;
+  const it = node.it;
+  const lock = lockedId === it.id;
+  const x = layoutHub.nodeBase * node.scale * (lock ? 1.5 : 1);
+  const h = Math.round(x * 1.4);
+  const yCut = Math.max(7, x * 0.11);
+  const thumb = it.photos?.[0]?.dataUrl || "";
+  const qty = Number(it.quantity) || 1;
+  const badge =
+    qty > 1
+      ? `<span class="b44-orbit-badge v-readout" style="font-size:${Math.max(9.5, x * 0.11)}px;color:${esc(hub.hi)}">×${qty}</span>`
+      : "";
+  const face = thumb
+    ? `<img src="${esc(thumb)}" alt="" draggable="false" />`
+    : `<span class="b44-orbit-face-empty" style="background:${esc(hubFaceGrad(hub.hi))}"></span>`;
+  const opacity = 0.55 + node.depth * 0.45;
+  const filter = `saturate(${0.7 + node.depth * 0.45}) brightness(${0.72 + node.depth * 0.4})`;
+  return `<button type="button" class="b44-orbit-node ${lock ? "is-lock" : ""}" data-intake-pick="${esc(it.id)}" data-intake-hub="${esc(hub.key)}" title="${esc(it.title || "Untitled")}" style="left:${node.x}px;top:${node.y}px;width:${x}px;height:${h}px;z-index:${lock ? 80 : node.z};opacity:${opacity};filter:${filter};clip-path:${esc(clipPathTlBr(yCut))};box-shadow:${esc(glowBox(hub.core, hub.hi, lock ? 2 : 0))}">
+    <span class="b44-orbit-node-face">${face}</span>
+    <span class="b44-orbit-node-scan" aria-hidden="true"></span>
+    <span class="b44-orbit-node-gloss" aria-hidden="true"></span>
+    <span class="b44-orbit-node-inset" style="clip-path:${esc(clipPathTlBr(yCut))};box-shadow:inset 0 0 0 1px ${lock ? esc(hub.hi) : "rgba(255,255,255,0.20)"}, inset 0 0 22px -10px ${esc(hub.hi)}"></span>
+    ${badge}
+  </button>`;
+}
+
+function intakeOrbitHubHtml(L, focusKey, dropKey) {
+  const G = L.g;
+  const hot = dropKey === G.key;
+  const gold = "#FFB43D";
+  const goldHi = "#FFD98A";
+  const core = hot ? gold : G.core;
+  const hi = hot ? goldHi : G.hi;
+  const focused = focusKey === G.key;
+  const cut = Math.round(L.hubSize * 0.21);
+  const spinLabel = L.over > 0 ? `${L.nodes.length}/${(G.items || []).length}` : "SPIN";
+  const spinRow =
+    L.nodes.length > 1
+      ? `<div class="b44-orbit-spin">
+          <button type="button" class="v-panel v-cut-sm b44-orbit-spin-btn" data-orbit-spin="${esc(G.key)}" data-orbit-dir="-1" style="color:${esc(G.hi)}">${CHEV_LEFT}</button>
+          <span class="v-label b44-orbit-spin-label">${esc(spinLabel)}</span>
+          <button type="button" class="v-panel v-cut-sm b44-orbit-spin-btn" data-orbit-spin="${esc(G.key)}" data-orbit-dir="1" style="color:${esc(G.hi)}">${CHEV_RIGHT}</button>
+        </div>`
+      : "";
+  const dropHint = hot
+    ? `<div class="b44-orbit-drop-hint v-panel v-cut-sm">DROP HERE</div>`
+    : "";
+  return `<div class="b44-orbit-hub" data-orbit-hub="${esc(G.key)}" style="left:${L.cx}px;top:${L.hy}px;z-index:${hot ? 70 : 42};opacity:${focusKey && focusKey !== G.key ? 0.25 : 1}">
+    <div class="b44-orbit-hub-meta">
+      <div class="v-label" style="font-size:9px;letter-spacing:0.24em">${esc((G.sub || "Intake").toUpperCase())}</div>
+      <div class="v-title b44-orbit-hub-title">${esc(G.label)}</div>
+    </div>
+    <button type="button" class="b44-orbit-hub-btn" data-orbit-focus="${esc(G.key)}" style="width:${L.hubSize}px;height:${L.hubSize}px;clip-path:${esc(clipPathAll(cut))};background:${esc(hubFaceGrad(hi))};box-shadow:${esc(glowBox(core, hi, hot || focused ? 2 : 1))}">
+      <span class="b44-orbit-hub-inset" style="clip-path:${esc(clipPathAll(cut))};box-shadow:inset 0 0 0 1.5px ${esc(hot ? goldHi : G.core)}, inset 0 0 30px -8px ${esc(G.hi)}"></span>
+      <span class="v-readout b44-orbit-hub-count" style="font-size:${L.hubSize * 0.34}px;color:${esc(hot ? goldHi : G.hi)};text-shadow:0 0 1px #fff, 0 0 18px ${esc(G.core)}, 0 0 46px ${esc(G.core)}88">${pad2(G.total ?? (G.items || []).length)}</span>
+    </button>
+    ${spinRow}
+    ${dropHint}
+  </div>`;
+}
+
+/** Live zre — update node transforms without rebuilding the stage (RAF-safe). */
+function applyIntakeOrbitPositions(hubs) {
+  const stage = $("intakeOrbit");
+  const inner = $("intakeOrbitInner");
+  if (!stage || !inner || !hubs.length) return;
+  const dim = intakeOrbitDim(stage);
+  const layout = intakeOrbitLayout(hubs, dim);
+  const lockedId = state.intakePickId;
+  for (const L of layout) {
+    for (const node of L.nodes) {
+      const el = inner.querySelector(`[data-intake-pick="${CSS.escape(node.it.id)}"]`);
+      if (!el) continue;
+      const lock = lockedId === node.it.id;
+      const x = L.nodeBase * node.scale * (lock ? 1.5 : 1);
+      const h = Math.round(x * 1.4);
+      el.style.left = `${node.x}px`;
+      el.style.top = `${node.y}px`;
+      el.style.width = `${x}px`;
+      el.style.height = `${h}px`;
+      el.style.zIndex = String(lock ? 80 : node.z);
+      el.style.opacity = String(0.55 + node.depth * 0.45);
+      el.style.filter = `saturate(${0.7 + node.depth * 0.45}) brightness(${0.72 + node.depth * 0.4})`;
+      el.classList.toggle("is-lock", lock);
+    }
+    const spinLab = inner.querySelector(`[data-orbit-hub="${CSS.escape(L.g.key)}"] .b44-orbit-spin-label`);
+    if (spinLab) {
+      spinLab.textContent = L.over > 0 ? `${L.nodes.length}/${(L.g.items || []).length}` : "SPIN";
+    }
+  }
+}
+
+function paintIntakeOrbit(hubs) {
+  const stage = $("intakeOrbit");
+  const inner = $("intakeOrbitInner");
+  if (!stage || !inner || !hubs.length) return;
+  const dim = intakeOrbitDim(stage);
+  const layout = intakeOrbitLayout(hubs, dim);
+  const focusKey = state.intakeOrbitFocus || null;
+  const lockedId = state.intakePickId;
+  const firstHi = hubs[0]?.hi || "#FFFFFF";
+  const lastHi = hubs[hubs.length - 1]?.hi || "#FFD98A";
+
+  const ellipses = layout
+    .map((L) => {
+      const dimOp = focusKey && focusKey !== L.g.key ? 0.06 : 1;
+      return `<g opacity="${dimOp}">
+        <ellipse cx="${L.cx}" cy="${L.oy}" rx="${L.rx}" ry="${L.ry}" fill="none" stroke="${esc(L.g.core)}" stroke-width="1.1" opacity="0.40" stroke-dasharray="3 9"/>
+        <ellipse cx="${L.cx}" cy="${L.oy}" rx="${L.rx * 0.62}" ry="${L.ry * 0.62}" fill="none" stroke="${esc(L.g.core)}" stroke-width="0.8" opacity="0.18" stroke-dasharray="2 12"/>
+      </g>`;
+    })
+    .join("");
+
+  const rails = layout
+    .slice(0, -1)
+    .map((L, B) => {
+      const j = layout[B + 1];
+      const q = !focusKey || focusKey === L.g.key || focusKey === j.g.key;
+      const d = `M ${L.cx + L.rx} ${L.hy} Q ${(L.cx + j.cx) / 2} ${(L.hy + j.hy) / 2 - 34}, ${j.cx - j.rx} ${j.hy}`;
+      return `<g opacity="${q ? 1 : 0.1}">
+        <path d="${d}" fill="none" stroke="${esc(j.g.core)}" stroke-width="3" opacity="0.14"/>
+        <path d="${d}" fill="none" stroke="url(#cn-rail)" stroke-width="1.5" stroke-dasharray="9 9">
+          <animate attributeName="stroke-dashoffset" from="36" to="0" dur="1.7s" repeatCount="indefinite"/>
+        </path>
+      </g>`;
+    })
+    .join("");
+
+  const hubsHtml = layout.map((L) => intakeOrbitHubHtml(L, focusKey, null)).join("");
+  const nodesHtml = layout.map((L) => L.nodes.map((n) => intakeOrbitNodeHtml(n, L, lockedId)).join("")).join("");
+
+  inner.innerHTML = `
+    <svg class="b44-orbit-svg" width="${dim.w}" height="${dim.h}" aria-hidden="true">
+      <defs>
+        <linearGradient id="cn-rail" x1="0" x2="1">
+          <stop offset="0%" stop-color="${esc(firstHi)}"/>
+          <stop offset="100%" stop-color="${esc(lastHi)}"/>
+        </linearGradient>
+      </defs>
+      ${ellipses}${rails}
+    </svg>
+    <div class="b44-orbit-layer" style="width:${dim.w}px;height:${dim.h}px">${hubsHtml}${nodesHtml}</div>
+  `;
+
+  inner.querySelectorAll("[data-intake-pick]").forEach((btn) => {
+    btn.addEventListener("click", () => openIntakePick(btn.dataset.intakePick, btn.dataset.intakeHub));
+  });
+  inner.querySelectorAll("[data-orbit-spin]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      bumpIntakeOrbitSpin(btn.dataset.orbitSpin, Number(btn.dataset.orbitDir) || 1);
+    });
+  });
+  inner.querySelectorAll("[data-orbit-focus]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.orbitFocus;
+      state.intakeOrbitFocus = state.intakeOrbitFocus === key ? null : key;
+      paintIntakeOrbit(hubs);
+    });
+  });
+}
+
+function tickIntakeOrbit(ts) {
+  intakeOrbitRaf = requestAnimationFrame(tickIntakeOrbit);
+  if (!intakeDeskOrbit() || state.route !== "/scan-intake") {
+    stopIntakeOrbitAnim();
+    return;
+  }
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (state.intakePickId) return; // live zre: pause auto-spin while locked
+  if (!intakeOrbitLastTs) intakeOrbitLastTs = ts;
+  const dt = Math.min(64, ts - intakeOrbitLastTs);
+  intakeOrbitLastTs = ts;
+  if (!intakeOrbitHubsCache.length) return;
+  const next = { ...state.intakeOrbitSpin };
+  intakeOrbitHubsCache.forEach((hub, i) => {
+    next[hub.key] = (next[hub.key] || 0) + dt * 58e-6 * (i % 2 ? -1 : 1);
+  });
+  state.intakeOrbitSpin = next;
+  applyIntakeOrbitPositions(intakeOrbitHubsCache);
+}
+
+function startIntakeOrbitAnim() {
+  stopIntakeOrbitAnim();
+  if (!intakeDeskOrbit()) return;
+  intakeOrbitRaf = requestAnimationFrame(tickIntakeOrbit);
+}
+
+function renderIntakeOrbit(hubs) {
+  const stage = $("intakeOrbit");
+  if (!stage) return;
+  intakeOrbitHubsCache = hubs;
+  stage.classList.remove("hidden");
+  stage.setAttribute("aria-hidden", "false");
+  paintIntakeOrbit(hubs);
+  startIntakeOrbitAnim();
+}
+
 function closeIntakePick() {
   state.intakePickId = null;
   state.intakePickHubKey = null;
   state.intakePickStatus = "";
   $("intakePickSheet")?.classList.add("hidden");
   updateIntakeHint();
+  if (intakeOrbitHubsCache.length) applyIntakeOrbitPositions(intakeOrbitHubsCache);
 }
 
 function openIntakePick(id, hubKey) {
@@ -1198,6 +1516,7 @@ function openIntakePick(id, hubKey) {
   if ($("intakePickSku")) $("intakePickSku").textContent = it.sku || it.barcode || "NO SKU";
   if ($("intakePickStatus")) $("intakePickStatus").textContent = state.intakePickStatus || "";
   updateIntakeHint();
+  if (intakeOrbitHubsCache.length) applyIntakeOrbitPositions(intakeOrbitHubsCache);
 }
 
 /** Live Zc intake hint: empty / has rows / locked pick. */
@@ -1249,6 +1568,7 @@ function openIntakeCard() {
 function renderIntakeList() {
   const root = $("intakeHubs");
   const empty = $("intakeEmpty");
+  const orbit = $("intakeOrbit");
   if (!root || !empty) return;
   const q = String(state.filterIntake || "").trim().toLowerCase();
   const pool = intakeMapItems().filter((it) => {
@@ -1265,10 +1585,33 @@ function renderIntakeList() {
   empty.classList.toggle("hidden", pool.length > 0);
   updateIntakeHint(pool.length);
   publishIntakeHud(hubs, intakeVal);
-  root.innerHTML = hubs.map(intakeHubSectionHtml).join("");
-  root.querySelectorAll("[data-intake-pick]").forEach((btn) => {
-    btn.addEventListener("click", () => openIntakePick(btn.dataset.intakePick, btn.dataset.intakeHub));
-  });
+
+  const deskOrbit = intakeDeskOrbit() && pool.length > 0;
+  if (orbit) {
+    if (deskOrbit) {
+      root.innerHTML = "";
+      root.classList.add("hidden");
+      renderIntakeOrbit(hubs);
+    } else {
+      stopIntakeOrbitAnim();
+      orbit.classList.add("hidden");
+      orbit.setAttribute("aria-hidden", "true");
+      const inner = $("intakeOrbitInner");
+      if (inner) inner.innerHTML = "";
+      intakeOrbitHubsCache = [];
+      root.classList.remove("hidden");
+      root.innerHTML = hubs.map(intakeHubSectionHtml).join("");
+      root.querySelectorAll("[data-intake-pick]").forEach((btn) => {
+        btn.addEventListener("click", () => openIntakePick(btn.dataset.intakePick, btn.dataset.intakeHub));
+      });
+    }
+  } else {
+    root.innerHTML = hubs.map(intakeHubSectionHtml).join("");
+    root.querySelectorAll("[data-intake-pick]").forEach((btn) => {
+      btn.addEventListener("click", () => openIntakePick(btn.dataset.intakePick, btn.dataset.intakeHub));
+    });
+  }
+
   if (state.intakePickId && pool.some((it) => it.id === state.intakePickId)) {
     openIntakePick(state.intakePickId, state.intakePickHubKey);
   } else if (state.intakePickId) {
@@ -6215,6 +6558,12 @@ function bind() {
   $("intakeFilter")?.addEventListener("input", (e) => {
     state.filterIntake = e.target.value;
     renderIntakeList();
+  });
+  // Live Zc desk plane: Gre→zre Intake map at ≥1024; phone stays qle rails.
+  window.addEventListener("resize", () => {
+    if (state.route === "/scan-intake" || $("view-intake")?.classList.contains("active")) {
+      renderIntakeList();
+    }
   });
   $("btnIntakePickClose")?.addEventListener("click", () => closeIntakePick());
   $("btnIntakeBuildListing")?.addEventListener("click", () => buildIntakeListing());

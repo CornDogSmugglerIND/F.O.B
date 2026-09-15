@@ -221,6 +221,11 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(shellJs, /openConfirmDialog/);
     assert.match(shellJs, /Intake value/);
     assert.match(shellJs, /publishIntakeHud/);
+    // Live desk Intake Gre→zre SPIN orbit (phone rails unchanged)
+    assert.match(html, /id="intakeOrbit"/);
+    assert.match(shellJs, /intakeOrbitLayout/);
+    assert.match(shellJs, /"SPIN"/);
+    assert.match(shellJs, /b44-orbit-spin/);
     assert.match(shellJs, /Location removed/);
     assert.match(shellJs, /Relisted on eBay/);
     assert.match(shellJs, /Enter a valid price/);

@@ -3286,3 +3286,158 @@ textarea.b44-input {
   border: 1px solid rgba(248, 113, 113, 0.3);
   color: #fecaca;
 }
+
+/* ===== Live desk Intake Gre→zre SPIN orbit (phone keeps #intakeHubs rails) ===== */
+.b44-intake-orbit {
+  position: relative;
+  width: 100%;
+  min-height: 520px;
+  height: min(62vh, 640px);
+  margin: 4px 0 12px;
+  overflow: hidden;
+}
+.b44-intake-orbit.hidden {
+  display: none;
+}
+.b44-intake-orbit-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.b44-orbit-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+.b44-orbit-layer {
+  position: relative;
+  z-index: 4;
+}
+.b44-orbit-hub {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.35s ease;
+}
+.b44-orbit-hub-meta {
+  text-align: center;
+  margin-bottom: 10px;
+  white-space: nowrap;
+}
+.b44-orbit-hub-title {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+.b44-orbit-hub-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+  color: inherit;
+}
+.b44-orbit-hub-inset {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.b44-orbit-hub-count {
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+}
+.b44-orbit-spin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 10px;
+}
+.b44-orbit-spin-btn {
+  padding: 3px 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 0;
+  background: rgba(255, 255, 255, 0.04);
+}
+.b44-orbit-spin-label {
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  min-width: 2.5em;
+  text-align: center;
+}
+.b44-orbit-drop-hint {
+  position: absolute;
+  top: -52px;
+  padding: 6px 12px;
+  white-space: nowrap;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--b44-gold-hi, #ffd98a);
+}
+.b44-orbit-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1), height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.3s ease, filter 0.3s ease;
+}
+.b44-orbit-node-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  clip-path: inherit;
+  background: #0a1016;
+}
+.b44-orbit-node-face img,
+.b44-orbit-face-empty {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.b44-orbit-node-scan,
+.b44-orbit-node-gloss,
+.b44-orbit-node-inset {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+.b44-orbit-node-scan {
+  background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.06) 50%, transparent 100%);
+  opacity: 0.35;
+}
+.b44-orbit-node-gloss {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 42%);
+}
+.b44-orbit-badge {
+  position: absolute;
+  z-index: 10;
+  top: 5px;
+  right: 5px;
+  padding: 2px 5px;
+  background: rgba(4, 7, 12, 0.82);
+  clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+}
+@media (max-width: 1023px) {
+  .b44-intake-orbit {
+    display: none !important;
+  }
+}
