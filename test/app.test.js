@@ -311,6 +311,13 @@ test("GET / serves Base44 port shell", async () => {
     assert.doesNotMatch(html, /aria-label="Confidence filter"/);
     // Live Agent Connect Copy toggles Copied/Copy only — invent failure label removed.
     assert.doesNotMatch(shellJs, /textContent = "Copy failed"/);
+    // Live Channel Connect: Could not start eBay auth — no invent local mark-connected copy.
+    assert.match(shellJs, /Could not start eBay auth/);
+    assert.doesNotMatch(shellJs, /Marked connected locally/);
+    assert.doesNotMatch(shellJs, /already marked connected on this device/);
+    assert.doesNotMatch(html, /Connect it below/);
+    assert.match(html, /Connect it in Settings/);
+
 
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
     assert.match(shellJs, /No listing built yet — run the AI writer on this card first/);

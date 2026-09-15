@@ -5043,9 +5043,9 @@ function renderChannel() {
     !(connected && state.channelTab === "live"),
   );
   if ($("ebayConnectHint")) {
-    $("ebayConnectHint").textContent = connected
-      ? "eBay marked connected on this device. Sync/Photos/Token/Policies still need live credentials on the server."
-      : "eBay isn't connected — publishing and sync are offline. Connect it below.";
+    // Live Command/Channel offline copy (Settings CTA).
+    $("ebayConnectHint").textContent =
+      "eBay isn't connected — publishing and sync are offline. Connect it in Settings.";
   }
   // Live nle: status mark next to LIVE VALUE (green when connected).
   $("liveValueStatus")?.classList.toggle("is-live", connected);
@@ -6769,32 +6769,16 @@ function bind() {
     if ($("channelActionStatus")) $("channelActionStatus").textContent = msg;
     setStatus(msg);
   };
-  $("btnEbayConnect")?.addEventListener("click", () => {
-    loadShipments();
-    if (state.ebayConnected) {
-      setChannelStatus("eBay already marked connected on this device.");
-      return;
-    }
-    // Local port: no OAuth consent URL yet — flag only, honest about server auth.
-    state.ebayConnected = true;
-    localStorage.setItem(EBAY_KEY, "1");
-    setChannelStatus("Marked connected locally. Live eBay OAuth still needs server credentials.");
-    renderChannel();
+  $("btnEbayConnect")?.addEventListener("click", async () => {
+    // Live F(): ebayAuth getConsentUrl → open tab + "Approve in the new tab"; catch → "Could not start eBay auth".
+    // This shell has no consent URL wire — same catch toast as live.
+    showToast("Could not start eBay auth", "err");
   });
   $("btnChannelSync")?.addEventListener("click", () => {
-    if (!state.ebayConnected) {
-      setChannelStatus("Connect eBay before Sync.");
-      return;
-    }
-    // Live channel $(): invoke ebaySyncListings — unwired → ht.error("Request failed")
-    setChannelStatus("Sync needs live eBay credentials on the server — nothing pulled.");
+    // Live channel $(): ebaySyncListings — unwired → ht.error("Request failed")
     showToast("Request failed", "err");
   });
   $("btnChannelVariation")?.addEventListener("click", () => {
-    if (!state.ebayConnected) {
-      setChannelStatus("Connect eBay before Variation mode.");
-      return;
-    }
     if (state.channelVariationMode) exitChannelVariationMode();
     else {
       state.channelVariationMode = true;
@@ -6809,35 +6793,19 @@ function bind() {
   });
   $("btnChannelCreateVariation")?.addEventListener("click", () => {
     if (state.channelVariationSelected.length < 2) return;
-    setChannelStatus(
-      "Create variation needs the live eBay variation API on the server — selection chrome only in this shell.",
-    );
+    // Live variation create needs server — same failure toast as other channel $() actions.
+    showToast("Request failed", "err");
   });
   $("btnChannelPhotos")?.addEventListener("click", () => {
-    if (!state.ebayConnected) {
-      setChannelStatus("Connect eBay before Photos.");
-      return;
-    }
     // Live channel $(): ebayFetchListingImages — unwired → ht.error("Request failed")
-    setChannelStatus("Photos sync needs live eBay credentials on the server.");
     showToast("Request failed", "err");
   });
   $("btnChannelToken")?.addEventListener("click", () => {
-    if (!state.ebayConnected) {
-      setChannelStatus("Connect eBay before Token refresh.");
-      return;
-    }
     // Live channel $(): ebayAuth refresh — unwired → ht.error("Request failed")
-    setChannelStatus("Token refresh needs live eBay credentials on the server.");
     showToast("Request failed", "err");
   });
   $("btnChannelPolicies")?.addEventListener("click", () => {
-    if (!state.ebayConnected) {
-      setChannelStatus("Connect eBay before Policies.");
-      return;
-    }
     // Live channel $(): ebayGetPolicies — unwired → ht.error("Request failed")
-    setChannelStatus("Policies load needs live eBay credentials on the server.");
     showToast("Request failed", "err");
   });
   $("btnFulSheetClose")?.addEventListener("click", () => closeFulSheet());
