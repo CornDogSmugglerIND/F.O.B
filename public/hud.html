@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=46" />
+  <link rel="stylesheet" href="/base44/shell.css?v=47" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -480,29 +480,31 @@
               <button type="button" class="m-btn" id="btnChannelToken">Token</button>
             </div>
             <div id="channelSheet" class="v-panel v-cut p-4 hidden" style="margin-top:12px">
-              <div class="b44-toolbar" style="justify-content:space-between;margin-bottom:8px">
-                <div class="v-label" style="font-size:9.5px;color:var(--b44-gold,#ffb43d)" id="channelSheetEyebrow">ACTIVE · 0D ON MARKET</div>
-                <button type="button" class="m-btn" id="btnChannelSheetClose" title="Release lock (ESC)">× RELEASE LOCK</button>
-              </div>
-                            <div class="b44-toolbar" style="justify-content:space-between;margin-bottom:8px" id="channelSheetPager">
+              <div class="v-label" style="font-size:9.5px" id="channelSheetEyebrow">ACTIVE · 0D ON MARKET</div>
+              <div class="b44-toolbar" style="justify-content:space-between;margin-top:8px" id="channelSheetPager">
                 <button type="button" class="v-label" id="btnChannelPrev" style="font-size:11px;background:transparent;border:0;cursor:pointer;color:inherit;padding:0">‹ PREV</button>
                 <span class="v-label" id="channelSheetPagerLabel" style="font-size:9.5px;color:var(--b44-lo,#6f8697)">1 / 1</span>
                 <button type="button" class="v-label" id="btnChannelNext" style="font-size:11px;background:transparent;border:0;cursor:pointer;color:inherit;padding:0">NEXT ›</button>
               </div>
-<div class="v-label" style="font-size:9px" id="channelSheetSku">NO SKU</div>
-              <div class="v-readout v-emit-white" style="font-size:16px;margin-top:8px;line-height:1.25" id="channelSheetTitle">—</div>
+              <div class="v-title" style="font-size:15.5px;line-height:1.22;margin-top:8px" id="channelSheetTitle">—</div>
               <div class="v-readout v-emit-gold" style="font-size:26px;margin-top:10px" id="channelSheetPrice">$0.00</div>
-              <a class="b44-copy-soft hidden" style="display:inline-flex;margin-top:8px;font-size:12px;color:var(--b44-olive-hi,#9fbf6a)" id="channelSheetEbay" href="#" target="_blank" rel="noreferrer">View on eBay ↗</a>
-              <div id="channelRepriceRow" class="b44-toolbar hidden" style="margin-top:12px;gap:8px">
-                <span class="v-label" style="font-size:12px">$</span>
-                <input id="channelRepriceInput" class="b44-input" type="number" step="0.01" min="0.01" style="flex:1;text-align:center" />
-                <button type="button" class="m-btn m-btn-primary" id="btnChannelRepriceGo">Set</button>
-                <button type="button" class="m-btn" id="btnChannelRepriceCancel">Cancel</button>
+              <div class="b44-channel-sheet-idrow">
+                <span class="v-label" style="font-size:9.5px" id="channelSheetIdent">NO ID</span>
+                <a class="b44-channel-ebay-link hidden" id="channelSheetEbay" href="#" target="_blank" rel="noreferrer">View on eBay <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></a>
               </div>
-              <div class="b44-actions" style="margin-top:14px;flex-wrap:wrap" id="channelSheetActions">
-                <button type="button" class="m-btn m-btn-primary" id="btnChannelReprice">Reprice</button>
-                <button type="button" class="m-btn" id="btnChannelRelist">Relist</button>
-                <button type="button" class="m-btn" id="btnChannelEnd">End listing</button>
+              <div class="b44-channel-sheet-col">
+                <div id="channelRepriceRow" class="b44-channel-reprice hidden">
+                  <span class="b44-channel-reprice-dollar">$</span>
+                  <input id="channelRepriceInput" class="b44-channel-reprice-input" type="number" step="0.01" min="0.01" />
+                  <button type="button" class="v-panel v-cut-sm b44-channel-reprice-icon" id="btnChannelRepriceGo" aria-label="Confirm reprice"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button>
+                  <button type="button" class="v-panel v-cut-sm b44-channel-reprice-icon is-cancel" id="btnChannelRepriceCancel" aria-label="Cancel reprice"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg></button>
+                </div>
+                <div class="b44-channel-sheet-actions" id="channelSheetActions">
+                  <button type="button" class="b44-wn b44-wn-primary" id="btnChannelReprice"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Reprice</button>
+                  <button type="button" class="b44-wn" id="btnChannelRelist"><svg class="b44-wn-icon-idle" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg><svg class="b44-wn-icon-busy hidden" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Relist</button>
+                  <button type="button" class="b44-wn" id="btnChannelEnd"><svg class="b44-wn-icon-idle" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg><svg class="b44-wn-icon-busy hidden" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> End listing</button>
+                </div>
+                <button type="button" class="v-label b44-channel-release" id="btnChannelSheetClose" title="Release lock (ESC)">× RELEASE LOCK</button>
               </div>
               <p class="b44-copy-soft" style="margin-top:10px;font-size:12px" id="channelSheetStatus"></p>
             </div>
@@ -1480,7 +1482,7 @@
 
   <script src="/lib/image.js?v=24"></script>
   <script src="/lib/html5-qrcode.min.js"></script>
-  <script src="/base44/shell.js?v=46"></script>
+  <script src="/base44/shell.js?v=47"></script>
 
 </body>
 </html>

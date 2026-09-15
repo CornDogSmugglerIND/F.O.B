@@ -215,6 +215,18 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /id="channelSheetPagerLabel"/);
     assert.match(html, /Filter listings/);
     assert.match(html, /× RELEASE LOCK/);
+    assert.match(html, /id="channelSheetIdent"/);
+    assert.match(html, /NO ID/);
+    assert.doesNotMatch(html, /id="channelSheetSku"/);
+    assert.match(html, /class="b44-wn b44-wn-primary"/);
+    assert.match(html, /View on eBay/);
+    assert.doesNotMatch(html, /View on eBay ↗/);
+    assert.match(html, /aria-label="Confirm reprice"/);
+    assert.match(html, /aria-label="Cancel reprice"/);
+    assert.doesNotMatch(html, /id="btnChannelRepriceGo">Set</);
+    assert.match(shellJs, /ebay_listing_id \|\| sku \|\| "NO ID"|ebayId \|\| it\.sku \|\| "NO ID"/);
+    assert.match(shellJs, /D ON MARKET/);
+    assert.doesNotMatch(shellJs, /OFF MARKET/);
     assert.match(html, /id="fulHubs"/);
     assert.match(html, /id="fulSheet"/);
     assert.match(html, /id="btnFulAdvance"/);

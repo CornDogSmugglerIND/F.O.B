@@ -4237,6 +4237,27 @@ function setChannelRepriceOpen(open) {
   }
 }
 
+/** Live wn primary paint from hub core/hi. */
+function paintChannelWn(btn, hub, primary) {
+  if (!btn) return;
+  const core = hub?.core || "#FFB43D";
+  const hi = hub?.hi || "#FFD98A";
+  btn.style.setProperty("--wn-core", core);
+  btn.style.setProperty("--wn-hi", hi);
+  btn.classList.toggle("b44-wn-primary", !!primary);
+}
+
+function setChannelWnBusy(btn, busy) {
+  if (!btn) return;
+  btn.disabled = !!busy;
+  btn.querySelector(".b44-wn-icon-idle")?.classList.toggle("hidden", !!busy);
+  const spin = btn.querySelector(".b44-wn-icon-busy");
+  if (spin) {
+    spin.classList.toggle("hidden", !busy);
+    spin.classList.toggle("b44-spin", !!busy);
+  }
+}
+
 /** Live nle hub defs (a_): Active/On market · Ended/Off market. */
 const CHANNEL_HUBS = [
   { key: "fresh", label: "Active", sub: "On market", core: "#2BD9C0", hi: "#8FF6E8" },
@@ -4401,14 +4422,13 @@ function openChannelSheet(id) {
   if (state.channelSheetId !== id) state.channelSheetStatus = "";
   state.channelSheetId = id;
   sheet.classList.remove("hidden");
-  const hub = channelHubKey(it);
-  const ended = hub === "ended";
+  const hubKey = channelHubKey(it);
+  const hub = CHANNEL_HUBS.find((h) => h.key === hubKey) || CHANNEL_HUBS[0];
   const age = channelAgeDays(it);
-  const hubLabel = ended ? "ENDED" : itemPipeLabel(it) === "Listed" ? "ACTIVE" : "BUILT";
+  // Live sle/nle eyebrow: "{ACTIVE|ENDED} · {n}D ON MARKET" only (never invent off-market / BUILT).
   if ($("channelSheetEyebrow")) {
-    $("channelSheetEyebrow").textContent = ended
-      ? `${hubLabel} · OFF MARKET`
-      : `${hubLabel} · ${age}D ON MARKET`;
+    $("channelSheetEyebrow").textContent = `${hub.label.toUpperCase()} · ${age}D ON MARKET`;
+    $("channelSheetEyebrow").style.color = hub.hi;
   }
   const pool = channelSheetPool();
   const idx = pool.findIndex((x) => x.id === id);
@@ -4416,13 +4436,14 @@ function openChannelSheet(id) {
     $("channelSheetPagerLabel").textContent =
       idx >= 0 && pool.length ? `${idx + 1} / ${pool.length}` : "—";
   }
-  const sku = it.barcode || it.sku || "NO SKU";
-  if ($("channelSheetSku")) $("channelSheetSku").textContent = sku;
   if ($("channelSheetTitle")) $("channelSheetTitle").textContent = it.title || "Untitled";
   const price = Number(it.marketValue ?? it.price) || 0;
   if ($("channelSheetPrice")) $("channelSheetPrice").textContent = money(price);
-  if ($("channelSheetStatus")) $("channelSheetStatus").textContent = state.channelSheetStatus || "";
+  // Live identity: ebay_listing_id || sku || "NO ID"
   const ebayId = channelEbayId(it);
+  const ident = ebayId || it.sku || "NO ID";
+  if ($("channelSheetIdent")) $("channelSheetIdent").textContent = ident;
+  if ($("channelSheetStatus")) $("channelSheetStatus").textContent = state.channelSheetStatus || "";
   const ebay = $("channelSheetEbay");
   if (ebay) {
     if (ebayId) {
@@ -4433,9 +4454,15 @@ function openChannelSheet(id) {
       ebay.classList.add("hidden");
     }
   }
-  $("btnChannelReprice")?.classList.toggle("hidden", ended);
-  $("btnChannelEnd")?.classList.toggle("hidden", ended);
-  $("btnChannelRelist")?.classList.toggle("hidden", !ended);
+  // Live wn: Reprice primary always; Relist only when hub !== fresh; End always.
+  paintChannelWn($("btnChannelReprice"), hub, true);
+  paintChannelWn($("btnChannelRelist"), hub, false);
+  paintChannelWn($("btnChannelEnd"), hub, false);
+  $("btnChannelRelist")?.classList.toggle("hidden", hubKey === "fresh");
+  $("btnChannelReprice")?.classList.remove("hidden");
+  $("btnChannelEnd")?.classList.remove("hidden");
+  setChannelWnBusy($("btnChannelRelist"), false);
+  setChannelWnBusy($("btnChannelEnd"), false);
   setChannelRepriceOpen(false);
 }
 
