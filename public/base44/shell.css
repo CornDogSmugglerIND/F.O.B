@@ -2911,3 +2911,44 @@ textarea.b44-input {
   font-family: "JetBrains Mono", ui-monospace, monospace;
 }
 
+
+/* Live Inventory empty — Scouter (Image/gold) + Intake (Package/olive) */
+.b44-scouter-empty,
+.b44-intake-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 64px 16px;
+}
+.b44-scouter-empty.hidden,
+.b44-intake-empty.hidden {
+  display: none;
+}
+.b44-scouter-empty-icon {
+  color: var(--b44-gold, #ffb43d);
+  opacity: 0.55;
+  filter: drop-shadow(0 0 14px var(--b44-gold-hi, #ffd98a));
+}
+.b44-intake-empty-icon {
+  color: #8fa3ad;
+  opacity: 0.7;
+  filter: drop-shadow(0 0 14px #ffffff);
+}
+.b44-scouter-empty-icon svg,
+.b44-intake-empty-icon svg {
+  display: block;
+}
+.b44-scouter-empty-label,
+.b44-intake-empty-label {
+  margin-top: 16px;
+  font-size: 12px;
+}
+.b44-scouter-empty-sub,
+.b44-intake-empty-sub {
+  margin-top: 6px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--b44-mid, #c9d8e2);
+}
