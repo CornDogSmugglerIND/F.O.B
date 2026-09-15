@@ -5267,49 +5267,74 @@ function refreshAiConnect() {
   renderMcpClient(state.mcpClient);
 }
 
-function runEbayDiagnostic() {
-  const status = $("ebayDiagStatus");
+function setEbayDiagBusy(busy) {
+  const btn = $("btnEbayDiag");
+  const label = $("ebayDiagBtnLabel");
+  if (btn) {
+    btn.disabled = !!busy;
+    btn.classList.toggle("is-busy", !!busy);
+  }
+  if (label) label.textContent = busy ? "Checking eBay..." : "Run Diagnostic";
+}
+
+function showEbayDiagError(msg) {
+  const err = $("ebayDiagError");
   const result = $("ebayDiagResult");
-  if (status) status.textContent = "Checking eBay…";
   if (result) {
     result.classList.add("hidden");
     result.innerHTML = "";
   }
-  // Local port: no server ebayAuth yet — honest structured result shaped like live.
+  if (!err) return;
+  if (!msg) {
+    err.classList.add("hidden");
+    err.innerHTML = "";
+    return;
+  }
+  err.classList.remove("hidden");
+  err.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#d97757" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><span>${esc(msg)}</span>`;
+}
+
+/** Live yle eBay Diagnostic — Run/Checking chrome, error banner, sync + bucket cards. */
+function runEbayDiagnostic() {
+  const result = $("ebayDiagResult");
+  showEbayDiagError("");
+  if (result) {
+    result.classList.add("hidden");
+    result.innerHTML = "";
+  }
+  setEbayDiagBusy(true);
+  // Local port: no server ebayDiagnostic function — honest chrome shaped like live yle.
   window.setTimeout(() => {
+    setEbayDiagBusy(false);
     if (!state.ebayConnected) {
-      if (status) {
-        status.textContent =
-          "Diagnostic call failed — eBay isn't connected. Connect it on Channel before publishing or sync.";
-      }
+      showEbayDiagError("Diagnostic call failed — eBay isn't connected. Connect it on Channel first.");
       return;
     }
     const listed = state.items.filter((it) => itemPipeLabel(it) === "Listed").length;
-    if (status) {
-      status.textContent =
-        "Local flag is connected, but live eBay OAuth credentials are not on this server — showing Coalition inventory only.";
-    }
-    if (result) {
-      result.classList.remove("hidden");
-      result.innerHTML = `
-        <div class="v-panel v-cut-sm p-3" style="margin-bottom:8px;border-color:rgba(43,217,192,0.35)">
-          <span class="b44-copy-soft">Synced in Coalition HUD right now: <strong>${pad2(listed)}</strong> listings</span>
+    showEbayDiagError("");
+    if (!result) return;
+    result.classList.remove("hidden");
+    const buckets = [
+      { bucket: "Active", ack: "Failure", error: "eBay API not called — server credentials missing.", total_entries: null },
+      { bucket: "Unsold", ack: "Failure", error: "eBay API not called — server credentials missing.", total_entries: null },
+    ];
+    result.innerHTML =
+      `<div class="b44-ebay-diag-sync">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#7fb069" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+        <span>Synced in Coalition HUD right now: <b>${esc(String(listed))}</b> listings</span>
+      </div>` +
+      buckets
+        .map(
+          (a) => `<div class="b44-ebay-diag-bucket">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span style="font-size:13px;font-weight:600;color:#e8e4dc">${esc(a.bucket)}</span>
+          <span style="font-size:12px;color:${a.ack === "Success" ? "#7fb069" : "#d97757"}">${esc(a.ack)}</span>
         </div>
-        <div class="v-panel v-cut-sm p-3" style="margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;gap:8px">
-            <strong>Active</strong>
-            <span class="v-label" style="color:#ff4d6d">Skipped</span>
-          </div>
-          <p class="b44-copy-soft" style="margin-top:6px;font-size:12px">eBay API not called — server credentials missing.</p>
-        </div>
-        <div class="v-panel v-cut-sm p-3">
-          <div style="display:flex;justify-content:space-between;gap:8px">
-            <strong>Unsold</strong>
-            <span class="v-label" style="color:#ff4d6d">Skipped</span>
-          </div>
-          <p class="b44-copy-soft" style="margin-top:6px;font-size:12px">eBay API not called — server credentials missing.</p>
-        </div>`;
-    }
+        ${a.error ? `<div style="font-size:12px;color:#d97757;margin-top:4px">${esc(a.error)}</div>` : ""}
+        ${a.total_entries != null ? `<div style="font-size:12px;color:#9a9488;margin-top:4px">eBay reports <b style="color:#e8e4dc">${esc(String(a.total_entries))}</b> total in this bucket</div>` : ""}
+      </div>`,
+        )
+        .join("");
   }, 350);
 }
 
