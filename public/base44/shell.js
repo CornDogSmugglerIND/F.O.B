@@ -2353,14 +2353,14 @@ async function pushItemPhase() {
 async function publishItemEbay() {
   const it = currentItemPage();
   if (!it) return;
+  // Live tle be(): no invent Channel-connect gate — offline → Publish failed toast.
   if (!state.ebayConnected) {
-    setItemPageStatus("Connect eBay on Channel before publishing.");
+    showToast("Publish failed: eBay rejected it", "err");
     return;
   }
   if ((it.listingStatus || "") !== "ready_to_list") {
     // Live tle be(): ht.error("No listing built yet — run the AI writer on this card first")
     const msg = "No listing built yet — run the AI writer on this card first";
-    setItemPageStatus(msg);
     showToast(msg, "err");
     return;
   }
@@ -4942,29 +4942,25 @@ function closeChannelSheet() {
 function applyChannelReprice() {
   const it = state.items.find((x) => x.id === state.channelSheetId);
   if (!it) return;
+  // Live nle X(): no invent sheet status — toasts only. Offline → API catch "Reprice failed".
   if (!state.ebayConnected) {
-    state.channelSheetStatus = "Connect eBay before listing actions.";
-    openChannelSheet(it.id);
+    showToast("Reprice failed", "err");
     return;
   }
   const next = Number($("channelRepriceInput")?.value || 0);
   if (!next || next <= 0) {
-    state.channelSheetStatus = "Enter a valid price.";
     // Live nle: ht.error("Enter a valid price")
     showToast("Enter a valid price", "err");
-    openChannelSheet(it.id);
     setChannelRepriceOpen(true);
     return;
   }
-  // Honest local port: update local value; live eBay reprice needs server creds.
+  // Local port: update value; live ebayUpdateListing needs server creds.
   try {
     it.marketValue = next;
     it.price = next;
     it.updatedAt = new Date().toISOString();
     saveItems();
-    state.channelSheetStatus =
-      `Local price set to ${money(next)}. Live eBay reprice needs server credentials.`;
-    // Live nle success toast copy
+    // Live nle: ht.success(`Repriced → $${U.toFixed(2)}`)
     showToast(`Repriced → $${next.toFixed(2)}`, "ok");
     setChannelRepriceOpen(false);
     openChannelSheet(it.id);
@@ -4978,14 +4974,14 @@ function applyChannelReprice() {
 function channelSheetAction(kind) {
   const it = state.items.find((x) => x.id === state.channelSheetId);
   if (!it) return;
-  if (!state.ebayConnected) {
-    state.channelSheetStatus = "Connect eBay before listing actions.";
-    openChannelSheet(it.id);
+  if (kind === "reprice") {
+    // Live nle: expand inline price field (no window.prompt). No invent gate status.
+    setChannelRepriceOpen(true);
     return;
   }
-  if (kind === "reprice") {
-    // Live nle: expand inline price field (no window.prompt).
-    setChannelRepriceOpen(true);
+  // Live nle ue/H: invoke eBay → toast success/fail. Offline has no invent sheet status line.
+  if (!state.ebayConnected) {
+    showToast(kind === "relist" ? "Relist failed" : "End failed", "err");
     return;
   }
   if (kind === "relist") {
@@ -4995,8 +4991,6 @@ function channelSheetAction(kind) {
       it.pushedAt = new Date().toISOString();
       it.updatedAt = new Date().toISOString();
       saveItems();
-      state.channelSheetStatus =
-        "Marked Active locally. Live Relist needs server eBay credentials.";
       showToast("Relisted on eBay", "ok");
       openChannelSheet(it.id);
       renderChannel();
@@ -5012,10 +5006,9 @@ function channelSheetAction(kind) {
       it.channelStatus = "ended";
       it.updatedAt = new Date().toISOString();
       saveItems();
-      state.channelSheetStatus =
-        "Marked Ended locally. Live End listing needs server eBay credentials.";
       showToast("Listing ended", "ok");
-      openChannelSheet(it.id);
+      // Live nle H(): d(null) closes sheet after end
+      closeChannelSheet();
       renderChannel();
     } catch {
       // Live nle: ht.error("End failed")
@@ -6298,9 +6291,9 @@ function bind() {
   $("btnPublishEbay")?.addEventListener("click", () => {
     const it = state.items.find((x) => x.id === state.lockedItemId);
     if (!it) return;
+    // Live tle be(): no invent "Connect eBay on Channel…" gate — offline publish → Publish failed toast.
     if (!state.ebayConnected) {
-      state.readoutStatus = "Connect eBay on Channel before publishing.";
-      openScouterReadout(it.id);
+      showToast("Publish failed: eBay rejected it", "err");
       return;
     }
     // Live tle be(): require a built listing (draft / ready_to_list) before publish.
@@ -6308,8 +6301,7 @@ function bind() {
     const status = it.listingStatus || "";
     if (!(status === "ready_to_list" || step === "Listing Built")) {
       // Live tle be(): ht.error("No listing built yet — run the AI writer on this card first")
-      state.readoutStatus = "No listing built yet — run the AI writer on this card first";
-      showToast(state.readoutStatus, "err");
+      showToast("No listing built yet — run the AI writer on this card first", "err");
       openScouterReadout(it.id);
       return;
     }

@@ -317,6 +317,14 @@ test("GET / serves Base44 port shell", async () => {
     assert.doesNotMatch(shellJs, /already marked connected on this device/);
     assert.doesNotMatch(html, /Connect it below/);
     assert.match(html, /Connect it in Settings/);
+    // Live nle/tle: toast-only ebay gates — no invent sheet/page status lines.
+    assert.doesNotMatch(shellJs, /Connect eBay before listing actions/);
+    assert.doesNotMatch(shellJs, /Connect eBay on Channel before publishing/);
+    assert.doesNotMatch(shellJs, /Local price set to/);
+    assert.doesNotMatch(shellJs, /Marked Active locally/);
+    assert.doesNotMatch(shellJs, /Marked Ended locally/);
+    assert.match(shellJs, /Relist failed/);
+    assert.match(shellJs, /End failed/);
 
 
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
