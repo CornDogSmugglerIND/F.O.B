@@ -3662,6 +3662,77 @@ function spaceValue(items) {
   );
 }
 
+/** Live Nq — recursive item counts + market value under a location. */
+function spaceSubtreeStats(spaceId) {
+  const here = itemsInSpace(spaceId);
+  let count = here.length;
+  let value = spaceValue(here);
+  for (const child of state.spaces.filter((s) => (s.parentId || "") === spaceId)) {
+    const sub = spaceSubtreeStats(child.id);
+    count += sub.count;
+    value += sub.value;
+  }
+  return { count, value };
+}
+
+function showToast(msg, type = "ok") {
+  const el = $("toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = `toast show ${type === "err" ? "err" : "ok"}`;
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => el.classList.remove("show"), 3200);
+}
+
+function spaceCoverUrl(sp) {
+  return sp?.coverImage || sp?.cover_image || "";
+}
+
+/** Live Rq Set photo — local data-URL cover (live uploads via Core.UploadFile). */
+function pickSpaceCover(spaceId) {
+  const input = $("spaceCoverInput");
+  if (!input || !spaceId) return;
+  state.spaceCoverTargetId = spaceId;
+  input.value = "";
+  input.click();
+}
+
+function bindSpaceCoverInput() {
+  const input = $("spaceCoverInput");
+  if (!input || input.dataset.bound === "1") return;
+  input.dataset.bound = "1";
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    const id = state.spaceCoverTargetId;
+    state.spaceCoverTargetId = "";
+    if (!file || !id) return;
+    if (!file.type?.startsWith("image/")) {
+      showToast("Upload failed", "err");
+      return;
+    }
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error || new Error("read failed"));
+        reader.readAsDataURL(file);
+      });
+      const sp = state.spaces.find((x) => x.id === id);
+      if (!sp || !dataUrl) {
+        showToast("Upload failed", "err");
+        return;
+      }
+      sp.coverImage = dataUrl;
+      sp.cover_image = dataUrl;
+      saveSpaces();
+      // Live kq success toast after cover upload.
+      showToast("Bin photo set", "ok");
+    } catch {
+      showToast("Upload failed", "err");
+    }
+  });
+}
+
 function renderSpaces() {
   loadSpaces();
   const root = $("spaceList");
@@ -3706,24 +3777,53 @@ function renderSpaces() {
     if (p) p.textContent = "Add a bin, shelf or tote to start mapping your shelves.";
   }
 
+  // Live Rq photo tiles — 3:4 cover, kind·code badge, count/ITEMS/value, Set photo / Remove.
+  root.classList.toggle("b44-space-grid", rows.length > 0);
   root.innerHTML = rows
     .map((s) => {
       const kind = kindLabel(s.kind);
-      const code = s.code ? `${esc(s.code)} · ` : "";
-      const kids = state.spaces.filter((c) => (c.parentId || "") === s.id).length;
-      const cards = itemsInSpace(s.id).length;
-      const bits = [`${code}${esc(kind)}`];
-      if (kids) bits.push(`${kids} inside`);
-      if (cards) bits.push(`${cards} item${cards === 1 ? "" : "s"}`);
-      return `<div class="v-panel v-cut-sm b44-item" data-open-space="${esc(s.id)}" style="cursor:pointer"><div class="meta"><strong>${esc(s.name)}</strong><span>${bits.join(" · ")}</span></div><button type="button" class="m-btn" data-del-space="${esc(s.id)}">×</button></div>`;
+      const badge = s.code ? `${kind} · ${s.code}` : kind;
+      const stats = spaceSubtreeStats(s.id);
+      const cover = spaceCoverUrl(s);
+      const coverHtml = cover
+        ? `<img class="b44-space-tile-cover" src="${esc(cover)}" alt="" draggable="false" />`
+        : `<div class="b44-space-tile-wash" data-kind="${esc(s.kind || "bin")}"><span class="b44-space-tile-kind">${esc(kind)}</span></div>`;
+      return `<div class="b44-space-tile v-cut" data-open-space="${esc(s.id)}">
+        <button type="button" class="b44-space-tile-hit" data-open-space="${esc(s.id)}" aria-label="Open ${esc(s.name)}">
+          ${coverHtml}
+          <span class="b44-space-tile-badge">${esc(badge)}</span>
+          <span class="b44-space-tile-plate">
+            <span class="b44-space-tile-name">${esc(s.name)}</span>
+            <span class="b44-space-tile-stats">
+              <span class="b44-space-tile-count">${esc(String(stats.count))}</span>
+              <span class="b44-space-tile-items">ITEMS</span>
+              <span class="b44-space-tile-value">${esc(money(stats.value))}</span>
+            </span>
+          </span>
+        </button>
+        <div class="b44-space-tile-actions">
+          <button type="button" class="b44-space-tile-act" data-cover-space="${esc(s.id)}" title="Set photo" aria-label="Set photo">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h3l2-2h6l2 2h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          </button>
+          <button type="button" class="b44-space-tile-act b44-space-tile-act-bad" data-del-space="${esc(s.id)}" title="Remove" aria-label="Remove">×</button>
+        </div>
+      </div>`;
     })
     .join("");
 
-  root.querySelectorAll("[data-open-space]").forEach((row) => {
-    row.addEventListener("click", (e) => {
-      if (e.target.closest("[data-del-space]")) return;
-      state.spaceTrail = [...state.spaceTrail, row.dataset.openSpace];
+  root.querySelectorAll("[data-open-space]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      if (e.target.closest("[data-del-space], [data-cover-space]")) return;
+      const id = el.dataset.openSpace || el.closest("[data-open-space]")?.dataset.openSpace;
+      if (!id) return;
+      state.spaceTrail = [...state.spaceTrail, id];
       renderSpaces();
+    });
+  });
+  root.querySelectorAll("[data-cover-space]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      pickSpaceCover(btn.dataset.coverSpace);
     });
   });
   root.querySelectorAll("[data-del-space]").forEach((btn) => {
@@ -3732,7 +3832,7 @@ function renderSpaces() {
       const id = btn.dataset.delSpace;
       const sp = state.spaces.find((x) => x.id === id);
       const name = sp?.name || "location";
-      // Live Pq remove: "Remove {name}? Cards inside become unsorted."
+      // Live Rq remove confirm: "Remove {name}? Cards inside become unsorted."
       if (!confirm(`Remove ${name}? Cards inside become unsorted.`)) return;
       const drop = new Set([id]);
       let grew = true;
@@ -5595,6 +5695,7 @@ function bind() {
   });
 
   bindDropZone();
+  bindSpaceCoverInput();
 
   $("btnSpaceUp")?.addEventListener("click", () => {
     state.spaceTrail = state.spaceTrail.slice(0, -1);

@@ -136,9 +136,16 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /All clear/);
     assert.match(html, /Empty location/);
     assert.match(html, /Add a bin, shelf or tote to start mapping your shelves/);
+    assert.match(html, /id="spaceCoverInput"/);
     assert.match(html, /Channel empty/);
     assert.match(html, /No collections yet\./);
     assert.match(html, /Storage Map/);
+    const shellJs = await (await fetch(`${baseUrl}/base44/shell.js`)).text();
+    assert.match(shellJs, /b44-space-tile/);
+    assert.match(shellJs, /ITEMS/);
+    assert.match(shellJs, /Set photo/);
+    assert.match(shellJs, /Bin photo set/);
+    assert.match(shellJs, /Upload failed/);
     assert.match(html, /Connect it in Settings\./);
     assert.match(html, /Connect eBay to see what's on the channel\./);
     assert.match(html, /id="btnChannelVariation"/);
