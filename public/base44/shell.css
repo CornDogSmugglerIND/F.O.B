@@ -748,6 +748,39 @@ textarea.b44-input {
   color: #8a928f;
 }
 
+/* Live Channel empty (nle) — Wifi + olive glow */
+.b44-channel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 64px 16px;
+  pointer-events: none;
+}
+.b44-channel-empty.hidden {
+  display: none;
+}
+.b44-channel-empty-icon {
+  color: #8fa3ad;
+  opacity: 0.7;
+  filter: drop-shadow(0 0 14px #ffffff);
+}
+.b44-channel-empty-icon svg {
+  display: block;
+}
+.b44-channel-empty-label {
+  margin-top: 16px;
+  font-size: 12px;
+}
+.b44-channel-empty-sub {
+  margin-top: 6px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--b44-mid, #c9d8e2);
+}
+
+
 .b44-warn {
   margin: 10px 0;
   padding: 10px 12px;

@@ -4589,23 +4589,15 @@ function renderChannel() {
       ended: pool.filter((it) => channelHubKey(it) === "ended"),
     };
 
-    // Live nle empty: offline → Connect eBay…; connected → Run a sync…; filter miss kept local.
-    const showEmpty =
-      state.channelTab === "live" &&
-      (allHubItems.length === 0 || (connected && q && pool.length === 0));
+    // Live nle empty: Wifi icon + Channel empty; connected → Run a sync…; offline → Connect eBay…
+    const showEmpty = state.channelTab === "live" && pool.length === 0;
     if (empty) {
       empty.classList.toggle("hidden", !showEmpty);
-      const label = empty.querySelector(".v-label");
-      const p = empty.querySelector("p");
-      if (label) label.textContent = "Channel empty";
-      if (p) {
-        if (connected && q && pool.length === 0 && allHubItems.length > 0) {
-          p.textContent = "No listings match this filter.";
-        } else if (connected) {
-          p.textContent = "Run a sync to pull your live listings.";
-        } else {
-          p.textContent = "Connect eBay to see what's on the channel.";
-        }
+      const sub = $("channelEmptySub") || empty.querySelector(".b44-channel-empty-sub") || empty.querySelector("p");
+      if (sub) {
+        sub.textContent = connected
+          ? "Run a sync to pull your live listings."
+          : "Connect eBay to see what's on the channel.";
       }
     }
     if (state.channelTab === "live") {
