@@ -58,6 +58,7 @@ const state = {
   channelFilter: "",
   channelSheetId: null,
   channelSheetStatus: "",
+  fulSheetId: null,
   settingsTab: "templates",
   templates: [],
   shipping: [],
@@ -83,16 +84,16 @@ const SPACES_KEY = "scouter-spaces-v1";
 const SHIPS_KEY = "scouter-shipments-v1";
 const EBAY_KEY = "scouter-ebay-connected-v1";
 
-/** Live fle/ld fulfilment stages (desktop Channel · FULFILMENT). */
+/** Live ale/l_ mobile fulfilment hubs (Channel · FULFILMENT). */
 const SHIP_STAGES = [
-  { key: "ready_to_ship", n: 1, label: "Ready to ship", next: "dropped_off" },
-  { key: "dropped_off", n: 2, label: "Dropped at carrier", next: "in_transit" },
-  { key: "in_transit", n: 3, label: "Carrier scanned", next: "out_for_delivery" },
-  { key: "out_for_delivery", n: 4, label: "Out for delivery", next: "delivered" },
-  { key: "delivered", n: 5, label: "Delivered", next: null },
+  { key: "ready_to_ship", n: 1, label: "Ready to ship", next: "dropped_off", core: "#8FA3AD", hi: "#FFFFFF" },
+  { key: "dropped_off", n: 2, label: "Dropped off", next: "in_transit", core: "#8FA3AD", hi: "#FFFFFF" },
+  { key: "in_transit", n: 3, label: "In transit", next: "out_for_delivery", core: "#FFB43D", hi: "#FFD98A" },
+  { key: "out_for_delivery", n: 4, label: "Out for delivery", next: "delivered", core: "#2BD9C0", hi: "#8FF6E8" },
+  { key: "delivered", n: 5, label: "Delivered", next: null, core: "#2BD9C0", hi: "#8FF6E8" },
 ];
 
-/** Live fle carrier code → readout label (cle). */
+/** Live ale/ole carrier code → readout label. */
 const CARRIER_LABELS = {
   usps_standard_envelope: "eBay Std Envelope",
   double_holo_envelope: "Double Holo Envelope",
@@ -3538,67 +3539,103 @@ function renderChannel() {
   if (state.channelSheetId) openChannelSheet(state.channelSheetId);
   else closeChannelSheet();
 
-  // Fulfilment stage counters + grouped rows (live fle/ld)
+  // Live ale/l_ mobile fulfilment hubs + package sheet
   const ships = activeShipments();
-  const counts = Object.fromEntries(SHIP_STAGES.map((s) => [s.key, 0]));
-  for (const sh of ships) {
-    if (counts[sh.status] != null) counts[sh.status] += 1;
-  }
-  if ($("fulReady")) $("fulReady").textContent = pad2(counts.ready_to_ship);
-  if ($("fulDropped")) $("fulDropped").textContent = pad2(counts.dropped_off);
-  if ($("fulTransit")) $("fulTransit").textContent = pad2(counts.in_transit);
-  if ($("fulOut")) $("fulOut").textContent = pad2(counts.out_for_delivery);
-  if ($("fulDelivered")) $("fulDelivered").textContent = pad2(counts.delivered);
-  const awaiting = ships.filter((s) => s.status !== "delivered").length;
-  if ($("fulPayout")) $("fulPayout").textContent = pad2(awaiting);
-
-  const fulList = $("fulList");
+  const fulHubs = $("fulHubs");
   const fulEmpty = $("fulEmpty");
-  if (fulList) {
-    if (fulEmpty) {
-      fulEmpty.classList.toggle("hidden", ships.length > 0);
-      const p = fulEmpty.querySelector("p");
-      if (p) {
-        p.textContent =
-          "Packages appear here once an order is created from Listings or eBay Sync.";
-      }
-    }
+  if (fulEmpty) {
+    fulEmpty.classList.toggle("hidden", ships.length > 0);
+    const label = fulEmpty.querySelector(".v-label");
+    const p = fulEmpty.querySelector("p");
+    if (label) label.textContent = "No shipments yet";
+    if (p) p.textContent = "Packages appear here once an order is created.";
+  }
+  if (fulHubs) {
     const chunks = [];
     for (const stage of SHIP_STAGES) {
       const rows = ships.filter((sh) => sh.status === stage.key);
       if (!rows.length) continue;
-      chunks.push(
-        `<div class="v-label" style="font-size:9px;margin:12px 0 6px;color:var(--b44-gold,#ffb43d)">STEP ${stage.n} · ${esc(stage.label)} · ${pad2(rows.length)}</div>`,
-      );
-      for (const sh of rows) {
-        const next = nextShipStage(sh.status);
-        const price = Number(sh.salePrice ?? sh.sale_price);
-        const priceBit = Number.isFinite(price) && price > 0 ? money(price) : "—";
-        const carrier = carrierLabel(sh.carrier);
-        let advance;
-        if (sh.status === "delivered") {
-          const payout = sh.payoutReleaseAt || sh.payout_release_date
-            ? new Date(sh.payoutReleaseAt || sh.payout_release_date).toLocaleDateString("en-US", {
-                month: "short",
-                day: "2-digit",
-              })
-            : "—";
-          advance = `<span class="v-label">PAYOUT EST. ${esc(payout)}</span>`;
-        } else if (next) {
-          // Live fle advance control labels the next stage only (not "Advance to …").
-          advance = `<button type="button" class="m-btn m-btn-primary" data-advance-ship="${esc(sh.id)}">${esc(shipStageLabel(next))}</button>`;
-        } else {
-          advance = `<span class="v-label">Complete</span>`;
-        }
-        chunks.push(
-          `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(sh.title || "Untitled")}</strong><span>PACKAGE · ${esc(stage.label.toUpperCase())} · ${esc(priceBit)} · ${esc(carrier)}</span></div><div class="qty">${advance}</div></div>`,
-        );
-      }
+      chunks.push(fulHubSectionHtml(stage, rows));
     }
-    fulList.innerHTML = chunks.join("");
-    fulList.querySelectorAll("[data-advance-ship]").forEach((btn) => {
-      btn.addEventListener("click", () => advanceShipment(btn.dataset.advanceShip));
+    fulHubs.innerHTML = chunks.join("");
+    fulHubs.querySelectorAll("[data-open-shipment]").forEach((btn) => {
+      btn.addEventListener("click", () => openFulSheet(btn.dataset.openShipment));
     });
+  }
+  if (state.fulSheetId) openFulSheet(state.fulSheetId);
+  else closeFulSheet();
+}
+
+function fulTileHtml(sh, stage) {
+  const price = Number(sh.salePrice ?? sh.sale_price);
+  const priceBit = Number.isFinite(price) && price > 0 ? money(price) : money(0);
+  const thumb = sh.labelUrl || sh.label_url || sh.photo || "";
+  const img = thumb
+    ? `<img src="${esc(thumb)}" alt="" draggable="false" />`
+    : `<span class="b44-copy-soft" style="font-size:10px">no img</span>`;
+  return `<button type="button" class="b44-scout-tile-card b44-channel-tile" data-open-shipment="${esc(sh.id)}" style="--phase:${esc(stage.core)};--phase-hi:${esc(stage.hi)}">
+    <div class="b44-scout-tile-img" style="box-shadow:inset 0 0 0 1px color-mix(in srgb, ${esc(stage.core)} 40%, transparent)">${img}</div>
+    <div class="b44-scout-tile-title">${esc(sh.title || "Untitled")}</div>
+    <div class="b44-scout-tile-sub" style="color:${esc(stage.hi)}">${esc(priceBit)}</div>
+  </button>`;
+}
+
+function fulHubSectionHtml(stage, rows) {
+  const count = rows.length;
+  const shown = rows.slice(0, 20);
+  const more =
+    rows.length > shown.length
+      ? `<div class="b44-scout-tile-card" style="width:60px;justify-content:center;display:flex;align-items:center"><div class="b44-scout-tile-img" style="width:60px;height:196px;color:${esc(stage.hi)}">+${rows.length - shown.length}</div></div>`
+      : "";
+  const body = `<div class="b44-scout-group-rail">${shown.map((sh) => fulTileHtml(sh, stage)).join("")}${more}</div>`;
+  return `<section class="b44-channel-hub" data-ful-hub="${esc(stage.key)}">
+    <div class="b44-channel-hub-head">
+      <span class="b44-channel-hub-dot" style="background:${esc(stage.core)};box-shadow:0 0 10px 1px ${esc(stage.core)}"></span>
+      <span class="b44-channel-hub-label">${esc(stage.label)}</span>
+      <span class="v-readout b44-channel-hub-count" style="color:${esc(stage.hi)}">${pad2(count)}</span>
+    </div>
+    ${body}
+  </section>`;
+}
+
+function closeFulSheet() {
+  state.fulSheetId = null;
+  $("fulSheet")?.classList.add("hidden");
+}
+
+function openFulSheet(id) {
+  loadShipments();
+  const sh = state.shipments.find((s) => s.id === id && !s.archived);
+  const sheet = $("fulSheet");
+  if (!sh || !sheet) {
+    closeFulSheet();
+    return;
+  }
+  const stage = SHIP_STAGES.find((s) => s.key === sh.status) || SHIP_STAGES[0];
+  state.fulSheetId = sh.id;
+  sheet.classList.remove("hidden");
+  const eye = $("fulSheetEyebrow");
+  if (eye) {
+    eye.textContent = stage.label.toUpperCase();
+    eye.style.color = stage.hi;
+  }
+  if ($("fulSheetTitle")) $("fulSheetTitle").textContent = sh.title || "Untitled";
+  const price = Number(sh.salePrice ?? sh.sale_price) || 0;
+  if ($("fulSheetPrice")) $("fulSheetPrice").textContent = money(price);
+  if ($("fulSheetCarrier")) $("fulSheetCarrier").textContent = carrierLabel(sh.carrier);
+  const next = nextShipStage(sh.status);
+  const adv = $("btnFulAdvance");
+  const done = $("fulSheetDelivered");
+  if (sh.status === "delivered") {
+    adv?.classList.add("hidden");
+    done?.classList.remove("hidden");
+  } else {
+    done?.classList.add("hidden");
+    if (adv) {
+      adv.classList.remove("hidden");
+      adv.textContent = next ? `Advance to ${shipStageLabel(next)}` : "Advance";
+      adv.disabled = !next;
+    }
   }
 }
 
@@ -3618,9 +3655,12 @@ function advanceShipment(id) {
     sh.payoutReleaseAt = payout.toISOString();
   }
   saveShipments();
+  // Live ale closes the package sheet after a successful advance.
+  closeFulSheet();
   if ($("channelActionStatus")) {
     $("channelActionStatus").textContent = `Advanced to ${shipStageLabel(next)}.`;
   }
+  renderChannel();
 }
 
 function addPackedOrder() {
@@ -3637,6 +3677,7 @@ function addPackedOrder() {
   });
   saveShipments();
   state.channelTab = "ship";
+  closeFulSheet();
   renderChannel();
 }
 
@@ -5047,6 +5088,10 @@ function bind() {
     setChannelStatus("Policies load needs live eBay credentials on the server.");
   });
   $("btnAddShipment")?.addEventListener("click", () => addPackedOrder());
+  $("btnFulSheetClose")?.addEventListener("click", () => closeFulSheet());
+  $("btnFulAdvance")?.addEventListener("click", () => {
+    if (state.fulSheetId) advanceShipment(state.fulSheetId);
+  });
 
   $("btnExport")?.addEventListener("click", () => {
     const blob = new Blob([JSON.stringify({ items: state.items }, null, 2)], {
