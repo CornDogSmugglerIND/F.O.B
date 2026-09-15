@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=26" />
+  <link rel="stylesheet" href="/base44/shell.css?v=28" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -133,6 +133,22 @@
           </div>
           <div class="b44-scout-manual">
             <button type="button" class="m-btn" id="btnScouterManual">+ Manual entry</button>
+          </div>
+          <div id="scouterReleaseOverlay" class="b44-release-overlay hidden" aria-hidden="true">
+            <div class="b44-release-frame">
+              <span class="b44-release-corner b44-release-tl" aria-hidden="true"></span>
+              <span class="b44-release-corner b44-release-tr" aria-hidden="true"></span>
+              <span class="b44-release-corner b44-release-bl" aria-hidden="true"></span>
+              <span class="b44-release-corner b44-release-br" aria-hidden="true"></span>
+              <div class="b44-release-icon" aria-hidden="true"></div>
+              <div class="v-label b44-release-label">RELEASE TO INTAKE</div>
+            </div>
+          </div>
+          <div id="scouterUploadHud" class="b44-upload-hud hidden" aria-live="polite">
+            <div class="v-panel v-cut-sm b44-upload-hud-inner">
+              <span class="b44-upload-spin" aria-hidden="true"></span>
+              <span id="scouterUploadPct">0%</span>
+            </div>
           </div>
           <input type="file" id="scouterPhotoInput" accept="image/jpeg,image/png,image/webp,image/*" multiple capture="environment" hidden />
           <div id="scouterReadout" class="b44-readout-panel hidden">
@@ -475,6 +491,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
                 <input id="intakeFilter" type="search" placeholder="Filter intake" autocomplete="off" />
               </div>
+              <a class="m-btn" href="#/scan-assistant">Scan assistant</a>
               <button type="button" class="m-btn m-btn-primary" id="btnNewBatch">New batch</button>
             </div>
             <div id="intakeHubs"></div>
@@ -653,7 +670,32 @@
         </div>
       </section>
 
-            <section class="b44-view" id="view-settings" data-route="/settings">
+            
+      <section class="b44-view" id="view-scan-assistant" data-route="/scan-assistant">
+        <div class="b44-glass">
+          <div class="v-panel v-cut-sm px-4 py-3" style="margin-bottom:12px">
+            <div class="v-label" style="font-size:9px">Scan structuring assistant</div>
+            <div class="v-readout v-emit-white" style="font-size:20px;margin-top:6px">Scan Batch Assistant</div>
+          </div>
+          <div id="scanAssistThread" class="b44-assist-thread">
+            <div id="scanAssistEmpty" class="b44-assist-empty">
+              <div class="b44-assist-mark" aria-hidden="true"></div>
+              <p>Start the conversation to structure your scan batch.</p>
+            </div>
+            <div id="scanAssistMessages" class="b44-assist-messages"></div>
+          </div>
+          <form id="scanAssistForm" class="b44-assist-form" autocomplete="off">
+            <input id="scanAssistInput" class="b44-input" type="text" placeholder="e.g. Review my latest batch and flag rows that need attention…" />
+            <button type="submit" class="m-btn m-btn-primary" id="btnScanAssistSend">Send</button>
+          </form>
+          <p class="b44-copy-soft" style="font-size:12px;margin-top:10px" id="scanAssistStatus"></p>
+          <div class="b44-actions" style="margin-top:12px">
+            <a class="m-btn" href="#/scan-intake">Back to intake</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="b44-view" id="view-settings" data-route="/settings">
         <div class="b44-glass">
           <div class="v-panel v-cut p-4" style="margin-bottom:12px">
             <div class="v-label" style="font-size:9px">System</div>
@@ -803,7 +845,10 @@
               </div>
 
               <div id="storageDefList" style="margin-top:12px"></div>
-              <div id="storageDefEmpty" class="b44-copy-soft" style="margin-top:12px">No storage locations yet. Add warehouses, shelves, or totes to organize inventory.</div>
+              <div id="storageDefEmpty" class="b44-empty-inline" style="margin-top:12px">
+                <div class="v-label" style="font-size:14px;font-weight:600;color:#E8EDEA;text-transform:none;letter-spacing:0">No storage locations yet</div>
+                <p class="b44-copy-soft" style="margin-top:4px;font-size:13px">Add warehouses, shelves, or totes to organize inventory.</p>
+              </div>
               <div class="b44-actions" style="margin-top:12px">
                 <a class="m-btn" href="#/storage">Open Spaces map</a>
               </div>
@@ -1303,7 +1348,7 @@
 
   <script src="/lib/image.js?v=24"></script>
   <script src="/lib/html5-qrcode.min.js"></script>
-  <script src="/base44/shell.js?v=26"></script>
+  <script src="/base44/shell.js?v=28"></script>
 
 </body>
 </html>

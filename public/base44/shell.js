@@ -7,6 +7,7 @@ const ROUTES = {
   "/storage": { id: "view-storage", brand: "STORAGE" },
   "/channel": { id: "view-channel", brand: "CHANNEL" },
   "/scan-intake": { id: "view-intake", brand: "INTAKE" },
+  "/scan-assistant": { id: "view-scan-assistant", brand: "INTAKE" },
   "/settings": { id: "view-settings", brand: "SETTINGS" },
 };
 
@@ -480,14 +481,29 @@ function readFileAsDataUrl(file) {
   });
 }
 
+/** Live tle fixed HUD — upload percent while photos land on scouter. */
+function setScouterUploadHud(pct) {
+  const hud = $("scouterUploadHud");
+  const label = $("scouterUploadPct");
+  if (!hud) return;
+  if (pct == null) {
+    hud.classList.add("hidden");
+    return;
+  }
+  hud.classList.remove("hidden");
+  if (label) label.textContent = `${Math.max(0, Math.min(100, Math.round(pct)))}%`;
+}
+
 /** Live tle photo drop → Intake cards on the scouter. */
 async function intakePhotosOntoScouter(fileList) {
   const files = [...(fileList || [])].filter((f) => f.type?.startsWith("image/"));
   if (!files.length) {
     setScouterStatus("No photos — drop image files onto the scouter.");
+    setScouterUploadHud(null);
     return;
   }
   setScouterStatus(`Uploading ${files.length} photo${files.length === 1 ? "" : "s"}…`);
+  setScouterUploadHud(0);
   const stamp = new Date().toLocaleDateString("en-US");
   const created = [];
   for (let i = 0; i < files.length; i++) {
@@ -513,7 +529,9 @@ async function intakePhotosOntoScouter(fileList) {
     } catch {
       /* skip bad file */
     }
+    setScouterUploadHud(((i + 1) / files.length) * 100);
   }
+  setScouterUploadHud(null);
   if (!created.length) {
     setScouterStatus("No photos uploaded — check the file and try again.");
     return;
@@ -596,18 +614,39 @@ function exportScouterCsv() {
   setScouterStatus(`Exported ${rows.length}`);
 }
 
+function setScouterReleaseOverlay(on) {
+  const glass = $("scouterGlass");
+  const overlay = $("scouterReleaseOverlay");
+  glass?.classList.toggle("b44-photo-drop", !!on);
+  if (overlay) {
+    overlay.classList.toggle("hidden", !on);
+    overlay.setAttribute("aria-hidden", on ? "false" : "true");
+  }
+}
+
 function bindScouterPhotoDrop() {
   const glass = $("scouterGlass");
   if (!glass || glass.dataset.dropBound === "1") return;
   glass.dataset.dropBound = "1";
+  let depth = 0;
+  glass.addEventListener("dragenter", (e) => {
+    if (![...e.dataTransfer.types].includes("Files")) return;
+    e.preventDefault();
+    depth += 1;
+    setScouterReleaseOverlay(true);
+  });
   glass.addEventListener("dragover", (e) => {
     if (![...e.dataTransfer.types].includes("Files")) return;
     e.preventDefault();
-    glass.classList.add("b44-photo-drop");
+    setScouterReleaseOverlay(true);
   });
-  glass.addEventListener("dragleave", () => glass.classList.remove("b44-photo-drop"));
+  glass.addEventListener("dragleave", () => {
+    depth = Math.max(0, depth - 1);
+    if (depth === 0) setScouterReleaseOverlay(false);
+  });
   glass.addEventListener("drop", (e) => {
-    glass.classList.remove("b44-photo-drop");
+    depth = 0;
+    setScouterReleaseOverlay(false);
     if (e.dataTransfer.files?.length) {
       e.preventDefault();
       intakePhotosOntoScouter(e.dataTransfer.files);
@@ -893,6 +932,7 @@ function navigate(route) {
   if (path === "/storage") renderSpaces();
   if (path === "/channel") renderChannel();
   if (path === "/" || path === "/command") updateSitrep();
+  if (path === "/scan-assistant") renderScanAssistant();
   // Live Command New card → /inventory?add=1 opens VN sheet.
   if (path === "/inventory" && /(?:^|&)add=1(?:&|$)/.test(query)) {
     openAssetSheet(null);
@@ -918,7 +958,39 @@ function setIntakeMode(mode) {
   $("intakeReview")?.classList.toggle("hidden", mode !== "review");
 }
 
-/** Live df + FR — Intake map hubs (qle / Xle). */
+/** Live _he Scan Batch Assistant — shell chrome + empty state (agent body is MCP-backed live). */
+function renderScanAssistant() {
+  const empty = $("scanAssistEmpty");
+  const msgs = $("scanAssistMessages");
+  const hasMsgs = !!(msgs && msgs.children.length);
+  empty?.classList.toggle("hidden", hasMsgs);
+  if ($("scanAssistStatus") && !hasMsgs) {
+    $("scanAssistStatus").textContent = "";
+  }
+}
+
+function submitScanAssist() {
+  const input = $("scanAssistInput");
+  const text = (input?.value || "").trim();
+  if (!text) return;
+  const msgs = $("scanAssistMessages");
+  if (!msgs) return;
+  const user = document.createElement("div");
+  user.className = "b44-assist-msg b44-assist-msg-user";
+  user.textContent = text;
+  msgs.appendChild(user);
+  const bot = document.createElement("div");
+  bot.className = "b44-assist-msg b44-assist-msg-assistant";
+  bot.textContent =
+    "Scan Batch Assistant needs the live MCP agent (scan_batch_assistant) on the server — this shell shows the live chrome and empty state only.";
+  msgs.appendChild(bot);
+  if (input) input.value = "";
+  $("scanAssistEmpty")?.classList.add("hidden");
+  if ($("scanAssistStatus")) {
+    $("scanAssistStatus").textContent = "Agent not connected in this shell.";
+  }
+  msgs.scrollTop = msgs.scrollHeight;
+}
 
 /** Live df + FR — Intake map hubs (qle / Xle). */
 const INTAKE_HUBS = [
@@ -4044,8 +4116,8 @@ function renderSettings() {
     }
     if (dEmpty) {
       dEmpty.classList.toggle("hidden", state.storageDefs.length > 0);
-      dEmpty.textContent =
-        "No storage locations yet. Add warehouses, shelves, or totes to organize inventory.";
+      // Live vle Settings → Storage empty (two-line).
+      dEmpty.innerHTML = `<div class="v-label" style="font-size:14px;font-weight:600;color:#E8EDEA;text-transform:none;letter-spacing:0">No storage locations yet</div><p class="b44-copy-soft" style="margin-top:4px;font-size:13px">Add warehouses, shelves, or totes to organize inventory.</p>`;
     }
     dRoot.querySelectorAll("[data-del-storage-def]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -4507,6 +4579,11 @@ function bind() {
   window.addEventListener("hashchange", () => {
     const path = location.hash.replace(/^#/, "") || "/scan-intake";
     navigate(path);
+  });
+
+  $("scanAssistForm")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    submitScanAssist();
   });
 
 

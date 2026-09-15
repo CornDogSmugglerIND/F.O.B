@@ -122,6 +122,15 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /EBAY CSV MAPPING/);
     assert.match(html, /eBay CSV/);
     assert.match(html, /No templates yet/);
+    assert.match(html, /No storage locations yet/);
+    assert.match(html, /Add warehouses, shelves, or totes to organize inventory/);
+    assert.match(html, /RELEASE TO INTAKE/);
+    assert.match(html, /id="scouterReleaseOverlay"/);
+    assert.match(html, /id="scouterUploadHud"/);
+    assert.match(html, /Scan Batch Assistant/);
+    assert.match(html, /Start the conversation to structure your scan batch/);
+    assert.match(html, /id="scanAssistForm"/);
+    assert.match(html, /scan-assistant/);
     assert.match(html, /No shipments yet/);
     assert.match(html, /Packages appear here once an order is created\./);
     assert.match(html, /id="fulHubs"/);
