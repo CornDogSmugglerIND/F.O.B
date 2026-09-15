@@ -1806,3 +1806,170 @@ textarea.b44-input {
   font-size: 12px;
   color: var(--b44-gold-hi, #ffd98a);
 }
+
+
+/* Live Vle sticky review PREVIEW */
+.b44-review-layout {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-top: 4px;
+}
+.b44-review-main {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.b44-review-preview {
+  flex: 0 0 300px;
+  position: sticky;
+  top: 8px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  padding: 14px;
+}
+.b44-review-preview-eyebrow {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--b44-lo, #6f8697);
+  letter-spacing: 0.12em;
+}
+.b44-review-preview-empty-copy {
+  margin-top: 8px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--b44-mid, #8fa3ad);
+  line-height: 1.4;
+}
+.b44-review-preview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.b44-review-preview-title {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--b44-text, #eef4f8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.b44-review-preview-meta {
+  margin-top: 2px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--b44-lo, #6f8697);
+}
+.b44-review-preview-cols {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.b44-review-preview-col { flex: 1; min-width: 0; }
+.b44-review-preview-frame {
+  margin-top: 4px;
+  aspect-ratio: 0.714;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 180, 61, 0.33);
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.b44-review-preview-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.b44-review-preview-ph {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--b44-lo, #6f8697);
+  text-align: center;
+  padding: 8px;
+}
+.b44-review-preview-cand-meta {
+  margin-top: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.b44-review-preview-cands {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.b44-review-preview-cand {
+  flex: 0 0 auto;
+  text-align: center;
+  border-radius: 8px;
+  padding: 4px;
+  border: 1px solid rgba(255, 180, 61, 0.3);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  color: inherit;
+}
+.b44-review-preview-cand img,
+.b44-review-preview-cand-ph {
+  width: 52px;
+  height: 74px;
+  border-radius: 5px;
+  object-fit: cover;
+  display: block;
+}
+.b44-review-preview-cand-ph { background: rgba(255,255,255,0.04); }
+.b44-review-preview-cand-num {
+  margin-top: 3px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  color: var(--b44-lo, #6f8697);
+}
+.b44-review-preview-fields {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+.b44-review-preview-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+.b44-review-preview-field > span:first-child {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--b44-lo, #6f8697);
+}
+.b44-review-preview-field > span:last-child {
+  font-size: 12px;
+  color: var(--b44-text, #eef4f8);
+}
+.b44-review-preview-field.is-low > span:last-child {
+  color: var(--b44-bad-hi, #ff6b81);
+}
+.b44-review-preview-sku,
+.b44-review-preview-files {
+  margin-top: 8px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  color: var(--b44-lo, #6f8697);
+  word-break: break-all;
+}
+.b44-review-row.is-preview {
+  background: rgba(255, 180, 61, 0.06);
+}
+@media (max-width: 960px) {
+  .b44-review-layout { flex-direction: column; }
+  .b44-review-preview {
+    flex: none;
+    width: 100%;
+    position: static;
+    max-height: none;
+  }
+}

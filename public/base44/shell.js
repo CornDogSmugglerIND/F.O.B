@@ -36,6 +36,8 @@ const state = {
   intakeReviewFilter: "",
   intakeReviewSelected: [],
   intakeReviewRescan: [],
+  intakeReviewFocusId: null,
+  reviewPreviewFace: "front",
   intakeReviewMult: 1.3,
   intakeReviewFloor: 1.77,
   intakeScanCount: 0,
@@ -2392,6 +2394,8 @@ async function startIdentificationFromGroups() {
   state.intakeReviewFilter = "";
   state.intakeReviewSelected = [];
   state.intakeReviewRescan = [];
+  state.intakeReviewFocusId = null;
+  state.reviewPreviewFace = "front";
   state.intakeExportSummary = null;
   state.intakeReviewStatus = "Identification complete";
   setIntakeMode("review");
@@ -2490,6 +2494,121 @@ function syncReviewBulkBar() {
   }
 }
 
+
+/** Live Vle sticky PREVIEW beside batch review. */
+function renderReviewPreview() {
+  const empty = $("reviewPreviewEmpty");
+  const body = $("reviewPreviewBody");
+  if (!empty || !body) return;
+  const row = state.intakeReviewRows.find((r) => r.id === state.intakeReviewFocusId) || null;
+  if (!row) {
+    empty.classList.remove("hidden");
+    body.classList.add("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+  body.classList.remove("hidden");
+  const floor = Number(state.intakeReviewFloor) || 0;
+  const cands = row.catalog_candidates || [];
+  const pick =
+    cands.find((c) => c.id === (row.preview_candidate_id || state.flePickId)) || cands[0] || null;
+  if ($("reviewPreviewTitle")) $("reviewPreviewTitle").textContent = row.card_name || "Unidentified";
+  if ($("reviewPreviewMeta")) {
+    const code = row.set_code ? ` (${row.set_code})` : "";
+    $("reviewPreviewMeta").textContent = `#${row.number || "—"} · ${row.set || "—"}${code}`;
+  }
+  if ($("reviewPreviewConf")) {
+    $("reviewPreviewConf").textContent = row.confidence || "—";
+    $("reviewPreviewConf").className = `b44-conf b44-conf-${row.confidence || ""}`;
+  }
+  const face = state.reviewPreviewFace === "back" ? "back" : "front";
+  const scanUrl =
+    face === "back"
+      ? row.back_url || row.photos?.[1]?.dataUrl || ""
+      : row.front_url || row.photos?.[0]?.dataUrl || "";
+  const scanEl = $("reviewPreviewScan");
+  if (scanEl) {
+    scanEl.innerHTML = scanUrl
+      ? `<img src="${esc(scanUrl)}" alt="" />`
+      : `<div class="b44-review-preview-ph">No scan</div>`;
+  }
+  const hasBack = !!(row.back_url || row.photos?.[1]?.dataUrl);
+  $("reviewPreviewFaces")?.classList.toggle("hidden", !hasBack);
+  $("btnReviewPreviewFront")?.classList.toggle("m-chip-on", face === "front");
+  $("btnReviewPreviewBack")?.classList.toggle("m-chip-on", face === "back");
+  const catEl = $("reviewPreviewCatalog");
+  const catPh = pick ? null : cands.length ? "Pick below" : "No match";
+  if (catEl) {
+    catEl.style.borderColor = pick ? "rgba(61, 220, 140, 0.33)" : "rgba(255,255,255,0.12)";
+    catEl.innerHTML = pick?.image_url
+      ? `<img src="${esc(pick.image_url)}" alt="" />`
+      : `<div class="b44-review-preview-ph">${esc(catPh)}</div>`;
+  }
+  if ($("reviewPreviewCatalogMeta")) {
+    $("reviewPreviewCatalogMeta").textContent = pick ? `${pick.name || ""} #${pick.number || ""}`.trim() : "";
+  }
+  const candWrap = $("reviewPreviewCandidates");
+  const candRow = $("reviewPreviewCandRow");
+  if (candWrap && candRow) {
+    const show = cands.length > 1;
+    candWrap.classList.toggle("hidden", !show);
+    candRow.innerHTML = show
+      ? cands
+          .map(
+            (c) => `<button type="button" class="b44-review-preview-cand" data-preview-cand="${esc(c.id)}">
+          ${c.image_url ? `<img src="${esc(c.image_url)}" alt="" />` : `<div class="b44-review-preview-cand-ph"></div>`}
+          <div class="b44-review-preview-cand-num">#${esc(c.number || "—")}</div>
+        </button>`,
+          )
+          .join("")
+      : "";
+    candRow.querySelectorAll("[data-preview-cand]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.previewCand;
+        const cand = cands.find((c) => c.id === id);
+        if (!cand || !row) return;
+        row.preview_candidate_id = id;
+        row.card_name = cand.name || row.card_name;
+        row.number = cand.number || row.number;
+        row.set = cand.set || row.set;
+        row.set_code = cand.set_code || row.set_code;
+        row.confidence = "High";
+        row.status = "Approved";
+        state.intakeReviewStatus = "Candidate applied → High";
+        renderIntakeReview();
+      });
+    });
+  }
+  const setField = (id, value, low = false) => {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = value || "—";
+    el.parentElement?.classList.toggle("is-low", !!low);
+  };
+  setField("reviewPreviewCond", row.condition);
+  setField("reviewPreviewVar", row.variation);
+  setField("reviewPreviewQty", row.quantity != null ? String(row.quantity) : "—");
+  setField("reviewPreviewLang", row.language);
+  const mkt = row.market_price !== "" && row.market_price != null ? money(Number(row.market_price) || 0) : "—";
+  const suggNum = row.suggested_price !== "" && row.suggested_price != null ? Number(row.suggested_price) : null;
+  const sugg = suggNum != null && !Number.isNaN(suggNum) ? money(suggNum) : "—";
+  setField("reviewPreviewMkt", mkt);
+  setField("reviewPreviewSugg", sugg, suggNum != null && floor > 0 && suggNum < floor);
+  if ($("reviewPreviewSku")) $("reviewPreviewSku").textContent = row.sku || "";
+  if ($("reviewPreviewFiles")) {
+    const files = row.source_files || [];
+    $("reviewPreviewFiles").textContent = files.length ? files.join(", ") : "";
+  }
+}
+
+function focusReviewPreview(id) {
+  if (state.intakeReviewFocusId !== id) state.reviewPreviewFace = "front";
+  state.intakeReviewFocusId = id;
+  renderReviewPreview();
+  document.querySelectorAll(".b44-review-row.is-preview").forEach((tr) => tr.classList.remove("is-preview"));
+  document.querySelector(`.b44-review-row[data-row-id="${CSS.escape(id)}"]`)?.classList.add("is-preview");
+}
+
 function renderIntakeReview() {
   const rows = state.intakeReviewRows;
   const visible = intakeReviewVisible();
@@ -2527,6 +2646,8 @@ function renderIntakeReview() {
   if (!body) return;
   if (!visible.length) {
     body.innerHTML = `<tr><td colspan="11" class="b44-review-empty">Nothing in this category</td></tr>`;
+    renderReviewPreview();
+    renderReviewPreview();
     return;
   }
   body.innerHTML = visible
@@ -2593,11 +2714,26 @@ function renderIntakeReview() {
       row[el.dataset.revField] = el.value;
       if (el.dataset.revField === "status" || el.dataset.revField === "confidence" || el.dataset.revField === "condition") {
         renderIntakeReview();
+      } else {
+        renderReviewPreview();
       }
     };
     el.addEventListener("change", apply);
     el.addEventListener("blur", apply);
   });
+  body.querySelectorAll("tr.b44-review-row[data-row-id]").forEach((tr) => {
+    const id = tr.dataset.rowId;
+    tr.addEventListener("mouseenter", () => focusReviewPreview(id));
+    tr.addEventListener("click", (e) => {
+      if (e.target.closest("input, select, button, a")) return;
+      focusReviewPreview(id);
+    });
+    if (id === state.intakeReviewFocusId) tr.classList.add("is-preview");
+  });
+  if (state.intakeReviewFocusId && !state.intakeReviewRows.some((r) => r.id === state.intakeReviewFocusId)) {
+    state.intakeReviewFocusId = null;
+  }
+  renderReviewPreview();
 }
 
 function bulkReviewStatus(status, msg) {
@@ -3280,6 +3416,8 @@ function resetDraft() {
   state.intakeReviewFilter = "";
   state.intakeReviewSelected = [];
   state.intakeReviewRescan = [];
+  state.intakeReviewFocusId = null;
+  state.reviewPreviewFace = "front";
   state.intakeScanCount = 0;
   state.intakeReviewStatus = "";
   state.intakeExportSummary = null;
@@ -5240,6 +5378,18 @@ function bind() {
   $("btnReviewClear")?.addEventListener("click", () => bulkReviewClear());
   $("btnReviewFlagRescan")?.addEventListener("click", () => bulkReviewFlagRescan());
   $("btnReviewRescanList")?.addEventListener("click", () => copyReviewRescanList());
+  $("btnReviewPreviewFront")?.addEventListener("click", () => {
+    state.reviewPreviewFace = "front";
+    renderReviewPreview();
+  });
+  $("btnReviewPreviewBack")?.addEventListener("click", () => {
+    state.reviewPreviewFace = "back";
+    renderReviewPreview();
+  });
+  $("btnReviewSplitScreen")?.addEventListener("click", () => {
+    if (state.intakeReviewFocusId) openFleSheet(state.intakeReviewFocusId);
+  });
+
   document.querySelectorAll("[data-review-filter]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const v = btn.dataset.reviewFilter;

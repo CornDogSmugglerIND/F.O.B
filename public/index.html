@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=35" />
+  <link rel="stylesheet" href="/base44/shell.css?v=36" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -683,17 +683,68 @@
                 <button type="button" class="m-btn" id="btnReviewFlagRescan">Flag rescan</button>
               </div>
               <div id="reviewExportSummary" class="m-panel b44-group-verify hidden"></div>
-              <div class="b44-review-table-wrap">
-                <table class="b44-review-table">
-                  <thead>
-                    <tr>
-                      <th>✓</th><th></th><th>Card</th><th>#</th><th>Set</th><th>Cond</th><th>Qty</th><th>SKU</th><th>Conf</th><th>Status</th><th>Rescan</th>
-                    </tr>
-                  </thead>
-                  <tbody id="reviewTableBody"></tbody>
-                </table>
+              <div class="b44-review-layout">
+                <div class="b44-review-main">
+                  <div class="b44-review-table-wrap">
+                    <table class="b44-review-table">
+                      <thead>
+                        <tr>
+                          <th>✓</th><th></th><th>Card</th><th>#</th><th>Set</th><th>Cond</th><th>Qty</th><th>SKU</th><th>Conf</th><th>Status</th><th>Rescan</th>
+                        </tr>
+                      </thead>
+                      <tbody id="reviewTableBody"></tbody>
+                    </table>
+                  </div>
+                  <p class="b44-copy-soft" style="margin-top:10px;font-size:12px" id="reviewStatus"></p>
+                </div>
+                <aside class="m-panel b44-review-preview" id="reviewPreview" aria-label="Preview">
+                  <div id="reviewPreviewEmpty">
+                    <div class="b44-review-preview-eyebrow">PREVIEW</div>
+                    <div class="b44-review-preview-empty-copy">Hover or click a row to compare your scan against the catalog match.</div>
+                  </div>
+                  <div id="reviewPreviewBody" class="hidden">
+                    <div class="b44-review-preview-head">
+                      <div class="min-w-0">
+                        <div class="b44-review-preview-title" id="reviewPreviewTitle">Unidentified</div>
+                        <div class="b44-review-preview-meta" id="reviewPreviewMeta">#— · —</div>
+                      </div>
+                      <span class="b44-conf" id="reviewPreviewConf">—</span>
+                    </div>
+                    <div class="b44-review-preview-cols">
+                      <div class="b44-review-preview-col">
+                        <div class="v-label">Your scan</div>
+                        <div class="b44-review-preview-frame" id="reviewPreviewScan"><div class="b44-review-preview-ph">No scan</div></div>
+                        <div class="b44-chip-row hidden" id="reviewPreviewFaces" style="justify-content:center;margin-top:8px">
+                          <button type="button" class="m-chip m-chip-on" id="btnReviewPreviewFront">Front</button>
+                          <button type="button" class="m-chip" id="btnReviewPreviewBack">Back</button>
+                        </div>
+                      </div>
+                      <div class="b44-review-preview-col">
+                        <div class="v-label">Catalog match</div>
+                        <div class="b44-review-preview-frame" id="reviewPreviewCatalog"><div class="b44-review-preview-ph" id="reviewPreviewCatalogPh">No match</div></div>
+                        <div class="b44-copy-soft b44-review-preview-cand-meta" id="reviewPreviewCatalogMeta"></div>
+                      </div>
+                    </div>
+                    <div id="reviewPreviewCandidates" class="hidden" style="margin-top:12px">
+                      <div class="v-label" style="margin-bottom:8px">Candidates — click the match</div>
+                      <div class="b44-review-preview-cands" id="reviewPreviewCandRow"></div>
+                    </div>
+                    <div class="b44-review-preview-fields">
+                      <div class="b44-review-preview-field"><span>COND</span><span id="reviewPreviewCond">—</span></div>
+                      <div class="b44-review-preview-field"><span>VAR</span><span id="reviewPreviewVar">—</span></div>
+                      <div class="b44-review-preview-field"><span>QTY</span><span id="reviewPreviewQty">—</span></div>
+                      <div class="b44-review-preview-field"><span>LANG</span><span id="reviewPreviewLang">—</span></div>
+                      <div class="b44-review-preview-field"><span>MKT</span><span id="reviewPreviewMkt">—</span></div>
+                      <div class="b44-review-preview-field"><span>SUGG</span><span id="reviewPreviewSugg">—</span></div>
+                    </div>
+                    <div class="b44-review-preview-sku" id="reviewPreviewSku"></div>
+                    <div class="b44-review-preview-files" id="reviewPreviewFiles"></div>
+                    <div class="b44-actions" style="margin-top:12px">
+                      <button type="button" class="m-btn m-btn-primary" id="btnReviewSplitScreen"> Split-screen</button>
+                    </div>
+                  </div>
+                </aside>
               </div>
-              <p class="b44-copy-soft" style="margin-top:10px;font-size:12px" id="reviewStatus"></p>
             </div>
           </div>
 
@@ -1389,7 +1440,7 @@
 
   <script src="/lib/image.js?v=24"></script>
   <script src="/lib/html5-qrcode.min.js"></script>
-  <script src="/base44/shell.js?v=35"></script>
+  <script src="/base44/shell.js?v=36"></script>
 
 </body>
 </html>

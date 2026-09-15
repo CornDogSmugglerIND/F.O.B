@@ -73,6 +73,13 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /Set condition…/);
     assert.match(html, /id="btnReviewDelete"/);
     assert.match(html, /id="btnReviewRescanList"/);
+    assert.match(html, /id="reviewPreview"/);
+    assert.match(html, /id="reviewPreviewEmpty"/);
+    assert.match(html, /PREVIEW/);
+    assert.match(html, /Hover or click a row to compare your scan against the catalog match\./);
+    assert.match(html, /id="btnReviewSplitScreen"/);
+    assert.match(html, / Split-screen/);
+    assert.match(html, /Candidates — click the match/);
     assert.match(html, /Internet-sourced prices are estimates, not verified sold comps\./);
     assert.match(html, /Need review/);
     assert.match(html, /Double Holo CSV/);
@@ -201,6 +208,13 @@ test("GET /hud.html serves Base44 port shell", async () => {
     assert.match(html, /Set condition…/);
     assert.match(html, /id="btnReviewDelete"/);
     assert.match(html, /id="btnReviewRescanList"/);
+    assert.match(html, /id="reviewPreview"/);
+    assert.match(html, /id="reviewPreviewEmpty"/);
+    assert.match(html, /PREVIEW/);
+    assert.match(html, /Hover or click a row to compare your scan against the catalog match\./);
+    assert.match(html, /id="btnReviewSplitScreen"/);
+    assert.match(html, / Split-screen/);
+    assert.match(html, /Candidates — click the match/);
     assert.match(html, /Internet-sourced prices are estimates, not verified sold comps\./);
     assert.match(html, /Need review/);
     assert.match(html, /Double Holo CSV/);
