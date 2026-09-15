@@ -246,6 +246,14 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(shellJs, /Repriced →/);
     assert.match(shellJs, /Identification complete/);
     assert.match(shellJs, /Location added/);
+    assert.match(shellJs, /Request failed/);
+    assert.match(shellJs, /Pricing failed/);
+    assert.match(shellJs, /Intake failed/);
+    assert.match(shellJs, /Bulk failed/);
+    assert.match(shellJs, /Failed to save images/);
+    assert.match(shellJs, /Verified — approved/);
+    assert.match(shellJs, /Failed to add item/);
+    assert.match(shellJs, /Publish failed:/);
     assert.match(html, /New Preset/);
     assert.match(html, /Shipping Presets/);
     assert.match(html, /b44-pk-ship-create/);

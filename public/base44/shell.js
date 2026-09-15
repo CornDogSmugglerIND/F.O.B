@@ -561,18 +561,25 @@ async function intakePhotosOntoScouter(fileList) {
   setScouterUploadHud(null);
   if (!created.length) {
     setScouterStatus("No photos uploaded — check the file and try again.");
+    // Live tle: ht.error("No photos uploaded — check the file and try again")
+    showToast("No photos uploaded — check the file and try again", "err");
     return;
   }
-  state.items = [...created, ...state.items];
-  saveItems();
-  setScouterStatus(`${created.length} card${created.length === 1 ? "" : "s"} on the scouter`);
-  showToast(
-    `${created.length} card${created.length === 1 ? "" : "s"} on the scouter`,
-    "ok",
-  );
-  renderCollection();
-  renderIntakeList();
-  updateSitrep();
+  try {
+    state.items = [...created, ...state.items];
+    saveItems();
+    setScouterStatus(`${created.length} card${created.length === 1 ? "" : "s"} on the scouter`);
+    showToast(
+      `${created.length} card${created.length === 1 ? "" : "s"} on the scouter`,
+      "ok",
+    );
+    renderCollection();
+    renderIntakeList();
+    updateSitrep();
+  } catch {
+    // Live tle: ht.error("Intake failed")
+    showToast("Intake failed", "err");
+  }
 }
 
 function csvEscape(v) {
@@ -2014,24 +2021,29 @@ function saveAssetSheet() {
     photos: state.assetPhotos.slice(),
     updatedAt: new Date().toISOString(),
   };
-  if (state.assetEditId) {
-    const it = state.items.find((x) => x.id === state.assetEditId);
-    if (!it) return;
-    Object.assign(it, payload);
-  } else {
-    state.items.unshift({
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      game: "PKM",
-      ...payload,
-    });
+  try {
+    if (state.assetEditId) {
+      const it = state.items.find((x) => x.id === state.assetEditId);
+      if (!it) return;
+      Object.assign(it, payload);
+    } else {
+      state.items.unshift({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        game: "PKM",
+        ...payload,
+      });
+    }
+    saveItems();
+    closeAssetSheet();
+    renderCollection();
+    renderIntakeList();
+    updateSitrep();
+    if (state.lockedItemId) openScouterReadout(state.lockedItemId);
+  } catch {
+    // Live item images update: ht.error("Failed to save images")
+    showToast("Failed to save images", "err");
   }
-  saveItems();
-  closeAssetSheet();
-  renderCollection();
-  renderIntakeList();
-  updateSitrep();
-  if (state.lockedItemId) openScouterReadout(state.lockedItemId);
 }
 
 async function addAssetImageFiles(fileList) {
@@ -2050,6 +2062,9 @@ async function addAssetImageFiles(fileList) {
       if (dataUrl) state.assetPhotos.push({ dataUrl, name: file.name });
     }
     renderAssetThumbs();
+  } catch {
+    // Live asset image read/save path
+    showToast("Failed to save images", "err");
   } finally {
     drop?.classList.remove("is-busy");
   }
@@ -2403,19 +2418,25 @@ async function publishItemEbay() {
     btn.disabled = true;
   }
   window.setTimeout(() => {
-    it.staged = true;
-    it.listingStatus = "listed";
-    it.liveChannel = it.liveChannel || "ebay";
-    it.updatedAt = new Date().toISOString();
-    saveItems();
-    setItemPageStatus(`${it.title || "Untitled"} is live on eBay`);
-    showToast(`${it.title || "Untitled"} is live on eBay`, "ok");
-    if ($("itemPhase")) $("itemPhase").value = "listed";
-    if (btn) btn.disabled = false;
-    updateItemEconomics(it);
-    syncItemChrome(it);
-    renderCollection();
-    updateSitrep();
+    try {
+      it.staged = true;
+      it.listingStatus = "listed";
+      it.liveChannel = it.liveChannel || "ebay";
+      it.updatedAt = new Date().toISOString();
+      saveItems();
+      setItemPageStatus(`${it.title || "Untitled"} is live on eBay`);
+      showToast(`${it.title || "Untitled"} is live on eBay`, "ok");
+      if ($("itemPhase")) $("itemPhase").value = "listed";
+      updateItemEconomics(it);
+      syncItemChrome(it);
+      renderCollection();
+      updateSitrep();
+    } catch (e) {
+      // Live publish: ht.error(`Publish failed: ${…||"eBay rejected it"}`)
+      showToast(`Publish failed: ${(e && e.message) || "eBay rejected it"}`, "err");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   }, 400);
 }
 
@@ -3474,22 +3495,34 @@ function bulkReviewStatus(status, msg) {
     renderIntakeReview();
     return;
   }
-  state.intakeReviewRows.forEach((r) => {
-    if (ids.includes(r.id)) r.status = status;
-  });
-  state.intakeReviewSelected = [];
-  state.intakeReviewStatus = msg;
-  renderIntakeReview();
+  try {
+    state.intakeReviewRows.forEach((r) => {
+      if (ids.includes(r.id)) r.status = status;
+    });
+    state.intakeReviewSelected = [];
+    state.intakeReviewStatus = msg;
+    // Live Wle H(…, Ce): ht.success(Ce)
+    showToast(msg, "ok");
+    renderIntakeReview();
+  } catch {
+    // Live Wle: ht.error("Bulk failed")
+    showToast("Bulk failed", "err");
+  }
 }
 
 function bulkReviewCondition(condition) {
   const ids = state.intakeReviewSelected;
   if (!ids.length || !condition) return;
-  state.intakeReviewRows.forEach((r) => {
-    if (ids.includes(r.id)) r.condition = condition;
-  });
-  state.intakeReviewStatus = "Condition set";
-  renderIntakeReview();
+  try {
+    state.intakeReviewRows.forEach((r) => {
+      if (ids.includes(r.id)) r.condition = condition;
+    });
+    state.intakeReviewStatus = "Condition set";
+    showToast("Condition set", "ok");
+    renderIntakeReview();
+  } catch {
+    showToast("Bulk failed", "err");
+  }
 }
 
 function bulkReviewDelete() {
@@ -3499,11 +3532,18 @@ function bulkReviewDelete() {
     renderIntakeReview();
     return;
   }
-  state.intakeReviewRows = state.intakeReviewRows.filter((r) => !ids.has(r.id));
-  state.intakeReviewSelected = [];
-  state.intakeReviewRescan = (state.intakeReviewRescan || []).filter((id) => !ids.has(id));
-  state.intakeReviewStatus = "Deleted";
-  renderIntakeReview();
+  try {
+    state.intakeReviewRows = state.intakeReviewRows.filter((r) => !ids.has(r.id));
+    state.intakeReviewSelected = [];
+    state.intakeReviewRescan = (state.intakeReviewRescan || []).filter((id) => !ids.has(id));
+    state.intakeReviewStatus = "Deleted";
+    // Live Wle: ht.success("Deleted")
+    showToast("Deleted", "ok");
+    renderIntakeReview();
+  } catch {
+    // Live Wle: ht.error("Delete failed")
+    showToast("Delete failed", "err");
+  }
 }
 
 function bulkReviewClear() {
@@ -3885,13 +3925,20 @@ function applyFlePick() {
 function verifyFleRow(status) {
   const row = state.intakeReviewRows.find((r) => r.id === state.fleRowId);
   if (!row) return;
-  row.status = status;
-  if (status === "Approved" && row.confidence !== "High") {
-    // Keep confidence; verify is status-only like live F()
+  try {
+    row.status = status;
+    if (status === "Approved" && row.confidence !== "High") {
+      // Keep confidence; verify is status-only like live F()
+    }
+    state.intakeReviewStatus = status === "Approved" ? "Verified — approved" : "Sent to review";
+    closeFleSheet();
+    renderIntakeReview();
+    // Live Ble verify: ht.success("Verified — approved" | "Sent to review")
+    showToast(state.intakeReviewStatus, "ok");
+  } catch {
+    // Live Ble: ht.error("Save failed")
+    showToast("Save failed", "err");
   }
-  state.intakeReviewStatus = status === "Approved" ? "Verified — approved" : "Sent to review";
-  closeFleSheet();
-  renderIntakeReview();
 }
 
 /** Live UN — AI listing engine sheet (honest when engine unwired). */
@@ -6122,39 +6169,45 @@ async function crAddItem(draft, code) {
     setScouterStatus("Title is required.");
     return false;
   }
-  const image = d.imageUrl || crState.photoDataUrl || "";
-  const photos = image ? [{ dataUrl: image, name: "barcode" }] : [];
-  const item = {
-    id: crypto.randomUUID(),
-    title,
-    category: d.category || "other",
-    condition: "nm",
-    listingStatus: "sorted",
-    staged: false,
-    photos,
-    quantity: 1,
-    marketValue: Number(d.marketValue) || 0,
-    purchasePrice: 0,
-    language: "English",
-    game: "PKM",
-    barcode: code || crState.code || null,
-    sku: code || crState.code || null,
-    notes: d.notes || "",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  state.items.unshift(item);
-  saveItems();
-  crState.added += 1;
-  crState.lastTitle = title;
-  crUpdateAddedBadge();
-  setScouterStatus(`Added: ${title}`);
-  // Live CR: ht.success(`Added: ${title}`)
-  showToast(`Added: ${title}`, "ok");
-  renderCollection();
-  renderIntakeList();
-  updateSitrep();
-  return true;
+  try {
+    const image = d.imageUrl || crState.photoDataUrl || "";
+    const photos = image ? [{ dataUrl: image, name: "barcode" }] : [];
+    const item = {
+      id: crypto.randomUUID(),
+      title,
+      category: d.category || "other",
+      condition: "nm",
+      listingStatus: "sorted",
+      staged: false,
+      photos,
+      quantity: 1,
+      marketValue: Number(d.marketValue) || 0,
+      purchasePrice: 0,
+      language: "English",
+      game: "PKM",
+      barcode: code || crState.code || null,
+      sku: code || crState.code || null,
+      notes: d.notes || "",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    state.items.unshift(item);
+    saveItems();
+    crState.added += 1;
+    crState.lastTitle = title;
+    crUpdateAddedBadge();
+    setScouterStatus(`Added: ${title}`);
+    // Live CR: ht.success(`Added: ${title}`)
+    showToast(`Added: ${title}`, "ok");
+    renderCollection();
+    renderIntakeList();
+    updateSitrep();
+    return true;
+  } catch {
+    // Live CR: ht.error("Failed to add item")
+    showToast("Failed to add item", "err");
+    return false;
+  }
 }
 
 async function openBarcodeSheet() {
@@ -6530,14 +6583,21 @@ function bind() {
       btn.disabled = true;
     }
     window.setTimeout(() => {
-      if (btn) {
-        btn.textContent = "Fetch prices";
-        btn.disabled = false;
+      try {
+        // Live Wle: Ve.functions.invoke("scanFetchPrices") — unwired on this shell.
+        // Success toast when wired: "Prices fetched — estimates only, not sold comps"
+        throw new Error("scanFetchPrices unwired");
+      } catch {
+        // Live Wle: ht.error("Pricing failed")
+        state.intakeReviewStatus = "Pricing failed";
+        showToast("Pricing failed", "err");
+        renderIntakeReview();
+      } finally {
+        if (btn) {
+          btn.textContent = "Fetch prices";
+          btn.disabled = false;
+        }
       }
-      // Live Wle toast after fetch — device has no scanFetchPrices wire.
-      state.intakeReviewStatus = "Prices fetched — estimates only, not sold comps";
-      renderIntakeReview();
-      showToast("Prices fetched — estimates only, not sold comps", "ok");
     }, 400);
   });
   $("reviewMult")?.addEventListener("change", (e) => {
@@ -6858,7 +6918,9 @@ function bind() {
       setChannelStatus("Connect eBay before Sync.");
       return;
     }
+    // Live channel $(): invoke ebaySyncListings — unwired → ht.error("Request failed")
     setChannelStatus("Sync needs live eBay credentials on the server — nothing pulled.");
+    showToast("Request failed", "err");
   });
   $("btnChannelVariation")?.addEventListener("click", () => {
     if (!state.ebayConnected) {
@@ -6888,21 +6950,27 @@ function bind() {
       setChannelStatus("Connect eBay before Photos.");
       return;
     }
+    // Live channel $(): ebayFetchListingImages — unwired → ht.error("Request failed")
     setChannelStatus("Photos sync needs live eBay credentials on the server.");
+    showToast("Request failed", "err");
   });
   $("btnChannelToken")?.addEventListener("click", () => {
     if (!state.ebayConnected) {
       setChannelStatus("Connect eBay before Token refresh.");
       return;
     }
+    // Live channel $(): ebayAuth refresh — unwired → ht.error("Request failed")
     setChannelStatus("Token refresh needs live eBay credentials on the server.");
+    showToast("Request failed", "err");
   });
   $("btnChannelPolicies")?.addEventListener("click", () => {
     if (!state.ebayConnected) {
       setChannelStatus("Connect eBay before Policies.");
       return;
     }
+    // Live channel $(): ebayGetPolicies — unwired → ht.error("Request failed")
     setChannelStatus("Policies load needs live eBay credentials on the server.");
+    showToast("Request failed", "err");
   });
   $("btnAddShipment")?.addEventListener("click", () => addPackedOrder());
   $("btnFulSheetClose")?.addEventListener("click", () => closeFulSheet());
