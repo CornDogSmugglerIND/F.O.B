@@ -1109,6 +1109,11 @@ textarea.b44-input {
 .b44-un-panel {
   width: min(920px, 100%);
 }
+.b44-un-meta {
+  color: var(--b44-mid, #8a9aa8);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
 .b44-fle-cols {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

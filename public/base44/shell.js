@@ -2302,8 +2302,8 @@ function patchItemField(key, value) {
     renderCollection();
     updateSitrep();
   } catch {
-    // Live item sheet: ht.error("Save failed") / move: "Could not move item"
-    showToast(key === "spaceId" ? "Could not move item" : "Save failed", "err");
+    // Live item field update: ht.error("Failed to save"); space move: "Could not move item"
+    showToast(key === "spaceId" ? "Could not move item" : "Failed to save", "err");
   }
 }
 
@@ -3981,9 +3981,16 @@ function renderUnSheet() {
   const it = state.items.find((x) => x.id === state.unItemId);
   if (!it) return;
   if ($("unTarget")) $("unTarget").textContent = it.title || "Untitled Item";
-  if ($("unPhotoCount")) {
+  // Live UN meta: category · condition, × qty, N PHOTO(S) only when images exist
+  if ($("unMeta")) {
+    const cat = it.category || "other";
+    const cond = it.condition || "nm";
+    const bits = [`<span>${esc(cat)} · ${esc(cond)}</span>`];
+    const qty = Number(it.quantity) || 1;
+    if (qty > 1) bits.push(`<span>× ${qty}</span>`);
     const n = (it.photos || []).length;
-    $("unPhotoCount").textContent = `${n} PHOTO${n === 1 ? "" : "S"}`;
+    if (n > 0) bits.push(`<span>${n} PHOTO${n === 1 ? "" : "S"}</span>`);
+    $("unMeta").innerHTML = bits.join("");
   }
   const phase = state.unPhase;
   $("unIdle")?.classList.toggle("hidden", phase !== "idle");

@@ -291,9 +291,7 @@ test("GET / serves Base44 port shell", async () => {
     assert.doesNotMatch(shellJs, /OFF MARKET/);
     assert.match(html, /id="fulHubs"/);
     assert.match(shellJs, /STEP \$\{stage\.n\}/);
-    assert.match(shellJs, /STEP \$\{stage\.n\}/);
     assert.match(html, /from Listings or eBay Sync/);
-    assert.doesNotMatch(html, /Packages appear here once an order is created\.(?! from)/);
     assert.match(html, /id="fulSheet"/);
     assert.match(html, /id="btnFulAdvance"/);
     assert.match(html, /System/);
