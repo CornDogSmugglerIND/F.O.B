@@ -5142,6 +5142,11 @@ function renderChannel() {
 
   const filterBar = $("channelFilterBar");
   if (filterBar) filterBar.classList.toggle("hidden", !(connected && state.channelTab === "live"));
+  // Live sle (desk): placeholder "Filter"; live nle (phone): "Filter listings"
+  const channelFilter = $("channelFilter");
+  if (channelFilter) {
+    channelFilter.placeholder = intakeDeskOrbit() ? "Filter" : "Filter listings";
+  }
 
   const list = $("channelList");
   const empty = $("channelEmpty");

@@ -303,7 +303,7 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /id="btnChannelPrev"/);
     assert.match(html, /id="btnChannelNext"/);
     assert.match(html, /id="channelSheetPagerLabel"/);
-    assert.match(html, /Filter listings/);
+    assert.match(html, /placeholder="Filter"/);
     assert.match(html, /× RELEASE LOCK/);
     assert.match(html, /id="channelSheetIdent"/);
     assert.match(html, /NO ID/);
