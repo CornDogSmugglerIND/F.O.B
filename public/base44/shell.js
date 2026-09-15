@@ -531,7 +531,8 @@ async function intakePhotosOntoScouter(fileList) {
     setScouterUploadHud(null);
     return;
   }
-  setScouterStatus(`Uploading ${files.length} photo${files.length === 1 ? "" : "s"}…`);
+  // Live tle: upload HUD is % only — no invent "Uploading N photos…" status line.
+  setScouterStatus("");
   setScouterUploadHud(0);
   const stamp = new Date().toLocaleDateString("en-US");
   const created = [];
@@ -562,15 +563,16 @@ async function intakePhotosOntoScouter(fileList) {
   }
   setScouterUploadHud(null);
   if (!created.length) {
-    setScouterStatus("No photos uploaded — check the file and try again");
-    // Live tle: ht.error("No photos uploaded — check the file and try again")
+    // Live tle: ht.error toast only — no invent #scouterStatus mirror.
+    setScouterStatus("");
     showToast("No photos uploaded — check the file and try again", "err");
     return;
   }
   try {
     state.items = [...created, ...state.items];
     saveItems();
-    setScouterStatus(`${created.length} card${created.length === 1 ? "" : "s"} on the scouter`);
+    // Live tle: ht.success(`${n} card(s) on the scouter`) — toast only.
+    setScouterStatus("");
     showToast(
       `${created.length} card${created.length === 1 ? "" : "s"} on the scouter`,
       "ok",
@@ -2144,21 +2146,14 @@ function renderItemShipSummary(it) {
     return;
   }
   const pkg = packageTypeLabel(preset.package_type || preset.packageType || "");
+  // Live zq subtitle: weight · dims only; empty → "No dimensions set" (no invent handle/carrier bits).
   const dims =
     preset.length || preset.width || preset.height
       ? `${preset.length || 0}×${preset.width || 0}×${preset.height || 0}in`
       : "";
-  const bits = [
-    pkg,
-    preset.weight ? `${preset.weight}oz` : "",
-    dims,
-    preset.carrier || "",
-    preset.service || "",
-    preset.cost != null && preset.cost !== "" ? itemMoney(preset.cost) : "",
-    preset.handling_days != null ? `${preset.handling_days}d handle` : "",
-  ].filter(Boolean);
+  const bits = [preset.weight ? `${preset.weight}oz` : "", dims].filter(Boolean);
   root.classList.remove("hidden");
-  root.innerHTML = `<div class="v-label" style="margin-bottom:4px">${esc(preset.name)}</div><div class="b44-copy-soft" style="font-size:12px">${esc(bits.join(" · ") || "No details set")}</div>`;
+  root.innerHTML = `<div class="v-label" style="margin-bottom:4px">${esc(preset.name || pkg)}</div><div class="b44-copy-soft" style="font-size:12px">${esc(bits.join(" · ") || "No dimensions set")}</div>`;
 }
 
 function renderItemPhotos() {
@@ -2694,7 +2689,7 @@ function renderItemCollections(it) {
 function renderItemPage(id) {
   const it = state.items.find((x) => x.id === id);
   if (!it) {
-    setItemPageStatus("Item not found.");
+    // Live missing item: silent navigate — no invent not-found page status.
     navigate("/inventory");
     return;
   }
@@ -2747,7 +2742,7 @@ function duplicateItemPage() {
   renderCollection();
   updateSitrep();
   navigate(`/item/${copy.id}`);
-  setItemPageStatus("Duplicated");
+  // Live duplicate: ht.success("Duplicated") — toast only, no invent page status.
   showToast("Duplicated", "ok");
 }
 

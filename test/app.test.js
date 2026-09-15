@@ -349,6 +349,14 @@ test("GET / serves Base44 port shell", async () => {
     assert.doesNotMatch(shellJs, /Advanced to \$\{label\}/);
     assert.doesNotMatch(shellJs, /setItemPageStatus\("Restored"\)/);
     assert.doesNotMatch(shellJs, /Product lookup failed: \$\{/);
+    // Live tle/zq/item invent removals (?v=103).
+    assert.doesNotMatch(shellJs, /Uploading \$\{files\.length\} photo/);
+    assert.doesNotMatch(shellJs, /No details set/);
+    assert.match(shellJs, /No dimensions set/);
+    assert.doesNotMatch(shellJs, /d handle/);
+    assert.doesNotMatch(shellJs, /Item not found\./);
+    assert.doesNotMatch(shellJs, /setItemPageStatus\("Duplicated"\)/);
+    assert.match(shellJs, /showToast\("Duplicated", "ok"\)/);
 
 
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
