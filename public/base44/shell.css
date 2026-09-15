@@ -1,4 +1,5 @@
 /* Shell chrome only — materials come from vendored Base44 app.css */
+/* Live D palette from base44-live/app.js — cool slate, not warm brown. */
 :root {
   --b44-base: #04070c;
   --b44-text: #ffffff;
@@ -6,8 +7,17 @@
   --b44-lo: #6f8697;
   --b44-gold: #ffb43d;
   --b44-gold-hi: #ffd98a;
+  --b44-green: #2bd9c0;
+  --b44-green-hi: #8ff6e8;
   --b44-cyan: #2bd9c0;
+  --b44-cyan-hi: #8ff6e8;
+  /* Live olive/tan are cool slate — NOT warm cream/terracotta. */
+  --b44-olive: #8fa3ad;
+  --b44-olive-hi: #ffffff;
+  --b44-tan: #8fa3ad;
+  --b44-tan-hi: #ffffff;
   --b44-bad: #ff4d6d;
+  --b44-bad-hi: #ff9aae;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
 }
@@ -29,9 +39,10 @@ body.b44 {
 
 .b44-shell {
   min-height: 100dvh;
+  /* Live base plane — keep ambient barely there, no muddy gold fog. */
   background:
-    radial-gradient(900px 500px at 20% 10%, rgba(255, 180, 61, 0.1), transparent 60%),
-    radial-gradient(700px 480px at 85% 80%, rgba(43, 217, 192, 0.06), transparent 55%),
+    radial-gradient(900px 500px at 18% 8%, rgba(255, 180, 61, 0.045), transparent 58%),
+    radial-gradient(700px 480px at 88% 82%, rgba(43, 217, 192, 0.035), transparent 55%),
     var(--b44-base);
 }
 
@@ -2045,7 +2056,7 @@ textarea.b44-input {
 }
 
 
-/* Live Rq Spaces photo tiles */
+/* Live Rq Spaces photo tiles — kind cores from live qg (gold / slate / cyan). */
 .b44-space-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -2056,8 +2067,26 @@ textarea.b44-input {
   position: relative;
   aspect-ratio: 3 / 4;
   overflow: hidden;
-  background: #0a0e14;
+  background: var(--b44-base);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+  --kind: var(--b44-gold);
+  --kind-hi: var(--b44-gold-hi);
+}
+.b44-space-tile[data-kind="room"],
+.b44-space-tile[data-kind="shelf"] {
+  --kind: var(--b44-olive);
+  --kind-hi: var(--b44-olive-hi);
+}
+.b44-space-tile[data-kind="bin"],
+.b44-space-tile[data-kind="tote"] {
+  --kind: var(--b44-tan);
+  --kind-hi: var(--b44-tan-hi);
+}
+.b44-space-tile[data-kind="binder"],
+.b44-space-tile[data-kind="page"],
+.b44-space-tile[data-kind="pocket"] {
+  --kind: var(--b44-green);
+  --kind-hi: var(--b44-green-hi);
 }
 .b44-space-tile-hit {
   display: block;
@@ -2077,33 +2106,26 @@ textarea.b44-input {
   height: 100%;
   object-fit: cover;
 }
+/* Live Gl wash: white highlight → kind@~15% → black */
 .b44-space-tile-wash {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(120% 80% at 50% 0%, rgba(255,180,61,0.18), transparent 55%),
-    linear-gradient(165deg, #152028, #0a0e14 60%);
-}
-.b44-space-tile-wash[data-kind="shelf"] {
-  background:
-    radial-gradient(120% 80% at 50% 0%, rgba(95,232,208,0.16), transparent 55%),
-    linear-gradient(165deg, #13242a, #0a0e14 60%);
-}
-.b44-space-tile-wash[data-kind="tote"],
-.b44-space-tile-wash[data-kind="bin"] {
-  background:
-    radial-gradient(120% 80% at 50% 0%, rgba(255,180,61,0.14), transparent 55%),
-    linear-gradient(165deg, #241a12, #0a0e14 60%);
+  background: radial-gradient(
+    circle at 32% 24%,
+    rgba(255, 255, 255, 0.22),
+    color-mix(in srgb, var(--kind) 15%, transparent) 30%,
+    rgba(0, 0, 0, 0.66) 72%
+  );
 }
 .b44-space-tile-kind {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(201,216,226,0.55);
+  color: color-mix(in srgb, var(--kind-hi) 55%, transparent);
 }
 .b44-space-tile-badge {
   position: absolute;
@@ -2111,12 +2133,12 @@ textarea.b44-input {
   left: 9px;
   z-index: 2;
   padding: 3px 8px;
-  background: rgba(5,7,10,0.82);
+  background: rgba(5, 7, 10, 0.82);
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 9px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #ffd98a;
+  color: var(--kind-hi);
 }
 .b44-space-tile-plate {
   position: absolute;
@@ -2147,7 +2169,7 @@ textarea.b44-input {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 22px;
   font-weight: 800;
-  color: #ffd98a;
+  color: var(--kind-hi);
   line-height: 1;
 }
 .b44-space-tile-items {
@@ -2161,7 +2183,7 @@ textarea.b44-input {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 12px;
   font-weight: 600;
-  color: #ffd98a;
+  color: var(--b44-gold-hi);
 }
 .b44-space-tile-actions {
   position: absolute;

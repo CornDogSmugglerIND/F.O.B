@@ -3785,10 +3785,12 @@ function renderSpaces() {
       const badge = s.code ? `${kind} · ${s.code}` : kind;
       const stats = spaceSubtreeStats(s.id);
       const cover = spaceCoverUrl(s);
+      const kindKey = s.kind || "bin";
       const coverHtml = cover
         ? `<img class="b44-space-tile-cover" src="${esc(cover)}" alt="" draggable="false" />`
-        : `<div class="b44-space-tile-wash" data-kind="${esc(s.kind || "bin")}"><span class="b44-space-tile-kind">${esc(kind)}</span></div>`;
-      return `<div class="b44-space-tile v-cut" data-open-space="${esc(s.id)}">
+        : `<div class="b44-space-tile-wash"><span class="b44-space-tile-kind">${esc(kind)}</span></div>`;
+      // data-kind on the tile root so live qg cores (gold/slate/cyan) drive --kind/--kind-hi.
+      return `<div class="b44-space-tile v-cut" data-kind="${esc(kindKey)}" data-open-space="${esc(s.id)}">
         <button type="button" class="b44-space-tile-hit" data-open-space="${esc(s.id)}" aria-label="Open ${esc(s.name)}">
           ${coverHtml}
           <span class="b44-space-tile-badge">${esc(badge)}</span>
