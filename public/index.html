@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=36" />
+  <link rel="stylesheet" href="/base44/shell.css?v=37" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -215,19 +215,29 @@
                 <label>Title</label>
                 <input id="itemTitle" class="b44-input" type="text" autocomplete="off" />
               </div>
-              <div class="b44-asset-econ" style="margin-top:14px">
-                <div>
-                  <div class="v-label" style="font-size:9px">MARKET</div>
+              <div class="b44-item-zn-econ" style="margin-top:14px">
+                <div class="b44-item-zn-qty">
+                  <div class="v-label" style="font-size:8px">QTY</div>
+                  <div class="b44-item-qty-stepper">
+                    <button type="button" class="m-btn" id="btnItemQtyDec" aria-label="Decrease quantity">−</button>
+                    <span class="v-readout" id="itemEconQty" style="font-size:28px;min-width:32px;text-align:center">1</span>
+                    <button type="button" class="m-btn" id="btnItemQtyInc" aria-label="Increase quantity">+</button>
+                  </div>
+                </div>
+                <div class="b44-item-zn-market">
+                  <div class="v-label" style="font-size:8px">MARKET VALUE</div>
                   <div class="v-readout v-emit-gold" style="font-size:26px" id="itemEconMarket">$0.00</div>
                 </div>
-                <div>
-                  <div class="v-label" style="font-size:9px">COST</div>
-                  <div class="v-readout" style="font-size:15px;color:var(--b44-lo,#6f8697)" id="itemEconCost">$0.00</div>
-                </div>
-                <div>
-                  <div class="v-label" style="font-size:9px">PROFIT</div>
-                  <div class="v-readout" style="font-size:16px" id="itemEconProfit">+$0.00</div>
-                </div>
+              </div>
+              <div class="b44-item-zn-total">
+                <span class="v-label" style="font-size:9px">TOTAL VALUE</span>
+                <span class="v-readout v-emit-gold" style="font-size:24px" id="itemEconTotal">$0.00</span>
+              </div>
+              <div class="b44-item-zn-actions" id="itemZnActions">
+                <button type="button" class="m-btn m-btn-primary hidden" id="btnItemPush">Push to Listing Built</button>
+                <button type="button" class="m-btn m-btn-primary" id="btnItemWriteListing">Write listing with AI</button>
+                <button type="button" class="m-btn m-btn-primary hidden" id="btnItemPublishEbay">Publish to eBay</button>
+                <div class="b44-item-live-ebay hidden" id="itemLiveEbay">Live on eBay</div>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
                 <div class="b44-field">
@@ -241,7 +251,7 @@
                   </select>
                 </div>
                 <div class="b44-field">
-                  <label>Quantity</label>
+                  <label>QTY</label>
                   <input id="itemQty" class="b44-input" type="number" min="1" value="1" />
                 </div>
                 <div class="b44-field">
@@ -577,8 +587,8 @@
                 Odd file count — front/back pairing would misalign every row after it. Add or remove one scan.
               </div>
               <div class="b44-drop v-cut" id="dropZone" tabindex="0" role="button">
-                <div class="v-label">Drop a folder of scans</div>
-                <p>or click to browse — 2400×2400 JPGs (up to 40 on this device)</p>
+                <div class="v-label" id="dropZoneTitle">Drop a folder of scans</div>
+                <p id="dropZoneHint">or click to browse — 2400×2400 JPGs, up to 200 at a time</p>
               </div>
               <div id="photoGrid" class="b44-thumbs"></div>
               <div class="b44-status" id="identifyStatus">Add photos · then Start intake</div>
@@ -1440,7 +1450,7 @@
 
   <script src="/lib/image.js?v=24"></script>
   <script src="/lib/html5-qrcode.min.js"></script>
-  <script src="/base44/shell.js?v=36"></script>
+  <script src="/base44/shell.js?v=37"></script>
 
 </body>
 </html>

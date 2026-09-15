@@ -59,6 +59,8 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /Intake empty/);
     assert.match(html, /New Scan Batch|New batch/);
     assert.match(html, /Drop a folder of scans/);
+    assert.match(html, /up to 200 at a time/);
+    assert.match(html, /id="dropZoneTitle"/);
     assert.match(html, /SKU prefix/);
     assert.match(html, /id="batchGameChips"/);
     assert.match(html, /id="intakeGrouping"/);
@@ -93,6 +95,13 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /MARKET/);
     assert.match(html, /COST/);
     assert.match(html, /PROFIT/);
+    assert.match(html, /MARKET VALUE/);
+    assert.match(html, /TOTAL VALUE/);
+    assert.match(html, />QTY</);
+    assert.match(html, /id="btnItemPush"/);
+    assert.match(html, /id="btnItemWriteListing"/);
+    assert.match(html, /Publish to eBay/);
+    assert.match(html, /Live on eBay/);
     assert.match(html, /Verify — approve/);
     assert.match(html, /To scouter/);
     assert.match(html, /Duplicate/);
@@ -195,6 +204,12 @@ test("GET /hud.html serves Base44 port shell", async () => {
     assert.match(html, /scan-intake/);
     assert.match(html, /Intake empty/);
     assert.match(html, /Drop a folder of scans/);
+    assert.match(html, /up to 200 at a time/);
+    assert.match(html, /MARKET VALUE/);
+    assert.match(html, /TOTAL VALUE/);
+    assert.match(html, /Write listing with AI/);
+    assert.match(html, /Publish to eBay/);
+    assert.match(html, /Live on eBay/);
     assert.match(html, /SKU prefix/);
     assert.match(html, /id="batchGameChips"/);
     assert.match(html, /id="intakeGrouping"/);

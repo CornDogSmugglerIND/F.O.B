@@ -1580,11 +1580,23 @@ function fillItemShipOptions(selected) {
     .join("");
 }
 
+/** Live Si next-step for zN "Push to ${label}". */
+function nextPipeStep(it) {
+  const key = itemPipeKey(it);
+  const i = PIPE_STEPS.findIndex((s) => s.key === key);
+  if (i < 0 || i >= PIPE_STEPS.length - 1) return null;
+  return PIPE_STEPS[i + 1];
+}
+
 function updateItemEconomics(it) {
   const market = Number(it?.marketValue || 0);
   const cost = Number(it?.purchasePrice || 0);
+  const qty = Math.max(1, Number(it?.quantity || 1));
   const profit = market - cost;
+  const total = market * qty;
   if ($("itemEconMarket")) $("itemEconMarket").textContent = itemMoney(market);
+  if ($("itemEconQty")) $("itemEconQty").textContent = String(qty);
+  if ($("itemEconTotal")) $("itemEconTotal").textContent = itemMoney(total);
   if ($("itemEconCost")) $("itemEconCost").textContent = itemMoney(cost);
   if ($("itemEconProfit")) {
     $("itemEconProfit").textContent = `${profit >= 0 ? "+" : ""}${itemMoney(profit)}`;
@@ -1735,8 +1747,109 @@ function syncItemChrome(it) {
   if ($("btnItemArchive")) {
     $("btnItemArchive").textContent = it.archived ? "Restore" : "Archive";
   }
+  syncZnActions(it);
   renderItemShipSummary(it);
   setItemPageStatus(state.itemPageStatus);
+}
+
+/** Live zN item CTAs — Push / Write listing with AI / Publish / Live on eBay. */
+function syncZnActions(it) {
+  const status = it?.listingStatus || it?.listing_status || "";
+  const next = nextPipeStep(it);
+  const canWrite = !["ready_to_list", "listed", "sold", "error"].includes(status);
+  const canPublish = status === "ready_to_list";
+  const isLive = status === "listed";
+  const pushBtn = $("btnItemPush");
+  if (pushBtn) {
+    pushBtn.classList.toggle("hidden", !next);
+    if (next) pushBtn.textContent = `Push to ${next.label}`;
+  }
+  $("btnItemWriteListing")?.classList.toggle("hidden", !canWrite);
+  const pub = $("btnItemPublishEbay");
+  if (pub) {
+    pub.classList.toggle("hidden", !canPublish);
+    if (canPublish) pub.textContent = "Publish to eBay";
+  }
+  $("itemLiveEbay")?.classList.toggle("hidden", !isLive);
+}
+
+function bumpItemQty(delta) {
+  const it = currentItemPage();
+  if (!it) return;
+  const next = Math.max(1, Number(it.quantity || 1) + delta);
+  it.quantity = next;
+  it.updatedAt = new Date().toISOString();
+  if ($("itemQty")) $("itemQty").value = String(next);
+  saveItems();
+  updateItemEconomics(it);
+  syncItemChrome(it);
+  renderCollection();
+  updateSitrep();
+}
+
+async function pushItemPhase() {
+  const it = currentItemPage();
+  if (!it) return;
+  const next = nextPipeStep(it);
+  if (!next) return;
+  const btn = $("btnItemPush");
+  if (btn) {
+    btn.textContent = "Pushing…";
+    btn.disabled = true;
+  }
+  try {
+    if (next.key === "ready_to_list") {
+      it.staged = true;
+      it.listingStatus = "ready_to_list";
+    } else if (next.key === "listed") {
+      it.listingStatus = "listed";
+      it.staged = true;
+    } else {
+      it.listingStatus = next.key;
+    }
+    it.updatedAt = new Date().toISOString();
+    saveItems();
+    setItemPageStatus(`Pushed to ${next.label}`);
+    if ($("itemPhase")) $("itemPhase").value = it.listingStatus;
+    updateItemEconomics(it);
+    syncItemChrome(it);
+    renderCollection();
+    updateSitrep();
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function publishItemEbay() {
+  const it = currentItemPage();
+  if (!it) return;
+  if (!state.ebayConnected) {
+    setItemPageStatus("Connect eBay on Channel before publishing.");
+    return;
+  }
+  if ((it.listingStatus || "") !== "ready_to_list") {
+    setItemPageStatus("No listing built yet — run Write listing with AI first");
+    return;
+  }
+  const btn = $("btnItemPublishEbay");
+  if (btn) {
+    btn.textContent = "Publishing…";
+    btn.disabled = true;
+  }
+  window.setTimeout(() => {
+    it.staged = true;
+    it.listingStatus = "listed";
+    it.liveChannel = it.liveChannel || "ebay";
+    it.updatedAt = new Date().toISOString();
+    saveItems();
+    setItemPageStatus(`${it.title || "Untitled"} is live on eBay`);
+    if ($("itemPhase")) $("itemPhase").value = "listed";
+    if (btn) btn.disabled = false;
+    updateItemEconomics(it);
+    syncItemChrome(it);
+    renderCollection();
+    updateSitrep();
+  }, 400);
 }
 
 function nextSpaceKind(kind) {
@@ -3292,7 +3405,8 @@ function setIdentifyProgress(stage, done, total) {
 
 async function addFiles(fileList) {
   const isImage = window.ScouterImage?.isImageFile ?? ((f) => f.type?.startsWith("image/"));
-  const incoming = [...(fileList || [])].filter(isImage).slice(0, 40 - state.draftPhotos.length);
+  // Live Mle accepts up to 200 JPGs at a time.
+  const incoming = [...(fileList || [])].filter(isImage).slice(0, 200 - state.draftPhotos.length);
   if (!incoming.length) return;
   setIntakeMode("identifying");
   setIdentifyProgress("Uploading", 0, incoming.length);
@@ -3455,6 +3569,15 @@ function openNewBatch() {
   setStatus("Drop a folder of scans · or click to browse");
 }
 
+function setDropZoneDragging(on) {
+  const zone = $("dropZone");
+  const title = $("dropZoneTitle");
+  if (!zone) return;
+  zone.classList.toggle("drag", !!on);
+  // Live Mle: idle "Drop a folder of scans" → drag "Drop scans here"
+  if (title) title.textContent = on ? "Drop scans here" : "Drop a folder of scans";
+}
+
 function bindDropZone() {
   const zone = $("dropZone");
   if (!zone) return;
@@ -3468,12 +3591,12 @@ function bindDropZone() {
   });
   zone.addEventListener("dragover", (e) => {
     e.preventDefault();
-    zone.classList.add("drag");
+    setDropZoneDragging(true);
   });
-  zone.addEventListener("dragleave", () => zone.classList.remove("drag"));
+  zone.addEventListener("dragleave", () => setDropZoneDragging(false));
   zone.addEventListener("drop", (e) => {
     e.preventDefault();
-    zone.classList.remove("drag");
+    setDropZoneDragging(false);
     addFiles(e.dataTransfer?.files);
   });
 }
@@ -5268,6 +5391,16 @@ function bind() {
   $("itemQty")?.addEventListener("change", (e) => {
     patchItemField("quantity", Number(e.target.value) || 1);
   });
+  // Live zN QTY steppers + Push / Write listing with AI / Publish to eBay
+  $("btnItemQtyDec")?.addEventListener("click", () => bumpItemQty(-1));
+  $("btnItemQtyInc")?.addEventListener("click", () => bumpItemQty(1));
+  $("btnItemPush")?.addEventListener("click", () => pushItemPhase());
+  $("btnItemWriteListing")?.addEventListener("click", () => {
+    const it = currentItemPage();
+    if (!it) return;
+    openUnSheet(it.id);
+  });
+  $("btnItemPublishEbay")?.addEventListener("click", () => publishItemEbay());
   const bindItemMoney = (id, key) => {
     $(id)?.addEventListener("change", (e) => {
       const n = e.target.value === "" ? 0 : Number(e.target.value);

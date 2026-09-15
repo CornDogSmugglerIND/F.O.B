@@ -1057,6 +1057,76 @@ textarea.b44-input {
 
 
 
+
+/* Live zN item economics — QTY + MARKET VALUE / TOTAL VALUE + CTAs */
+.b44-item-zn-econ {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  margin: 0 0 0;
+}
+.b44-item-zn-qty {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.b44-item-qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.b44-item-qty-stepper .m-btn {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.06);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+}
+.b44-item-zn-market {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-left: 1px solid rgba(255,255,255,0.08);
+  padding-left: 12px;
+}
+.b44-item-zn-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 4px 0;
+  margin-bottom: 14px;
+  border-top: 1px solid rgba(255,180,61,0.12);
+}
+.b44-item-zn-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.b44-item-zn-actions .m-btn {
+  width: 100%;
+  justify-content: center;
+}
+.b44-item-live-ebay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 16px;
+  color: var(--b44-green-hi, #8ff6e8);
+  background: rgba(43,217,192,0.08);
+  box-shadow: inset 0 0 0 1px rgba(43,217,192,0.33);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 /* Live OK /item/:id page */
 .b44-item-page { max-width: 1100px; margin: 0 auto; }
 .b44-item-head {
