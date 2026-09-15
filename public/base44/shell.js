@@ -2761,8 +2761,8 @@ function archiveItemPage() {
   updateSitrep();
   if (it.archived) navigate("/inventory");
   else {
+    // Live restore is a silent field update — no invent "Restored" status line.
     syncItemChrome(it);
-    setItemPageStatus("Restored");
   }
 }
 
@@ -3566,7 +3566,8 @@ function exportIntakeDoubleHoloCsv() {
   };
   state.intakeReviewStatus = `Exported ${ready.length}`;
   renderIntakeReview();
-  showToast(`Exported ${ready.length} rows`, "ok");
+  // Live Double Holo export: ht.success(`Exported ${n}`) — no "rows" suffix.
+  showToast(`Exported ${ready.length}`, "ok");
 }
 
 /** Live jle — fields mappable onto an eBay CSV header row (Ule). */
@@ -3729,9 +3730,10 @@ function exportIntakeEbayCsv(cfg) {
     },
     rescans: (state.intakeReviewRescan || []).length,
   };
-  state.intakeReviewStatus = `Exported ${ready.length} eBay CSV`;
+  state.intakeReviewStatus = `Exported ${ready.length} rows`;
   renderIntakeReview();
-  showToast(`Exported ${ready.length}`, "ok");
+  // Live eBay CSV export: ht.success(`Exported ${n} rows`) — no invent "eBay CSV" suffix.
+  showToast(`Exported ${ready.length} rows`, "ok");
 }
 
 /** Live be — use saved mapping, or open Ule when none. */
@@ -5265,10 +5267,7 @@ function advanceShipment(id) {
     // Live ale closes the package sheet after a successful advance.
     closeFulSheet();
     const label = shipStageLabel(next);
-    if ($("channelActionStatus")) {
-      $("channelActionStatus").textContent = `Advanced to ${label}.`;
-    }
-    // Live fle: ht.success(stage.label || "Updated")
+    // Live fle: ht.success(stage.label || "Updated") — toast only, no invent Advanced status.
     showToast(label || "Updated", "ok");
     renderChannel();
   } catch {
@@ -6017,8 +6016,8 @@ async function crLookup(code) {
       crShowPane("preview");
     }
   } catch (e) {
-    setScouterStatus(`Product lookup failed: ${e.message || e}`);
-    // Live CR: ht.error("Product lookup failed")
+    // Live CR: ht.error("Product lookup failed") — toast only.
+    setScouterStatus("");
     showToast("Product lookup failed", "err");
     crShowPane("scan");
     crState.lastDecoded = "";

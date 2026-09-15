@@ -342,6 +342,13 @@ test("GET / serves Base44 port shell", async () => {
     assert.doesNotMatch(shellJs, /Moved to \$\{next\.label\}/);
     assert.doesNotMatch(shellJs, /No barcode match/);
     assert.match(shellJs, /Pushed to \$\{next\.label\}/);
+    // Live export/fulfil/restore invent removals (?v=102).
+    assert.match(shellJs, /showToast\(`Exported \$\{ready\.length\}`, "ok"\)/);
+    assert.match(shellJs, /showToast\(`Exported \$\{ready\.length\} rows`, "ok"\)/);
+    assert.doesNotMatch(shellJs, /Exported \$\{ready\.length\} eBay CSV/);
+    assert.doesNotMatch(shellJs, /Advanced to \$\{label\}/);
+    assert.doesNotMatch(shellJs, /setItemPageStatus\("Restored"\)/);
+    assert.doesNotMatch(shellJs, /Product lookup failed: \$\{/);
 
 
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
