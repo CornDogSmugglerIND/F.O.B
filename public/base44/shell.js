@@ -5010,6 +5010,22 @@ function shipCardHtml(s) {
   </div>`;
 }
 
+
+/** Live Settings empty panel — centered icon tile + two-line copy. */
+function settingsEmptyHtml(kind, title, subtitle) {
+  const icons = {
+    template: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>`,
+    shipping: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>`,
+    storage: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>`,
+  };
+  const icon = icons[kind] || icons.template;
+  return `<div class="b44-settings-empty">
+    <div class="b44-settings-empty-icon">${icon}</div>
+    <div class="b44-settings-empty-title">${esc(title)}</div>
+    <p class="b44-settings-empty-sub">${esc(subtitle)}</p>
+  </div>`;
+}
+
 function renderSettings() {
   loadSettingsLocal();
   $("templateForm")?.classList.toggle("hidden", !state.showTemplateForm);
@@ -5021,7 +5037,11 @@ function renderSettings() {
     tRoot.innerHTML = state.templates.map(templateCardHtml).join("");
     if (tEmpty) {
       tEmpty.classList.toggle("hidden", state.templates.length > 0);
-      tEmpty.innerHTML = `<div class="v-label" style="font-size:14px;font-weight:600;color:#E8EDEA;text-transform:none;letter-spacing:0">No templates yet</div><p class="b44-copy-soft" style="margin-top:4px;font-size:13px">Create one to apply default markup and policies.</p>`;
+      tEmpty.innerHTML = settingsEmptyHtml(
+        "template",
+        "No templates yet",
+        "Create one to apply default markup and policies.",
+      );
     }
     tRoot.querySelectorAll("[data-del-template]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -5073,7 +5093,11 @@ function renderSettings() {
     sRoot.innerHTML = state.shipping.map(shipCardHtml).join("");
     if (sEmpty) {
       sEmpty.classList.toggle("hidden", state.shipping.length > 0);
-      sEmpty.innerHTML = `<div class="v-label" style="font-size:14px;font-weight:600;color:#E8EDEA;text-transform:none;letter-spacing:0">No shipping presets yet</div><p class="b44-copy-soft" style="margin-top:4px;font-size:13px">Add carriers and services to reuse on listings.</p>`;
+      sEmpty.innerHTML = settingsEmptyHtml(
+        "shipping",
+        "No shipping presets yet",
+        "Add carriers and services to reuse on listings.",
+      );
     }
     sRoot.querySelectorAll("[data-del-ship]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -5177,7 +5201,11 @@ function renderSettings() {
     if (dEmpty) {
       dEmpty.classList.toggle("hidden", state.storageDefs.length > 0);
       // Live vle Settings → Storage empty (two-line).
-      dEmpty.innerHTML = `<div class="v-label" style="font-size:14px;font-weight:600;color:#E8EDEA;text-transform:none;letter-spacing:0">No storage locations yet</div><p class="b44-copy-soft" style="margin-top:4px;font-size:13px">Add warehouses, shelves, or totes to organize inventory.</p>`;
+      dEmpty.innerHTML = settingsEmptyHtml(
+        "storage",
+        "No storage locations yet",
+        "Add warehouses, shelves, or totes to organize inventory.",
+      );
     }
     dRoot.querySelectorAll("[data-del-storage-def]").forEach((btn) => {
       btn.addEventListener("click", () => {
