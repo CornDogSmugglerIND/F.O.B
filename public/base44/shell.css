@@ -749,6 +749,18 @@ textarea.b44-input {
 }
 
 /* Live Channel empty (nle) — Wifi + olive glow */
+
+.b44-channel-list-wrap {
+  position: relative;
+  min-height: 220px;
+}
+.b44-channel-empty:not(.hidden) {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: rgba(4, 7, 12, 0.72);
+}
+
 .b44-channel-empty {
   display: flex;
   flex-direction: column;
