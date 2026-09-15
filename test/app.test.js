@@ -332,7 +332,16 @@ test("GET / serves Base44 port shell", async () => {
     assert.doesNotMatch(shellJs, /Listing engine isn't connected on this device/);
     assert.doesNotMatch(shellJs, /this shell shows the live chrome/);
     assert.doesNotMatch(shellJs, /scan\(s\) ready/);
-    assert.match(shellJs, /\$\{state\.draftPhotos\.length\} scans ready/);
+    assert.match(shellJs, /scan\$\{n === 1 \? "" : "s"\} ready/);
+    assert.doesNotMatch(shellJs, /setStatus\(`\$\{state\.draftPhotos\.length\} scans ready`\)/);
+    assert.doesNotMatch(shellJs, /setStatus\("Uploading…"\)/);
+    // Live Wle/Iq invent removals (?v=106).
+    assert.doesNotMatch(shellJs, /intakeReviewStatus = "Condition set"/);
+    assert.doesNotMatch(shellJs, /intakeReviewStatus = "Identification complete"/);
+    assert.doesNotMatch(shellJs, /intakeReviewStatus = "Pricing failed"/);
+    assert.match(shellJs, /function syncSpaceCreateSaveBtn/);
+    assert.match(shellJs, /Could not create/);
+    assert.doesNotMatch(shellJs, /if \(!name\) \{\s*showToast\("Could not create"/);
     assert.doesNotMatch(shellJs, /Photos kept/);
     assert.doesNotMatch(shellJs, /Lookup failed:/);
     // Live Wle/CR/scouter invent removals (?v=101).

@@ -828,6 +828,7 @@ function openSpaceCreateModal() {
     $("spaceCreateParentLabel").textContent = `New location in ${currentSpaceParentName()}`;
   }
   $("spaceCreateSheet")?.classList.remove("hidden");
+  syncSpaceCreateSaveBtn();
   $("spaceCreateName")?.focus();
 }
 
@@ -835,25 +836,36 @@ function closeSpaceCreateModal() {
   $("spaceCreateSheet")?.classList.add("hidden");
 }
 
+function syncSpaceCreateSaveBtn() {
+  const btn = $("btnSpaceCreateSave");
+  if (!btn) return;
+  const ok = !!($("spaceCreateName")?.value || "").trim();
+  btn.disabled = !ok;
+}
+
 function submitSpaceCreateModal() {
   const name = ($("spaceCreateName")?.value || "").trim();
-  if (!name) {
-    showToast("Could not create", "err");
-    return;
-  }
+  // Live Iq: Create disabled until name trim — empty click is silent no-op.
+  if (!name) return;
   const kindRaw = ($("spaceCreateKind")?.value || "bin").trim().toLowerCase();
   const kind = SPACE_MAP_KINDS.includes(kindRaw) ? kindRaw : "bin";
   const code = ($("spaceCreateCode")?.value || "").trim();
   loadSpaces();
-  state.spaces.unshift({
-    id: crypto.randomUUID(),
-    name,
-    kind,
-    code,
-    parentId: currentSpaceParentId(),
-    createdAt: new Date().toISOString(),
-  });
-  saveSpaces();
+  try {
+    state.spaces.unshift({
+      id: crypto.randomUUID(),
+      name,
+      kind,
+      code,
+      parentId: currentSpaceParentId(),
+      createdAt: new Date().toISOString(),
+    });
+    saveSpaces();
+  } catch {
+    // Live Iq create catch: ht.error("Could not create")
+    showToast("Could not create", "err");
+    return;
+  }
   closeSpaceCreateModal();
   // Live Iq Spaces Map create toast: "{name} created"
   showToast(`${name} created`, "ok");
@@ -3085,9 +3097,9 @@ async function startIdentificationFromGroups() {
   state.intakeReviewFocusId = null;
   state.reviewPreviewFace = "front";
   state.intakeExportSummary = null;
-  state.intakeReviewStatus = "Identification complete";
   setIntakeMode("review");
   renderIntakeReview();
+  // Live: ht.success("Identification complete") — toast only.
   showToast("Identification complete", "ok");
 }
 
@@ -3264,8 +3276,8 @@ function renderReviewPreview() {
         row.confidence = "High";
         row.status = "Approved";
         row.catalog_candidates = [];
-        state.intakeReviewStatus = "Candidate applied → High";
         renderIntakeReview();
+        // Live: ht.success("Candidate applied → High") — toast only.
         showToast("Candidate applied → High", "ok");
       });
     });
@@ -3457,8 +3469,7 @@ function bulkReviewStatus(status, msg) {
       if (ids.includes(r.id)) r.status = status;
     });
     state.intakeReviewSelected = [];
-    state.intakeReviewStatus = msg;
-    // Live Wle H(…, Ce): ht.success(Ce)
+    // Live Wle H(…, Ce): ht.success(Ce) — toast only.
     showToast(msg, "ok");
     renderIntakeReview();
   } catch {
@@ -3474,7 +3485,7 @@ function bulkReviewCondition(condition) {
     state.intakeReviewRows.forEach((r) => {
       if (ids.includes(r.id)) r.condition = condition;
     });
-    state.intakeReviewStatus = "Condition set";
+    // Live: ht.success("Condition set") — toast only.
     showToast("Condition set", "ok");
     renderIntakeReview();
   } catch {
@@ -3490,8 +3501,7 @@ function bulkReviewDelete() {
     state.intakeReviewRows = state.intakeReviewRows.filter((r) => !ids.has(r.id));
     state.intakeReviewSelected = [];
     state.intakeReviewRescan = (state.intakeReviewRescan || []).filter((id) => !ids.has(id));
-    state.intakeReviewStatus = "Deleted";
-    // Live Wle: ht.success("Deleted")
+    // Live Wle: ht.success("Deleted") — toast only.
     showToast("Deleted", "ok");
     renderIntakeReview();
   } catch {
@@ -3513,8 +3523,7 @@ async function copyReviewRescanList() {
     .flatMap((r) => r.source_files || [r.card_name || r.title || r.id]);
   try {
     await navigator.clipboard.writeText(names.join("\n"));
-    // Live Wle me(): ht.success(`Copied ${n} filenames to rescan`) — no invent clipboard-blocked status.
-    state.intakeReviewStatus = `Copied ${names.length} filenames to rescan`;
+    // Live Wle me(): ht.success(`Copied ${n} filenames to rescan`) — toast only.
     showToast(`Copied ${names.length} filenames to rescan`, "ok");
   } catch {
     /* live writeText has no invent failure status */
@@ -3554,9 +3563,8 @@ function exportIntakeDoubleHoloCsv() {
     reasons,
     rescans: (state.intakeReviewRescan || []).length,
   };
-  state.intakeReviewStatus = `Exported ${ready.length}`;
   renderIntakeReview();
-  // Live Double Holo export: ht.success(`Exported ${n}`) — no "rows" suffix.
+  // Live Double Holo export: ht.success(`Exported ${n}`) — toast only.
   showToast(`Exported ${ready.length}`, "ok");
 }
 
@@ -3720,9 +3728,8 @@ function exportIntakeEbayCsv(cfg) {
     },
     rescans: (state.intakeReviewRescan || []).length,
   };
-  state.intakeReviewStatus = `Exported ${ready.length} rows`;
   renderIntakeReview();
-  // Live eBay CSV export: ht.success(`Exported ${n} rows`) — no invent "eBay CSV" suffix.
+  // Live eBay CSV export: ht.success(`Exported ${n} rows`) — toast only.
   showToast(`Exported ${ready.length} rows`, "ok");
 }
 
@@ -3827,9 +3834,9 @@ function applyFleCandidate(pick) {
   row.confidence = "High";
   row.status = "Approved";
   row.catalog_candidates = [];
-  state.intakeReviewStatus = "Candidate applied → High";
   renderFleSheet();
   renderIntakeReview();
+  // Live: ht.success("Candidate applied → High") — toast only.
   showToast("Candidate applied → High", "ok");
 }
 
@@ -3842,11 +3849,10 @@ function verifyFleRow(status) {
     if (status === "Approved" && row.confidence !== "High") {
       // Keep confidence; verify is status-only like live F()
     }
-    state.intakeReviewStatus = status === "Approved" ? "Verified — approved" : "Sent to review";
     closeFleSheet();
     renderIntakeReview();
-    // Live Ble verify: ht.success("Verified — approved" | "Sent to review")
-    showToast(state.intakeReviewStatus, "ok");
+    // Live Ble verify: ht.success("Verified — approved" | "Sent to review") — toast only.
+    showToast(status === "Approved" ? "Verified — approved" : "Sent to review", "ok");
   } catch {
     // Live Ble: ht.error("Save failed")
     showToast("Save failed", "err");
@@ -4042,7 +4048,8 @@ async function addFiles(fileList) {
   if (!incoming.length) return;
   setIntakeMode("processing");
   setProcessingProgress("Uploading", 0, incoming.length);
-  setStatus("Uploading…");
+  // Live Mle: Kle upload HUD + #batchScanReady own chrome — no invent #identifyStatus.
+  setStatus("");
   const compressed = await window.ScouterImage.compressPhotos(incoming);
   let done = 0;
   for (const file of compressed) {
@@ -4055,8 +4062,7 @@ async function addFiles(fileList) {
   renderPhotos();
   updateSave();
   setIntakeMode("batch");
-  // Live Mle: "{n} scans ready"
-  setStatus(`${state.draftPhotos.length} scans ready`);
+  setStatus("");
 }
 
 async function runIdentify() {
@@ -6449,8 +6455,7 @@ function bind() {
         // Success toast when wired: "Prices fetched — estimates only, not sold comps"
         throw new Error("scanFetchPrices unwired");
       } catch {
-        // Live Wle: ht.error("Pricing failed")
-        state.intakeReviewStatus = "Pricing failed";
+        // Live Wle: ht.error("Pricing failed") — toast only.
         showToast("Pricing failed", "err");
         renderIntakeReview();
       } finally {
@@ -6551,6 +6556,7 @@ function bind() {
   $("btnAddSpace")?.addEventListener("click", () => openSpaceCreateModal());
   $("btnSpaceCreateClose")?.addEventListener("click", () => closeSpaceCreateModal());
   $("btnSpaceCreateSave")?.addEventListener("click", () => submitSpaceCreateModal());
+  $("spaceCreateName")?.addEventListener("input", () => syncSpaceCreateSaveBtn());
   $("spaceCreateName")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") submitSpaceCreateModal();
     if (e.key === "Escape") closeSpaceCreateModal();
