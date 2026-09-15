@@ -1123,6 +1123,18 @@ function renderIntakeList() {
   );
   if ($("intakeValue")) $("intakeValue").textContent = money(intakeVal);
   empty.classList.toggle("hidden", pool.length > 0);
+  // Live Zc hint: empty / has rows / locked pick.
+  const hint = $("intakeHint");
+  if (hint) {
+    if (state.intakePickId) {
+      hint.textContent = "Locked on an item — ESC to pull back out.";
+    } else if (pool.length) {
+      hint.textContent = "Click an item to build its listing, or open it.";
+    } else {
+      hint.textContent =
+        "Intake is empty — scan a barcode or drop a photo to bring inventory in.";
+    }
+  }
   root.innerHTML = hubs.map(intakeHubSectionHtml).join("");
   root.querySelectorAll("[data-intake-pick]").forEach((btn) => {
     btn.addEventListener("click", () => openIntakePick(btn.dataset.intakePick, btn.dataset.intakeHub));
@@ -3295,6 +3307,10 @@ function renderSpaces() {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const id = btn.dataset.delSpace;
+      const sp = state.spaces.find((x) => x.id === id);
+      const name = sp?.name || "location";
+      // Live Pq remove: "Remove {name}? Cards inside become unsorted."
+      if (!confirm(`Remove ${name}? Cards inside become unsorted.`)) return;
       const drop = new Set([id]);
       let grew = true;
       while (grew) {
@@ -4842,16 +4858,25 @@ function bind() {
       openScouterReadout(it.id);
       return;
     }
-    // Honest local port: mark Listed locally; live publish needs server eBay creds.
-    it.staged = true;
-    it.listingStatus = "listed";
-    it.updatedAt = new Date().toISOString();
-    saveItems();
-    state.readoutStatus =
-      "Marked Listed locally. Live Publish to eBay needs server credentials.";
-    openScouterReadout(it.id);
-    renderCollection();
-    updateSitrep();
+    const btn = $("btnPublishEbay");
+    // Live tle Publish button shows Publishing… while the request runs.
+    if (btn) {
+      btn.textContent = "Publishing…";
+      btn.disabled = true;
+    }
+    // Honest local port: mark Listed locally after brief chrome; live publish needs server eBay creds.
+    window.setTimeout(() => {
+      it.staged = true;
+      it.listingStatus = "listed";
+      it.updatedAt = new Date().toISOString();
+      saveItems();
+      state.readoutStatus =
+        "Marked Listed locally. Live Publish to eBay needs server credentials.";
+      if (btn) btn.disabled = false;
+      openScouterReadout(it.id);
+      renderCollection();
+      updateSitrep();
+    }, 400);
   });
   $("btnOpenCard")?.addEventListener("click", () => {
     const it = state.items.find((x) => x.id === state.lockedItemId);

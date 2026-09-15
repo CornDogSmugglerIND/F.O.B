@@ -100,6 +100,8 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /LOCKED ·/);
     assert.match(html, /rows written/);
     assert.match(html, /Scan a barcode or drop a photo to bring inventory in/);
+    assert.match(html, /Intake is empty — scan a barcode or drop a photo to bring inventory in\./);
+    assert.match(html, /id="intakeHint"/);
 
     assert.match(html, /Feed the autofeed scanner/);
 
