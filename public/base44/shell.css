@@ -1,9 +1,9 @@
 /* Shell chrome only — materials come from vendored Base44 app.css */
 /* Live D palette from base44-live/app.js — cool slate, not warm brown. */
 :root {
-  --b44-base: #04070c;
+  --b44-base: #04070C;
   --b44-text: #ffffff;
-  --b44-mid: #c9d8e2;
+  --b44-mid: #C9D8E2;
   --b44-lo: #6f8697;
   --b44-gold: #ffb43d;
   --b44-gold-hi: #ffd98a;
@@ -12,9 +12,9 @@
   --b44-cyan: #2bd9c0;
   --b44-cyan-hi: #8ff6e8;
   /* Live olive/tan are cool slate — NOT warm cream/terracotta. */
-  --b44-olive: #8fa3ad;
+  --b44-olive: #8FA3AD;
   --b44-olive-hi: #ffffff;
-  --b44-tan: #8fa3ad;
+  --b44-tan: #8FA3AD;
   --b44-tan-hi: #ffffff;
   --b44-bad: #ff4d6d;
   --b44-bad-hi: #ff9aae;
@@ -39,11 +39,8 @@ body.b44 {
 
 .b44-shell {
   min-height: 100dvh;
-  /* Live base plane — keep ambient barely there, no muddy gold fog. */
-  background:
-    radial-gradient(900px 500px at 18% 8%, rgba(255, 180, 61, 0.045), transparent 58%),
-    radial-gradient(700px 480px at 88% 82%, rgba(43, 217, 192, 0.035), transparent 55%),
-    var(--b44-base);
+  /* Live fle/Zc desk plane — cool #0C1118 → base → #010306. No invented gold fog. */
+  background: radial-gradient(126% 90% at 50% 0%, #0c1118 0%, var(--b44-base) 62%, #010306 100%);
 }
 
 .b44-top {
@@ -100,10 +97,11 @@ body.b44 {
   height: calc(70px + var(--safe-bottom));
   padding: 0 8px var(--safe-bottom);
   display: flex;
-  background: linear-gradient(180deg, rgba(10, 16, 24, 0.9), rgba(4, 7, 12, 0.97));
-  -webkit-backdrop-filter: blur(22px) saturate(1.2);
-  backdrop-filter: blur(22px) saturate(1.2);
-  box-shadow: inset 0 1px 0 rgba(255, 180, 61, 0.18), 0 -12px 30px rgba(0, 0, 0, 0.6);
+  background: linear-gradient(180deg, rgba(10, 16, 24, 0.94), rgba(4, 7, 12, 0.98));
+  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+  backdrop-filter: blur(22px) saturate(1.15);
+  /* Cool rim — live slate, not muddy gold strip */
+  box-shadow: inset 0 1px 0 rgba(201, 216, 226, 0.12), 0 -12px 30px rgba(0, 0, 0, 0.6);
 }
 
 .b44-tab {
@@ -137,8 +135,8 @@ body.b44 {
   color: var(--b44-gold-hi);
 }
 .b44-tab.active .ico {
-  background: linear-gradient(168deg, rgba(255, 180, 61, 0.133), rgba(255, 180, 61, 0.031));
-  box-shadow: inset 0 0 0 1px rgba(255, 180, 61, 0.333);
+  background: linear-gradient(168deg, rgba(255, 217, 138, 0.16), rgba(8, 12, 18, 0.4));
+  box-shadow: inset 0 0 0 1px rgba(255, 217, 138, 0.4);
 }
 
 .b44-tab svg {
@@ -146,11 +144,12 @@ body.b44 {
   height: 19px;
 }
 
-/* Intake / Scouter surfaces using Base44 v-* tokens */
+/* Intake / Scouter surfaces — live v-glass cool plane (not gold wash) */
 .b44-glass {
   position: relative;
   min-height: calc(100vh - 130px);
   padding: 4px 0 8px;
+  background: radial-gradient(130% 80% at 50% 0%, #0c1118 0%, var(--b44-base) 60%, #010306 100%);
 }
 
 .b44-toolbar {
