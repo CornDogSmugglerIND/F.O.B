@@ -51,7 +51,6 @@ const state = {
   unDraft: null,
   unStatus: "",
   filterIntake: "",
-  filterSpaces: "",
   spaceTrail: [],
   spaceTreeOpen: {}, // id → bool — live Ak expand state
   scouterMode: "pipeline", // pipeline | spaces — live tle breadcrumb
@@ -4502,12 +4501,8 @@ function renderSpaces() {
   const empty = $("spaceEmpty");
   if (!root) return;
   const parentId = currentSpaceParentId();
-  const q = (state.filterSpaces || "").trim().toLowerCase();
-  const rows = spaceChildrenOf(parentId).filter((s) => {
-    if (!q) return true;
-    const hay = `${s.name || ""} ${s.code || ""} ${s.kind || ""}`.toLowerCase();
-    return hay.includes(q);
-  });
+  // Live Pq: no Filter spaces toolbar — Back + Add location only (FAB on live).
+  const rows = spaceChildrenOf(parentId);
   const totalHere = rows.length;
   const totalSpaces = state.spaces.length;
   if ($("spaceCount")) $("spaceCount").textContent = pad2(totalSpaces);
@@ -6619,10 +6614,6 @@ function bind() {
   });
   $("spaceCreateSheet")?.addEventListener("click", (e) => {
     if (e.target === $("spaceCreateSheet")) closeSpaceCreateModal();
-  });
-  $("spaceFilter")?.addEventListener("input", (e) => {
-    state.filterSpaces = e.target.value;
-    renderSpaces();
   });
   $("tabLive")?.addEventListener("click", () => {
     state.channelTab = "live";
