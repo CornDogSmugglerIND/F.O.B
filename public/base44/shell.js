@@ -4987,7 +4987,9 @@ function bind() {
       if (!$("fleSheet")?.classList.contains("hidden")) closeFleSheet();
       else if (!$("unSheet")?.classList.contains("hidden")) closeUnSheet();
       else if (!$("assetSheet")?.classList.contains("hidden")) closeAssetSheet();
-      else closeScouterReadout();
+      else if (state.intakePickId || !$("intakePickSheet")?.classList.contains("hidden")) {
+        closeIntakePick();
+      } else closeScouterReadout();
     }
   });
   $("btnNewBatch")?.addEventListener("click", () => openNewBatch());
