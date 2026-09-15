@@ -449,7 +449,7 @@ function moveScouterItem(itemId, kind, key) {
         it.listingStatus = "listed";
       }
       const label = PIPE_STEPS.find((s) => s.key === key)?.label || key;
-      setScouterStatus(`${it.title || "Card"} → ${label}`);
+      // Live tle drop: ht.success toast only — no invent #scouterStatus mirror.
       showToast(`${it.title || "Card"} → ${label}`, "ok");
     } else {
       const next = key === "__unfiled__" ? "" : key;
@@ -459,7 +459,6 @@ function moveScouterItem(itemId, kind, key) {
         key === "__unfiled__"
           ? "Unfiled"
           : state.spaces.find((s) => s.id === key)?.name || "Space";
-      setScouterStatus(`Filed into ${name}`);
       showToast(`Filed into ${name}`, "ok");
     }
     it.updatedAt = new Date().toISOString();
@@ -1512,10 +1511,9 @@ function buildIntakeListing() {
     it.updatedAt = new Date().toISOString();
     saveItems();
     const msg = `${it.title || "Untitled"} → Listing Built`;
-    state.intakePickStatus = msg;
     closeIntakePick();
     renderIntakeList();
-    setScouterStatus(msg);
+    // Live qle: ht.success toast only — no invent #scouterStatus / pickStatus mirror.
     showToast(msg, "ok");
   } catch {
     // Live qle: ht.error("Could not advance that item")
@@ -1894,11 +1892,11 @@ function duplicateAsset() {
   };
   state.items.unshift(copy);
   saveItems();
-  if ($("assetSheetStatus")) $("assetSheetStatus").textContent = "Duplicated";
   closeAssetSheet();
   openScouterReadout(copy.id);
   renderCollection();
   updateSitrep();
+  // Live: ht.success("Duplicated") — toast only (sheet closes; no invent status).
   showToast("Duplicated", "ok");
 }
 
@@ -1908,7 +1906,7 @@ function archiveAsset() {
   it.archived = true;
   it.updatedAt = new Date().toISOString();
   saveItems();
-  if ($("assetSheetStatus")) $("assetSheetStatus").textContent = "Archived";
+  // Live archive is a silent field update — no invent "Archived" sheet status.
   closeAssetSheet();
   closeScouterReadout();
   renderCollection();
@@ -1926,7 +1924,6 @@ function deleteAsset() {
     onConfirm: () => {
       state.items = state.items.filter((x) => x.id !== id);
       saveItems();
-      if ($("assetSheetStatus")) $("assetSheetStatus").textContent = "Item deleted";
       closeAssetSheet();
       closeScouterReadout();
       renderCollection();
@@ -2323,7 +2320,7 @@ async function pushItemPhase() {
     }
     it.updatedAt = new Date().toISOString();
     saveItems();
-    setItemPageStatus(`Pushed to ${next.label}`);
+    // Live push: ht.success toast only — no invent #itemPageStatus mirror.
     showToast(`Pushed to ${next.label}`, "ok");
     if ($("itemPhase")) $("itemPhase").value = it.listingStatus;
     updateItemEconomics(it);
@@ -2364,7 +2361,7 @@ async function publishItemEbay() {
       it.liveChannel = it.liveChannel || "ebay";
       it.updatedAt = new Date().toISOString();
       saveItems();
-      setItemPageStatus(`${it.title || "Untitled"} is live on eBay`);
+      // Live publish: ht.success toast only — no invent page status mirror.
       showToast(`${it.title || "Untitled"} is live on eBay`, "ok");
       if ($("itemPhase")) $("itemPhase").value = "listed";
       updateItemEconomics(it);
@@ -2375,7 +2372,10 @@ async function publishItemEbay() {
       // Live publish: ht.error(`Publish failed: ${…||"eBay rejected it"}`)
       showToast(`Publish failed: ${(e && e.message) || "eBay rejected it"}`, "err");
     } finally {
-      if (btn) btn.disabled = false;
+      if (btn) {
+        btn.textContent = "Publish to eBay";
+        btn.disabled = false;
+      }
     }
   }, 400);
 }
@@ -6053,8 +6053,7 @@ async function crAddItem(draft, code) {
     crState.added += 1;
     crState.lastTitle = title;
     crUpdateAddedBadge();
-    setScouterStatus(`Added: ${title}`);
-    // Live CR: ht.success(`Added: ${title}`)
+    // Live CR: ht.success(`Added: ${title}`) — toast only.
     showToast(`Added: ${title}`, "ok");
     renderCollection();
     renderIntakeList();
@@ -6175,8 +6174,7 @@ function bind() {
         noImg.classList.add("hidden");
       }
     } catch (_) {
-      setScouterStatus("Image upload failed");
-      // Live CR: ht.error("Image upload failed")
+      // Live CR: ht.error("Image upload failed") — toast only.
       showToast("Image upload failed", "err");
     }
   });
@@ -6282,9 +6280,13 @@ function bind() {
       it.listingStatus = "listed";
       it.updatedAt = new Date().toISOString();
       saveItems();
-      state.readoutStatus = `${it.title || "Untitled"} is live on eBay`;
-      if (btn) btn.disabled = false;
-      openScouterReadout(it.id);
+      // Live tle be(): ht.success(`${title} is live on eBay`) — toast only, reset Publish label.
+      showToast(`${it.title || "Untitled"} is live on eBay`, "ok");
+      if (btn) {
+        btn.textContent = "Publish to eBay";
+        btn.disabled = false;
+      }
+      closeScouterReadout();
       renderCollection();
       updateSitrep();
     }, 400);

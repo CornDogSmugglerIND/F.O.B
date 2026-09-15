@@ -357,6 +357,17 @@ test("GET / serves Base44 port shell", async () => {
     assert.doesNotMatch(shellJs, /Item not found\./);
     assert.doesNotMatch(shellJs, /setItemPageStatus\("Duplicated"\)/);
     assert.match(shellJs, /showToast\("Duplicated", "ok"\)/);
+    // Live toast-only dual-write removals (?v=104).
+    assert.doesNotMatch(shellJs, /setScouterStatus\(`\$\{it\.title/);
+    assert.doesNotMatch(shellJs, /setScouterStatus\(`Filed into/);
+    assert.doesNotMatch(shellJs, /setScouterStatus\(`Added:/);
+    assert.doesNotMatch(shellJs, /setScouterStatus\("Image upload failed"\)/);
+    assert.doesNotMatch(shellJs, /setItemPageStatus\(`Pushed to/);
+    assert.doesNotMatch(shellJs, /setItemPageStatus\(`\$\{it\.title/);
+    assert.doesNotMatch(shellJs, /readoutStatus = `\$\{it\.title/);
+    assert.doesNotMatch(shellJs, /assetSheetStatus"\)\) \$\{?"Archived"/);
+    assert.doesNotMatch(shellJs, /textContent = "Archived"/);
+    assert.match(shellJs, /showToast\(`\$\{it\.title \|\| "Untitled"\} is live on eBay`/);
 
 
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
