@@ -4603,7 +4603,6 @@ function renderSpaces() {
     : "ALL STORAGE";
   if ($("spaceBreadcrumb")) $("spaceBreadcrumb").textContent = crumb;
   $("btnSpaceUp")?.classList.toggle("hidden", !parentId);
-  $("btnFileHere")?.classList.toggle("hidden", !parentId);
 
   publishStorageHud({
     subN: totalHere,
@@ -4707,86 +4706,34 @@ function renderSpaces() {
     });
   });
 
-  // Live Spaces: cards at current location (or unfiled at ALL STORAGE).
+  // Live Spaces: cards at current location (or unfiled at ALL STORAGE) — strips only when nonempty.
   const itemsRoot = $("spaceItems");
-  const itemsEmpty = $("spaceItemsEmpty");
   const itemsLabel = $("spaceItemsLabel");
+  const list = parentId ? cardsHere : unfiled;
   if (itemsLabel) {
-    // Live Pq: "Loose in {name|here} · n" nested; "Unsorted · No Location · n" at root.
-    if (parentId) {
-      const hereName = spaceById(parentId)?.name || "here";
-      itemsLabel.textContent = `Loose in ${hereName} · ${cardsHere.length}`;
-    } else {
-      itemsLabel.textContent = `Unsorted · No Location · ${unfiled.length}`;
+    // Live Pq: "Loose in {name|here} · n" nested; "Unsorted · No Location · n" at root — only if n>0.
+    itemsLabel.classList.toggle("hidden", list.length === 0);
+    if (list.length > 0) {
+      if (parentId) {
+        const hereName = spaceById(parentId)?.name || "here";
+        itemsLabel.textContent = `Loose in ${hereName} · ${cardsHere.length}`;
+      } else {
+        itemsLabel.textContent = `Unsorted · No Location · ${unfiled.length}`;
+      }
     }
   }
   if (itemsRoot) {
-    const list = parentId ? cardsHere : unfiled;
-    if (itemsEmpty) {
-      itemsEmpty.classList.toggle("hidden", list.length > 0);
-      const lab = itemsEmpty.querySelector(".v-label");
-      const p = itemsEmpty.querySelector("p");
-      if (lab) lab.textContent = parentId ? "No items here" : "No unsorted items";
-      if (p) {
-        p.textContent = parentId
-          ? "Items filed into this location show up here."
-          : "Items with no location sit here until you file them.";
-      }
-    }
     itemsRoot.innerHTML = list
       .map((it) => {
         const price = Number(it.marketValue ?? it.price);
         const priceBit = Number.isFinite(price) && price > 0 ? money(price) : "—";
         const status = itemPipeLabel(it);
-        const unfile = parentId
-          ? `<button type="button" class="m-btn" data-unfile="${esc(it.id)}">Unfile</button>`
-          : "";
-        return `<div class="v-panel v-cut-sm b44-item"><div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(status)} · ${esc(priceBit)}</span></div>${unfile}</div>`;
+        return `<div class="v-panel v-cut-sm b44-item" data-open-item="${esc(it.id)}"><div class="meta"><strong>${esc(it.title || "Untitled")}</strong><span>${esc(status)} · ${esc(priceBit)}</span></div></div>`;
       })
       .join("");
-    itemsRoot.querySelectorAll("[data-unfile]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const it = state.items.find((x) => x.id === btn.dataset.unfile);
-        if (!it) return;
-        try {
-          it.spaceId = "";
-          saveItems();
-          renderSpaces();
-          updateSitrep();
-        } catch {
-          // Live Rq: ht.error("Could not move item")
-          showToast("Could not move item", "err");
-        }
-      });
+    itemsRoot.querySelectorAll("[data-open-item]").forEach((el) => {
+      el.addEventListener("click", () => navigate(`/item/${el.dataset.openItem}`));
     });
-  }
-}
-
-function fileCardIntoCurrentSpace() {
-  const parentId = currentSpaceParentId();
-  if (!parentId) return;
-  const unfiled = state.items.filter((it) => !it.spaceId);
-  if (!unfiled.length) {
-    alert("No unfiled cards — everything already has a location.");
-    return;
-  }
-  const names = unfiled
-    .slice(0, 12)
-    .map((it, i) => `${i + 1}. ${it.title || "Untitled"}`)
-    .join("\n");
-  const pick = prompt(`File which unfiled card into this location?\n${names}\n\nEnter number`, "1");
-  const idx = Number(pick) - 1;
-  if (!Number.isInteger(idx) || idx < 0 || idx >= unfiled.length) return;
-  try {
-    unfiled[idx].spaceId = parentId;
-    saveItems();
-    const name = spaceById(parentId)?.name || "Space";
-    showToast(`Filed into ${name}`, "ok");
-    renderSpaces();
-    updateSitrep();
-  } catch {
-    // Live Rq: ht.error("Could not move item")
-    showToast("Could not move item", "err");
   }
 }
 
@@ -6734,7 +6681,6 @@ function bind() {
     state.spaceTrail = [];
     renderSpaces();
   });
-  $("btnFileHere")?.addEventListener("click", () => fileCardIntoCurrentSpace());
   $("btnAddSpace")?.addEventListener("click", () => openSpaceCreateModal());
   $("btnSpaceCreateClose")?.addEventListener("click", () => closeSpaceCreateModal());
   $("btnSpaceCreateSave")?.addEventListener("click", () => submitSpaceCreateModal());

@@ -153,6 +153,9 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /SITREP/);
     assert.match(html, /All clear/);
     assert.match(html, /Empty location/);
+    assert.doesNotMatch(html, /id="spaceItemsEmpty"/);
+    assert.doesNotMatch(html, /File card here/);
+    assert.doesNotMatch(html, /No items here/);
     assert.match(html, /Add a bin, shelf or tote to start mapping your shelves/);
     assert.match(html, /id="spaceCoverInput"/);
     assert.match(html, /Channel empty/);

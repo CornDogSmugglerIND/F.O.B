@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=86" />
+  <link rel="stylesheet" href="/base44/shell.css?v=87" />
 </head>
 <body class="b44">
   <div class="b44-shell">
@@ -420,7 +420,6 @@
                 <input id="spaceFilter" type="search" placeholder="Filter spaces" autocomplete="off" />
               </div>
               <button type="button" class="m-btn m-btn-primary" id="btnAddSpace" title="Add location">Add location</button>
-              <button type="button" class="m-btn hidden" id="btnFileHere">File card here</button>
             </div>
             <div id="spaceList"></div>
             <div id="spaceEmpty" class="b44-space-empty">
@@ -430,12 +429,8 @@
               <div class="v-label b44-space-empty-label">Empty location</div>
               <div class="b44-space-empty-sub">Add a bin, shelf or tote to start mapping your shelves.</div>
             </div>
-<div class="v-label" style="font-size:9px;margin:16px 0 6px;color:var(--b44-gold,#ffb43d)" id="spaceItemsLabel">Unsorted · No Location · 0</div>
+            <div class="v-label hidden" style="font-size:9px;margin:16px 0 6px;color:var(--b44-gold,#ffb43d)" id="spaceItemsLabel">Unsorted · No Location · 0</div>
             <div id="spaceItems"></div>
-            <div id="spaceItemsEmpty" class="v-panel v-cut b44-empty hidden">
-              <div class="v-label">No items here</div>
-              <p>Items filed into this location show up here.</p>
-            </div>
           </div>
         </div>
       </section>
@@ -1481,7 +1476,7 @@
 
   <script src="/lib/image.js?v=24"></script>
   <script src="/lib/html5-qrcode.min.js"></script>
-  <script src="/base44/shell.js?v=86"></script>
+  <script src="/base44/shell.js?v=87"></script>
 
 </body>
 </html>
