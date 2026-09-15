@@ -443,6 +443,7 @@ function moveScouterItem(itemId, kind, key) {
     }
     const label = PIPE_STEPS.find((s) => s.key === key)?.label || key;
     setScouterStatus(`${it.title || "Card"} → ${label}`);
+    showToast(`${it.title || "Card"} → ${label}`, "ok");
   } else {
     const next = key === "__unfiled__" ? "" : key;
     if ((it.spaceId || "") === next) return;
@@ -452,6 +453,7 @@ function moveScouterItem(itemId, kind, key) {
         ? "Unfiled"
         : state.spaces.find((s) => s.id === key)?.name || "Space";
     setScouterStatus(`Filed into ${name}`);
+    showToast(`Filed into ${name}`, "ok");
   }
   it.updatedAt = new Date().toISOString();
   saveItems();
@@ -555,6 +557,10 @@ async function intakePhotosOntoScouter(fileList) {
   state.items = [...created, ...state.items];
   saveItems();
   setScouterStatus(`${created.length} card${created.length === 1 ? "" : "s"} on the scouter`);
+  showToast(
+    `${created.length} card${created.length === 1 ? "" : "s"} on the scouter`,
+    "ok",
+  );
   renderCollection();
   renderIntakeList();
   updateSitrep();
@@ -628,6 +634,7 @@ function exportScouterCsv() {
   a.remove();
   URL.revokeObjectURL(a.href);
   setScouterStatus(`Exported ${rows.length}`);
+  showToast(`Exported ${rows.length}`, "ok");
 }
 
 function setScouterReleaseOverlay(on) {
@@ -1226,6 +1233,7 @@ function buildIntakeListing() {
   closeIntakePick();
   renderIntakeList();
   setScouterStatus(msg);
+  showToast(msg, "ok");
 }
 
 function openIntakeCard() {
@@ -2003,6 +2011,7 @@ async function pushItemPhase() {
     it.updatedAt = new Date().toISOString();
     saveItems();
     setItemPageStatus(`Pushed to ${next.label}`);
+    showToast(`Pushed to ${next.label}`, "ok");
     if ($("itemPhase")) $("itemPhase").value = it.listingStatus;
     updateItemEconomics(it);
     syncItemChrome(it);
@@ -2036,6 +2045,7 @@ async function publishItemEbay() {
     it.updatedAt = new Date().toISOString();
     saveItems();
     setItemPageStatus(`${it.title || "Untitled"} is live on eBay`);
+    showToast(`${it.title || "Untitled"} is live on eBay`, "ok");
     if ($("itemPhase")) $("itemPhase").value = "listed";
     if (btn) btn.disabled = false;
     updateItemEconomics(it);
@@ -2602,6 +2612,7 @@ function splitIntakeGroup(gi, ids) {
   state.groupSplitPick = [];
   renderGrouping();
   setStatus("Group split");
+  showToast("Group split", "ok");
 }
 
 function swapFrontBack() {
@@ -2610,6 +2621,7 @@ function swapFrontBack() {
   state.groupSplitPick = [];
   regroupIntake();
   setStatus("Front ↔ back swapped");
+  showToast("Front ↔ back swapped", "ok");
 }
 
 async function startIntakeToGrouping() {
@@ -2751,6 +2763,7 @@ async function startIdentificationFromGroups() {
   state.intakeReviewStatus = "Identification complete";
   setIntakeMode("review");
   renderIntakeReview();
+  showToast("Identification complete", "ok");
 }
 
 function mapIntakeConfidence(raw, hasName) {
@@ -2927,6 +2940,7 @@ function renderReviewPreview() {
         row.status = "Approved";
         state.intakeReviewStatus = "Candidate applied → High";
         renderIntakeReview();
+        showToast("Candidate applied → High", "ok");
       });
     });
   }
@@ -3154,6 +3168,7 @@ async function copyReviewRescanList() {
   try {
     await navigator.clipboard.writeText(names.join("\n"));
     state.intakeReviewStatus = `Copied ${names.length} filenames to rescan`;
+    showToast(`Copied ${names.length} filenames to rescan`, "ok");
   } catch {
     state.intakeReviewStatus = `Rescan list (${names.length}) — clipboard blocked`;
   }
@@ -3189,6 +3204,7 @@ function exportIntakeDoubleHoloCsv() {
   state.intakeExportSummary = { exported: ready.length, held, reasons };
   state.intakeReviewStatus = `Exported ${ready.length}`;
   renderIntakeReview();
+  showToast(`Exported ${ready.length} rows`, "ok");
 }
 
 /** Live jle — fields mappable onto an eBay CSV header row (Ule). */
@@ -3352,6 +3368,7 @@ function exportIntakeEbayCsv(cfg) {
   };
   state.intakeReviewStatus = `Exported ${ready.length} eBay CSV`;
   renderIntakeReview();
+  showToast(`Exported ${ready.length}`, "ok");
 }
 
 /** Live be — use saved mapping, or open Ule when none. */
@@ -3495,6 +3512,7 @@ function applyFlePick() {
   state.intakeReviewStatus = "Candidate applied → High";
   closeFleSheet();
   renderIntakeReview();
+  showToast("Candidate applied → High", "ok");
 }
 
 /** Live Ble verify actions from candidate sheet. */
@@ -3599,6 +3617,7 @@ function saveUnDraft() {
   if (state.lockedItemId) openScouterReadout(state.lockedItemId);
   renderCollection();
   updateSitrep();
+  showToast("Draft saved → Ready to List", "ok");
 }
 
 function renderPhotos() {
@@ -4597,6 +4616,8 @@ function applyChannelReprice() {
   saveItems();
   state.channelSheetStatus =
     `Local price set to ${money(next)}. Live eBay reprice needs server credentials.`;
+  // Live nle success toast copy
+  showToast(`Repriced → $${next.toFixed(2)}`, "ok");
   setChannelRepriceOpen(false);
   openChannelSheet(it.id);
   renderChannel();
@@ -4623,6 +4644,7 @@ function channelSheetAction(kind) {
     saveItems();
     state.channelSheetStatus =
       "Marked Active locally. Live Relist needs server eBay credentials.";
+    showToast("Relisted on eBay", "ok");
     openChannelSheet(it.id);
     renderChannel();
     return;
@@ -4634,6 +4656,7 @@ function channelSheetAction(kind) {
     saveItems();
     state.channelSheetStatus =
       "Marked Ended locally. Live End listing needs server eBay credentials.";
+    showToast("Listing ended", "ok");
     openChannelSheet(it.id);
     renderChannel();
   }
@@ -6098,6 +6121,7 @@ function bind() {
       // Live Wle toast after fetch — device has no scanFetchPrices wire.
       state.intakeReviewStatus = "Prices fetched — estimates only, not sold comps";
       renderIntakeReview();
+      showToast("Prices fetched — estimates only, not sold comps", "ok");
     }, 400);
   });
   $("reviewMult")?.addEventListener("change", (e) => {
