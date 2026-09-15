@@ -85,7 +85,11 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /Internet-sourced prices are estimates, not verified sold comps\./);
     assert.match(html, /Need review/);
     assert.match(html, /Double Holo CSV/);
-    assert.match(html, /Batch review/);
+    assert.match(html, /id="groupTitle"/);
+    assert.match(html, /id="reviewTitle"/);
+    assert.match(html, /id="btnGroupBackIntake"/);
+    assert.match(html, /id="btnReviewBackIntake"/);
+    assert.match(html, /Back to intake/);
     assert.match(html, /AI LISTING ENGINE/);
     assert.match(html, /RUN ENGINE/);
     assert.match(html, /Candidates — click the match/);

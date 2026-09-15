@@ -1093,6 +1093,21 @@ function setIntakeMode(mode) {
   $("intakeGrouping")?.classList.toggle("hidden", mode !== "grouping");
   $("intakeIdentifying")?.classList.toggle("hidden", mode !== "identifying");
   $("intakeReview")?.classList.toggle("hidden", mode !== "review");
+  if (mode === "batch" || mode === "grouping" || mode === "review") syncBatchChromeTitles();
+}
+
+/** Live kp: title is batch name (or "New Scan Batch") on form/grouping/review. */
+function syncBatchChromeTitles() {
+  const title = state.batchName || "New Scan Batch";
+  if ($("batchTitle")) $("batchTitle").textContent = title;
+  if ($("groupTitle")) $("groupTitle").textContent = title;
+  if ($("reviewTitle")) $("reviewTitle").textContent = title;
+}
+
+/** Live kp Back to intake — leave batch shell for intake map/list. */
+function backToIntake() {
+  resetDraft();
+  setIntakeMode("list");
 }
 
 /** Live _he Scan Batch Assistant — shell chrome + empty state (agent body is MCP-backed live). */
@@ -4278,10 +4293,10 @@ function openNewBatch() {
   state.backsIncluded = true;
   state.skuPrefix = "PKM";
   if ($("batchName")) $("batchName").value = state.batchName;
-  if ($("batchTitle")) $("batchTitle").textContent = state.batchName;
   if ($("backsIncluded")) $("backsIncluded").checked = true;
   setBatchGame("PKM");
   setIntakeMode("batch");
+  syncBatchChromeTitles();
   updateBatchScanChrome();
   setStatus("Drop a folder of scans · or click to browse");
 }
@@ -6595,10 +6610,9 @@ function bind() {
     }
   });
   $("btnNewBatch")?.addEventListener("click", () => openNewBatch());
-  $("btnCancelBatch")?.addEventListener("click", () => {
-    resetDraft();
-    setIntakeMode("list");
-  });
+  $("btnCancelBatch")?.addEventListener("click", () => backToIntake());
+  $("btnGroupBackIntake")?.addEventListener("click", () => backToIntake());
+  $("btnReviewBackIntake")?.addEventListener("click", () => backToIntake());
   $("inputGallery")?.addEventListener("change", (e) => {
     addFiles(e.target.files);
     e.target.value = "";
@@ -6691,7 +6705,7 @@ function bind() {
   });
   $("batchName")?.addEventListener("input", (e) => {
     state.batchName = e.target.value;
-    if ($("batchTitle")) $("batchTitle").textContent = state.batchName || "New Scan Batch";
+    syncBatchChromeTitles();
   });
   $("batchGame")?.addEventListener("change", (e) => {
     state.game = e.target.value;
