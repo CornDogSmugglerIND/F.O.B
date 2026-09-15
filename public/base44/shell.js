@@ -375,6 +375,7 @@ function scouterGroupHtml(group) {
     ? (useTiles ? `<div class="b44-scout-group-rail">${cards}${more}</div>` : cards)
     : empty;
   return `<section class="b44-scout-group" data-drop-key="${esc(group.key)}" data-drop-kind="${esc(group.kind)}" style="--phase:${esc(phaseColor)}">
+    <div class="b44-scout-drop-here" aria-hidden="true">DROP HERE</div>
     <div class="b44-scout-group-head v-panel v-cut-sm px-3 py-2">
       <div class="b44-scout-group-head-row">
         <div class="b44-scout-phase-mark" style="--phase:${esc(phaseColor)}" aria-hidden="true"></div>
@@ -4651,12 +4652,8 @@ function renderChannel() {
   const fulHubs = $("fulHubs");
   const fulEmpty = $("fulEmpty");
   if (fulEmpty) {
+    // Live fle empty: Truck icon + No shipments yet + Packages appear…
     fulEmpty.classList.toggle("hidden", ships.length > 0);
-    const label = fulEmpty.querySelector(".v-label");
-    const p = fulEmpty.querySelector("p");
-    if (label) label.textContent = "No shipments yet";
-    // Live fle empty (desktop) — Sync sentence
-    if (p) p.textContent = "Packages appear here once an order is created from Listings or eBay Sync.";
   }
   if (fulHubs) {
     const chunks = [];
