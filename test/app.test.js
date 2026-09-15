@@ -291,6 +291,9 @@ test("GET / serves Base44 port shell", async () => {
     assert.doesNotMatch(html, /id="settingsPhonePanel"/);
     assert.doesNotMatch(html, /This phone/);
     assert.doesNotMatch(html, /id="btnWipe"/);
+    // Live Channel sheet has Reprice/Relist/End only — no Listing Copy link.
+    assert.doesNotMatch(html, /Listing Copy/);
+    assert.doesNotMatch(html, /href="\/listing-copy\.html"/);
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
     assert.match(shellJs, /No listing built yet — run the AI writer on this card first/);
     assert.match(shellJs, /Product lookup failed/);
