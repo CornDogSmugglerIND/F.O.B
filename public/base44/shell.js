@@ -4312,8 +4312,24 @@ function renderChannel() {
   if (state.channelSheetId) openChannelSheet(state.channelSheetId);
   else closeChannelSheet();
 
-  // Live ale/l_ mobile fulfilment hubs + package sheet
+  // Live fle desktop fulfilment chrome + ale/l_ hubs (hubs unchanged)
   const ships = activeShipments();
+  const fulStats = $("fulStats");
+  if (fulStats) {
+    const awaiting = ships.filter((sh) => sh.status !== "delivered").length;
+    const bits = SHIP_STAGES.map((stage) => {
+      const n = ships.filter((sh) => sh.status === stage.key).length;
+      return `<div class="b44-ful-stat">
+        <div class="v-label" style="font-size:8px;color:${esc(stage.hi)}">${esc(stage.label)}</div>
+        <div class="v-readout" style="font-size:16px;color:${esc(stage.hi)}">${pad2(n)}</div>
+      </div>`;
+    });
+    bits.push(`<div class="b44-ful-stat b44-ful-stat-big">
+      <div class="v-label" style="font-size:8px;color:var(--b44-gold-hi,#ffd98a)">Awaiting payout</div>
+      <div class="v-readout v-emit-gold" style="font-size:20px">${pad2(awaiting)}</div>
+    </div>`);
+    fulStats.innerHTML = bits.join("");
+  }
   const fulHubs = $("fulHubs");
   const fulEmpty = $("fulEmpty");
   if (fulEmpty) {
@@ -4321,7 +4337,8 @@ function renderChannel() {
     const label = fulEmpty.querySelector(".v-label");
     const p = fulEmpty.querySelector("p");
     if (label) label.textContent = "No shipments yet";
-    if (p) p.textContent = "Packages appear here once an order is created.";
+    // Live fle empty (desktop) — Sync sentence
+    if (p) p.textContent = "Packages appear here once an order is created from Listings or eBay Sync.";
   }
   if (fulHubs) {
     const chunks = [];
@@ -4389,7 +4406,8 @@ function openFulSheet(id) {
   sheet.classList.remove("hidden");
   const eye = $("fulSheetEyebrow");
   if (eye) {
-    eye.textContent = stage.label.toUpperCase();
+    // Live fle readout: PACKAGE · {STAGE}
+    eye.textContent = `PACKAGE · ${stage.label.toUpperCase()}`;
     eye.style.color = stage.hi;
   }
   if ($("fulSheetTitle")) $("fulSheetTitle").textContent = sh.title || "Untitled";
@@ -4401,15 +4419,28 @@ function openFulSheet(id) {
   const done = $("fulSheetDelivered");
   if (sh.status === "delivered") {
     adv?.classList.add("hidden");
-    done?.classList.remove("hidden");
+    if (done) {
+      done.classList.remove("hidden");
+      const raw = sh.payoutReleaseAt || sh.payout_release_date || "";
+      done.textContent = `PAYOUT EST. ${formatPayoutEst(raw)}`;
+    }
   } else {
     done?.classList.add("hidden");
     if (adv) {
       adv.classList.remove("hidden");
-      adv.textContent = next ? `Advance to ${shipStageLabel(next)}` : "Advance";
+      // Live fle CTA = next stage label only (no "Advance to …")
+      adv.textContent = next ? shipStageLabel(next) : "Advance";
       adv.disabled = !next;
     }
   }
+}
+
+/** Live dle — payout est date (en-US short month + 2-digit day). */
+function formatPayoutEst(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
 }
 
 function advanceShipment(id) {

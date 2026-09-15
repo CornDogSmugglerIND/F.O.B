@@ -2248,3 +2248,26 @@ textarea.b44-input {
   box-shadow: inset 0 0 0 1px rgba(255,77,109,0.35);
   color: #ff8fa3;
 }
+
+
+/* Live fle — Zc fulfilment stats strip (stage counts + Awaiting payout) */
+.b44-ful-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  align-items: flex-end;
+}
+.b44-ful-stat {
+  min-width: 72px;
+}
+.b44-ful-stat-big {
+  margin-left: auto;
+  min-width: 96px;
+  text-align: right;
+}
+.b44-ful-stat .v-label {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
