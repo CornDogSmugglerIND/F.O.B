@@ -3605,7 +3605,7 @@ function bulkReviewClear() {
   renderIntakeReview();
 }
 
-function copyReviewRescanList() {
+async function copyReviewRescanList() {
   const ids = new Set(state.intakeReviewRescan || []);
   const names = state.intakeReviewRows
     .filter((r) => ids.has(r.id))
