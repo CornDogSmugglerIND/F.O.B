@@ -59,6 +59,8 @@ const state = {
   channelFilter: "",
   channelSheetId: null,
   channelSheetStatus: "",
+  channelVariationMode: false,
+  channelVariationSelected: [],
   fulSheetId: null,
   settingsTab: "templates",
   templates: [],
@@ -3379,11 +3381,49 @@ function channelListingTileHtml(it, hub) {
   const img = thumb
     ? `<img src="${esc(thumb)}" alt="" draggable="false" />`
     : `<span class="b44-copy-soft" style="font-size:10px">no img</span>`;
-  return `<button type="button" class="b44-scout-tile-card b44-channel-tile" data-open-listing="${esc(it.id)}" style="--phase:${esc(core)};--phase-hi:${esc(hi)}">
-    <div class="b44-scout-tile-img" style="box-shadow:inset 0 0 0 1px color-mix(in srgb, ${esc(core)} 40%, transparent)">${img}<span class="b44-scout-tile-badge" style="color:${esc(hi)}">${age}D</span></div>
+  const selected =
+    state.channelVariationMode && state.channelVariationSelected.includes(it.id);
+  const selClass = selected ? " is-selected" : "";
+  const mark = state.channelVariationMode
+    ? `<span class="b44-channel-tile-check" aria-hidden="true"></span>`
+    : "";
+  return `<button type="button" class="b44-scout-tile-card b44-channel-tile${selClass}" data-open-listing="${esc(it.id)}" style="--phase:${esc(core)};--phase-hi:${esc(hi)}" aria-pressed="${selected ? "true" : "false"}">
+    <div class="b44-scout-tile-img" style="box-shadow:inset 0 0 0 1px color-mix(in srgb, ${esc(core)} 40%, transparent)">${img}<span class="b44-scout-tile-badge" style="color:${esc(hi)}">${age}D</span>${mark}</div>
     <div class="b44-scout-tile-title">${esc(it.title || "Untitled")}</div>
     <div class="b44-scout-tile-sub" style="color:${esc(hi)}">${esc(price)}</div>
   </button>`;
+}
+
+/** Live nle Variation mode — exit clears selection (Ce). */
+function exitChannelVariationMode() {
+  state.channelVariationMode = false;
+  state.channelVariationSelected = [];
+}
+
+function toggleChannelVariationSelect(id) {
+  const set = new Set(state.channelVariationSelected);
+  if (set.has(id)) set.delete(id);
+  else set.add(id);
+  state.channelVariationSelected = [...set];
+}
+
+function syncChannelVariationChrome() {
+  const on = !!state.channelVariationMode && state.channelTab === "live" && !!state.ebayConnected;
+  const btn = $("btnChannelVariation");
+  if (btn) {
+    btn.classList.toggle("m-btn-primary", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+  const n = state.channelVariationSelected.length;
+  const bar = $("channelVariationBar");
+  if (bar) bar.classList.toggle("hidden", !(on && n > 0));
+  if ($("channelVariationCount")) $("channelVariationCount").textContent = String(n);
+  const create = $("btnChannelCreateVariation");
+  if (create) {
+    create.disabled = n < 2;
+    create.textContent = n < 2 ? "Select 2+" : "Create variation";
+    create.style.opacity = n < 2 ? "0.4" : "1";
+  }
 }
 
 function channelHubSectionHtml(hub, rows) {
@@ -3580,21 +3620,23 @@ function renderChannel() {
       ended: pool.filter((it) => channelHubKey(it) === "ended"),
     };
 
-    // Live nle: Channel empty only when connected with no listings (or filter miss).
-    // Offline + empty shows Connect alone — no empty panel.
+    // Live nle empty: offline → Connect eBay…; connected → Run a sync…; filter miss kept local.
     const showEmpty =
       state.channelTab === "live" &&
-      connected &&
-      (allHubItems.length === 0 || (q && pool.length === 0));
+      (allHubItems.length === 0 || (connected && q && pool.length === 0));
     if (empty) {
       empty.classList.toggle("hidden", !showEmpty);
       const label = empty.querySelector(".v-label");
       const p = empty.querySelector("p");
       if (label) label.textContent = "Channel empty";
       if (p) {
-        p.textContent = q
-          ? "No listings match this filter."
-          : "Run a sync to pull your live listings.";
+        if (connected && q && pool.length === 0 && allHubItems.length > 0) {
+          p.textContent = "No listings match this filter.";
+        } else if (connected) {
+          p.textContent = "Run a sync to pull your live listings.";
+        } else {
+          p.textContent = "Connect eBay to see what's on the channel.";
+        }
       }
     }
     if (state.channelTab === "live") {
@@ -3607,12 +3649,27 @@ function renderChannel() {
       }
       list.innerHTML = chunks.join("");
       list.querySelectorAll("[data-open-listing]").forEach((row) => {
-        row.addEventListener("click", () => openChannelSheet(row.dataset.openListing));
+        row.addEventListener("click", () => {
+          const id = row.dataset.openListing;
+          if (state.channelVariationMode && connected) {
+            toggleChannelVariationSelect(id);
+            syncChannelVariationChrome();
+            row.classList.toggle("is-selected", state.channelVariationSelected.includes(id));
+            row.setAttribute(
+              "aria-pressed",
+              state.channelVariationSelected.includes(id) ? "true" : "false",
+            );
+            return;
+          }
+          openChannelSheet(id);
+        });
       });
     } else {
       list.innerHTML = "";
     }
   }
+  if (!connected || state.channelTab !== "live") exitChannelVariationMode();
+  syncChannelVariationChrome();
   if (state.channelSheetId) openChannelSheet(state.channelSheetId);
   else closeChannelSheet();
 
@@ -5147,6 +5204,29 @@ function bind() {
       return;
     }
     setChannelStatus("Sync needs live eBay credentials on the server — nothing pulled.");
+  });
+  $("btnChannelVariation")?.addEventListener("click", () => {
+    if (!state.ebayConnected) {
+      setChannelStatus("Connect eBay before Variation mode.");
+      return;
+    }
+    if (state.channelVariationMode) exitChannelVariationMode();
+    else {
+      state.channelVariationMode = true;
+      state.channelVariationSelected = [];
+      closeChannelSheet();
+    }
+    renderChannel();
+  });
+  $("btnChannelVariationCancel")?.addEventListener("click", () => {
+    exitChannelVariationMode();
+    renderChannel();
+  });
+  $("btnChannelCreateVariation")?.addEventListener("click", () => {
+    if (state.channelVariationSelected.length < 2) return;
+    setChannelStatus(
+      "Create variation needs the live eBay variation API on the server — selection chrome only in this shell.",
+    );
   });
   $("btnChannelPhotos")?.addEventListener("click", () => {
     if (!state.ebayConnected) {

@@ -1678,3 +1678,52 @@ textarea.b44-input {
 #scouterGlass.b44-photo-drop {
   outline: none;
 }
+
+
+/* Live nle — Variation mode selection bar + tile check */
+.b44-variation-bar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  background: linear-gradient(168deg, rgba(20, 24, 30, 0.96), rgba(8, 10, 14, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 12px 40px -16px rgba(0, 0, 0, 0.85);
+}
+.b44-variation-bar.hidden {
+  display: none;
+}
+.b44-variation-rule {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.b44-channel-tile.is-selected {
+  outline: 1.5px solid var(--b44-gold-hi, #ffd98a);
+  outline-offset: 2px;
+}
+.b44-channel-tile-check {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.35);
+  background: rgba(5, 7, 10, 0.55);
+}
+.b44-channel-tile.is-selected .b44-channel-tile-check {
+  background: var(--b44-gold, #ffb43d);
+  box-shadow: inset 0 0 0 1.5px var(--b44-gold-hi, #ffd98a);
+}
+.b44-scout-tile-img {
+  position: relative;
+}
+#btnChannelVariation[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px rgba(255, 180, 61, 0.55);
+  color: var(--b44-gold-hi, #ffd98a);
+}

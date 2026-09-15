@@ -111,6 +111,11 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /Empty location/);
     assert.match(html, /Add a bin, shelf or tote to start mapping your shelves/);
     assert.match(html, /Channel empty/);
+    assert.match(html, /Connect eBay to see what's on the channel\./);
+    assert.match(html, /id="btnChannelVariation"/);
+    assert.match(html, /id="channelVariationBar"/);
+    assert.match(html, /CARDS SELECTED/);
+    assert.match(html, /Select 2\+/);
     assert.match(html, /LIVE LISTINGS/);
     assert.match(html, /FULFILMENT/);
     assert.match(html, /Listing templates/);
