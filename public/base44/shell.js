@@ -118,6 +118,9 @@ const CARRIER_LABELS = {
   other: "Other",
 };
 
+/** Live Hle — Wle Var select options. */
+const REVIEW_VARIANTS = ["Normal", "Holofoil", "Reverse Holofoil", "Cosmos Holo"];
+
 function carrierLabel(code) {
   if (!code) return "NO CARRIER";
   return CARRIER_LABELS[code] || code;
@@ -3427,11 +3430,12 @@ function renderIntakeReview() {
   const body = $("reviewTableBody");
   if (!body) return;
   if (!visible.length) {
-    body.innerHTML = `<tr><td colspan="11" class="b44-review-empty">Nothing in this category</td></tr>`;
+    body.innerHTML = `<tr><td colspan="16" class="b44-review-empty">Nothing in this category</td></tr>`;
     renderReviewPreview();
     renderReviewPreview();
     return;
   }
+  const floor = Number(state.intakeReviewFloor) || 0;
   body.innerHTML = visible
     .map((r) => {
       const edge =
@@ -3442,12 +3446,28 @@ function renderIntakeReview() {
             : "";
       const checked = state.intakeReviewSelected.includes(r.id) ? "checked" : "";
       const rescanOn = (state.intakeReviewRescan || []).includes(r.id) ? "checked" : "";
+      const mkt =
+        r.market_price != null && r.market_price !== "" ? `$${r.market_price}` : "—";
+      const suggBelow =
+        r.suggested_price != null && r.suggested_price !== "" && Number(r.suggested_price) < floor;
+      const sugg =
+        r.suggested_price != null && r.suggested_price !== "" ? `$${r.suggested_price}` : "—";
+      const varOpts = REVIEW_VARIANTS.map(
+        (v) => `<option value="${esc(v)}" ${r.variation === v ? "selected" : ""}>${esc(v)}</option>`,
+      ).join("");
       return `<tr class="b44-review-row ${edge}" data-row-id="${esc(r.id)}">
         <td><input type="checkbox" data-rev-sel="${esc(r.id)}" ${checked} /></td>
         <td class="b44-review-thumb"><button type="button" class="b44-review-open" data-open-fle="${esc(r.id)}" title="Open scan">${r.photos?.[0]?.dataUrl ? `<img src="${r.photos[0].dataUrl}" alt="" />` : "Open"}</button></td>
         <td><input class="b44-review-input" data-rev-field="card_name" data-id="${esc(r.id)}" value="${esc(r.card_name)}" /></td>
         <td><input class="b44-review-input" data-rev-field="number" data-id="${esc(r.id)}" value="${esc(r.number)}" style="width:56px" /></td>
         <td><input class="b44-review-input" data-rev-field="set" data-id="${esc(r.id)}" value="${esc(r.set)}" /></td>
+        <td><input class="b44-review-input" data-rev-field="set_code" data-id="${esc(r.id)}" value="${esc(r.set_code || "")}" style="width:60px" /></td>
+        <td>
+          <select class="b44-review-input" data-rev-field="variation" data-id="${esc(r.id)}" style="width:80px">
+            <option value="" ${!r.variation ? "selected" : ""}></option>
+            ${varOpts}
+          </select>
+        </td>
         <td>
           <select class="b44-review-input" data-rev-field="condition" data-id="${esc(r.id)}">
             ${["NM", "LP", "MP", "HP", "DMG"].map((c) => `<option value="${c}" ${r.condition === c ? "selected" : ""}>${c}</option>`).join("")}
@@ -3455,12 +3475,15 @@ function renderIntakeReview() {
         </td>
         <td>${esc(r.quantity)}</td>
         <td><input class="b44-review-input" data-rev-field="sku" data-id="${esc(r.id)}" value="${esc(r.sku)}" style="width:88px" /></td>
+        <td><input class="b44-review-input" data-rev-field="language" data-id="${esc(r.id)}" value="${esc(r.language || "")}" style="width:60px" /></td>
         <td><span class="b44-conf b44-conf-${esc(r.confidence)}">${esc(r.confidence)}</span></td>
         <td>
           <select class="b44-review-input" data-rev-field="status" data-id="${esc(r.id)}">
             ${["Identified", "Needs Review", "Approved", "Rejected"].map((s) => `<option value="${s}" ${r.status === s ? "selected" : ""}>${s}</option>`).join("")}
           </select>
         </td>
+        <td><span class="b44-review-mkt">${esc(mkt)}</span></td>
+        <td><span class="b44-review-sugg${suggBelow ? " is-low" : ""}">${esc(sugg)}</span></td>
         <td><input type="checkbox" data-rev-rescan="${esc(r.id)}" title="Flag for rescan" ${rescanOn} /></td>
       </tr>`;
     })
