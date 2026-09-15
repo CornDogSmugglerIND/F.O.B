@@ -280,7 +280,8 @@ function setScouterDemo(on) {
     btn.textContent = state.scouterDemo ? "DEMO" : "LIVE";
     btn.classList.toggle("is-demo", state.scouterDemo);
   }
-  setScouterStatus(state.scouterDemo ? "Demo inventory — LIVE data untouched" : "");
+  // Live Xre DEMO/LIVE toggle has no status banner.
+  setScouterStatus("");
   renderCollection();
 }
 
@@ -526,7 +527,7 @@ function setScouterUploadHud(pct) {
 async function intakePhotosOntoScouter(fileList) {
   const files = [...(fileList || [])].filter((f) => f.type?.startsWith("image/"));
   if (!files.length) {
-    setScouterStatus("No photos — drop image files onto the scouter.");
+    // Live tle: empty drop is a no-op (upload fail uses "No photos uploaded — …").
     setScouterUploadHud(null);
     return;
   }
@@ -2964,10 +2965,8 @@ function swapFrontBack() {
 
 async function startIntakeToGrouping() {
   const photos = state.draftPhotos;
-  if (!photos.length) {
-    setStatus("Need photos first");
-    return;
-  }
+  // Live Mle: Start intake is a no-op when the drop list is empty.
+  if (!photos.length) return;
   if (state.backsIncluded && photos.length % 2 !== 0) {
     const oddMsg = `Odd file count (${photos.length}) — front/back pairing would misalign. Add or remove a scan.`;
     setStatus(oddMsg);
@@ -3013,10 +3012,8 @@ async function startIntakeToGrouping() {
 
 async function startIdentificationFromGroups() {
   const groups = state.intakeGroups;
-  if (!groups.length) {
-    setStatus("No groups to identify");
-    return;
-  }
+  // Live kp: Start identification is a no-op with zero groups.
+  if (!groups.length) return;
   setIntakeMode("identifying");
   setIdentifyingRows(0);
   const total = groups.length;
@@ -4084,10 +4081,7 @@ async function addFiles(fileList) {
 
 async function runIdentify() {
   const photos = state.draftPhotos.map((p) => p.dataUrl).filter(Boolean);
-  if (!photos.length) {
-    setStatus("Need photos first");
-    return false;
-  }
+  if (!photos.length) return false;
   setIntakeMode("identifying");
   setIdentifyingRows(0);
   setStatus("IDENTIFYING…");
@@ -4212,7 +4206,8 @@ function openNewBatch() {
   setIntakeMode("batch");
   syncBatchChromeTitles();
   updateBatchScanChrome();
-  setStatus("Drop a folder of scans · or click to browse");
+  // Live Mle drop chrome lives on #dropZoneTitle / #dropZoneHint — no invent status line.
+  setStatus("");
 }
 
 function setDropZoneDragging(on) {

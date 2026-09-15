@@ -294,6 +294,13 @@ test("GET / serves Base44 port shell", async () => {
     // Live Channel sheet has Reprice/Relist/End only — no Listing Copy link.
     assert.doesNotMatch(html, /Listing Copy/);
     assert.doesNotMatch(html, /href="\/listing-copy\.html"/);
+    // Live Xre DEMO/LIVE has no invent status banner / title tooltip.
+    assert.doesNotMatch(shellJs, /Demo inventory — LIVE data untouched/);
+    assert.doesNotMatch(html, /Toggle demo inventory/);
+    assert.doesNotMatch(shellJs, /Need photos first/);
+    assert.doesNotMatch(shellJs, /No groups to identify/);
+    assert.doesNotMatch(shellJs, /Drop a folder of scans · or click to browse/);
+    assert.doesNotMatch(shellJs, /No photos — drop image files onto the scouter/);
     assert.match(shellJs, /cards → \$\{state\.intakeGroups\.length\} unique/);
     assert.match(shellJs, /No listing built yet — run the AI writer on this card first/);
     assert.match(shellJs, /Product lookup failed/);
