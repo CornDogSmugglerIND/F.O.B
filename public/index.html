@@ -12,28 +12,54 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <!-- Full Base44 shipped stylesheet (live silky-coalition-command-core 2026-09-14) -->
   <link rel="stylesheet" href="/base44/app.css?v=2" />
-  <link rel="stylesheet" href="/base44/shell.css?v=41" />
+  <link rel="stylesheet" href="/base44/shell.css?v=42" />
 </head>
 <body class="b44">
   <div class="b44-shell">
     <header class="b44-top">
-      <div>
-        <div class="b44-brand" id="pageBrand">INTAKE</div>
-        <span class="b44-sub">Coalition HUD</span>
+      <!-- Mobile brand strip (live jX shell) -->
+      <div class="b44-top-mobile">
+        <div>
+          <div class="b44-brand" id="pageBrand">INTAKE</div>
+          <span class="b44-sub">Coalition HUD</span>
+        </div>
+        <div class="b44-readout v-emit-gold" id="statCount">00</div>
       </div>
-      <div class="b44-readout v-emit-gold" id="statCount">00</div>
+      <!-- Desktop BX header: mark + FX nav + crumb + multi-stat + EBAY pill -->
+      <div class="b44-top-desk" aria-label="Desktop command bar">
+        <a class="b44-mark" href="#/" title="Command">
+          <span class="b44-mark-glyph">C</span>
+          <span class="b44-mark-word">Coalition</span>
+        </a>
+        <nav class="b44-desk-nav" id="deskNav" aria-label="Primary">
+          <a class="b44-desk-link" data-route="/" href="#/">COMMAND</a>
+          <a class="b44-desk-link" data-route="/inventory" href="#/inventory">SCOUTER</a>
+          <a class="b44-desk-link" data-route="/storage" href="#/storage">STORAGE</a>
+          <a class="b44-desk-link" data-route="/channel" href="#/channel">CHANNEL</a>
+          <a class="b44-desk-link" data-route="/scan-intake" href="#/scan-intake">INTAKE</a>
+          <a class="b44-desk-link" data-route="/settings" href="#/settings">SETTINGS</a>
+        </nav>
+        <div class="b44-crumb" id="hudCrumb" hidden></div>
+        <div class="b44-hud-stats" id="hudStats" aria-label="Page stats"></div>
+        <div class="b44-ebay-pill" id="ebayPill"><span class="b44-ebay-pill-k">EBAY</span> <span id="ebayPillState">…</span></div>
+      </div>
     </header>
 
     <main class="b44-main">
       <!-- Routes match live Base44 FX/jX exactly -->
       <section class="b44-view" id="view-command" data-route="/">
         <div class="b44-glass">
-          <div class="v-panel v-cut p-4" style="margin-bottom:12px">
-            <div class="v-label" style="font-size:9px">SITREP</div>
-            <div class="v-readout v-emit-white" style="font-size:22px;margin-top:8px" id="sitrepTitle">All clear</div>
-            <p class="b44-copy-soft" style="margin-top:8px" id="sitrepHint">Nothing is blocked, errored, or sitting untouched.</p>
+          <!-- Live qK → Zc hint/actions rail (desktop); stacks on phone -->
+          <div class="b44-cmd-rail" id="cmdRail">
+            <p class="b44-cmd-hint" id="cmdHint">Nothing is blocked — the queue is clear</p>
+            <div class="b44-actions b44-cmd-actions">
+              <a class="m-btn" href="#/inventory">Open scouter</a>
+              <a class="m-btn" href="#/scan-intake">Scan batch</a>
+              <button type="button" class="m-btn m-btn-primary" id="btnNewCard">New card</button>
+            </div>
           </div>
-          <div class="b44-toolbar" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px" id="cmdStats">
+          <!-- Stats also mirror into #hudStats on desktop via setHud -->
+          <div class="b44-toolbar b44-cmd-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px" id="cmdStats">
             <div class="v-panel v-cut-sm px-4 py-3">
               <div class="v-label" style="font-size:8px">To list</div>
               <div class="v-readout v-emit-gold" id="cmdToList" style="font-size:20px">00</div>
@@ -55,11 +81,12 @@
             <div class="v-label" style="font-size:9px;color:var(--b44-gold,#ffb43d)">Channel</div>
             <p class="b44-copy-soft" style="margin-top:8px">eBay isn't connected — publishing and sync are offline. Connect it in Settings.</p>
           </button>
-          <div id="cmdAttention" class="b44-attention" style="margin-bottom:12px"></div>
-          <div class="b44-actions">
-            <a class="m-btn" href="#/inventory">Open scouter</a>
-            <a class="m-btn" href="#/scan-intake">Scan batch</a>
-            <button type="button" class="m-btn m-btn-primary" id="btnNewCard">New card</button>
+          <!-- Live XK SITREP body -->
+          <div class="v-panel v-cut p-4" style="margin-bottom:12px" id="sitrepPanel">
+            <div class="v-label" style="font-size:9px">SITREP</div>
+            <div class="v-readout v-emit-white" style="font-size:22px;margin-top:8px" id="sitrepTitle">All clear</div>
+            <p class="b44-copy-soft" style="margin-top:8px" id="sitrepHint">Nothing is blocked, errored, or sitting untouched.</p>
+            <div id="cmdAttention" class="b44-attention" style="margin-top:12px"></div>
           </div>
         </div>
       </section>
@@ -1452,7 +1479,7 @@
 
   <script src="/lib/image.js?v=24"></script>
   <script src="/lib/html5-qrcode.min.js"></script>
-  <script src="/base44/shell.js?v=41"></script>
+  <script src="/base44/shell.js?v=42"></script>
 
 </body>
 </html>

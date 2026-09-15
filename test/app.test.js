@@ -192,6 +192,13 @@ test("GET / serves Base44 port shell", async () => {
     assert.match(html, /ALL STORAGE/);
     assert.match(html, /btnSpaceUp/);
     assert.match(html, /Nothing is blocked, errored, or sitting untouched\./);
+    assert.match(html, /Nothing is blocked — the queue is clear/);
+    assert.match(html, /id="cmdHint"/);
+    assert.match(html, /id="hudStats"/);
+    assert.match(html, /id="ebayPill"/);
+    assert.match(html, /id="deskNav"/);
+    assert.match(html, />COMMAND</);
+    assert.match(html, />SCOUTER</);
 
 
     assert.match(html, /m-btn-primary/);

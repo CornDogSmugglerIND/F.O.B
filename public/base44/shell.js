@@ -693,6 +693,51 @@ function loadItems() {
 
 const STALE_DAYS = 7;
 
+
+/** Live Zc → BX HUD pipe (breadcrumb + multi-stat rail). */
+function setHud({ breadcrumb = [], stats = [] } = {}) {
+  const crumb = $("hudCrumb");
+  if (crumb) {
+    if (!breadcrumb.length) {
+      crumb.hidden = true;
+      crumb.textContent = "";
+    } else {
+      crumb.hidden = false;
+      crumb.textContent = breadcrumb.map((b) => b.label || b).join(" · ");
+    }
+  }
+  const host = $("hudStats");
+  if (host) {
+    host.innerHTML = stats
+      .map((s) => {
+        const big = s.big ? " b44-hud-stat-big" : "";
+        const color = s.color || "var(--b44-gold-hi)";
+        return `<div class="b44-hud-stat${big}"><div class="b44-hud-stat-label">${esc(s.label)}</div><div class="b44-hud-stat-value" style="color:${esc(color)}">${esc(s.value)}</div></div>`;
+      })
+      .join("");
+  }
+}
+
+function clearHud() {
+  setHud({ breadcrumb: [], stats: [] });
+}
+
+function updateEbayPill() {
+  const el = $("ebayPillState");
+  if (!el) return;
+  el.textContent = state.ebayConnected ? "ONLINE" : "OFFLINE";
+  el.classList.toggle("is-online", !!state.ebayConnected);
+  $("ebayPill")?.classList.toggle("is-online", !!state.ebayConnected);
+}
+
+function syncDeskNav(path) {
+  document.querySelectorAll(".b44-desk-link").forEach((a) => {
+    const r = a.getAttribute("data-route");
+    const on = r === path || (path === "/item" && r === "/inventory") || (path === "/command" && r === "/");
+    a.classList.toggle("active", on);
+  });
+}
+
 function updateSitrep() {
   loadShipments();
   const toList = state.items.filter((it) => itemPipeLabel(it) !== "Listed").length;
@@ -707,6 +752,14 @@ function updateSitrep() {
 
   const cards = buildCmdAttention();
   const blocked = cards.reduce((n, c) => n + c.count, 0);
+
+    // Live qK hint (Zc rail) — not the SITREP empty body.
+  if ($("cmdHint")) {
+    $("cmdHint").textContent = blocked
+      ? `${blocked} item${blocked === 1 ? "" : "s"} waiting on you`
+      : "Nothing is blocked — the queue is clear";
+  }
+
   // Live XK SITREP: panel title stays SITREP; body shows "All clear" only when empty.
   if ($("sitrepTitle")) {
     $("sitrepTitle").textContent = "All clear";
@@ -719,6 +772,21 @@ function updateSitrep() {
   if ($("ebayWarn")) {
     $("ebayWarn").classList.toggle("hidden", !!state.ebayConnected);
   }
+  updateEbayPill();
+
+  // Live qK → Zc stats into BX HUD when Command is up.
+  if (state.route === "/" || state.route === "/command") {
+    setHud({
+      breadcrumb: [{ label: "Command" }],
+      stats: [
+        { label: "To list", value: pad2(toList), color: toList ? "var(--b44-gold-hi)" : "var(--b44-lo)" },
+        { label: "Needs bin", value: pad2(needsBin), color: needsBin ? "var(--b44-gold-hi)" : "var(--b44-lo)" },
+        { label: "Listed", value: pad2(listed), color: "var(--b44-green-hi)" },
+        { label: "Inventory", value: pad2(inventory), color: "var(--b44-gold-hi)", big: true },
+      ],
+    });
+  }
+
   renderCmdAttention(cards);
 }
 
@@ -932,6 +1000,9 @@ function navigate(route) {
     );
   });
   if ($("pageBrand")) $("pageBrand").textContent = meta.brand;
+  syncDeskNav(path);
+  updateEbayPill();
+  if (path !== "/" && path !== "/command" && path !== "/storage") clearHud();
   const hashBase = itemMatch ? `/item/${encodeURIComponent(itemId)}` : path;
   const hash = query ? `#${hashBase}?${query}` : `#${hashBase}`;
   if (location.hash !== hash) history.replaceState(null, "", hash);
