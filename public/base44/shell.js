@@ -1064,6 +1064,7 @@ function closeIntakePick() {
   state.intakePickHubKey = null;
   state.intakePickStatus = "";
   $("intakePickSheet")?.classList.add("hidden");
+  updateIntakeHint();
 }
 
 function openIntakePick(id, hubKey) {
@@ -1082,6 +1083,30 @@ function openIntakePick(id, hubKey) {
   if ($("intakePickPrice")) $("intakePickPrice").textContent = money(Number(it.marketValue ?? it.price) || 0);
   if ($("intakePickSku")) $("intakePickSku").textContent = it.sku || it.barcode || "NO SKU";
   if ($("intakePickStatus")) $("intakePickStatus").textContent = state.intakePickStatus || "";
+  updateIntakeHint();
+}
+
+/** Live Zc intake hint: empty / has rows / locked pick. */
+function updateIntakeHint(poolLen) {
+  const hint = $("intakeHint");
+  if (!hint) return;
+  const n =
+    typeof poolLen === "number"
+      ? poolLen
+      : intakeMapItems().filter((it) => {
+          const q = String(state.filterIntake || "").trim().toLowerCase();
+          if (!q) return true;
+          const hay = `${it.title || ""} ${it.sku || ""} ${it.barcode || ""}`.toLowerCase();
+          return hay.includes(q);
+        }).length;
+  if (state.intakePickId) {
+    hint.textContent = "Locked on an item — ESC to pull back out.";
+  } else if (n > 0) {
+    hint.textContent = "Click an item to build its listing, or open it.";
+  } else {
+    hint.textContent =
+      "Intake is empty — scan a barcode or drop a photo to bring inventory in.";
+  }
 }
 
 function buildIntakeListing() {
@@ -1123,18 +1148,7 @@ function renderIntakeList() {
   );
   if ($("intakeValue")) $("intakeValue").textContent = money(intakeVal);
   empty.classList.toggle("hidden", pool.length > 0);
-  // Live Zc hint: empty / has rows / locked pick.
-  const hint = $("intakeHint");
-  if (hint) {
-    if (state.intakePickId) {
-      hint.textContent = "Locked on an item — ESC to pull back out.";
-    } else if (pool.length) {
-      hint.textContent = "Click an item to build its listing, or open it.";
-    } else {
-      hint.textContent =
-        "Intake is empty — scan a barcode or drop a photo to bring inventory in.";
-    }
-  }
+  updateIntakeHint(pool.length);
   root.innerHTML = hubs.map(intakeHubSectionHtml).join("");
   root.querySelectorAll("[data-intake-pick]").forEach((btn) => {
     btn.addEventListener("click", () => openIntakePick(btn.dataset.intakePick, btn.dataset.intakeHub));
