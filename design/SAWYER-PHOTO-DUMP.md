@@ -102,10 +102,10 @@ Credential ownership (do not re-ask Sawyer):
 
 ## 5. Standing order
 
-- **Cursor + Claude = co-builders.** Claude is **not** only a checker. Claude builds product code too, in parallel with Cursor, to speed live beta.
-- **HARD RULE (Sawyer 2026-09-17):** Plan and risky live-money surfaces (Channels eBay mutations, listing publish) still get Claude eyes. Cursor does not freelance silent builds. Once a slice is cleared, **both** build it — split the work, don’t serialize everything as review-only.
-- **Scouter shape (Sawyer):** Photo SNAP + Scan BARCODE + little package cards. **Camera-as-whole-screen is dead.** `CURSOR-BUILD-ORDER.md` camera-first lines are stale and must be updated to match.
+- **Cursor + Claude = co-builders who check each other’s work** (elementary-school peer check — both write code, both review the other’s diffs). Claude is **not** only a gatekeeper; Cursor is **not** the only builder.
+- **HARD RULE (Sawyer 2026-09-17):** No silent solo freelancing. Cleared slices get built by whoever owns that slice; the other reviews before it ships to Sawyer. Live-money surfaces (eBay mutations, listing publish) need both sets of eyes.
+- **Scouter shape (Sawyer):** Photo SNAP + Scan BARCODE + little package cards. **Camera-as-whole-screen is dead.**
 - **Shopify:** Claude owns the working connection.
 - **eBay:** already in Base44 — port/reuse, don’t re-ask Sawyer.
 
-When Sawyer says go: Claude clears the slice → **Claude and Cursor both build** that slice. Not a 24-hour freelance solo rebuild.
+When Sawyer says go: split the build → **check each other’s work** → ship. Not a 24-hour solo rebuild.
