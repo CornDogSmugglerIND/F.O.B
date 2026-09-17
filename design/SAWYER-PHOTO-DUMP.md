@@ -104,5 +104,6 @@ Credential ownership (do not re-ask Sawyer):
 
 - **Cursor:** examined dump; wrote this handoff; **not building** until Sawyer says so.
 - **Claude:** read this file + `design/refs/` before any UI work. Match Scouter little-packages + roadmap constellation + Dead Space/Halo *feel*. Do not invent camera-as-screen. You own Shopify connection continuity.
+- **HARD RULE (Sawyer 2026-09-17):** **Everything must be run by Claude before Cursor starts building.** Cursor does not freelance builds. Claude reviews/approves the plan (and any build kickoff); then Cursor builds/checks. No silent start.
 
-When Sawyer says go, ask him one clear next target in his words — not a 24-hour freelance rebuild.
+When Sawyer says go, Claude reviews first — then Cursor builds only what Claude cleared. Not a 24-hour freelance rebuild.
