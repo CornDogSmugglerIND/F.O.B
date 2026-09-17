@@ -86,6 +86,13 @@ Must do:
 - Edit **variation** listings
 - **Add existing cards into a variation listing / combine batches** (biggest requested feature)
 
+### Pricing — eBay sold comps (Sawyer 2026-09-17)
+
+TCGAutomate-style:
+- After upload (e.g. 10 items), **Load** on an item pulls **eBay average sold** for that item
+- **Load all / bulk** applies those sold-average prices into the whole batch
+- Single-item load and batch load both required
+
 Credential ownership (do not re-ask Sawyer):
 - **eBay** — already linked inside **Base44**; pull/port from there, do not make him paste again
 - **Shopify** — **Claude already has** the working store connection; Cursor uses Claude’s connection, does not re-auth
