@@ -17,6 +17,32 @@ export function channelsRouter() {
     });
   });
 
+  /**
+   * Inventory sync kick — requires eBay secrets (ported from Base44).
+   * Returns honest status when not configured.
+   */
+  router.post("/ebay/sync", async (_req, res, next) => {
+    try {
+      const statuses = getChannelStatuses();
+      const ebay = statuses.find((c) => c.id === "ebay");
+      if (!ebay?.configured) {
+        return res.status(503).json({
+          ok: false,
+          error: "eBay not configured on this deploy — port Base44-linked credentials",
+          code: "CHANNEL_NOT_CONFIGURED",
+          missing: ebay?.missing || [],
+        });
+      }
+      const probe = await probeEbay();
+      res.json({ ok: true, probe, note: "Auth ok — full listing pull lands next slice" });
+    } catch (err) {
+      if (err.code === "CHANNEL_NOT_CONFIGURED" || err.code === "EBAY_AUTH_FAILED") {
+        return res.status(503).json({ ok: false, error: err.message, code: err.code });
+      }
+      next(err);
+    }
+  });
+
   /** Soft auth check for eBay (uses refresh token; never returns secrets). */
   router.get("/ebay/probe", async (_req, res, next) => {
     try {

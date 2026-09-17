@@ -1,0 +1,529 @@
+import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=1";
+
+const LS_ITEMS = "coalition-items-v1";
+const LS_SPACES = "coalition-spaces-v1";
+const VIEWS = ["command", "scouter", "map", "spaces", "channels", "settings"];
+
+const state = {
+  view: "command",
+  items: [],
+  spaces: [],
+  activePhase: "intake",
+  ebayOnline: false,
+  sheetItemId: null,
+};
+
+const $ = (id) => document.getElementById(id);
+
+function toast(msg) {
+  const el = $("toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove("show"), 2800);
+}
+
+function money(n) {
+  return `$${(Number(n) || 0).toFixed(2)}`;
+}
+
+function loadItems() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_ITEMS) || "[]");
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveItems() {
+  localStorage.setItem(LS_ITEMS, JSON.stringify(state.items));
+}
+
+function defaultSpaces() {
+  return [
+    { id: "bin1", name: "Bin 1", kind: "ebay_listed", itemIds: [], cover: null },
+    { id: "bin2", name: "Bin 2", kind: "ebay_listed", itemIds: [], cover: null },
+    { id: "staged", name: "Staged / Unlisted", kind: "staged", itemIds: [], cover: null },
+  ];
+}
+
+function loadSpaces() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_SPACES) || "null");
+    if (Array.isArray(raw) && raw.length) return raw;
+  } catch { /* ignore */ }
+  return defaultSpaces();
+}
+
+function saveSpaces() {
+  localStorage.setItem(LS_SPACES, JSON.stringify(state.spaces));
+}
+
+function uid() {
+  return crypto.randomUUID ? crypto.randomUUID() : `i_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+async function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function navigate(view) {
+  if (!VIEWS.includes(view)) view = "command";
+  state.view = view;
+  location.hash = `#/${view}`;
+  for (const v of VIEWS) {
+    $(`view-${v}`)?.classList.toggle("active", v === view);
+    document.querySelector(`.nav-tab[data-view="${v}"]`)?.classList.toggle("active", v === view);
+  }
+  render();
+}
+
+function countsByPhase() {
+  const counts = Object.fromEntries(PHASES.map((p) => [p.id, 0]));
+  for (const it of state.items) {
+    const ph = phaseFromItem(it);
+    counts[ph] = (counts[ph] || 0) + 1;
+  }
+  return counts;
+}
+
+function scouterValue() {
+  return state.items
+    .filter((i) => phaseFromItem(i) === "intake" || phaseFromItem(i) === "staged")
+    .reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
+}
+
+function renderCommand() {
+  const c = countsByPhase();
+  const toList = c.staged || 0;
+  const listed = c.listed || 0;
+  const inventory = state.items.length;
+  const needsBin = state.items.filter((i) => !i.spaceId && phaseFromItem(i) !== "listed").length;
+
+  if ($("statToList")) $("statToList").textContent = String(toList).padStart(2, "0");
+  if ($("statNeedsBin")) $("statNeedsBin").textContent = String(needsBin).padStart(2, "0");
+  if ($("statListed")) $("statListed").textContent = String(listed).padStart(2, "0");
+  if ($("statInventory")) $("statInventory").textContent = String(inventory).padStart(2, "0");
+
+  const sitrep = $("sitrepList");
+  if (!sitrep) return;
+  const rows = [];
+  const intakeN = c.intake || 0;
+  if (intakeN) rows.push({ n: intakeN, title: "On intake", hint: "Needs identity or photos" });
+  if (toList) rows.push({ n: toList, title: "Staged, not listed", hint: "Ready for listing engine" });
+  if (needsBin) rows.push({ n: needsBin, title: "Needs bin", hint: "No Spaces location yet" });
+  if (!rows.length) {
+    sitrep.innerHTML = `<div class="sitrep-row"><div><strong>All clear</strong><span>Nothing is blocked.</span></div></div>`;
+    return;
+  }
+  sitrep.innerHTML = rows
+    .map(
+      (r) => `<div class="sitrep-row" data-goto="scouter">
+        <div class="sitrep-n">${String(r.n).padStart(2, "0")}</div>
+        <div><strong>${r.title}</strong><span>${r.hint}</span></div>
+      </div>`
+    )
+    .join("");
+  sitrep.querySelectorAll("[data-goto]").forEach((el) =>
+    el.addEventListener("click", () => navigate(el.dataset.goto))
+  );
+}
+
+function renderScouter() {
+  const onScout = state.items.filter((i) => {
+    const p = phaseFromItem(i);
+    return p === "intake" || p === "staged";
+  });
+  if ($("scouterCount")) $("scouterCount").textContent = String(onScout.length).padStart(2, "0");
+  if ($("scouterValue")) $("scouterValue").textContent = money(scouterValue());
+
+  const intake = state.items.filter((i) => phaseFromItem(i) === "intake");
+  const staged = state.items.filter((i) => phaseFromItem(i) === "staged");
+  paintPkgs("pkgIntake", intake);
+  paintPkgs("pkgStaged", staged);
+  if ($("intakeCount")) $("intakeCount").textContent = String(intake.length).padStart(2, "0");
+  if ($("stagedCount")) $("stagedCount").textContent = String(staged.length).padStart(2, "0");
+}
+
+function paintPkgs(rootId, items) {
+  const root = $(rootId);
+  if (!root) return;
+  if (!items.length) {
+    root.innerHTML = `<div class="pkg empty" aria-hidden="true">?</div>`;
+    return;
+  }
+  root.innerHTML = items
+    .slice(0, 12)
+    .map((it) => {
+      const src = it.photos?.[0]?.dataUrl || "";
+      const qty = Number(it.quantity) || 1;
+      return `<button type="button" class="pkg" data-item="${it.id}">
+        ${src ? `<img src="${src}" alt="" />` : `<div class="pkg empty">■</div>`}
+        ${qty > 1 ? `<span class="qty">x${qty}</span>` : ""}
+      </button>`;
+    })
+    .join("");
+  root.querySelectorAll("[data-item]").forEach((btn) =>
+    btn.addEventListener("click", () => openSheet(btn.dataset.item))
+  );
+}
+
+function renderMap() {
+  const counts = countsByPhase();
+  const track = $("mapNodes");
+  if (!track) return;
+  track.innerHTML = PHASES.map((p) => {
+    const active = state.activePhase === p.id ? " active" : "";
+    return `<button type="button" class="map-node${active}" data-phase="${p.id}">
+      <span class="orb"></span>
+      <span class="lbl">${p.short}</span>
+      <span class="cnt">${String(counts[p.id] || 0).padStart(2, "0")}</span>
+    </button>`;
+  }).join("");
+  track.querySelectorAll("[data-phase]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      state.activePhase = btn.dataset.phase;
+      renderMap();
+    })
+  );
+  const phase = PHASES.find((p) => p.id === state.activePhase) || PHASES[0];
+  if ($("mapStageName")) $("mapStageName").textContent = phase.label;
+  const list = $("mapItems");
+  if (!list) return;
+  const items = state.items.filter((i) => phaseFromItem(i) === phase.id);
+  if (!items.length) {
+    list.innerHTML = `<p class="lead">Nothing in ${phase.label} yet.</p>`;
+    return;
+  }
+  list.innerHTML = items
+    .map((it) => {
+      const src = it.photos?.[0]?.dataUrl || "";
+      return `<button type="button" class="item-card" data-item="${it.id}">
+        ${src ? `<img src="${src}" alt="" />` : `<div></div>`}
+        <div><h3>${escapeHtml(it.title || it.productName || "Untitled")}</h3>
+        <p>${escapeHtml(phase.label)}${it.spaceId ? ` · ${escapeHtml(spaceName(it.spaceId))}` : ""}</p></div>
+        <div class="chrome">${money(it.price || 0)}</div>
+      </button>`;
+    })
+    .join("");
+  list.querySelectorAll("[data-item]").forEach((btn) =>
+    btn.addEventListener("click", () => openSheet(btn.dataset.item))
+  );
+}
+
+function spaceName(id) {
+  return state.spaces.find((s) => s.id === id)?.name || id;
+}
+
+function renderSpaces() {
+  const field = $("spacesField");
+  if (!field) return;
+  field.innerHTML = state.spaces
+    .map((sp) => {
+      const n = state.items.filter((i) => i.spaceId === sp.id).length;
+      return `<button type="button" class="space-tile" data-space="${sp.id}">
+        ${sp.cover ? `<img src="${sp.cover}" alt="" />` : ""}
+        <div class="cap">
+          <div class="chrome">${escapeHtml(sp.kind || "space")}</div>
+          <h3>${escapeHtml(sp.name)}</h3>
+          <p class="chrome" style="margin-top:8px">${String(n).padStart(2, "0")} items</p>
+        </div>
+      </button>`;
+    })
+    .join("");
+  const unsorted = state.items.filter((i) => !i.spaceId);
+  if ($("unsortedPool")) {
+    $("unsortedPool").textContent = unsorted.length
+      ? `${unsorted.length} unsorted — assign from the item card`
+      : "Unsorted pool is empty";
+  }
+}
+
+function renderChannels() {
+  const grid = $("channelGrid");
+  if (!grid) return;
+  const listed = state.items.filter((i) => phaseFromItem(i) === "listed" || i.channels?.ebay);
+  const cards = listed.length
+    ? listed
+    : [
+        { id: "_demo_ebay", title: "eBay sync", productName: "Connect to pull live listings", price: 0, demo: true },
+        { id: "_demo_dh", title: "Double Holo", productName: "Vendor hub mirror", price: 0, demo: true },
+        { id: "_demo_shop", title: "Shopify", productName: "Claude holds store connection", price: 0, demo: true },
+      ];
+  grid.innerHTML = cards
+    .slice(0, 12)
+    .map((it) => {
+      const src = it.photos?.[0]?.dataUrl;
+      return `<button type="button" class="channel-card" data-item="${it.demo ? "" : it.id}">
+        <div class="art">${src ? `<img src="${src}" alt="" style="width:100%;height:100%;object-fit:cover;opacity:.45" />` : ""}</div>
+        <div class="body">
+          <h3>${escapeHtml(it.title || it.productName || "Listing")}</h3>
+          <p>${escapeHtml(it.productName || it.setName || (it.demo ? "Channel surface" : "Listed"))}</p>
+          <div class="price">${it.demo ? "SYNC" : money(it.price || 0)}</div>
+        </div>
+      </button>`;
+    })
+    .join("");
+  if ($("ebayPill")) {
+    $("ebayPill").classList.toggle("on", state.ebayOnline);
+    $("ebayPillLabel").textContent = state.ebayOnline ? "EBAY ONLINE" : "EBAY OFFLINE";
+  }
+}
+
+function escapeHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function openSheet(id) {
+  const it = state.items.find((x) => x.id === id);
+  if (!it) return;
+  state.sheetItemId = id;
+  const sheet = $("itemSheet");
+  if (!sheet) return;
+  sheet.classList.add("open");
+  const src = it.photos?.[0]?.dataUrl || "";
+  $("sheetMedia").innerHTML = src ? `<img src="${src}" alt="" />` : "";
+  $("sheetTitle").textContent = it.title || it.productName || "Untitled";
+  $("sheetMeta").textContent = `${phaseFromItem(it)} · qty ${it.quantity || 1} · ${money(it.price || 0)}`;
+  $("sheetSpace").textContent = it.spaceId ? spaceName(it.spaceId) : "No bin assigned";
+}
+
+function closeSheet() {
+  state.sheetItemId = null;
+  $("itemSheet")?.classList.remove("open");
+}
+
+async function addPhotos(fileList) {
+  const files = [...(fileList || [])].filter((f) => f.type.startsWith("image/"));
+  if (!files.length) {
+    toast("No images in that drop");
+    return;
+  }
+  for (const file of files) {
+    const dataUrl = await fileToDataUrl(file);
+    const item = {
+      id: uid(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      title: file.name.replace(/\.[^.]+$/, "") || "Scan",
+      productName: null,
+      quantity: 1,
+      price: null,
+      phase: "intake",
+      staged: false,
+      spaceId: null,
+      barcode: null,
+      channels: {},
+      photos: [{ id: uid(), dataUrl, createdAt: new Date().toISOString() }],
+    };
+    state.items.unshift(item);
+  }
+  saveItems();
+  toast(`${files.length} on Scouter`);
+  navigate("scouter");
+}
+
+async function addBarcode(code) {
+  const trimmed = String(code || "").trim();
+  if (!trimmed) return;
+  let title = trimmed;
+  try {
+    const res = await fetch(`/api/scouter/barcode/${encodeURIComponent(trimmed)}`);
+    if (res.ok) {
+      const body = await res.json();
+      title = body.title || body.name || trimmed;
+    }
+  } catch { /* offline ok */ }
+  state.items.unshift({
+    id: uid(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    title,
+    productName: title,
+    quantity: 1,
+    price: null,
+    phase: "intake",
+    staged: false,
+    spaceId: null,
+    barcode: trimmed,
+    channels: {},
+    photos: [],
+  });
+  saveItems();
+  toast("Barcode added");
+  closeBarcode();
+  navigate("scouter");
+}
+
+function stageItem(id) {
+  const it = state.items.find((x) => x.id === id);
+  if (!it) return;
+  it.phase = "staged";
+  it.staged = true;
+  it.updatedAt = new Date().toISOString();
+  saveItems();
+  toast("Staged");
+  closeSheet();
+  render();
+}
+
+function assignSpace(id, spaceId) {
+  const it = state.items.find((x) => x.id === id);
+  if (!it) return;
+  it.spaceId = spaceId;
+  it.updatedAt = new Date().toISOString();
+  saveItems();
+  toast(`Filed in ${spaceName(spaceId)}`);
+  closeSheet();
+  render();
+}
+
+async function probeEbay() {
+  try {
+    const res = await fetch("/api/channels/status");
+    const body = await res.json();
+    const ebay = (body.channels || []).find((c) => c.id === "ebay");
+    state.ebayOnline = Boolean(ebay?.configured);
+  } catch {
+    state.ebayOnline = false;
+  }
+  renderChannels();
+}
+
+async function syncEbay() {
+  toast("Pulling eBay…");
+  try {
+    const res = await fetch("/api/channels/ebay/sync", { method: "POST" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast(body.error || "eBay sync not configured yet — Base44 link still being ported");
+      return;
+    }
+    toast("eBay sync ok");
+    probeEbay();
+  } catch {
+    toast("eBay sync failed — check channel config");
+  }
+}
+
+async function loadSoldPrice(id) {
+  const it = state.items.find((x) => x.id === id);
+  if (!it) return;
+  toast("Load sold avg — wiring to eBay sold comps");
+  // Live beta: mark intent; real comps need eBay browse/finding once creds ported
+  try {
+    const q = encodeURIComponent(it.title || it.productName || "");
+    const res = await fetch(`/api/scouter/identify?probe=price&q=${q}`);
+    if (res.ok) {
+      const body = await res.json();
+      if (body.price != null) {
+        it.price = Number(body.price);
+        saveItems();
+        toast(`Loaded ${money(it.price)}`);
+        render();
+        return;
+      }
+    }
+  } catch { /* fall through */ }
+  toast("Sold-average load needs eBay comps live — creds from Base44 next");
+}
+
+async function loadAllSold() {
+  const batch = state.items.filter((i) => phaseFromItem(i) === "intake" || phaseFromItem(i) === "staged");
+  if (!batch.length) {
+    toast("Nothing to price");
+    return;
+  }
+  toast(`Load all on ${batch.length} items — eBay comps next`);
+  for (const it of batch) {
+    await loadSoldPrice(it.id);
+  }
+}
+
+function openBarcode() {
+  $("barcodeSheet")?.classList.add("open");
+  $("barcodeInput")?.focus();
+}
+
+function closeBarcode() {
+  $("barcodeSheet")?.classList.remove("open");
+  if ($("barcodeInput")) $("barcodeInput").value = "";
+}
+
+function render() {
+  renderCommand();
+  renderScouter();
+  renderMap();
+  renderSpaces();
+  renderChannels();
+}
+
+function bind() {
+  document.querySelectorAll(".nav-tab").forEach((tab) =>
+    tab.addEventListener("click", () => navigate(tab.dataset.view))
+  );
+
+  $("btnSnap")?.addEventListener("click", () => $("inputSnap")?.click());
+  $("btnBarcode")?.addEventListener("click", openBarcode);
+  $("inputSnap")?.addEventListener("change", (e) => {
+    addPhotos(e.target.files);
+    e.target.value = "";
+  });
+
+  $("btnCloseSheet")?.addEventListener("click", closeSheet);
+  $("btnStage")?.addEventListener("click", () => stageItem(state.sheetItemId));
+  $("btnLoadSold")?.addEventListener("click", () => loadSoldPrice(state.sheetItemId));
+  $("btnAssignBin1")?.addEventListener("click", () => assignSpace(state.sheetItemId, "bin1"));
+  $("btnAssignBin2")?.addEventListener("click", () => assignSpace(state.sheetItemId, "bin2"));
+  $("btnAssignStaged")?.addEventListener("click", () => assignSpace(state.sheetItemId, "staged"));
+
+  $("btnCloseBarcode")?.addEventListener("click", closeBarcode);
+  $("btnBarcodeAdd")?.addEventListener("click", () => addBarcode($("barcodeInput")?.value));
+  $("barcodeInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") addBarcode(e.target.value);
+  });
+
+  $("btnEbaySync")?.addEventListener("click", syncEbay);
+  $("btnLoadAllSold")?.addEventListener("click", loadAllSold);
+  $("btnOpenMap")?.addEventListener("click", () => navigate("map"));
+
+  // drag-drop photos onto scouter view
+  const scout = $("view-scouter");
+  if (scout) {
+    scout.addEventListener("dragover", (e) => {
+      e.preventDefault();
+    });
+    scout.addEventListener("drop", (e) => {
+      e.preventDefault();
+      addPhotos(e.dataTransfer.files);
+    });
+  }
+
+  window.addEventListener("hashchange", () => {
+    const view = location.hash.replace(/^#\/?/, "") || "command";
+    if (VIEWS.includes(view) && view !== state.view) navigate(view);
+  });
+}
+
+async function boot() {
+  state.items = loadItems();
+  state.spaces = loadSpaces();
+  saveSpaces();
+  bind();
+  const start = location.hash.replace(/^#\/?/, "") || "command";
+  navigate(VIEWS.includes(start) ? start : "command");
+  await probeEbay();
+}
+
+boot();

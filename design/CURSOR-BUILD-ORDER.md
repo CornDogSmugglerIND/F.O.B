@@ -188,7 +188,7 @@ Value / collection lens over Inventory. Shiny Pro and Collectr influence.
 0. tokens + phases modules          small, do it first
 1. IDENTIFY                         <- ASK ABOUT PROVIDER, THEN STOP
 2. item record + Inventory
-3. Scouter restructure, then skin
+3. Scouter handheld (SNAP + barcode + package cards)
 4. spine / constellation
 5. listing engine                   <- ASK ABOUT PRICING CONFLICT
 6. channels (eBay first)
