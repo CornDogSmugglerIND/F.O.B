@@ -366,6 +366,47 @@ async function addBarcode(code) {
   navigate("scouter");
 }
 
+async function runEngine(id) {
+  const it = state.items.find((x) => x.id === id);
+  if (!it) return;
+  toast("Running listing engine…");
+  try {
+    const res = await fetch(`/api/scouter/items/${encodeURIComponent(id)}/listing-engine`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "regular", soldAvg: it.price }),
+    });
+    if (res.ok) {
+      const body = await res.json();
+      it.title = body.listing?.title || it.title;
+      it.description = body.listing?.description || it.description;
+      if (body.listing?.suggestedPrice != null) it.price = body.listing.suggestedPrice;
+      it.phase = it.phase === "intake" ? "staged" : it.phase;
+      it.staged = true;
+      saveItems();
+      toast("Listing built");
+      openSheet(id);
+      render();
+      return;
+    }
+  } catch { /* fall through to client engine */ }
+  try {
+    const mod = await import("/visor/listing-engine.js?v=1");
+    const listing = mod.runListingEngine(it, { soldAvg: it.price });
+    it.title = listing.title;
+    it.description = listing.description;
+    if (listing.suggestedPrice != null) it.price = listing.suggestedPrice;
+    it.phase = "staged";
+    it.staged = true;
+    saveItems();
+    toast("Listing built");
+    openSheet(id);
+    render();
+  } catch {
+    toast("Listing engine failed — check item data");
+  }
+}
+
 function stageItem(id) {
   const it = state.items.find((x) => x.id === id);
   if (!it) return;
@@ -516,6 +557,7 @@ function bind() {
 
   $("btnCloseSheet")?.addEventListener("click", closeSheet);
   $("btnStage")?.addEventListener("click", () => stageItem(state.sheetItemId));
+  $("btnRunEngine")?.addEventListener("click", () => runEngine(state.sheetItemId));
   $("btnLoadSold")?.addEventListener("click", () => loadSoldPrice(state.sheetItemId));
   $("btnAssignBin1")?.addEventListener("click", () => assignSpace(state.sheetItemId, "bin1"));
   $("btnAssignBin2")?.addEventListener("click", () => assignSpace(state.sheetItemId, "bin2"));
