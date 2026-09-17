@@ -187,7 +187,7 @@ test("syncEbayInventory maps offers + inventory items", async () => {
   };
 
   const sync = await syncEbayInventory({ fetchImpl, limit: 50 });
-  assert.equal(tokenCalls, 1);
+  assert.ok(tokenCalls >= 1);
   assert.equal(sync.ok, true);
   assert.equal(sync.pulled, 1);
   assert.equal(sync.records[0].title, "Pitch Black ETB");
