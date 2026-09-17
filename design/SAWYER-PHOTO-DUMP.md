@@ -78,7 +78,7 @@ One reseller OS that replaces ~17 apps. It must feel like a **heads-up display**
 
 ### Channels / eBay (Sawyer 2026-09-17 — priority)
 
-One of the **most important** live-beta surfaces. Tab look = **Riot Champions Hub / game-store** glossy grid (not a spreadsheet).
+One of the **most important** live-beta surfaces. Tab look = **Riot game store** glossy grid (not a spreadsheet). Sawyer’s Base44 template “Champions Hub” is that Riot store look.
 
 Must do:
 - Pull **eBay inventory into the app** (sync)
