@@ -102,8 +102,10 @@ Credential ownership (do not re-ask Sawyer):
 
 ## 5. Standing order
 
-- **Cursor:** examined dump; wrote this handoff; **not building** until Sawyer says so.
-- **Claude:** read this file + `design/refs/` before any UI work. Match Scouter little-packages + roadmap constellation + Dead Space/Halo *feel*. Do not invent camera-as-screen. You own Shopify connection continuity.
-- **HARD RULE (Sawyer 2026-09-17):** **Everything must be run by Claude before Cursor starts building.** Cursor does not freelance builds. Claude reviews/approves the plan (and any build kickoff); then Cursor builds/checks. No silent start.
+- **Cursor + Claude = co-builders.** Claude is **not** only a checker. Claude builds product code too, in parallel with Cursor, to speed live beta.
+- **HARD RULE (Sawyer 2026-09-17):** Plan and risky live-money surfaces (Channels eBay mutations, listing publish) still get Claude eyes. Cursor does not freelance silent builds. Once a slice is cleared, **both** build it — split the work, don’t serialize everything as review-only.
+- **Scouter shape (Sawyer):** Photo SNAP + Scan BARCODE + little package cards. **Camera-as-whole-screen is dead.** `CURSOR-BUILD-ORDER.md` camera-first lines are stale and must be updated to match.
+- **Shopify:** Claude owns the working connection.
+- **eBay:** already in Base44 — port/reuse, don’t re-ask Sawyer.
 
-When Sawyer says go, Claude reviews first — then Cursor builds only what Claude cleared. Not a 24-hour freelance rebuild.
+When Sawyer says go: Claude clears the slice → **Claude and Cursor both build** that slice. Not a 24-hour freelance solo rebuild.
