@@ -269,5 +269,27 @@ export function scouterRouter() {
     }
   });
 
+  /** CSV export — ebay | double_holo | tcgplayer */
+  router.get("/export.csv", async (req, res, next) => {
+    try {
+      const { exportCsv } = await import("../listing/csv.js");
+      const format = String(req.query.format || "tcgplayer");
+      let items = await listScoutItems();
+      if (req.query.staged === "1") items = items.filter((i) => i.staged);
+      const csv = exportCsv(format, items);
+      const name =
+        format === "ebay"
+          ? "ebay-file-exchange.csv"
+          : format === "double_holo"
+            ? "double-holo.csv"
+            : "tcg-generic.csv";
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${name}"`);
+      res.send(csv);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   return router;
 }
