@@ -129,8 +129,16 @@
         <div class="channel-toolbar">
           <button type="button" class="btn btn-amber" id="btnEbaySync">Sync eBay</button>
           <button type="button" class="btn btn-ghost" id="btnLoadAllSold2" onclick="document.getElementById('btnLoadAllSold').click()">Load sold avgs</button>
+          <button type="button" class="btn" id="btnCombineMode">Combine batch</button>
+          <button type="button" class="btn btn-amber" id="btnCombineRun" hidden>Combine selected</button>
+          <button type="button" class="btn btn-ghost" id="btnCombineCancel" hidden>Cancel</button>
         </div>
+        <p class="chrome" id="combineHint" style="margin:0 0 10px" hidden>Select 2+ staged cards → Pick Your Card variation CSV</p>
         <div class="channel-grid" id="channelGrid"></div>
+        <div class="panel" id="combinePool" style="margin-top:14px" hidden>
+          <div class="chrome" style="margin-bottom:8px">Staged pool</div>
+          <div class="combine-grid" id="combineGrid"></div>
+        </div>
       </section>
 
       <section class="view" id="view-settings">
@@ -148,14 +156,6 @@
           <p style="margin-top:8px;color:var(--hud-text-dim);font-size:14px;line-height:1.4">
             Per-game templates (TCG Automate–style, less clunky) land next with the listing engine bake-in.
           </p>
-        </div>
-        <div class="panel">
-          <div class="chrome">CSV export</div>
-          <div class="sheet-actions" style="margin-top:10px">
-            <a class="btn btn-amber" href="/api/scouter/export.csv?format=ebay">eBay FE</a>
-            <a class="btn" href="/api/scouter/export.csv?format=double_holo">Double Holo</a>
-            <a class="btn" href="/api/scouter/export.csv?format=tcgplayer">TCG generic</a>
-          </div>
         </div>
         <div class="panel">
           <div class="chrome">Live beta</div>
@@ -197,6 +197,6 @@
   </div>
 
   <div class="toast" id="toast" role="status"></div>
-  <script type="module" src="/coalition.js?v=3"></script>
+  <script type="module" src="/coalition.js?v=5"></script>
 </body>
 </html>

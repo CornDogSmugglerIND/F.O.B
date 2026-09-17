@@ -296,3 +296,40 @@ test("POST /api/channels/sale subtracts qty on canonical inventory", async () =>
     await close();
   }
 });
+
+test("POST /api/channels/ebay/combine builds Pick Your Card CSV", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const res = await fetch(`${baseUrl}/api/channels/ebay/combine`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: [
+          { productName: "Gloom", collectorNumber: "002", setName: "Ascended Heroes", rarity: "Common", price: 1.5 },
+          { productName: "Oddish", collectorNumber: "001", setName: "Ascended Heroes", rarity: "Common", price: 1.2 },
+        ],
+      }),
+    });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.match(body.title, /Pick Your Card/);
+    assert.equal(body.childCount, 2);
+    assert.equal(body.parent.variationParent, true);
+    assert.match(body.csv, /^\uFEFFInfo,/);
+  } finally {
+    await close();
+  }
+});
+
+test("HUD Channels expose combine batch controls", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const html = await (await fetch(`${baseUrl}/hud.html`)).text();
+    assert.match(html, /btnCombineMode/);
+    assert.match(html, /btnCombineRun/);
+    assert.match(html, /combineGrid/);
+  } finally {
+    await close();
+  }
+});

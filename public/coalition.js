@@ -11,6 +11,8 @@ const state = {
   activePhase: "intake",
   ebayOnline: false,
   sheetItemId: null,
+  combineMode: false,
+  combineSelected: new Set(),
 };
 
 const $ = (id) => document.getElementById(id);
@@ -205,10 +207,12 @@ function renderMap() {
   list.innerHTML = items
     .map((it) => {
       const src = it.photos?.[0]?.dataUrl || "";
+      const status = listingStatusLabel(it);
       return `<button type="button" class="item-card" data-item="${it.id}">
         ${src ? `<img src="${src}" alt="" />` : `<div></div>`}
         <div><h3>${escapeHtml(it.title || it.productName || "Untitled")}</h3>
-        <p>${escapeHtml(phase.label)}${it.spaceId ? ` · ${escapeHtml(spaceName(it.spaceId))}` : ""}</p></div>
+        <p>${escapeHtml(phase.label)}${it.spaceId ? ` · ${escapeHtml(spaceName(it.spaceId))}` : ""}</p>
+        <span class="listing-status">${escapeHtml(status)}</span></div>
         <div class="chrome">${money(it.price || 0)}</div>
       </button>`;
     })
@@ -246,10 +250,32 @@ function renderSpaces() {
   }
 }
 
+function listingStatusLabel(it) {
+  if (it.variationParent || String(it.notes || "").includes("variation-parent:")) {
+    return "Variation parent";
+  }
+  if (String(it.notes || "").includes("variation-child:") || it.variationGroupId) {
+    return "In variation";
+  }
+  const ebay = it.channels?.ebay;
+  if (ebay?.status === "active" || (ebay?.listingId && phaseFromItem(it) === "listed")) {
+    return "eBay listed";
+  }
+  if (ebay?.status) return `eBay · ${ebay.status}`;
+  if (it.channels?.double_holo?.listingId) return "Double Holo";
+  const ph = phaseFromItem(it);
+  if (ph === "listed") return "Listed";
+  if (ph === "staged") return "Staged";
+  if (ph === "intake") return "Intake";
+  return ph;
+}
+
 function renderChannels() {
   const grid = $("channelGrid");
   if (!grid) return;
-  const listed = state.items.filter((i) => phaseFromItem(i) === "listed" || i.channels?.ebay);
+  const listed = state.items.filter(
+    (i) => phaseFromItem(i) === "listed" || i.channels?.ebay || i.variationParent
+  );
   const cards = listed.length
     ? listed
     : [
@@ -261,19 +287,147 @@ function renderChannels() {
     .slice(0, 12)
     .map((it) => {
       const src = it.photos?.[0]?.dataUrl;
+      const status = it.demo ? "Channel" : listingStatusLabel(it);
       return `<button type="button" class="channel-card" data-item="${it.demo ? "" : it.id}">
         <div class="art">${src ? `<img src="${src}" alt="" style="width:100%;height:100%;object-fit:cover;opacity:.45" />` : ""}</div>
         <div class="body">
           <h3>${escapeHtml(it.title || it.productName || "Listing")}</h3>
-          <p>${escapeHtml(it.productName || it.setName || (it.demo ? "Channel surface" : "Listed"))}</p>
+          <p>${escapeHtml(it.setName || it.productName || (it.demo ? "Channel surface" : status))}</p>
+          <span class="listing-status">${escapeHtml(status)}</span>
           <div class="price">${it.demo ? "SYNC" : money(it.price || 0)}</div>
         </div>
       </button>`;
     })
     .join("");
+  grid.querySelectorAll("[data-item]").forEach((btn) => {
+    if (btn.dataset.item) btn.addEventListener("click", () => openSheet(btn.dataset.item));
+  });
   if ($("ebayPill")) {
     $("ebayPill").classList.toggle("on", state.ebayOnline);
     $("ebayPillLabel").textContent = state.ebayOnline ? "EBAY ONLINE" : "EBAY OFFLINE";
+  }
+  renderCombinePool();
+}
+
+function renderCombinePool() {
+  const pool = $("combinePool");
+  const hint = $("combineHint");
+  const runBtn = $("btnCombineRun");
+  const cancelBtn = $("btnCombineCancel");
+  const modeBtn = $("btnCombineMode");
+  if (!pool) return;
+  const on = state.combineMode;
+  pool.hidden = !on;
+  if (hint) hint.hidden = !on;
+  if (runBtn) runBtn.hidden = !on;
+  if (cancelBtn) cancelBtn.hidden = !on;
+  if (modeBtn) modeBtn.hidden = on;
+
+  if (!on) return;
+  const candidates = state.items.filter((i) => {
+    const p = phaseFromItem(i);
+    return (p === "staged" || p === "intake") && !i.variationParent;
+  });
+  const grid = $("combineGrid");
+  if (!grid) return;
+  if (!candidates.length) {
+    grid.innerHTML = `<p class="lead">Stage cards in Scouter first, then combine.</p>`;
+    return;
+  }
+  grid.innerHTML = candidates
+    .map((it) => {
+      const src = it.photos?.[0]?.dataUrl;
+      const sel = state.combineSelected.has(it.id) ? " selected" : "";
+      return `<button type="button" class="combine-card${sel}" data-combine="${it.id}">
+        ${src ? `<img src="${src}" alt="" />` : `<div class="ph"></div>`}
+        <div>
+          <strong>${escapeHtml(it.productName || it.title || "Untitled")}</strong>
+          <span>${escapeHtml(it.setName || "No set")} · ${escapeHtml(it.collectorNumber || "—")}</span>
+        </div>
+      </button>`;
+    })
+    .join("");
+  grid.querySelectorAll("[data-combine]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.combine;
+      if (state.combineSelected.has(id)) state.combineSelected.delete(id);
+      else state.combineSelected.add(id);
+      renderCombinePool();
+    })
+  );
+}
+
+function setCombineMode(on) {
+  state.combineMode = Boolean(on);
+  if (!on) state.combineSelected = new Set();
+  renderChannels();
+}
+
+function downloadText(filename, text, mime = "text/csv;charset=utf-8") {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function runCombineBatch() {
+  const ids = [...state.combineSelected];
+  if (ids.length < 2) {
+    toast("Select at least 2 cards");
+    return;
+  }
+  const children = ids.map((id) => state.items.find((i) => i.id === id)).filter(Boolean);
+  toast(`Combining ${children.length}…`);
+  try {
+    const mod = await import("/visor/variation.js?v=1");
+    const batch = mod.combineVariationBatch(children);
+    const parent = {
+      id: uid(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      title: batch.title,
+      productName: batch.title,
+      description: batch.description,
+      setName: batch.setName,
+      rarity: batch.rarity,
+      game: batch.game,
+      quantity: batch.totalQty,
+      price: null,
+      phase: "staged",
+      staged: true,
+      spaceId: null,
+      variationParent: true,
+      variationGroupId: batch.groupId,
+      notes: `variation-parent:${batch.groupId}`,
+      channels: { ebay: { listingId: null, price: null, status: "variation_parent", sku: batch.parent.sku } },
+      photos: children.map((c) => c.photos?.[0]).filter(Boolean).slice(0, 1),
+    };
+    for (const c of children) {
+      c.variationGroupId = batch.groupId;
+      c.notes = [c.notes, `variation-child:${batch.groupId}`].filter(Boolean).join(" | ");
+      c.phase = "staged";
+      c.staged = true;
+      c.updatedAt = new Date().toISOString();
+    }
+    state.items.unshift(parent);
+    saveItems();
+    downloadText(`ebay-variation-${batch.groupId}.csv`, batch.csv);
+    toast(`Combined · ${batch.childCount} cards · CSV ready`);
+    setCombineMode(false);
+    render();
+    // Best-effort server mirror when items exist there
+    try {
+      await fetch("/api/channels/ebay/combine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: children, setName: batch.setName, rarity: batch.rarity, game: batch.game }),
+      });
+    } catch { /* local-first ok */ }
+  } catch (err) {
+    toast(err?.message || "Combine failed");
   }
 }
 
@@ -295,7 +449,7 @@ function openSheet(id) {
   const src = it.photos?.[0]?.dataUrl || "";
   $("sheetMedia").innerHTML = src ? `<img src="${src}" alt="" />` : "";
   $("sheetTitle").textContent = it.title || it.productName || "Untitled";
-  $("sheetMeta").textContent = `${phaseFromItem(it)} · qty ${it.quantity || 1} · ${money(it.price || 0)}`;
+  $("sheetMeta").textContent = `${phaseFromItem(it)} · ${listingStatusLabel(it)} · qty ${it.quantity || 1} · ${money(it.price || 0)}`;
   $("sheetSpace").textContent = it.spaceId ? spaceName(it.spaceId) : "No bin assigned";
 }
 
@@ -572,6 +726,12 @@ function bind() {
   $("btnEbaySync")?.addEventListener("click", syncEbay);
   $("btnLoadAllSold")?.addEventListener("click", loadAllSold);
   $("btnOpenMap")?.addEventListener("click", () => navigate("map"));
+  $("btnCombineMode")?.addEventListener("click", () => {
+    navigate("channels");
+    setCombineMode(true);
+  });
+  $("btnCombineCancel")?.addEventListener("click", () => setCombineMode(false));
+  $("btnCombineRun")?.addEventListener("click", runCombineBatch);
 
   // drag-drop photos onto scouter view
   const scout = $("view-scouter");

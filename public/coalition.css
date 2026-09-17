@@ -349,6 +349,17 @@ body::after {
 .item-card img { width: 56px; height: 56px; object-fit: cover; background: #111; }
 .item-card h3 { font-size: 15px; font-weight: 600; }
 .item-card p { color: var(--hud-text-mute); font-size: 13px; }
+.listing-status {
+  display: inline-block;
+  margin-top: 4px;
+  font-family: var(--hud-font-chrome);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hud-amber);
+  border: 1px solid var(--hud-amber-dim);
+  padding: 2px 6px;
+}
 
 /* Spaces */
 .spaces-field {
@@ -427,6 +438,37 @@ body::after {
   gap: 8px;
   margin-bottom: 12px;
 }
+.combine-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+.combine-card {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+  padding: 8px;
+  border: 1px solid var(--hud-teal-dim);
+  background: rgba(21, 26, 29, 0.75);
+  color: var(--hud-text);
+  cursor: pointer;
+  transition: border-color var(--hud-duration) var(--hud-ease), transform var(--hud-duration) var(--hud-ease);
+}
+.combine-card:hover { border-color: var(--hud-amber-dim); transform: translateY(-1px); }
+.combine-card.selected {
+  border-color: var(--hud-amber);
+  background: rgba(242, 160, 61, 0.1);
+}
+.combine-card img, .combine-card .ph {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  background: #111;
+}
+.combine-card strong { display: block; font-size: 13px; }
+.combine-card span { display: block; font-size: 11px; color: var(--hud-text-mute); margin-top: 2px; }
 
 .btn {
   border: 1px solid var(--hud-amber-dim);

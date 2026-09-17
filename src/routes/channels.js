@@ -4,6 +4,7 @@ import { applySale } from "../channels/sync.js";
 import { publishListing } from "../channels/adapters.js";
 import { probeEbay, syncEbayInventory } from "../channels/ebay.js";
 import { probeMisprint } from "../channels/misprint.js";
+import { combineVariationBatch } from "../listing/variation.js";
 import { getScoutItem, updateScoutItem, listScoutItems, createScoutItem } from "../store.js";
 
 export function channelsRouter() {
@@ -83,6 +84,87 @@ export function channelsRouter() {
     } catch (err) {
       if (err.code === "CHANNEL_NOT_CONFIGURED" || err.code === "EBAY_AUTH_FAILED" || err.code === "EBAY_API_ERROR") {
         return res.status(503).json({ ok: false, error: err.message, code: err.code });
+      }
+      next(err);
+    }
+  });
+
+  /**
+   * Combine cards into a Pick-Your-Card variation batch.
+   * Body: { items: [...], setName?, rarity?, game? } OR { itemIds: [...] }
+   * Returns parent+children payload + eBay FE CSV (parent has no StartPrice).
+   * Does not publish — listing push still needs eBay creds.
+   */
+  router.post("/ebay/combine", async (req, res, next) => {
+    try {
+      let children = Array.isArray(req.body?.items) ? req.body.items : null;
+      if (!children?.length && Array.isArray(req.body?.itemIds)) {
+        const found = [];
+        for (const id of req.body.itemIds) {
+          const it = await getScoutItem(id);
+          if (it) found.push(it);
+        }
+        children = found;
+      }
+      if (!children?.length) {
+        return res.status(400).json({ error: "items or itemIds required", code: "VALIDATION" });
+      }
+
+      const batch = combineVariationBatch(children, {
+        setName: req.body?.setName,
+        rarity: req.body?.rarity,
+        game: req.body?.game,
+      });
+
+      /** Persist parent + link children when they live in the server store. */
+      let parentItem = null;
+      if (Array.isArray(req.body?.itemIds) && req.body.itemIds.length) {
+        parentItem = await createScoutItem({
+          title: batch.title,
+          productName: batch.title,
+          description: batch.description,
+          setName: batch.setName,
+          rarity: batch.rarity,
+          game: batch.game,
+          condition: "NM",
+          language: "English",
+          quantity: batch.totalQty,
+          staged: true,
+          phase: "staged",
+          notes: `variation-parent:${batch.groupId}`,
+          price: null,
+        });
+        await updateScoutItem(parentItem.id, {
+          channels: {
+            ebay: {
+              listingId: null,
+              price: null,
+              status: "variation_parent",
+              sku: batch.parent.sku,
+            },
+          },
+        });
+        parentItem = await getScoutItem(parentItem.id);
+        for (const id of req.body.itemIds) {
+          const child = await getScoutItem(id);
+          if (!child) continue;
+          await updateScoutItem(id, {
+            notes: [child.notes, `variation-child:${batch.groupId}`].filter(Boolean).join(" | "),
+            staged: true,
+            phase: child.phase === "listed" ? "listed" : "staged",
+          });
+        }
+      }
+
+      res.json({
+        ok: true,
+        ...batch,
+        parentItem,
+        csv: batch.csv,
+      });
+    } catch (err) {
+      if (err.code === "VALIDATION") {
+        return res.status(400).json({ ok: false, error: err.message, code: err.code });
       }
       next(err);
     }
