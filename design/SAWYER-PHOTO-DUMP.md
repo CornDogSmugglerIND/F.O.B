@@ -72,15 +72,30 @@ One reseller OS that replaces ~17 apps. It must feel like a **heads-up display**
 1. **Scouter** — intake; photo + barcode; little package cards; writes staged inventory; does not list
 2. **Constellation / Map / spine** — roadmap of workflow start → finish; zoom into items
 3. **Spaces / Storage** — physical bins as photos on a tree/field; drag-drop arrange (RE4 idea)
-4. **Channels** — eBay / Double Holo / etc. live state
+4. **Channels** — eBay / Double Holo / Shopify / Misprint selling surfaces
 5. **Portfolio / collection lens** — Shiny/Riot-grade glossy tracking (lens, not the whole product identity)
 6. **Command / Dashboard** — SITREP + pipeline overview
+
+### Channels / eBay (Sawyer 2026-09-17 — priority)
+
+One of the **most important** live-beta surfaces. Tab look = **Riot Champions Hub / game-store** glossy grid (not a spreadsheet).
+
+Must do:
+- Pull **eBay inventory into the app** (sync)
+- Update listings + quantities
+- Edit **variation** listings
+- **Add existing cards into a variation listing / combine batches** (biggest requested feature)
+
+Credential ownership (do not re-ask Sawyer):
+- **eBay** — already linked inside **Base44**; pull/port from there, do not make him paste again
+- **Shopify** — **Claude already has** the working store connection; Cursor uses Claude’s connection, does not re-auth
+- **Misprint** — Sawyer provided API key + seller ID for “Coalition H.U.D” (saved locally). Still need Misprint **API base URL** when live calls start. He will supply if missing.
 
 ---
 
 ## 5. Standing order
 
 - **Cursor:** examined dump; wrote this handoff; **not building** until Sawyer says so.
-- **Claude:** read this file + `design/refs/` before any UI work. Match Scouter little-packages + roadmap constellation + Dead Space/Halo *feel*. Do not invent camera-as-screen.
+- **Claude:** read this file + `design/refs/` before any UI work. Match Scouter little-packages + roadmap constellation + Dead Space/Halo *feel*. Do not invent camera-as-screen. You own Shopify connection continuity.
 
 When Sawyer says go, ask him one clear next target in his words — not a 24-hour freelance rebuild.
