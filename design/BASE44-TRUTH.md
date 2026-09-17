@@ -147,7 +147,7 @@ Merged with his eBay store's **metal / dark teal** aesthetic.
 ## 5.2 Rules that produce that feel
 
 **Layout**
-- Camera-first on Scouter: the **live camera viewport IS the screen**. Chrome overlays it. The current build stacks labeled form sections above a "Start intake" button — that is a Google Form in a dark theme, and it is the core reason it reads cheap.
+- Camera-first on Scouter: **REVOKED by Sawyer 2026-09.** Scouter is Photo SNAP + Scan BARCODE with little package cards (see `SAWYER-PHOTO-DUMP.md`). Do not rebuild camera-as-whole-screen.
 - Information at the edges, subject in the center.
 - One thumb reaches every primary action on phone.
 
