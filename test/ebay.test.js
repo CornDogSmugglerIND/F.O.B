@@ -6,6 +6,7 @@ import {
   publishEbayListing,
   updateEbayPriceQuantity,
   endEbayListing,
+  syncEbayInventory,
 } from "../src/channels/ebay.js";
 
 beforeEach(() => {
@@ -145,4 +146,51 @@ test("GET /api/channels/ebay/probe returns 503 without secrets", async () => {
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
+});
+
+test("syncEbayInventory maps offers + inventory items", async () => {
+  let tokenCalls = 0;
+  const fetchImpl = async (url) => {
+    const u = String(url);
+    if (u.includes("/oauth2/token")) {
+      tokenCalls += 1;
+      return jsonResponse(200, { access_token: "atok", expires_in: 7200 });
+    }
+    if (u.includes("/sell/inventory/v1/offer")) {
+      return jsonResponse(200, {
+        total: 1,
+        offers: [
+          {
+            offerId: "off-1",
+            sku: "SKU-1",
+            availableQuantity: 3,
+            status: "PUBLISHED",
+            pricingSummary: { price: { value: "12.50", currency: "USD" } },
+            listing: { listingId: "LST-1" },
+          },
+        ],
+      });
+    }
+    if (u.includes("/sell/inventory/v1/inventory_item")) {
+      return jsonResponse(200, {
+        total: 1,
+        inventoryItems: [
+          {
+            sku: "SKU-1",
+            product: { title: "Pitch Black ETB", imageUrls: ["https://example.com/a.jpg"] },
+            availability: { shipToLocationAvailability: { quantity: 3 } },
+          },
+        ],
+      });
+    }
+    throw new Error(`unexpected url ${u}`);
+  };
+
+  const sync = await syncEbayInventory({ fetchImpl, limit: 50 });
+  assert.equal(tokenCalls, 1);
+  assert.equal(sync.ok, true);
+  assert.equal(sync.pulled, 1);
+  assert.equal(sync.records[0].title, "Pitch Black ETB");
+  assert.equal(sync.records[0].price, 12.5);
+  assert.equal(sync.records[0].channels.ebay.sku, "SKU-1");
 });
