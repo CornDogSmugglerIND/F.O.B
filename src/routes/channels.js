@@ -2,9 +2,9 @@ import { Router } from "express";
 import { getCanonicalInventory, getChannelStatuses } from "../channels/config.js";
 import { applySale } from "../channels/sync.js";
 import { publishListing } from "../channels/adapters.js";
-import { probeEbay } from "../channels/ebay.js";
+import { probeEbay, syncEbayInventory } from "../channels/ebay.js";
 import { probeMisprint } from "../channels/misprint.js";
-import { getScoutItem, updateScoutItem } from "../store.js";
+import { getScoutItem, updateScoutItem, listScoutItems, createScoutItem } from "../store.js";
 
 export function channelsRouter() {
   const router = Router();
@@ -18,8 +18,7 @@ export function channelsRouter() {
   });
 
   /**
-   * Inventory sync kick — requires eBay secrets (ported from Base44).
-   * Returns honest status when not configured.
+   * Inventory sync — pull eBay offers into HUD store when configured.
    */
   router.post("/ebay/sync", async (_req, res, next) => {
     try {
@@ -33,10 +32,56 @@ export function channelsRouter() {
           missing: ebay?.missing || [],
         });
       }
-      const probe = await probeEbay();
-      res.json({ ok: true, probe, note: "Auth ok — full listing pull lands next slice" });
+
+      const sync = await syncEbayInventory({ limit: 50 });
+      const existing = await listScoutItems();
+      const byEbaySku = new Map();
+      for (const it of existing) {
+        const sku = it.channels?.ebay?.sku;
+        if (sku) byEbaySku.set(sku, it);
+      }
+
+      let created = 0;
+      let updated = 0;
+      for (const rec of sync.records) {
+        const hit = byEbaySku.get(rec.sku);
+        if (hit) {
+          await updateScoutItem(hit.id, {
+            title: rec.title,
+            price: rec.price,
+            quantity: rec.quantity,
+            staged: false,
+            phase: "listed",
+            channels: rec.channels,
+            notes: hit.notes || "ebay-sync",
+          });
+          updated += 1;
+        } else {
+          await createScoutItem({
+            title: rec.title,
+            productName: rec.title,
+            price: rec.price,
+            quantity: Math.max(1, rec.quantity || 1),
+            staged: false,
+            phase: "listed",
+            channels: rec.channels,
+            notes: "ebay-sync",
+            lookupSource: "ebay_inventory",
+          });
+          created += 1;
+        }
+      }
+
+      res.json({
+        ok: true,
+        pulled: sync.pulled,
+        offerTotal: sync.offerTotal,
+        inventoryTotal: sync.inventoryTotal,
+        created,
+        updated,
+      });
     } catch (err) {
-      if (err.code === "CHANNEL_NOT_CONFIGURED" || err.code === "EBAY_AUTH_FAILED") {
+      if (err.code === "CHANNEL_NOT_CONFIGURED" || err.code === "EBAY_AUTH_FAILED" || err.code === "EBAY_API_ERROR") {
         return res.status(503).json({ ok: false, error: err.message, code: err.code });
       }
       next(err);

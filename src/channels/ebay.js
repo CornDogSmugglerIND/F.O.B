@@ -301,3 +301,96 @@ export async function endEbayListing(payload, opts = {}) {
   });
   return { channelId: "ebay", listingId: payload.listingId, status: "ended" };
 }
+
+/**
+ * Pull inventory items (paginated).
+ * @param {{ limit?: number, offset?: number, fetchImpl?: typeof fetch }} [opts]
+ */
+export async function listEbayInventoryItems(opts = {}) {
+  const limit = Math.min(200, Math.max(1, Number(opts.limit) || 50));
+  const offset = Math.max(0, Number(opts.offset) || 0);
+  const { data } = await ebayRequest(
+    `/sell/inventory/v1/inventory_item?limit=${limit}&offset=${offset}`,
+    { fetchImpl: opts.fetchImpl },
+  );
+  return {
+    items: data?.inventoryItems || [],
+    total: data?.total ?? (data?.inventoryItems || []).length,
+    limit,
+    offset,
+  };
+}
+
+/**
+ * Pull offers (listings) — includes price, qty, listingId.
+ * @param {{ limit?: number, offset?: number, fetchImpl?: typeof fetch }} [opts]
+ */
+export async function listEbayOffers(opts = {}) {
+  const limit = Math.min(200, Math.max(1, Number(opts.limit) || 50));
+  const offset = Math.max(0, Number(opts.offset) || 0);
+  const marketplaceId = ebayMarketplaceId();
+  const { data } = await ebayRequest(
+    `/sell/inventory/v1/offer?limit=${limit}&offset=${offset}&marketplace_id=${encodeURIComponent(marketplaceId)}`,
+    { fetchImpl: opts.fetchImpl },
+  );
+  return {
+    offers: data?.offers || [],
+    total: data?.total ?? (data?.offers || []).length,
+    limit,
+    offset,
+  };
+}
+
+/**
+ * Sync first page of eBay offers into HUD-shaped records (no secrets returned).
+ * @param {{ limit?: number, fetchImpl?: typeof fetch }} [opts]
+ */
+export async function syncEbayInventory(opts = {}) {
+  const [offersPage, itemsPage] = await Promise.all([
+    listEbayOffers({ limit: opts.limit || 50, fetchImpl: opts.fetchImpl }),
+    listEbayInventoryItems({ limit: opts.limit || 50, fetchImpl: opts.fetchImpl }),
+  ]);
+
+  const bySku = Object.fromEntries(
+    (itemsPage.items || []).map((it) => [it.sku, it]),
+  );
+
+  const records = (offersPage.offers || []).map((offer) => {
+    const inv = bySku[offer.sku] || {};
+    const product = inv.product || {};
+    const price = offer.pricingSummary?.price?.value ?? offer.price?.value ?? null;
+    const qty =
+      offer.availableQuantity ??
+      inv.availability?.shipToLocationAvailability?.quantity ??
+      1;
+    return {
+      sku: offer.sku,
+      title: product.title || offer.sku,
+      price: price != null ? Number(price) : null,
+      quantity: Math.max(0, Number(qty) || 0),
+      offerId: offer.offerId,
+      listingId: offer.listing?.listingId || offer.listingId || null,
+      status: offer.status || offer.listing?.listingStatus || "active",
+      imageUrl: product.imageUrls?.[0] || null,
+      phase: "listed",
+      staged: false,
+      channels: {
+        ebay: {
+          listingId: offer.listing?.listingId || offer.offerId,
+          offerId: offer.offerId,
+          sku: offer.sku,
+          price: price != null ? Number(price) : null,
+          status: offer.status || "active",
+        },
+      },
+    };
+  });
+
+  return {
+    ok: true,
+    pulled: records.length,
+    offerTotal: offersPage.total,
+    inventoryTotal: itemsPage.total,
+    records,
+  };
+}

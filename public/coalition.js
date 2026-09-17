@@ -410,8 +410,41 @@ async function syncEbay() {
       toast(body.error || "eBay sync not configured yet — Base44 link still being ported");
       return;
     }
-    toast("eBay sync ok");
+    // Merge server-side sync into phone store for Channels tab
+    try {
+      const listRes = await fetch("/api/scouter/items");
+      if (listRes.ok) {
+        const remote = await listRes.json();
+        const rows = Array.isArray(remote) ? remote : remote.items || [];
+        for (const r of rows) {
+          if (!r.channels?.ebay) continue;
+          const sku = r.channels.ebay.sku;
+          const idx = state.items.findIndex(
+            (i) => i.channels?.ebay?.sku === sku || i.id === r.id
+          );
+          const mapped = {
+            id: r.id,
+            title: r.title || r.productName,
+            productName: r.productName || r.title,
+            quantity: r.quantity || 1,
+            price: r.price,
+            phase: r.phase || "listed",
+            staged: false,
+            spaceId: r.spaceId || null,
+            channels: r.channels,
+            photos: (r.photos || [])
+              .filter((p) => p.dataUrl || p.url)
+              .map((p) => ({ id: p.id, dataUrl: p.dataUrl || p.url })),
+          };
+          if (idx >= 0) state.items[idx] = { ...state.items[idx], ...mapped };
+          else state.items.unshift(mapped);
+        }
+        saveItems();
+      }
+    } catch { /* local-only ok */ }
+    toast(`eBay sync · ${body.pulled || 0} pulled`);
     probeEbay();
+    render();
   } catch {
     toast("eBay sync failed — check channel config");
   }
