@@ -2,39 +2,33 @@
 
 ## Sawyer reply format (ALWAYS)
 
-Every reply to Sawyer uses this baseline. No exceptions. No “casual mode.”
+### Flow (same order every time)
+
+1. **Topic** — one line: what this reply is about  
+2. **Takeaway** — one line: the point / what to do  
+3. **Detail** — short blocks, only if needed  
+4. **Ask** — one Yes/No max (omit if none)
 
 ### Rules
-- Need-to-know only. Zero filler. Zero apology paragraphs. Zero “fair / you’re right / here’s the thing.”
-- ADHD-friendly: tables, flows, short bullets. Prefer tables over prose.
-- One idea per block. No mush paragraphs.
-- Never dump old links next to new ones unless he asked for a comparison.
-- Never say “waiting on you” / “blocked on you.”
-- Max one clear ask at the end (Yes/No or one action).
+- Lead with topic + takeaway. Never bury the point.
+- Need-to-know only. No filler. No apology essays.
+- Tables / flows only when they clarify (links, status, steps). Not every sentence in a grid.
+- One link when one link is the answer. Don’t pair old + new unless he asked.
+- Never “waiting on you” / “blocked on you.”
+- ADHD-friendly = clear flow first, visuals second — not a wall of tables.
 
-### Skeleton (use every time)
+### Skeleton
 
 ```markdown
-# TITLE
+## Topic
+…
 
-## Status
-| Item | State |
-|---|---|
+## Takeaway
+…
 
-## Link(s)
-| Use | URL |
-|---|---|
-
-## Do this
-1. …
-2. …
-
-## Not live yet
-| Thing | Note |
-|---|---|
+## Detail
+… (bullets / one small table / one flow — only if useful)
 
 ## Ask
-**…?** → Yes / No
+**…?** Yes / No
 ```
-
-Drop sections that don’t apply. Keep the ones that do. Same shape every reply.
