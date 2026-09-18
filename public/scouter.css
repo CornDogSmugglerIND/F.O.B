@@ -702,8 +702,8 @@ body.handheld {
 
 .hh-actions {
   display: grid;
-  grid-template-columns: 1.15fr 1fr;
-  gap: 10px;
+  grid-template-columns: 0.85fr 1.3fr 0.85fr;
+  gap: 8px;
   margin-bottom: 12px;
 }
 
