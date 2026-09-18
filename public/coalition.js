@@ -153,15 +153,19 @@ function renderCommand() {
   const sitrep = $("sitrepList");
   if (sitrep) {
     const rows = [
-      { n: reviewN || intakeN, title: "Scans needing review", hint: "Low confidence or unidentified", goto: "scouter", tone: "amber" },
-      { n: builtN, title: "Built, not published", hint: "Listing ready — push to channel", goto: "channels", tone: "amber" },
-      { n: needsBin, title: "Needs bin", hint: "No Spaces location yet", goto: "spaces", tone: "amber" },
-      { n: shipN, title: "Ready to ship", hint: "Sold / packed awaiting dropoff", goto: "map", tone: "cyan" },
-    ];
+      { n: reviewN || intakeN, title: "Scans needing review", hint: "Low confidence or unidentified", goto: "scouter" },
+      { n: builtN, title: "Built, not published", hint: "Listing ready — push to channel", goto: "channels" },
+      { n: needsBin, title: "Needs bin", hint: "No Spaces location yet", goto: "spaces" },
+      { n: shipN, title: "Ready to ship", hint: "Sold / packed awaiting dropoff", goto: "map" },
+    ].map((r) => ({
+      ...r,
+      // Amber only when the row is actually urgent (count > 0); cyan default
+      tone: r.n > 0 ? "amber" : "cyan",
+    }));
     sitrep.innerHTML = rows
       .map(
         (r) => `<div class="sitrep-row" data-goto="${r.goto}">
-          <div class="sitrep-n${r.tone === "cyan" ? " cyan" : ""}">${String(r.n).padStart(2, "0")}</div>
+          <div class="sitrep-n${r.tone === "amber" ? " amber" : " cyan"}">${String(r.n).padStart(2, "0")}</div>
           <div><strong>${r.title}</strong><span>${r.hint}</span></div>
           <svg class="sitrep-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
         </div>`

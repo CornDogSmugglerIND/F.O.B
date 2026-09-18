@@ -166,9 +166,10 @@ Merged with his eBay store's **metal / dark teal** aesthetic.
 - Avoid the desaturated "blue colored pencil" look.
 
 **Type**
-- **Orbitron**: chrome only. Uppercase, letterspaced, ≤ 3 words. Counters, status, tab labels.
-- **Rajdhani**: everything else.
-- **Orbitron inside a sentence is the single fastest way to look amateur.** It is the difference between a HUD and a gamer template.
+- **IBM Plex Mono**: chrome only. Uppercase, letterspaced, ≤ 3 words. Counters, status, tab labels.
+- **IBM Plex Sans**: everything else.
+- **Mono inside a sentence is the single fastest way to look amateur.** It is the difference between a HUD and a gamer template.
+- (Historical note: early drafts named Orbitron/Rajdhani; live Visor tokens use IBM Plex — keep tokens.css / tokens.js as source of truth.)
 
 **Motion**
 - 180–240ms, `cubic-bezier(0.2, 0.8, 0.2, 1)`. Nothing snaps.
