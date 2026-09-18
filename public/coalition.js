@@ -71,6 +71,62 @@ function uid() {
   return crypto.randomUUID ? crypto.randomUUID() : `i_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
+function seedDemoIfEmpty() {
+  if (state.items.length) return;
+  const pack = "/demo/pack-silver-tempest.jpg";
+  const now = new Date().toISOString();
+  state.items = [
+    {
+      id: uid(),
+      createdAt: now,
+      updatedAt: now,
+      title: "Silver Tempest Booster Pack",
+      productName: "Silver Tempest Booster Pack",
+      setName: "Silver Tempest",
+      quantity: 2,
+      price: 4.5,
+      phase: "intake",
+      staged: false,
+      spaceId: null,
+      channels: {},
+      photos: [{ id: uid(), dataUrl: pack, createdAt: now }],
+    },
+    {
+      id: uid(),
+      createdAt: now,
+      updatedAt: now,
+      title: "Pitch Black Booster Pack",
+      productName: "Pitch Black Booster Pack",
+      setName: "Pitch Black",
+      quantity: 1,
+      price: 5.0,
+      phase: "intake",
+      staged: false,
+      spaceId: null,
+      channels: {},
+      photos: [{ id: uid(), dataUrl: pack, createdAt: now }],
+    },
+    {
+      id: uid(),
+      createdAt: now,
+      updatedAt: now,
+      title: "Morpeko ex Pitch Black SIR",
+      productName: "Morpeko ex",
+      setName: "Pitch Black",
+      collectorNumber: "167/131",
+      quantity: 1,
+      price: 42.0,
+      phase: "staged",
+      staged: true,
+      spaceId: null,
+      channels: {},
+      photos: [{ id: uid(), dataUrl: pack, createdAt: now }],
+      notes: "demo-seed",
+    },
+  ];
+  saveItems();
+}
+
 async function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -863,6 +919,7 @@ async function boot() {
   state.items = loadItems();
   state.spaces = loadSpaces();
   saveSpaces();
+  seedDemoIfEmpty();
   bind();
   const start = location.hash.replace(/^#\/?/, "") || "command";
   navigate(VIEWS.includes(start) ? start : "command");
