@@ -73,7 +73,7 @@ body::after {
 }
 .panel > * { position: relative; z-index: 2; }
 
-/* Amber corner brackets (Base44 SITREP) */
+/* Amber + cyan dual corner brackets (Base44 SITREP) */
 .bracket::before {
   content: "";
   position: absolute;
@@ -84,7 +84,7 @@ body::after {
   pointer-events: none;
   z-index: 3;
 }
-.bracket-tl::before {
+.bracket-tl::after {
   content: "";
   position: absolute;
   top: -1px; left: -1px;

@@ -1,7 +1,7 @@
 import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=1";
 
-const LS_ITEMS = "coalition-items-v1";
-const LS_SPACES = "coalition-spaces-v1";
+const LS_ITEMS = "coalition-items-v3";
+const LS_SPACES = "coalition-spaces-v3";
 const VIEWS = ["command", "scouter", "map", "spaces", "channels", "settings"];
 
 const state = {
@@ -79,11 +79,11 @@ function seedDemoIfEmpty() {
       id: uid(),
       createdAt: now,
       updatedAt: now,
-      title: "Silver Tempest Booster Pack",
-      productName: "Silver Tempest Booster Pack",
-      setName: "Silver Tempest",
+      title: "Pikachu VMAX Jumbo",
+      productName: "Pikachu VMAX [Jumbo]",
+      setName: "Pokemon Promo",
       quantity: 2,
-      price: 4.5,
+      price: 48.87,
       phase: "intake",
       staged: false,
       spaceId: null,
@@ -94,11 +94,11 @@ function seedDemoIfEmpty() {
       id: uid(),
       createdAt: now,
       updatedAt: now,
-      title: "Pitch Black Booster Pack",
-      productName: "Pitch Black Booster Pack",
-      setName: "Pitch Black",
+      title: "Deluxe Battle Deck Meowscarada",
+      productName: "Deluxe Battle Deck",
+      setName: "Scarlet & Violet",
       quantity: 1,
-      price: 5.0,
+      price: 34.0,
       phase: "intake",
       staged: false,
       spaceId: null,
@@ -109,12 +109,11 @@ function seedDemoIfEmpty() {
       id: uid(),
       createdAt: now,
       updatedAt: now,
-      title: "Morpeko ex Pitch Black SIR",
-      productName: "Morpeko ex",
-      setName: "Pitch Black",
-      collectorNumber: "167/131",
+      title: "Chaos Rising Elite Trainer Box",
+      productName: "Chaos Rising ETB",
+      setName: "Mega Evolution",
       quantity: 1,
-      price: 42.0,
+      price: 68.13,
       phase: "staged",
       staged: true,
       spaceId: null,
