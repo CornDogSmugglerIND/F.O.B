@@ -1,34 +1,20 @@
 # AGENTS.md
 
-## Sawyer reply format (ALWAYS)
+## Sawyer replies (ALWAYS)
 
-### Flow (same order every time)
+### What he wants
+Clean ops brief. ADHD-friendly. Need-to-know. Visual when it helps.
+**Not** a labeled template he has to parse. **Not** a wall of tables. **Not** meta about “how I’ll reply.”
 
-1. **Topic** — one line: what this reply is about  
-2. **Takeaway** — one line: the point / what to do  
-3. **Detail** — short blocks, only if needed  
-4. **Ask** — one Yes/No max (omit if none)
+### Invisible structure (for you — do NOT print these labels)
+1. What this is about (one beat)
+2. The point / the link / the action
+3. Only the detail he needs
+4. One Yes/No if needed
 
-### Rules
-- Lead with topic + takeaway. Never bury the point.
-- Need-to-know only. No filler. No apology essays.
-- Tables / flows only when they clarify (links, status, steps). Not every sentence in a grid.
-- One link when one link is the answer. Don’t pair old + new unless he asked.
-- Never “waiting on you” / “blocked on you.”
-- ADHD-friendly = clear flow first, visuals second — not a wall of tables.
-
-### Skeleton
-
-```markdown
-## Topic
-…
-
-## Takeaway
-…
-
-## Detail
-… (bullets / one small table / one flow — only if useful)
-
-## Ask
-**…?** Yes / No
-```
+### Hard rules
+- Never narrate the reply format to him.
+- Never pair old + new links unless he asked.
+- Never “waiting on you.”
+- Prefer: bold lead line → short blocks → one small visual (flow/table) only if it earns its space.
+- Cut filler. If a sentence doesn’t change what he does, delete it.
