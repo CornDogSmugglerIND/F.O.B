@@ -516,16 +516,29 @@ input[type="file"] { display: none; }
 }
 .map-route {
   position: absolute;
-  left: 20px; right: 20px;
+  left: 18px; right: 18px;
   top: 48%;
-  height: 3px;
-  border-radius: 2px;
+  height: 4px;
+  border-radius: 4px;
   background: linear-gradient(90deg,
-    rgba(var(--hud-amber-rgb), 0.15),
-    var(--hud-amber) 30%,
-    var(--hud-amber-hot) 70%,
-    rgba(255,255,255,0.85));
-  box-shadow: 0 0 16px rgba(var(--hud-amber-rgb), 0.45);
+    rgba(var(--hud-amber-rgb), 0.2),
+    var(--hud-amber) 25%,
+    var(--hud-amber-hot) 65%,
+    rgba(255,255,255,0.9));
+  box-shadow:
+    0 0 12px rgba(var(--hud-amber-rgb), 0.55),
+    0 0 28px rgba(var(--hud-amber-rgb), 0.25);
+}
+.map-route::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  width: 10px; height: 10px;
+  transform: translateY(-50%);
+  background: #fff;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  box-shadow: 0 0 10px rgba(255,255,255,0.6);
 }
 .map-nodes {
   position: relative;
@@ -773,11 +786,42 @@ input[type="file"] { display: none; }
 }
 .channel-card .art {
   position: relative;
-  aspect-ratio: 1 / 1.15;
+  aspect-ratio: 1 / 1.05;
   background:
-    linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.85)),
+    linear-gradient(180deg, transparent 35%, rgba(0,0,0,0.88)),
     #0a0b0e;
   overflow: hidden;
+}
+.channel-card .art.tone-ebay {
+  background:
+    linear-gradient(160deg, rgba(0, 80, 160, 0.55), rgba(8, 10, 14, 0.95) 70%),
+    #0a0b0e;
+}
+.channel-card .art.tone-dh {
+  background:
+    linear-gradient(160deg, rgba(180, 40, 120, 0.5), rgba(8, 10, 14, 0.95) 70%),
+    #0a0b0e;
+}
+.channel-card .art.tone-shop {
+  background:
+    linear-gradient(160deg, rgba(80, 160, 90, 0.45), rgba(8, 10, 14, 0.95) 70%),
+    #0a0b0e;
+}
+.channel-card .art.tone-mp {
+  background:
+    linear-gradient(160deg, rgba(var(--hud-amber-rgb), 0.35), rgba(8, 10, 14, 0.95) 70%),
+    #0a0b0e;
+}
+.channel-card .art-mark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--hud-font-chrome);
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.22);
 }
 .channel-card .art img {
   width: 100%; height: 100%;
@@ -794,7 +838,8 @@ input[type="file"] { display: none; }
   font-weight: 700;
   letter-spacing: 0.06em;
   color: #fff;
-  background: rgba(180, 40, 120, 0.92);
+  background: rgba(20, 22, 28, 0.85);
+  border: 1px solid rgba(255,255,255,0.18);
   border-radius: 3px;
 }
 .channel-card .body { padding: 10px 11px 12px; }
@@ -815,7 +860,7 @@ input[type="file"] { display: none; }
 .channel-card .price {
   margin-top: 8px;
   font-family: var(--hud-font-chrome);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--hud-ok);
 }

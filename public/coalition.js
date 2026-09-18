@@ -345,25 +345,59 @@ function renderChannels() {
   const cards = listed.length
     ? listed
     : [
-        { id: "_demo_ebay", title: "eBay sync", productName: "Connect to pull live listings", price: 0, demo: true },
-        { id: "_demo_dh", title: "Double Holo", productName: "Vendor hub mirror", price: 0, demo: true },
-        { id: "_demo_shop", title: "Shopify", productName: "Claude holds store connection", price: 0, demo: true },
+        {
+          id: "_demo_ebay",
+          title: "eBay",
+          productName: "Live inventory sync",
+          price: 0,
+          demo: true,
+          tone: "ebay",
+          badge: "PORT",
+        },
+        {
+          id: "_demo_dh",
+          title: "Double Holo",
+          productName: "Vendor hub mirror",
+          price: 0,
+          demo: true,
+          tone: "dh",
+          badge: "HUB",
+        },
+        {
+          id: "_demo_shop",
+          title: "Shopify",
+          productName: "Claude holds connection",
+          price: 0,
+          demo: true,
+          tone: "shop",
+          badge: "LIVE",
+        },
+        {
+          id: "_demo_mp",
+          title: "Misprint",
+          productName: "Key ready · base URL next",
+          price: 0,
+          demo: true,
+          tone: "mp",
+          badge: "KEY",
+        },
       ];
   grid.innerHTML = cards
     .slice(0, 12)
     .map((it) => {
       const src = it.photos?.[0]?.dataUrl;
       const status = it.demo ? "Channel" : listingStatusLabel(it);
-      const badge = it.demo ? "SYNC" : it.condition || it.grade || "NM";
+      const badge = it.demo ? it.badge || "SYNC" : it.condition || it.grade || "NM";
+      const artClass = it.demo ? `art tone-${it.tone || "ebay"}` : "art";
       return `<button type="button" class="channel-card" data-item="${it.demo ? "" : it.id}">
-        <div class="art">
-          ${src ? `<img src="${src}" alt="" />` : ""}
+        <div class="${artClass}">
+          ${src ? `<img src="${src}" alt="" />` : `<div class="art-mark">${escapeHtml((it.title || "?").slice(0, 2).toUpperCase())}</div>`}
           <span class="badge">${escapeHtml(badge)}</span>
         </div>
         <div class="body">
           <h3>${escapeHtml(it.title || it.productName || "Listing")}</h3>
           <p>${escapeHtml(it.setName || it.productName || (it.demo ? "Channel surface" : status))}</p>
-          <div class="price">${it.demo ? "—" : money(it.price || 0)}</div>
+          <div class="price">${it.demo ? "Connect" : money(it.price || 0)}</div>
         </div>
       </button>`;
     })
