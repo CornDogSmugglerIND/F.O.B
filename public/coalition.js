@@ -73,7 +73,6 @@ function uid() {
 
 function seedDemoIfEmpty() {
   if (state.items.length) return;
-  const pack = "/demo/pack-silver-tempest.jpg";
   const now = new Date().toISOString();
   state.items = [
     {
@@ -89,7 +88,7 @@ function seedDemoIfEmpty() {
       staged: false,
       spaceId: null,
       channels: {},
-      photos: [{ id: uid(), dataUrl: pack, createdAt: now }],
+      photos: [{ id: uid(), dataUrl: "/demo/pack-silver-tempest.jpg", createdAt: now }],
     },
     {
       id: uid(),
@@ -104,7 +103,7 @@ function seedDemoIfEmpty() {
       staged: false,
       spaceId: null,
       channels: {},
-      photos: [{ id: uid(), dataUrl: pack, createdAt: now }],
+      photos: [{ id: uid(), dataUrl: "/demo/pack-pitch-black.jpg", createdAt: now }],
     },
     {
       id: uid(),
@@ -120,7 +119,7 @@ function seedDemoIfEmpty() {
       staged: true,
       spaceId: null,
       channels: {},
-      photos: [{ id: uid(), dataUrl: pack, createdAt: now }],
+      photos: [{ id: uid(), dataUrl: "/demo/card-morpeko.jpg", createdAt: now }],
       notes: "demo-seed",
     },
   ];
