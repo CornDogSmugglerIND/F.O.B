@@ -1,7 +1,7 @@
-/* Visor tokens — Base44 DNA: near-black + restrained amber. No teal primary. No muddy brown. */
+/* Visor tokens — synced with src/visor/tokens.js */
 :root {
   --hud-bg: #050507;
-  --hud-panel: rgba(12, 12, 16, 0.72);
+  --hud-panel: rgba(14, 17, 19, 0.78);
   --hud-raised: rgba(18, 18, 24, 0.85);
   --hud-amber: #f2a03d;
   --hud-amber-hot: #ffc46b;
@@ -16,7 +16,6 @@
   --hud-ok: #6ecf8e;
   --hud-blur: 18px;
   --hud-cut: 12px;
-  --hud-cut-sm: 8px;
   --hud-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --hud-duration: 220ms;
   --hud-font-chrome: "JetBrains Mono", ui-monospace, monospace;

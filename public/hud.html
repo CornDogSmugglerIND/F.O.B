@@ -8,18 +8,24 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>Coalition H.U.D</title>
   <link rel="manifest" href="/manifest.json" />
-  <link rel="stylesheet" href="/coalition.css?v=2" />
+  <link rel="stylesheet" href="/coalition.css?v=3" />
 </head>
 <body>
   <div class="hud-app" id="app">
     <header class="hud-edge">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div class="hud-mark" aria-hidden="true">C</div>
-        <div class="hud-brand-block">
+      <div class="hud-edge-top">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="hud-mark" aria-hidden="true">C</div>
           <div class="hud-brand">Coalition <span>H.U.D</span></div>
         </div>
+        <div class="hud-pill" id="ebayPill"><span class="dot"></span><span id="ebayPillLabel">EBAY OFFLINE</span></div>
       </div>
-      <div class="hud-pill" id="ebayPill"><span class="dot"></span><span id="ebayPillLabel">EBAY OFFLINE</span></div>
+      <div class="stat-row">
+        <div class="stat"><div class="n" id="statToList">00</div><div class="k chrome">To list</div></div>
+        <div class="stat"><div class="n" id="statNeedsBin">00</div><div class="k chrome">Needs bin</div></div>
+        <div class="stat"><div class="n" id="statListed">00</div><div class="k chrome">Listed</div></div>
+        <div class="stat"><div class="n" id="statInventory">00</div><div class="k chrome">Inventory</div></div>
+      </div>
     </header>
 
     <nav class="hud-nav" aria-label="Coalition">
@@ -53,13 +59,6 @@
       <section class="view active" id="view-command">
         <div class="chrome">Command Core</div>
         <h1 class="h1">SITREP</h1>
-        <p class="lead">Pipeline and blockers at a glance.</p>
-        <div class="stat-row">
-          <div class="stat"><div class="n" id="statToList">00</div><div class="k chrome">To list</div></div>
-          <div class="stat"><div class="n" id="statNeedsBin">00</div><div class="k chrome">Needs bin</div></div>
-          <div class="stat"><div class="n" id="statListed">00</div><div class="k chrome">Listed</div></div>
-          <div class="stat"><div class="n" id="statInventory">00</div><div class="k chrome">Inventory</div></div>
-        </div>
         <div class="panel v-panel v-cut">
           <div class="chrome" style="margin-bottom:8px">Attention</div>
           <div id="sitrepList"></div>
@@ -67,7 +66,6 @@
         <div class="panel v-panel v-cut" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
           <div>
             <div class="chrome">Pipeline · Time in stage</div>
-            <div style="margin-top:4px;font-size:14px;color:var(--hud-text-dim)">Open the constellation roadmap</div>
           </div>
           <button type="button" class="btn btn-amber" id="btnOpenMap">Open Map</button>
         </div>
@@ -106,7 +104,6 @@
       <section class="view" id="view-map">
         <div class="chrome">Constellation</div>
         <h1 class="h1">Map</h1>
-        <p class="lead">Roadmap start → finish. Tap a node. Tap an item to half-zoom.</p>
         <div class="map-path panel v-panel v-cut">
           <div class="map-line"></div>
           <div class="map-nodes" id="mapNodes"></div>
@@ -121,7 +118,6 @@
       <section class="view" id="view-spaces">
         <div class="chrome">Physical mirror</div>
         <h1 class="h1">Spaces</h1>
-        <p class="lead">Bins separate from the spine. Real photos when you add them.</p>
         <div class="spaces-field" id="spacesField"></div>
         <div class="pool" id="unsortedPool">Unsorted pool</div>
       </section>
@@ -129,7 +125,6 @@
       <section class="view" id="view-channels">
         <div class="chrome">Selling surfaces</div>
         <h1 class="h1">Channels</h1>
-        <p class="lead">Riot store grid. Sync · qty · variations · combine.</p>
         <div class="channel-toolbar">
           <button type="button" class="btn btn-amber" id="btnEbaySync">Sync eBay</button>
           <button type="button" class="btn btn-ghost" id="btnLoadAllSold2" onclick="document.getElementById('btnLoadAllSold').click()">Load sold avgs</button>
@@ -137,7 +132,7 @@
           <button type="button" class="btn btn-amber" id="btnCombineRun" hidden>Combine selected</button>
           <button type="button" class="btn btn-ghost" id="btnCombineCancel" hidden>Cancel</button>
         </div>
-        <p class="chrome" id="combineHint" style="margin:0 0 10px" hidden>Select 2+ staged cards → Pick Your Card CSV</p>
+        <p class="chrome" id="combineHint" style="margin:0 0 10px" hidden>Select 2+ staged → Pick Your Card CSV</p>
         <div class="channel-grid" id="channelGrid"></div>
         <div class="panel v-panel v-cut" id="combinePool" style="margin-top:14px" hidden>
           <div class="chrome" style="margin-bottom:8px">Staged pool</div>
@@ -196,6 +191,6 @@
   </div>
 
   <div class="toast" id="toast" role="status"></div>
-  <script type="module" src="/coalition.js?v=6"></script>
+  <script type="module" src="/coalition.js?v=7"></script>
 </body>
 </html>
