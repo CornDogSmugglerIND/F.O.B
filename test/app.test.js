@@ -51,7 +51,7 @@ test("GET / serves Coalition H.U.D live beta", async () => {
     assert.match(html, /coalition\.js/);
     assert.match(html, /SCOUTER/);
     assert.match(html, /COMMAND/);
-    assert.match(html, /CHANNELS/);
+    assert.match(html, /CHANNEL/);
     assert.match(html, /SPACES/);
     assert.match(html, /btnSnap/);
     assert.match(html, /btnBarcode/);

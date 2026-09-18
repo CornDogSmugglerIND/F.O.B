@@ -1,23 +1,26 @@
-/* Visor tokens — keep in sync with src/visor/tokens.js */
+/* Visor tokens — Base44 DNA: near-black + restrained amber. No teal primary. No muddy brown. */
 :root {
-  --hud-bg: #07080a;
-  --hud-panel: #0e1113;
-  --hud-raised: #151a1d;
+  --hud-bg: #050507;
+  --hud-panel: rgba(12, 12, 16, 0.72);
+  --hud-raised: rgba(18, 18, 24, 0.85);
   --hud-amber: #f2a03d;
   --hud-amber-hot: #ffc46b;
   --hud-amber-dim: rgba(242, 160, 61, 0.34);
-  --hud-teal: #2e6b6e;
-  --hud-teal-dim: rgba(46, 107, 110, 0.3);
-  --hud-text: #e8edef;
-  --hud-text-dim: #8a959b;
-  --hud-text-mute: #5a6469;
+  --hud-amber-rgb: 242, 160, 61;
+  --hud-cyan: #8ec8d4;
+  --hud-cyan-dim: rgba(142, 200, 212, 0.35);
+  --hud-text: #f2f3f5;
+  --hud-text-dim: #9aa3ab;
+  --hud-text-mute: #6b737a;
   --hud-danger: #e85a6b;
-  --hud-ok: #6ba3a6;
-  --hud-blur: 14px;
-  --hud-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --hud-ok: #6ecf8e;
+  --hud-blur: 18px;
+  --hud-cut: 12px;
+  --hud-cut-sm: 8px;
+  --hud-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --hud-duration: 220ms;
-  --hud-font-chrome: "Orbitron", sans-serif;
-  --hud-font-body: "Rajdhani", sans-serif;
+  --hud-font-chrome: "JetBrains Mono", ui-monospace, monospace;
+  --hud-font-body: "Segoe UI", "Helvetica Neue", ui-sans-serif, system-ui, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
