@@ -74,30 +74,23 @@ body::after {
 .panel > * { position: relative; z-index: 2; }
 
 /* Amber corner brackets (Base44 SITREP) */
-.bracket {
-  position: relative;
-}
-.bracket::before,
-.bracket::after {
+.bracket::before {
   content: "";
   position: absolute;
-  width: 14px;
-  height: 14px;
+  top: -1px; right: -1px;
+  width: 16px; height: 16px;
+  border-top: 2px solid var(--hud-amber);
+  border-right: 2px solid var(--hud-amber);
   pointer-events: none;
   z-index: 3;
 }
-.bracket::before {
-  top: -1px; right: -1px;
-  border-top: 2px solid var(--hud-amber);
-  border-right: 2px solid var(--hud-amber);
-}
-.bracket-tl::after {
-  top: -1px; left: -1px;
-  border-top: 2px solid var(--hud-cyan);
-  border-left: 2px solid var(--hud-cyan);
-  width: 14px; height: 14px;
+.bracket-tl::before {
   content: "";
   position: absolute;
+  top: -1px; left: -1px;
+  width: 16px; height: 16px;
+  border-top: 2px solid var(--hud-cyan);
+  border-left: 2px solid var(--hud-cyan);
   pointer-events: none;
   z-index: 3;
 }
