@@ -1,5 +1,22 @@
 # AGENTS.md
 
+## HARD GATE — Cursor + Claude (ALWAYS)
+
+**Do not deliver a build to Sawyer unless Claude has peer-checked it (and the reverse).**
+No “I’ll wait for Claude” then solo-shipping anyway. That is how the brown/MSN shell got to him.
+
+Flow:
+```
+plan → Cursor builds slice → Claude reviews (or Claude builds → Cursor reviews)
+     → both sign off → then Sawyer sees it
+```
+
+If Claude’s job errors: **stop and re-ping / fix the wire.** Do not “just ship.”
+
+Visual / HUD chrome especially: must be checked against Sawyer’s photo dump + Base44 DNA before any handoff link.
+
+---
+
 ## Sawyer replies (ALWAYS)
 
 ### What he wants
