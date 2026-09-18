@@ -145,7 +145,7 @@ Keep these in **one tokens module, imported everywhere** — the `visor.js` patt
 - 1px hairline + blur(14px) on panels; 2–3% noise; glow at 8–12% via box-shadow only
 - 180–240ms motion, `cubic-bezier(0.2, 0.8, 0.2, 1)`
 - **Every space and tab needs an obvious way to back out**
-- Camera-first on Scouter — the viewport IS the screen, chrome overlays it
+- Scouter = Photo SNAP + Barcode buttons + little package cards (not camera-as-screen)
 
 ---
 

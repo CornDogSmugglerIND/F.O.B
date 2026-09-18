@@ -65,27 +65,28 @@ Context for that question: eBay Developer API keys already exist. Perplexity was
 
 ---
 
-# 3. SCOUTER — restructure, then skin
+# 3. SCOUTER — handheld intake (buttons + package cards)
 
-**Goal:** the intake surface Sawyer will actually pick up his phone and use.
+**Goal:** the intake surface Sawyer picks up when he’s not at the desktop.
 
-- **Camera-first.** The live viewport IS the screen; chrome overlays it. Not stacked form sections above a "Start intake" button.
-- Three modes, one surface: **Single** · **Batch** (dump a pile → select ~5 → one item) · **Import** (CSV / TCGAutomate / ES-580W).
+- **NOT camera-as-the-whole-screen.** Sawyer hard-killed that (2026-09). Scouter = **Photo / SNAP** + **Scan / BARCODE** buttons, with **little package/product photo cards** in intake steps (Base44 DNA).
+- Three modes, one surface: **Single** · **Batch** · **Import** (CSV / TCGAutomate / ES-580W).
 - Quick front + back for a single item.
 - Writes `Staged`. **Does not ask which bin. Does not list.**
 - Remove "Rail" and "On rail" — not his words.
 - Offline capable, no Base44 dependency.
-- **Now** apply the token set, hairlines, blur, noise, easing.
+- Apply the token set, hairlines, blur, noise, easing.
 
 **Gate — all must be true:**
-- [ ] Opens to a live camera viewport, not a form
+- [ ] Photo SNAP + Scan BARCODE are the primary actions (not a full-screen live camera as the UI)
+- [ ] Items show as little package/product cards in steps
 - [ ] One thumb reaches every primary action
 - [ ] Amber under 10% of screen area, no gold buttons, no gradients
 - [ ] Zero Orbitron inside any sentence
 - [ ] Every panel has a 1px hairline + backdrop blur; noise overlay present
 - [ ] Nothing snaps — everything eases 180–240ms
 - [ ] Obvious way to back out of every space
-- [ ] Photo dump works: pile → select 5 → one item
+- [ ] Photo dump / batch works
 - [ ] Zero instances of: deploy, archive, purge, supply, rail
 - [ ] Does not look like a web page in a dark theme
 
@@ -187,7 +188,7 @@ Value / collection lens over Inventory. Shiny Pro and Collectr influence.
 0. tokens + phases modules          small, do it first
 1. IDENTIFY                         <- ASK ABOUT PROVIDER, THEN STOP
 2. item record + Inventory
-3. Scouter restructure, then skin
+3. Scouter handheld (SNAP + barcode + package cards)
 4. spine / constellation
 5. listing engine                   <- ASK ABOUT PRICING CONFLICT
 6. channels (eBay first)

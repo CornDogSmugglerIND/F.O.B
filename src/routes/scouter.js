@@ -245,5 +245,51 @@ export function scouterRouter() {
     }
   });
 
+  /** Bake listing fields from locked engine rules. */
+  router.post("/items/:id/listing-engine", async (req, res, next) => {
+    try {
+      const { runListingEngine, LISTING_CONFIG } = await import("../listing/engine.js");
+      const item = await getScoutItem(req.params.id);
+      if (!item) return res.status(404).json({ error: "Item not found" });
+      const mode = req.body?.mode === "variation" ? "variation" : "regular";
+      const soldAvg = req.body?.soldAvg != null ? Number(req.body.soldAvg) : null;
+      if (req.body?.baseline === "tcgplayer_market" || req.body?.baseline === "sold_comps") {
+        LISTING_CONFIG.activeBaseline = req.body.baseline;
+      }
+      const listing = runListingEngine(item, { mode, soldAvg });
+      const updated = await updateScoutItem(item.id, {
+        title: listing.title,
+        description: listing.description,
+        price: listing.suggestedPrice ?? item.price,
+        notes: item.notes,
+      });
+      res.json({ item: updated, listing });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  /** CSV export — ebay | double_holo | tcgplayer */
+  router.get("/export.csv", async (req, res, next) => {
+    try {
+      const { exportCsv } = await import("../listing/csv.js");
+      const format = String(req.query.format || "tcgplayer");
+      let items = await listScoutItems();
+      if (req.query.staged === "1") items = items.filter((i) => i.staged);
+      const csv = exportCsv(format, items);
+      const name =
+        format === "ebay"
+          ? "ebay-file-exchange.csv"
+          : format === "double_holo"
+            ? "double-holo.csv"
+            : "tcg-generic.csv";
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${name}"`);
+      res.send(csv);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   return router;
 }

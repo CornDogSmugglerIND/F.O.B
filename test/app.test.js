@@ -41,69 +41,57 @@ test("GET /api/health reports scouter", async () => {
   }
 });
 
-test("GET / serves Scouter frontend", async () => {
+test("GET / serves Coalition H.U.D live beta", async () => {
   const { baseUrl, close } = await startServer();
   try {
     const res = await fetch(`${baseUrl}/`);
     const html = await res.text();
-    assert.match(html, /Coalition H\.U\.D/);
-    assert.match(html, /Stage item/);
+    assert.match(html, /Coalition H\.U\.D|Coalition <span>H\.U\.D/);
+    assert.match(html, /coalition\.css/);
+    assert.match(html, /coalition\.js/);
     assert.match(html, /SCOUTER/);
-    assert.match(html, /hh-viewfinder/);
-    assert.match(html, /scouter\.css\?v=26/);
-    assert.match(html, /stagedFlag/);
-    assert.match(html, /CAPTURE/);
-    assert.match(html, /btnIdentify/);
-    assert.match(html, /SCAN/);
-    assert.match(html, /Lookup/);
-    assert.match(html, /hh-barcode-block/);
-    assert.match(html, />\s*Staged\s*</);
+    assert.match(html, /COMMAND/);
+    assert.match(html, /CHANNEL/);
+    assert.match(html, /SPACES/);
+    assert.match(html, /btnSnap/);
+    assert.match(html, /btnBarcode/);
+    assert.match(html, /SNAP/);
+    assert.match(html, /BARCODE/);
+    assert.match(html, /map-path|Constellation|Open Map/);
     assert.doesNotMatch(html, />RAIL</);
-    assert.doesNotMatch(html, />\s*Rail\s*</);
     assert.doesNotMatch(html, /Add to rail/i);
-    assert.doesNotMatch(html, /Filter rail/i);
-    assert.doesNotMatch(html, /Drop a folder of scans/);
-    assert.doesNotMatch(html, />Export</);
-    assert.doesNotMatch(html, />Import</);
+    assert.doesNotMatch(html, /base44\/shell\.js/);
   } finally {
     await close();
   }
 });
 
-test("CAPTURE uses amber hairline, not a school-bus yellow fill", async () => {
+test("coalition.css uses Visor amber tokens, not school-bus gold", async () => {
   const { baseUrl, close } = await startServer();
   try {
-    const res = await fetch(`${baseUrl}/scouter.css`);
-    const css = await res.text();
-    const goldRule = css.match(/\.hh-act-gold\s*\{[^}]+\}/);
-    assert.ok(goldRule, "expected .hh-act-gold rule");
-    assert.doesNotMatch(goldRule[0], /#f5c518/i);
-    assert.doesNotMatch(goldRule[0], /#ffe566/i);
-    assert.match(goldRule[0], /242,\s*160,\s*61/);
+    const css = await (await fetch(`${baseUrl}/coalition.css`)).text();
+    const tokens = await (await fetch(`${baseUrl}/visor/tokens.css`)).text();
+    assert.match(css, /visor\/tokens\.css/);
+    assert.match(tokens, /--hud-amber:\s*#f2a03d/i);
+    assert.doesNotMatch(css + tokens, /#f5c518/i);
+    assert.doesNotMatch(css + tokens, /#ffe566/i);
   } finally {
     await close();
   }
 });
 
-test("GET /hud.html serves Coalition H.U.D shell", async () => {
+test("GET /hud.html twins index Coalition H.U.D", async () => {
   const { baseUrl, close } = await startServer();
   try {
     const res = await fetch(`${baseUrl}/hud.html`);
     const html = await res.text();
     assert.equal(res.status, 200);
-    assert.match(html, /Coalition H\.U\.D/);
-    assert.match(html, /hud-visor\.js/);
-    assert.match(html, /data-go="scan"/);
-    assert.match(html, /Scouter/);
-    assert.match(html, /stagedFlag/);
-    assert.match(html, /hh-viewfinder/);
-    assert.match(html, /btnIdentify/);
-    assert.match(html, /hh-barcode-block/);
-    assert.match(html, /Lookup/);
-    assert.match(html, /Export staged/);
-    assert.doesNotMatch(html, /Drop a folder of scans/);
-    assert.doesNotMatch(html, /Command Core/);
-    assert.doesNotMatch(html, /readyToList/);
+    assert.match(html, /Coalition/);
+    assert.match(html, /coalition\.js/);
+    assert.match(html, /Scouter|SCOUTER/);
+    assert.match(html, /Command Core|COMMAND/);
+    assert.match(html, /btnSnap/);
+    assert.doesNotMatch(html, /base44\/shell\.js/);
   } finally {
     await close();
   }
@@ -304,6 +292,43 @@ test("POST /api/channels/sale subtracts qty on canonical inventory", async () =>
     assert.equal(sale.item.quantity, 1);
     assert.equal(sale.item.lastSaleChannel, "ebay");
     assert.ok(Array.isArray(sale.fanout));
+  } finally {
+    await close();
+  }
+});
+
+test("POST /api/channels/ebay/combine builds Pick Your Card CSV", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const res = await fetch(`${baseUrl}/api/channels/ebay/combine`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: [
+          { productName: "Gloom", collectorNumber: "002", setName: "Ascended Heroes", rarity: "Common", price: 1.5 },
+          { productName: "Oddish", collectorNumber: "001", setName: "Ascended Heroes", rarity: "Common", price: 1.2 },
+        ],
+      }),
+    });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.match(body.title, /Pick Your Card/);
+    assert.equal(body.childCount, 2);
+    assert.equal(body.parent.variationParent, true);
+    assert.match(body.csv, /^\uFEFFInfo,/);
+  } finally {
+    await close();
+  }
+});
+
+test("HUD Channels expose combine batch controls", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const html = await (await fetch(`${baseUrl}/hud.html`)).text();
+    assert.match(html, /btnCombineMode/);
+    assert.match(html, /btnCombineRun/);
+    assert.match(html, /combineGrid/);
   } finally {
     await close();
   }
