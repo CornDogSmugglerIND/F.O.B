@@ -1,25 +1,30 @@
-/* Visor tokens — synced with src/visor/tokens.js */
+/* Visor tokens — Base44 DNA. Amber is rare. Panels are solid, not wire. */
 :root {
-  --hud-bg: #050507;
-  --hud-panel: rgba(14, 17, 19, 0.78);
-  --hud-raised: rgba(18, 18, 24, 0.85);
-  --hud-amber: #f2a03d;
-  --hud-amber-hot: #ffc46b;
-  --hud-amber-dim: rgba(242, 160, 61, 0.34);
-  --hud-amber-rgb: 242, 160, 61;
-  --hud-cyan: #8ec8d4;
-  --hud-cyan-dim: rgba(142, 200, 212, 0.35);
-  --hud-text: #f2f3f5;
-  --hud-text-dim: #9aa3ab;
-  --hud-text-mute: #6b737a;
-  --hud-danger: #e85a6b;
-  --hud-ok: #6ecf8e;
-  --hud-blur: 18px;
-  --hud-cut: 12px;
+  --hud-bg: #030304;
+  --hud-bg-lift: #08090c;
+  --hud-panel: #0c0e12;
+  --hud-panel-2: #111318;
+  --hud-raised: #16191f;
+  --hud-line: rgba(255, 255, 255, 0.08);
+  --hud-line-strong: rgba(255, 255, 255, 0.14);
+  --hud-amber: #e8a045;
+  --hud-amber-hot: #ffb95a;
+  --hud-amber-soft: rgba(232, 160, 69, 0.12);
+  --hud-amber-rgb: 232, 160, 69;
+  --hud-cyan: #9ec9d4;
+  --hud-cyan-soft: rgba(158, 201, 212, 0.14);
+  --hud-text: #eef0f3;
+  --hud-text-dim: #8b939c;
+  --hud-text-mute: #5c646c;
+  --hud-danger: #d45a68;
+  --hud-danger-soft: rgba(212, 90, 104, 0.14);
+  --hud-ok: #5dce8a;
+  --hud-blur: 22px;
+  --hud-radius: 2px;
   --hud-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --hud-duration: 220ms;
-  --hud-font-chrome: "JetBrains Mono", ui-monospace, monospace;
-  --hud-font-body: "Segoe UI", "Helvetica Neue", ui-sans-serif, system-ui, sans-serif;
+  --hud-duration: 200ms;
+  --hud-font-chrome: "IBM Plex Mono", ui-monospace, monospace;
+  --hud-font-body: "IBM Plex Sans", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }

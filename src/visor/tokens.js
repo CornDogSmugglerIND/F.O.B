@@ -1,26 +1,27 @@
 /**
  * Visor materials — single source of truth (Base44 visor.js pattern).
- * design/COMMAND-BRAIN.md §6 / BASE44-TRUTH.md §5.2
  * Synced with public/visor/tokens.css
+ * Amber is rare accent — never the wireframe color.
  */
 export const VISOR = Object.freeze({
-  bg: "#050507",
-  panel: "rgba(12,12,16,0.72)",
-  raised: "rgba(18,18,24,0.85)",
-  amber: "#F2A03D",
-  amberHot: "#FFC46B",
-  amberDim: "rgba(242,160,61,0.34)",
-  cyan: "#8EC8D4",
-  cyanDim: "rgba(142,200,212,0.35)",
-  text: "#F2F3F5",
-  textDim: "#9AA3AB",
-  textMute: "#6B737A",
-  danger: "#E85A6B",
-  ok: "#6ECF8E",
-  blur: "18px",
-  cut: "12px",
+  bg: "#030304",
+  bgLift: "#08090c",
+  panel: "#0c0e12",
+  panel2: "#111318",
+  raised: "#16191f",
+  line: "rgba(255,255,255,0.08)",
+  amber: "#E8A045",
+  amberHot: "#FFB95A",
+  amberSoft: "rgba(232,160,69,0.12)",
+  cyan: "#9EC9D4",
+  text: "#EEF0F3",
+  textDim: "#8B939C",
+  textMute: "#5C646C",
+  danger: "#D45A68",
+  ok: "#5DCE8A",
+  blur: "22px",
   ease: "cubic-bezier(0.22, 1, 0.36, 1)",
-  duration: "220ms",
-  fontChrome: '"JetBrains Mono", ui-monospace, monospace',
-  fontBody: '"Segoe UI", "Helvetica Neue", ui-sans-serif, system-ui, sans-serif',
+  duration: "200ms",
+  fontChrome: '"IBM Plex Mono", ui-monospace, monospace',
+  fontBody: '"IBM Plex Sans", "Segoe UI", ui-sans-serif, system-ui, sans-serif',
 });

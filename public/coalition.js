@@ -45,16 +45,20 @@ function saveItems() {
 
 function defaultSpaces() {
   return [
-    { id: "bin1", name: "Bin 1", kind: "ebay_listed", itemIds: [], cover: null },
-    { id: "bin2", name: "Bin 2", kind: "ebay_listed", itemIds: [], cover: null },
-    { id: "staged", name: "Staged / Unlisted", kind: "staged", itemIds: [], cover: null },
+    { id: "bin1", name: "Bin 1", kind: "ebay_listed", itemIds: [], cover: "/spaces/bin1.jpg" },
+    { id: "bin2", name: "Bin 2", kind: "ebay_listed", itemIds: [], cover: "/spaces/bin2.jpg" },
+    { id: "staged", name: "Staged", kind: "staged", itemIds: [], cover: "/spaces/staged.jpg" },
   ];
 }
 
 function loadSpaces() {
   try {
     const raw = JSON.parse(localStorage.getItem(LS_SPACES) || "null");
-    if (Array.isArray(raw) && raw.length) return raw;
+    if (Array.isArray(raw) && raw.length) {
+      // Ensure covers land for older saves
+      const defaults = Object.fromEntries(defaultSpaces().map((s) => [s.id, s]));
+      return raw.map((s) => ({ ...defaults[s.id], ...s, cover: s.cover || defaults[s.id]?.cover || null }));
+    }
   } catch { /* ignore */ }
   return defaultSpaces();
 }
@@ -102,40 +106,92 @@ function scouterValue() {
     .reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
 }
 
+function setStat(id, value, { hotWhen = 0, cyan = false } = {}) {
+  const el = $(id);
+  if (!el) return;
+  const n = Number(value) || 0;
+  el.textContent = String(n).padStart(2, "0");
+  el.classList.toggle("hot", !cyan && n > hotWhen);
+  el.classList.toggle("cyan", Boolean(cyan) && n > 0);
+}
+
+function stageValue(phaseId) {
+  return state.items
+    .filter((i) => phaseFromItem(i) === phaseId)
+    .reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
+}
+
+function oldestAge(phaseId) {
+  const items = state.items.filter((i) => phaseFromItem(i) === phaseId);
+  if (!items.length) return "—";
+  let oldest = Date.now();
+  for (const it of items) {
+    const t = Date.parse(it.createdAt || it.updatedAt || "") || Date.now();
+    if (t < oldest) oldest = t;
+  }
+  const days = Math.max(0, Math.floor((Date.now() - oldest) / 86400000));
+  if (days <= 0) return "Today";
+  return `Oldest ${days}d`;
+}
+
 function renderCommand() {
   const c = countsByPhase();
   const toList = c.staged || 0;
   const listed = c.listed || 0;
   const inventory = state.items.length;
   const needsBin = state.items.filter((i) => !i.spaceId && phaseFromItem(i) !== "listed").length;
+  const intakeN = c.intake || 0;
+  const reviewN = state.items.filter((i) => phaseFromItem(i) === "intake" && !i.productName).length;
+  const builtN = toList;
+  const shipN = (c.sold || 0) + (c.packed || 0);
 
-  if ($("statToList")) $("statToList").textContent = String(toList).padStart(2, "0");
-  if ($("statNeedsBin")) $("statNeedsBin").textContent = String(needsBin).padStart(2, "0");
-  if ($("statListed")) $("statListed").textContent = String(listed).padStart(2, "0");
-  if ($("statInventory")) $("statInventory").textContent = String(inventory).padStart(2, "0");
+  setStat("statToList", toList);
+  setStat("statNeedsBin", needsBin);
+  setStat("statListed", listed, { cyan: true });
+  setStat("statInventory", inventory, { cyan: true });
 
   const sitrep = $("sitrepList");
-  if (!sitrep) return;
-  const rows = [];
-  const intakeN = c.intake || 0;
-  if (intakeN) rows.push({ n: intakeN, title: "On intake", hint: "Needs identity or photos" });
-  if (toList) rows.push({ n: toList, title: "Staged, not listed", hint: "Ready for listing engine" });
-  if (needsBin) rows.push({ n: needsBin, title: "Needs bin", hint: "No Spaces location yet" });
-  if (!rows.length) {
-    sitrep.innerHTML = `<div class="sitrep-row"><div><strong>All clear</strong><span>Nothing is blocked.</span></div></div>`;
-    return;
+  if (sitrep) {
+    const rows = [
+      { n: reviewN || intakeN, title: "Scans needing review", hint: "Low confidence or unidentified", goto: "scouter", tone: "amber" },
+      { n: builtN, title: "Built, not published", hint: "Listing ready — push to channel", goto: "channels", tone: "amber" },
+      { n: needsBin, title: "Needs bin", hint: "No Spaces location yet", goto: "spaces", tone: "amber" },
+      { n: shipN, title: "Ready to ship", hint: "Sold / packed awaiting dropoff", goto: "map", tone: "cyan" },
+    ];
+    sitrep.innerHTML = rows
+      .map(
+        (r) => `<div class="sitrep-row" data-goto="${r.goto}">
+          <div class="sitrep-n${r.tone === "cyan" ? " cyan" : ""}">${String(r.n).padStart(2, "0")}</div>
+          <div><strong>${r.title}</strong><span>${r.hint}</span></div>
+          <svg class="sitrep-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+        </div>`
+      )
+      .join("");
+    sitrep.querySelectorAll("[data-goto]").forEach((el) =>
+      el.addEventListener("click", () => navigate(el.dataset.goto))
+    );
   }
-  sitrep.innerHTML = rows
-    .map(
-      (r) => `<div class="sitrep-row" data-goto="scouter">
-        <div class="sitrep-n">${String(r.n).padStart(2, "0")}</div>
-        <div><strong>${r.title}</strong><span>${r.hint}</span></div>
-      </div>`
-    )
-    .join("");
-  sitrep.querySelectorAll("[data-goto]").forEach((el) =>
-    el.addEventListener("click", () => navigate(el.dataset.goto))
-  );
+
+  const pipe = $("pipelineCards");
+  if (pipe) {
+    const sorted = c.intake || 0;
+    const photos = state.items.filter((i) => (i.photos || []).length > 0 && phaseFromItem(i) !== "listed").length;
+    pipe.innerHTML = `
+      <div class="pipe-card">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8h16v11H4zM8 8V6h8v2"/></svg>
+        <div class="lbl">SORTED</div>
+        <div class="big">${String(sorted).padStart(2, "0")}</div>
+        <div class="cash">${money(stageValue("intake"))}</div>
+        <div class="age">${oldestAge("intake")}</div>
+      </div>
+      <div class="pipe-card">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8h3l2-2h6l2 2h3v11H4V8z"/><circle cx="12" cy="14" r="3"/></svg>
+        <div class="lbl">PHOTOS TAKEN</div>
+        <div class="big">${String(photos).padStart(2, "0")}</div>
+        <div class="cash">${money(stageValue("staged") + stageValue("intake"))}</div>
+        <div class="age">${oldestAge("staged")}</div>
+      </div>`;
+  }
 }
 
 function renderScouter() {
@@ -158,7 +214,7 @@ function paintPkgs(rootId, items) {
   const root = $(rootId);
   if (!root) return;
   if (!items.length) {
-    root.innerHTML = `<div class="pkg empty" aria-hidden="true">?</div>`;
+    root.innerHTML = `<div class="pkg empty" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 014.5 1.5c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg></div>`;
     return;
   }
   root.innerHTML = items
@@ -167,7 +223,7 @@ function paintPkgs(rootId, items) {
       const src = it.photos?.[0]?.dataUrl || "";
       const qty = Number(it.quantity) || 1;
       return `<button type="button" class="pkg" data-item="${it.id}">
-        ${src ? `<img src="${src}" alt="" />` : `<div class="pkg empty">■</div>`}
+        ${src ? `<img src="${src}" alt="" />` : `<div class="pkg empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="14" height="14" rx="1"/></svg></div>`}
         ${qty > 1 ? `<span class="qty">x${qty}</span>` : ""}
       </button>`;
     })
@@ -201,7 +257,7 @@ function renderMap() {
   if (!list) return;
   const items = state.items.filter((i) => phaseFromItem(i) === phase.id);
   if (!items.length) {
-    list.innerHTML = `<p class="lead">Nothing in ${phase.label} yet.</p>`;
+    list.innerHTML = `<div class="empty-quiet">Nothing in ${escapeHtml(phase.label)} yet</div>`;
     return;
   }
   list.innerHTML = items
@@ -209,11 +265,11 @@ function renderMap() {
       const src = it.photos?.[0]?.dataUrl || "";
       const status = listingStatusLabel(it);
       return `<button type="button" class="item-card" data-item="${it.id}">
-        ${src ? `<img src="${src}" alt="" />` : `<div></div>`}
+        ${src ? `<img src="${src}" alt="" />` : `<div class="ph"></div>`}
         <div><h3>${escapeHtml(it.title || it.productName || "Untitled")}</h3>
         <p>${escapeHtml(phase.label)}${it.spaceId ? ` · ${escapeHtml(spaceName(it.spaceId))}` : ""}</p>
         <span class="listing-status">${escapeHtml(status)}</span></div>
-        <div class="chrome">${money(it.price || 0)}</div>
+        <div class="price-col">${money(it.price || 0)}</div>
       </button>`;
     })
     .join("");
@@ -227,26 +283,36 @@ function spaceName(id) {
 }
 
 function renderSpaces() {
-  const field = $("spacesField");
-  if (!field) return;
-  field.innerHTML = state.spaces
-    .map((sp) => {
-      const n = state.items.filter((i) => i.spaceId === sp.id).length;
-      return `<button type="button" class="space-tile" data-space="${sp.id}">
-        ${sp.cover ? `<img src="${sp.cover}" alt="" />` : ""}
-        <div class="cap">
-          <div class="chrome">${escapeHtml(sp.kind || "space")}</div>
-          <h3>${escapeHtml(sp.name)}</h3>
-          <p class="chrome" style="margin-top:8px">${String(n).padStart(2, "0")} items</p>
-        </div>
-      </button>`;
-    })
-    .join("");
+  const nodes = $("spacesNodes");
   const unsorted = state.items.filter((i) => !i.spaceId);
+  const filed = state.items.filter((i) => i.spaceId);
+  setStat("statSubLoc", state.spaces.length, { cyan: true });
+  setStat("statItemsHere", filed.length, { cyan: true });
+  const unsortedEl = $("statUnsorted");
+  if (unsortedEl) {
+    unsortedEl.textContent = String(unsorted.length).padStart(2, "0");
+    unsortedEl.classList.add("alert");
+  }
+
+  if (nodes) {
+    nodes.innerHTML = state.spaces
+      .map((sp) => {
+        const n = state.items.filter((i) => i.spaceId === sp.id).length;
+        const cover = sp.cover
+          ? `<img src="${sp.cover}" alt="" />`
+          : `<div class="ph-bin">${escapeHtml(sp.name).toUpperCase()}</div>`;
+        return `<button type="button" class="space-node" data-space="${sp.id}">
+          <div class="frame">${cover}</div>
+          <div class="tag">${escapeHtml(sp.name)}<em>${String(n).padStart(2, "0")}</em></div>
+        </button>`;
+      })
+      .join("");
+  }
+
   if ($("unsortedPool")) {
-    $("unsortedPool").textContent = unsorted.length
-      ? `${unsorted.length} unsorted — assign from the item card`
-      : "Unsorted pool is empty";
+    $("unsortedPool").innerHTML = unsorted.length
+      ? `<strong>UNSORTED</strong>${unsorted.length} item${unsorted.length === 1 ? "" : "s"} — assign from the item card`
+      : `<strong>UNSORTED</strong>Pool empty`;
   }
 }
 
@@ -288,13 +354,16 @@ function renderChannels() {
     .map((it) => {
       const src = it.photos?.[0]?.dataUrl;
       const status = it.demo ? "Channel" : listingStatusLabel(it);
+      const badge = it.demo ? "SYNC" : it.condition || it.grade || "NM";
       return `<button type="button" class="channel-card" data-item="${it.demo ? "" : it.id}">
-        <div class="art">${src ? `<img src="${src}" alt="" style="width:100%;height:100%;object-fit:cover;opacity:.45" />` : ""}</div>
+        <div class="art">
+          ${src ? `<img src="${src}" alt="" />` : ""}
+          <span class="badge">${escapeHtml(badge)}</span>
+        </div>
         <div class="body">
           <h3>${escapeHtml(it.title || it.productName || "Listing")}</h3>
           <p>${escapeHtml(it.setName || it.productName || (it.demo ? "Channel surface" : status))}</p>
-          <span class="listing-status">${escapeHtml(status)}</span>
-          <div class="price">${it.demo ? "SYNC" : money(it.price || 0)}</div>
+          <div class="price">${it.demo ? "—" : money(it.price || 0)}</div>
         </div>
       </button>`;
     })
@@ -331,7 +400,7 @@ function renderCombinePool() {
   const grid = $("combineGrid");
   if (!grid) return;
   if (!candidates.length) {
-    grid.innerHTML = `<p class="lead">Stage cards in Scouter first, then combine.</p>`;
+    grid.innerHTML = `<div class="empty-quiet">Stage cards in Scouter first, then combine</div>`;
     return;
   }
   grid.innerHTML = candidates
@@ -725,6 +794,7 @@ function bind() {
 
   $("btnEbaySync")?.addEventListener("click", syncEbay);
   $("btnLoadAllSold")?.addEventListener("click", loadAllSold);
+  $("btnLoadAllSold2")?.addEventListener("click", loadAllSold);
   $("btnOpenMap")?.addEventListener("click", () => navigate("map"));
   $("btnCombineMode")?.addEventListener("click", () => {
     navigate("channels");
