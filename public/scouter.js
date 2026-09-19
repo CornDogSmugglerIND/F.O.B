@@ -531,9 +531,10 @@ async function saveCapture() {
     saveLocalItems(state.items);
 
     // Finish local UX immediately — never wait on network for staged handoff
+    // Stay on Scout after saving — don't yank the user to the Staged tab mid-rip.
+    // They tap "Staged" themselves when they actually want to see the list.
     loadItems();
     resetCapture();
-    navigate("collection");
     showToast(item.staged ? "Staged" : "Saved");
     els.btnSave.disabled = false;
     els.btnSave.textContent = "Stage item";
