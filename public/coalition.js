@@ -1,7 +1,8 @@
 import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=1";
 
-const LS_ITEMS = "coalition-items-v3";
-const LS_SPACES = "coalition-spaces-v3";
+const LS_ITEMS = "coalition-items-v4";
+const LS_SPACES = "coalition-spaces-v4";
+const DEMO_SEED_FLAG = "coalition-demo-seed-v4";
 const VIEWS = ["command", "scouter", "map", "spaces", "channels", "settings"];
 
 const state = {
@@ -72,41 +73,66 @@ function uid() {
 }
 
 function seedDemoIfEmpty() {
-  if (state.items.length) return;
+  // Force photo-filled demo once per v4 key so first paint never shows empty 00 wireframe.
+  const forced = !localStorage.getItem(DEMO_SEED_FLAG);
+  if (state.items.length && !forced) return;
   const now = new Date().toISOString();
+  const idPika = uid();
+  const idPack = uid();
+  const idDeck = uid();
+  const idEtb = uid();
+  const idDest = uid();
   state.items = [
     {
-      id: uid(),
+      id: idPika,
       createdAt: now,
       updatedAt: now,
       title: "Pikachu VMAX Jumbo",
       productName: "Pikachu VMAX [Jumbo]",
       setName: "Pokemon Promo",
       quantity: 2,
-      price: 48.87,
+      price: 49.97,
       phase: "intake",
       staged: false,
       spaceId: null,
       channels: {},
       photos: [{ id: uid(), dataUrl: "/demo/pack-silver-tempest.jpg", createdAt: now }],
+      notes: "demo-seed",
     },
     {
-      id: uid(),
+      id: idPack,
+      createdAt: now,
+      updatedAt: now,
+      title: "Pitch Black Booster",
+      productName: "Mega Evolution Pitch Black",
+      setName: "Mega Evolution",
+      quantity: 2,
+      price: 6.49,
+      phase: "intake",
+      staged: false,
+      spaceId: null,
+      channels: {},
+      photos: [{ id: uid(), dataUrl: "/demo/pack-pitch-black.jpg", createdAt: now }],
+      notes: "demo-seed",
+    },
+    {
+      id: idDeck,
       createdAt: now,
       updatedAt: now,
       title: "Deluxe Battle Deck Meowscarada",
       productName: "Deluxe Battle Deck",
       setName: "Scarlet & Violet",
       quantity: 1,
-      price: 34.0,
+      price: 35.5,
       phase: "intake",
       staged: false,
-      spaceId: null,
+      spaceId: "bin1",
       channels: {},
-      photos: [{ id: uid(), dataUrl: "/demo/pack-pitch-black.jpg", createdAt: now }],
+      photos: [{ id: uid(), dataUrl: "/demo/card-morpeko.jpg", createdAt: now }],
+      notes: "demo-seed",
     },
     {
-      id: uid(),
+      id: idEtb,
       createdAt: now,
       updatedAt: now,
       title: "Chaos Rising Elite Trainer Box",
@@ -116,13 +142,35 @@ function seedDemoIfEmpty() {
       price: 68.13,
       phase: "staged",
       staged: true,
-      spaceId: null,
+      spaceId: "staged",
       channels: {},
-      photos: [{ id: uid(), dataUrl: "/demo/card-morpeko.jpg", createdAt: now }],
+      photos: [{ id: uid(), dataUrl: "/demo/etb-chaos-rising.jpg", createdAt: now }],
+      notes: "demo-seed",
+    },
+    {
+      id: idDest,
+      createdAt: now,
+      updatedAt: now,
+      title: "Destined Rivals Elite Trainer Box",
+      productName: "Destined Rivals ETB",
+      setName: "Destined Rivals",
+      quantity: 1,
+      price: 115.53,
+      phase: "listed",
+      staged: true,
+      spaceId: "bin2",
+      channels: { ebay: { status: "active", listingId: "demo-listed-1" } },
+      photos: [{ id: uid(), dataUrl: "/demo/etb-destined.jpg", createdAt: now }],
       notes: "demo-seed",
     },
   ];
+  state.spaces = defaultSpaces().map((sp) => {
+    const ids = state.items.filter((i) => i.spaceId === sp.id).map((i) => i.id);
+    return { ...sp, itemIds: ids };
+  });
   saveItems();
+  saveSpaces();
+  localStorage.setItem(DEMO_SEED_FLAG, "1");
 }
 
 async function fileToDataUrl(file) {
@@ -236,14 +284,14 @@ function renderCommand() {
     const photos = state.items.filter((i) => (i.photos || []).length > 0 && phaseFromItem(i) !== "listed").length;
     pipe.innerHTML = `
       <div class="pipe-card">
-        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8h16v11H4zM8 8V6h8v2"/></svg>
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 8h16v11H4zM8 8V6h8v2"/></svg>
         <div class="lbl">SORTED</div>
         <div class="big">${String(sorted).padStart(2, "0")}</div>
         <div class="cash">${money(stageValue("intake"))}</div>
         <div class="age">${oldestAge("intake")}</div>
       </div>
       <div class="pipe-card">
-        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8h3l2-2h6l2 2h3v11H4V8z"/><circle cx="12" cy="14" r="3"/></svg>
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 8h3l2-2h6l2 2h3v11H4V8z"/><circle cx="12" cy="14" r="3"/></svg>
         <div class="lbl">PHOTOS TAKEN</div>
         <div class="big">${String(photos).padStart(2, "0")}</div>
         <div class="cash">${money(stageValue("staged") + stageValue("intake"))}</div>

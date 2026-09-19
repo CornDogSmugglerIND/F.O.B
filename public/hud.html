@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>Coalition H.U.D</title>
   <link rel="manifest" href="/manifest.json" />
-  <link rel="stylesheet" href="/coalition.css?v=9" />
+  <link rel="stylesheet" href="/coalition.css?v=10" />
 </head>
 <body>
   <div class="hud-app" id="app">
@@ -47,12 +47,12 @@
       <section class="view" id="view-scouter">
         <div class="scout-actions">
           <button type="button" class="scout-btn primary" id="btnSnap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 8h3l2-2h6l2 2h3v12H4V8z"/><circle cx="12" cy="14" r="3.5"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15"><path d="M4 8h3l2-2h6l2 2h3v12H4V8z"/><circle cx="12" cy="14" r="3.5"/></svg>
             <span class="big">Photo</span>
             <span class="sub">SNAP</span>
           </button>
           <button type="button" class="scout-btn" id="btnBarcode">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6v12M7 6v12M10 6v12M12 6v12M15 6v12M18 6v12M20 6v12"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15"><path d="M4 6v12M7 6v12M10 6v12M12 6v12M15 6v12M18 6v12M20 6v12"/></svg>
             <span class="big">Scan</span>
             <span class="sub">BARCODE</span>
           </button>
@@ -75,7 +75,7 @@
           <div class="step-head">
             <div class="left">
               <div class="ico-box" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/></svg>
               </div>
               <div>
                 <div class="chrome">STEP 1 · INTAKE</div>
@@ -91,7 +91,7 @@
           <div class="step-head">
             <div class="left">
               <div class="ico-box" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 5h14v14H5zM8 9h8M8 12h8M8 15h5"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M5 5h14v14H5zM8 9h8M8 12h8M8 15h5"/></svg>
               </div>
               <div>
                 <div class="chrome">STEP 2 · BUILD</div>
@@ -123,14 +123,6 @@
           <div class="stat"><div class="k">UNSORTED</div><div class="n alert" id="statUnsorted">00</div></div>
         </div>
         <div class="spaces-field" id="spacesField">
-          <svg class="arcs" viewBox="0 0 400 280" preserveAspectRatio="none" aria-hidden="true">
-            <ellipse cx="200" cy="140" rx="150" ry="90" fill="none" stroke="rgba(158,201,212,0.18)" stroke-width="1"/>
-            <ellipse cx="200" cy="140" rx="110" ry="60" fill="none" stroke="rgba(232,160,69,0.22)" stroke-width="1.5"/>
-            <circle cx="90" cy="140" r="4" fill="#e8a045"/>
-            <circle cx="200" cy="55" r="3.5" fill="#e8a045"/>
-            <circle cx="310" cy="140" r="4" fill="#e8a045"/>
-            <circle cx="200" cy="225" r="3.5" fill="#e8a045"/>
-          </svg>
           <div class="spaces-nodes" id="spacesNodes"></div>
         </div>
         <div class="pool" id="unsortedPool"><strong>UNSORTED</strong>Pool empty</div>
@@ -224,6 +216,6 @@
   </div>
 
   <div class="toast" id="toast" role="status"></div>
-  <script type="module" src="/coalition.js?v=13"></script>
+  <script type="module" src="/coalition.js?v=14"></script>
 </body>
 </html>
