@@ -1,0 +1,37 @@
+TCGAutomate Template — Pokemon Pick Your Card NM
+CornDogSmuggler Coalition
+
+=== TEMPLATE NAME ===
+Pokemon Pick Your Card NM
+
+=== TITLE (paste into TCG Automate) ===
+Pokemon TCG {{setName}} Singles NM - Pick Your Card
+
+=== DESCRIPTION (paste into TCG Automate) ===
+Pick your card from this Pokemon TCG {{setName}} Near Mint singles listing.
+
+Choose the exact card from the dropdown. Every option is a raw English {{setName}} single, Near Mint, shipped sleeved and toploaded.
+
+This listing is for one card per purchase. Want more than one? Order each card separately from the dropdown.
+
+Game: Pokemon TCG
+Set: {{setName}}
+Card Type: Singles
+Condition: Near Mint (NM)
+Language: English
+Finish: As listed per variation
+Graded: No
+
+Available cards are in the dropdown — each option shows the card name and number. That selection is the exact card you receive.
+
+CornDogSmuggler Coalition — Operating To Marine Corps Standards.
+
+=== HOW THIS WORKS ===
+- TCG Automate fills {{setName}} (and other tokens) from the batch.
+- It does NOT loop every variation into the description text.
+- The card list buyers pick from is the eBay variation dropdown TCG Automate builds in the CSV.
+- Do not paste notes, "repeat", or fake card blocks into the description field.
+
+=== IF YOU WANT EVERY CARD NAMED IN THE DESCRIPTION BODY ===
+That is separate from this template — TCG Automate has no "list all variations" token.
+Say the word and we can build a generator that dumps the batch card list into the description before upload (better for search / AI shopping).
