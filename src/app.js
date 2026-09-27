@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { scouterRouter } from "./routes/scouter.js";
 import { channelsRouter } from "./routes/channels.js";
+import { ariRouter } from "./routes/ari.js";
 import { getUploadsDir } from "./store.js";
 import { getChannelStatuses } from "./channels/config.js";
 
@@ -25,6 +26,7 @@ export function createApp() {
 
   app.use("/api/scouter", scouterRouter());
   app.use("/api/channels", channelsRouter());
+  app.use("/api/identify", ariRouter());
   app.use("/uploads", express.static(getUploadsDir()));
   app.use(express.static(join(__dirname, "..", "public")));
 

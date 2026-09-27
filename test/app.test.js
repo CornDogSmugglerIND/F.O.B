@@ -217,6 +217,10 @@ test("barcode lookup returns structured response", async () => {
 });
 
 test("Identify is photo-first and does not accept barcode as a path", async () => {
+  // This test covers the direct (anthropic) provider path's photo-first gate.
+  // The A.R.I. queue path's honest-failure behavior is covered in ariQueue.test.js.
+  const prevProvider = process.env.IDENTIFY_PROVIDER;
+  process.env.IDENTIFY_PROVIDER = "anthropic";
   const { baseUrl, close } = await startServer();
   try {
     const empty = await fetch(`${baseUrl}/api/scouter/identify`, {
@@ -258,6 +262,8 @@ test("Identify is photo-first and does not accept barcode as a path", async () =
     assert.ok(statusBody.paths.includes("manual"));
     assert.ok(!statusBody.paths.includes("barcode"));
   } finally {
+    if (prevProvider === undefined) delete process.env.IDENTIFY_PROVIDER;
+    else process.env.IDENTIFY_PROVIDER = prevProvider;
     await close();
   }
 });

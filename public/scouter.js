@@ -395,6 +395,73 @@ function resetCapture() {
   updateSaveState();
 }
 
+function applyIdentifyResult(result) {
+  if (result.identity?.product_name) {
+    state.title = [result.identity.product_name, result.identity.collector_number, result.identity.set_name]
+      .filter(Boolean)
+      .join(" ");
+    if (els.manualTitle) els.manualTitle.value = state.title;
+  }
+
+  if (result.ok && result.identity?.product_name) {
+    setStatus(result.message || `Identified: ${result.identity.product_name}`, "ok");
+    showToast("Identify match");
+  } else if (
+    result.setupTask ||
+    (result.missingKeys || []).length ||
+    /isn't set up yet/i.test(result.message || "")
+  ) {
+    setStatus(result.message || "Identify isn't set up yet.", "err");
+    showToast("Identify isn't set up yet.", "err");
+    els.manualRow?.classList.remove("hidden");
+  } else {
+    setStatus(result.message || "No match — set Manual. Photos kept.", "err");
+    showToast("No match — manual title", "err");
+    els.manualRow?.classList.remove("hidden");
+  }
+  updateSaveState();
+}
+
+/**
+ * A.R.I.-queued identify: poll until A.R.I. posts the result.
+ * Photos are kept client-side the whole time; nothing is lost on timeout.
+ */
+async function pollAriIdentifyResult(queueId) {
+  const startedAt = Date.now();
+  const timeoutMs = 10 * 60 * 1000;
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 8000));
+    if (Date.now() - startedAt > timeoutMs) {
+      setStatus("A.R.I. is still identifying — keep working, the answer lands here.", "busy");
+      return;
+    }
+    let poll;
+    try {
+      const res = await fetch(`/api/scouter/identify/queue/${encodeURIComponent(queueId)}`);
+      poll = await res.json();
+    } catch {
+      continue;
+    }
+    if (!poll || poll.status === "not_found") {
+      setStatus("Identify request lost — photos kept. Use Manual.", "err");
+      els.manualRow?.classList.remove("hidden");
+      showToast("Identify failed", "err");
+      return;
+    }
+    if (poll.status === "done" && poll.result) {
+      applyIdentifyResult({
+        ok: true,
+        path: "ari",
+        identity: poll.result.identity,
+        candidates: poll.result.candidates,
+        message: poll.result.message,
+      });
+      return;
+    }
+    // still pending — keep the busy status alive
+  }
+}
+
 async function runIdentify() {
   const photos = state.draftPhotos.map((p) => p.dataUrl).filter(Boolean);
   if (!photos.length) {
@@ -427,30 +494,14 @@ async function runIdentify() {
       throw new Error(`Identify failed (${res.status})`);
     }
 
-    if (result.identity?.product_name) {
-      state.title = [result.identity.product_name, result.identity.collector_number, result.identity.set_name]
-        .filter(Boolean)
-        .join(" ");
-      if (els.manualTitle) els.manualTitle.value = state.title;
+    if (result.queued && result.queueId) {
+      setStatus("A.R.I. is identifying…", "busy");
+      showToast("A.R.I. is identifying");
+      await pollAriIdentifyResult(result.queueId);
+      return;
     }
 
-    if (result.ok && result.identity?.product_name) {
-      setStatus(result.message || `Identified: ${result.identity.product_name}`, "ok");
-      showToast("Identify match");
-    } else if (
-      result.setupTask ||
-      (result.missingKeys || []).length ||
-      /isn't set up yet/i.test(result.message || "")
-    ) {
-      setStatus(result.message || "Identify isn't set up yet.", "err");
-      showToast("Identify isn't set up yet.", "err");
-      els.manualRow?.classList.remove("hidden");
-    } else {
-      setStatus(result.message || "No match — set Manual. Photos kept.", "err");
-      showToast("No match — manual title", "err");
-      els.manualRow?.classList.remove("hidden");
-    }
-    updateSaveState();
+    applyIdentifyResult(result);
   } catch (err) {
     setStatus(`Identify failed: ${err.message || "network"}. Photos kept. Use Manual.`, "err");
     els.manualRow?.classList.remove("hidden");

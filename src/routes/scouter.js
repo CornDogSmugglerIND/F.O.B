@@ -6,6 +6,12 @@ import { runIdentify, identityToItemPatch } from "../identify/router.js";
 import { runBarcodeScan } from "../identify/barcode.js";
 import { visionKeyStatus } from "../identify/vision.js";
 import {
+  ariQueueStorageStatus,
+  enqueueIdentifyRequest,
+  getAriIdentifyConfig,
+  getIdentifyQueueStatus,
+} from "../identify/ariQueue.js";
+import {
   addInlinePhotoToItem,
   addPhotoToItem,
   createScoutItem,
@@ -158,10 +164,56 @@ export function scouterRouter() {
   /**
    * Identify — photos in, identity out. Command #59 correction.
    * Barcode is not accepted as an Identify path.
+   *
+   * Provider switch (IDENTIFY_PROVIDER):
+   *   "ari" (default) — A.R.I. is the vision provider. Photos are queued in
+   *     R2; A.R.I. picks them up, identifies the item, and posts the result.
+   *     The app returns { queued: true } immediately and the frontend polls
+   *     GET /identify/queue/:queueId.
+   *   "anthropic" — direct vision call, gated on ANTHROPIC_API_KEY.
    */
   router.post("/identify", async (req, res, next) => {
     try {
       const body = req.body ?? {};
+      const provider = getAriIdentifyConfig().provider;
+
+      if (provider === "ari") {
+        try {
+          const { queueId } = await enqueueIdentifyRequest({
+            photos: body.photos,
+            notes: body.notes,
+            category: body.category,
+            quantity: body.quantity,
+          });
+          return res.json({
+            ok: true,
+            queued: true,
+            queueId,
+            path: "ari",
+            message: "A.R.I. is identifying…",
+          });
+        } catch (err) {
+          if (err.code === "ARI_QUEUE_CONFIG") {
+            return res.status(503).json({
+              ok: false,
+              queued: false,
+              path: "none",
+              message: "Identify isn't set up yet.",
+              missingKeys: err.missing || [],
+            });
+          }
+          if (err.code === "ARI_QUEUE_NO_PHOTOS") {
+            return res.status(422).json({
+              ok: false,
+              queued: false,
+              path: "none",
+              message: err.message,
+            });
+          }
+          throw err;
+        }
+      }
+
       const result = await runIdentify({
         photos: body.photos,
         notes: body.notes,
@@ -179,6 +231,8 @@ export function scouterRouter() {
 
   router.get("/identify/status", (_req, res) => {
     const keys = visionKeyStatus();
+    const ariStorage = ariQueueStorageStatus();
+    const provider = getAriIdentifyConfig().provider;
     res.json({
       service: "identify",
       feature: "photo",
@@ -187,10 +241,37 @@ export function scouterRouter() {
         separate: true,
         endpoint: "/api/scouter/barcode/:code",
       },
-      photoSearchReady: keys.ready,
-      missingKeys: [],
-      setupTask: keys.ready ? null : keys.message,
+      provider,
+      photoSearchReady:
+        provider === "ari" ? ariStorage.ok : keys.ready,
+      missingKeys: provider === "ari" ? ariStorage.missing : [],
+      setupTask:
+        provider === "ari"
+          ? ariStorage.ok
+            ? null
+            : "Identify isn't set up yet."
+          : keys.ready
+            ? null
+            : keys.message,
     });
+  });
+
+  /**
+   * Frontend poll for an A.R.I.-queued identify. Public; queueId is an
+   * unguessable UUID.
+   */
+  router.get("/identify/queue/:queueId", async (req, res, next) => {
+    try {
+      const { status, result } = await getIdentifyQueueStatus(
+        req.params.queueId
+      );
+      if (status === "not_found") {
+        return res.status(404).json({ status, result: null });
+      }
+      res.json({ status, result });
+    } catch (err) {
+      next(err);
+    }
   });
 
   router.post("/items/:id/identify", async (req, res, next) => {
