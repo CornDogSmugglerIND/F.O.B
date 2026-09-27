@@ -912,8 +912,13 @@ function bind() {
   );
 
   $("btnSnap")?.addEventListener("click", () => $("inputSnap")?.click());
+  $("btnGallery")?.addEventListener("click", () => $("inputGallery")?.click());
   $("btnBarcode")?.addEventListener("click", openBarcode);
   $("inputSnap")?.addEventListener("change", (e) => {
+    addPhotos(e.target.files);
+    e.target.value = "";
+  });
+  $("inputGallery")?.addEventListener("change", (e) => {
     addPhotos(e.target.files);
     e.target.value = "";
   });
