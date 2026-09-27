@@ -23,8 +23,8 @@ function fakeEnv(overrides = {}) {
 }
 
 describe("ari identify config", () => {
-  it("defaults provider to ari", () => {
-    assert.equal(getAriIdentifyConfig(fakeEnv()).provider, "ari");
+  it("defaults provider to anthropic", () => {
+    assert.equal(getAriIdentifyConfig(fakeEnv()).provider, "anthropic");
   });
 
   it("respects IDENTIFY_PROVIDER override", () => {

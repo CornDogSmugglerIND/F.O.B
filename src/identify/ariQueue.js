@@ -39,7 +39,7 @@ function getEnv(env) {
 export function getAriIdentifyConfig(env = process.env) {
   const e = getEnv(env);
   return {
-    provider: String(e.IDENTIFY_PROVIDER || "ari")
+    provider: String(e.IDENTIFY_PROVIDER || "anthropic")
       .trim()
       .toLowerCase(),
     secret: String(e.ARI_IDENTIFY_SECRET || ""),

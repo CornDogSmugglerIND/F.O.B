@@ -166,11 +166,10 @@ export function scouterRouter() {
    * Barcode is not accepted as an Identify path.
    *
    * Provider switch (IDENTIFY_PROVIDER):
-   *   "ari" (default) — A.R.I. is the vision provider. Photos are queued in
-   *     R2; A.R.I. picks them up, identifies the item, and posts the result.
-   *     The app returns { queued: true } immediately and the frontend polls
-   *     GET /identify/queue/:queueId.
-   *   "anthropic" — direct vision call, gated on ANTHROPIC_API_KEY.
+   *   "anthropic" (default) — direct in-app vision call, gated on
+   *     ANTHROPIC_API_KEY. Photos in, identity out, no middleman.
+   *   "ari" — legacy queue path (A.R.I. as vision provider via R2).
+   *     Rejected — do not use.
    */
   router.post("/identify", async (req, res, next) => {
     try {
