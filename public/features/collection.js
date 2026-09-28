@@ -83,12 +83,27 @@
     }
   }
 
-  function save() {
+  /* Returns true on success. On quota failure, drops the photo of
+   * stripPhotoId (photos are the bulk) and retries so item metadata is
+   * never lost; returns false only if it still won't fit. */
+  function save(stripPhotoId) {
     try {
       localStorage.setItem(LS_COLLECTION, JSON.stringify(state.items));
-    } catch {
-      toast("Collection too large — photo skipped");
+      return true;
+    } catch (e) {
+      /* quota exceeded */
     }
+    if (stripPhotoId) {
+      const it = get(stripPhotoId);
+      if (it && it.photo) {
+        it.photo = "";
+        try {
+          localStorage.setItem(LS_COLLECTION, JSON.stringify(state.items));
+          return true;
+        } catch (e2) { /* still full */ }
+      }
+    }
+    return false;
   }
 
   function get(id) {
@@ -186,7 +201,7 @@
           <div class="chrome">COLLECTION · KEEPER</div>
           <div id="colDetailBody"></div>
           <div class="sheet-actions">
-            <button type="button" class="btn" id="colDetailFav">Favorite</button>
+            <button type="button" class="btn" id="colDetailFav" aria-pressed="false">Favorite</button>
             <button type="button" class="btn" id="colDetailEdit">Edit</button>
             <button type="button" class="btn btn-ghost" id="colDetailRemove">Remove</button>
             <button type="button" class="btn btn-ghost" id="colDetailBack">Back</button>
@@ -215,6 +230,12 @@
       openForm(id);
     });
     $("colDetailRemove").addEventListener("click", removeDetail);
+    if (!buildSheets._esc) {
+      buildSheets._esc = true;
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") { closeDetail(); closeForm(); }
+      });
+    }
   }
 
   /* ---------- form ---------- */
@@ -233,14 +254,18 @@
     fav.setAttribute("aria-pressed", String(Boolean(editing?.favorite)));
     fav.querySelector(".col-fav-star").innerHTML = editing?.favorite ? STAR_ON : STAR_OFF;
     paintFormPhoto();
-    $("colFormSheet").classList.add("open");
+    const sheet = $("colFormSheet");
+    sheet.setAttribute("aria-hidden", "false");
+    sheet.classList.add("open");
     setTimeout(() => $("colFTitle").focus(), 60);
   }
 
   function closeForm() {
     state.editingId = null;
     state.formPhoto = "";
-    $("colFormSheet").classList.remove("open");
+    const sheet = $("colFormSheet");
+    sheet.setAttribute("aria-hidden", "true");
+    sheet.classList.remove("open");
   }
 
   function paintFormPhoto() {
@@ -283,18 +308,23 @@
     const now = new Date().toISOString();
     if (state.editingId) {
       const it = get(state.editingId);
-      if (it) {
-        it.title = title;
-        it.setName = setName;
-        it.quantity = qty;
-        it.estValue = val;
-        it.notes = notes;
-        it.favorite = favorite;
-        it.photo = state.formPhoto || "";
+      if (!it) { closeForm(); render(); return; }
+      const oldPhoto = it.photo;
+      it.title = title;
+      it.setName = setName;
+      it.quantity = qty;
+      it.estValue = val;
+      it.notes = notes;
+      it.favorite = favorite;
+      it.photo = state.formPhoto || "";
+      if (!save(it.id)) {
+        it.photo = oldPhoto; // restore, keep form open so nothing is lost
+        toast("Collection storage is full — changes not saved");
+        return;
       }
       toast("Keeper updated");
     } else {
-      state.items.unshift({
+      const item = {
         id: uid(),
         title,
         setName,
@@ -304,10 +334,15 @@
         photo: state.formPhoto || "",
         notes,
         addedAt: now,
-      });
+      };
+      state.items.unshift(item);
+      if (!save(item.id)) {
+        state.items = state.items.filter((x) => x.id !== item.id);
+        toast("Collection storage is full — keeper not saved");
+        return;
+      }
       toast("Added to collection");
     }
-    save();
     closeForm();
     render();
   }
@@ -329,19 +364,29 @@
       </p>
       ${it.notes ? `<p class="col-detail-notes">${escapeHtml(it.notes)}</p>` : ""}
     `;
-    $("colDetailSheet").classList.add("open");
+    $("colDetailFav").textContent = it.favorite ? "Favorited" : "Favorite";
+    $("colDetailFav").setAttribute("aria-pressed", String(Boolean(it.favorite)));
+    const sheet = $("colDetailSheet");
+    sheet.setAttribute("aria-hidden", "false");
+    sheet.classList.add("open");
   }
 
   function closeDetail() {
     state.detailId = null;
-    $("colDetailSheet").classList.remove("open");
+    const sheet = $("colDetailSheet");
+    sheet.setAttribute("aria-hidden", "true");
+    sheet.classList.remove("open");
   }
 
   function toggleDetailFav() {
     const it = get(state.detailId);
     if (!it) return;
     it.favorite = !it.favorite;
-    save();
+    if (!save()) {
+      it.favorite = !it.favorite; // revert: storage is full
+      toast("Collection storage is full — favorite not saved");
+      return;
+    }
     openDetail(it.id);
     render();
   }
@@ -397,10 +442,12 @@
       </div>
       ${list.length
         ? `<div class="col-grid">${list.map(cardHtml).join("")}</div>`
-        : `<div class="col-empty">${PHOTO_PH}<p>${state.filter === "favorites" ? "No favorites yet — star a keeper to pin it here." : "Nothing kept yet. This is the personal stash, not for sale."}</p></div>`}
+        : `<div class="col-empty">${PHOTO_PH}<p>${state.filter === "favorites" ? "No favorites yet — star a keeper to pin it here." : "Nothing kept yet. This is the personal stash, not for sale."}</p><button type="button" class="btn btn-amber col-empty-add" id="colEmptyAdd">Add keeper</button></div>`}
     `;
 
     section.querySelector("#colAddBtn").addEventListener("click", () => openForm(null));
+    const emptyAdd = section.querySelector("#colEmptyAdd");
+    if (emptyAdd) emptyAdd.addEventListener("click", () => openForm(null));
     section.querySelectorAll(".col-filter-btn").forEach((b) =>
       b.addEventListener("click", () => {
         state.filter = b.dataset.f;

@@ -111,9 +111,11 @@
       }
     }
     row.push(field);
-    if (!(row.length === 1 && row[0] === "")) rows.push(row);
+    rows.push(row);
+    // Drop fully-blank rows (blank lines, or lines of bare commas) so they
+    // never reach the preview count or the import.
     return rows.filter(function (r) {
-      return r.length > 1 || String(r[0]).trim() !== "";
+      return r.some(function (c) { return String(c).trim() !== ""; });
     });
   }
 
@@ -218,11 +220,11 @@
         '<button class="csv-back" data-csv="back" type="button">&lsaquo; Back</button>' +
         '<h2 class="csv-title">Import CSV</h2>' +
         '<div class="csv-step" data-step="choose">' +
-          '<label class="csv-drop" data-csv="drop">' +
-            '<input type="file" data-csv="file" accept=".csv,.txt,text/csv" hidden />' +
+          '<div class="csv-drop" data-csv="drop" role="button" tabindex="0" aria-label="Choose a CSV file">' +
+            '<input type="file" data-csv="file" class="csv-file-input" accept=".csv,text/csv" />' +
             '<span class="csv-drop-text">Drop a CSV here<br/>or tap to choose</span>' +
             '<span class="csv-drop-sub">.csv files only</span>' +
-          '</label>' +
+          '</div>' +
           '<p class="csv-hint">Headers auto-detected: title, product name, set, qty, price, barcode, sku, notes.</p>' +
           '<p class="csv-error" data-csv="error" hidden></p>' +
           '<button class="btn btn-ghost csv-wide" data-csv="cancel" type="button">Cancel</button>' +
@@ -341,6 +343,12 @@
         showError("Could not recognize any columns in " + (fileName || "that file") + ". Headers seen: " + headers.slice(0, 6).join(", ") + (headers.length > 6 ? "…" : ""));
         return;
       }
+      // Refuse identity-less imports: without a title/product/sku every row
+      // would land as "Untitled import".
+      if (colMap.title == null && colMap.productName == null && colMap.sku == null) {
+        showError("No usable columns found — need at least a title, product name, or SKU. Headers seen: " + headers.slice(0, 6).join(", ") + (headers.length > 6 ? "…" : ""));
+        return;
+      }
       parsed = { headers: headers, dataRows: dataRows, colMap: colMap };
       q("error").hidden = true;
       renderPreview();
@@ -359,6 +367,9 @@
 
     var drop = q("drop"), fileInput = q("file");
     drop.addEventListener("click", function () { fileInput.click(); });
+    drop.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
+    });
     fileInput.addEventListener("change", function () {
       if (fileInput.files && fileInput.files[0]) handleFile(fileInput.files[0]);
       fileInput.value = "";
@@ -378,8 +389,16 @@
     q("cancel").addEventListener("click", closeOverlay);
     q("back2").addEventListener("click", function () { parsed = null; showStep("choose"); });
     q("import").addEventListener("click", commitImport);
-    document.addEventListener("keydown", function onKey(e) {
-      if (e.key === "Escape") { closeOverlay(); document.removeEventListener("keydown", onKey); }
+    wireEscOnce();
+  }
+
+  /* One global Escape listener (not one per open) so it can't accumulate. */
+  var escWired = false;
+  function wireEscOnce() {
+    if (escWired) return;
+    escWired = true;
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeOverlay();
     });
   }
 
