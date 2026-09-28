@@ -236,8 +236,8 @@ label[for="colFPhoto"] { cursor: pointer; }
 .col-detail-title-row .col-star {
   position: static;
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   margin-top: 8px;
 }
 .col-detail-meta {

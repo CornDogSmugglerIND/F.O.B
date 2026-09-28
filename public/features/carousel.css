@@ -113,8 +113,8 @@
 }
 
 .phcar-dot {
-  width: 26px;            /* generous tap width, slim visual */
-  height: 22px;
+  width: 44px;            /* full 44px tap target */
+  height: 44px;
   background: none;
   border: none;
   padding: 0;
