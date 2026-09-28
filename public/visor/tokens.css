@@ -7,10 +7,12 @@
   --hud-raised: #16191f;
   --hud-line: rgba(255, 255, 255, 0.08);
   --hud-line-strong: rgba(255, 255, 255, 0.14);
-  --hud-amber: #f2a03d;
-  --hud-amber-hot: #ffb95a;
-  --hud-amber-soft: rgba(232, 160, 69, 0.12);
-  --hud-amber-rgb: 232, 160, 69;
+  /* Tactical palette per Sawyer 2026-09-27: olive drab, coyote, desert sand.
+     Minimal, premium, interactive. Not retro, not cheesy. */
+  --hud-amber: #a08050;
+  --hud-amber-hot: #c2a878;
+  --hud-amber-soft: rgba(160, 128, 80, 0.14);
+  --hud-amber-rgb: 160, 128, 80;
   --hud-cyan: #9ec9d4;
   --hud-cyan-soft: rgba(158, 201, 212, 0.14);
   --hud-text: #eef0f3;

@@ -66,13 +66,13 @@ test("GET / serves Coalition H.U.D live beta", async () => {
   }
 });
 
-test("coalition.css uses Visor amber tokens, not school-bus gold", async () => {
+test("coalition.css uses Visor accent tokens, not school-bus gold", async () => {
   const { baseUrl, close } = await startServer();
   try {
     const css = await (await fetch(`${baseUrl}/coalition.css`)).text();
     const tokens = await (await fetch(`${baseUrl}/visor/tokens.css`)).text();
     assert.match(css, /visor\/tokens\.css/);
-    assert.match(tokens, /--hud-amber:\s*#f2a03d/i);
+    assert.match(tokens, /--hud-amber:\s*#a08050/i);
     assert.doesNotMatch(css + tokens, /#f5c518/i);
     assert.doesNotMatch(css + tokens, /#ffe566/i);
   } finally {
