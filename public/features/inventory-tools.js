@@ -237,6 +237,34 @@
     }
   }
 
+  // Capture-phase click interceptor on the pkg rows. The host app's
+  // paintPkgs binds its own per-button handlers straight to openSheet, so
+  // whenever the app repaints (render()) while select mode is on, taps would
+  // open the sheet instead of toggling selection. This listener runs first
+  // (capture) and swallows the event, so selection works no matter who
+  // painted the rows. The module's own bindRowClicks handlers never double-
+  // fire because the event never reaches the target in select mode.
+  function selectInterceptor(e) {
+    if (!selectMode) return;
+    var t = e.target;
+    var btn = t && t.closest ? t.closest("[data-item]") : null;
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    toggleSelect(btn.getAttribute("data-item"), btn);
+  }
+
+  function ensureIntercept() {
+    var rows = [document.getElementById("pkgIntake"), document.getElementById("pkgStaged")];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (r && !r._invtoolsIntercept) {
+        r.addEventListener("click", selectInterceptor, true);
+        r._invtoolsIntercept = true;
+      }
+    }
+  }
+
   /* ---------- filtering ---------- */
 
   function currentResults() {
@@ -484,11 +512,16 @@
       }
     });
 
-    // Escape clears like a native search field.
+    // Escape clears like a native search field; with an empty field it
+    // exits select mode instead.
     inputEl.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && inputEl.value) {
+      if (e.key !== "Escape") return;
+      if (inputEl.value) {
         inputEl.value = "";
         inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+        inputEl.blur();
+      } else if (selectMode) {
+        setSelectMode(false);
         inputEl.blur();
       }
     });
@@ -512,6 +545,7 @@
     obsTargets = ["pkgIntake", "pkgStaged"]
       .map(function (id) { return document.getElementById(id); })
       .filter(Boolean);
+    ensureIntercept();
     if (!obsTargets.length || typeof MutationObserver === "undefined") return;
     mo = new MutationObserver(function () {
       if (query) {

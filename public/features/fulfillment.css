@@ -188,4 +188,12 @@ select.ff-input {
 
 .ff-qact {
   white-space: nowrap;
+  min-height: 44px; /* host .btn-sm is ~30px — thumb target floor */
+  padding: 12px 16px;
+  font-size: 12px;
+}
+
+/* overlay confirm/back buttons use host .btn (~41px) — floor to 44px */
+.ff-sheet .btn {
+  min-height: 44px;
 }

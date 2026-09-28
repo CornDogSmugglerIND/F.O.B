@@ -545,6 +545,11 @@ belt-and-suspenders.
 - `refresh()` re-reads localStorage and repaints the queue + sheet section
   without reloading — for external callers. It does not sync the host's
   in-memory state.
+- Invalid transitions are blocked with a toast: Mark sold only from
+  `listed`/`staged` (re-recording on an already-sold item is rejected);
+  Pack only from `sold`; Ship only from `packed`; Delivered only from
+  `shipped`. Confirm handlers close their overlay sheet before mutating,
+  so a double-tap cannot re-submit and the sheet never gets stuck open.
 
 ## 5. Fields the module may add to an item
 

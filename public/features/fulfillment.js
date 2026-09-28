@@ -265,6 +265,10 @@
   function packItem(id) {
     var it = getItem(id);
     if (!it) { toast("Item not found"); return; }
+    if (phaseFromItem(it) !== "sold") {
+      toast("Only sold items can be packed");
+      return;
+    }
     mutate(id, function (x) {
       x.phase = "packed";
       x.packedAt = nowIso();
@@ -274,6 +278,10 @@
   function deliverItem(id) {
     var it = getItem(id);
     if (!it) { toast("Item not found"); return; }
+    if (phaseFromItem(it) !== "shipped") {
+      toast("Only shipped items can be marked delivered");
+      return;
+    }
     mutate(id, function (x) {
       x.phase = "delivered";
       x.deliveredAt = nowIso();
@@ -356,9 +364,17 @@
     return "eBay";
   }
 
+  function sellablePhase(ph) {
+    return ph === "listed" || ph === "staged";
+  }
+
   function openSoldForm(id) {
     var it = getItem(id);
     if (!it) { toast("Item not found"); return; }
+    if (!sellablePhase(phaseFromItem(it))) {
+      toast("Sale already recorded");
+      return;
+    }
     formItemId = id;
     $("ffSoldItem").textContent = itemTitle(it);
     var priceInput = $("ffSoldPrice");
@@ -386,12 +402,20 @@
   function confirmSold() {
     var it = formItemId ? getItem(formItemId) : null;
     if (!it) { closeOverlay("ffSoldSheet"); return; }
+    if (!sellablePhase(phaseFromItem(it))) {
+      closeOverlay("ffSoldSheet");
+      toast("Sale already recorded");
+      return;
+    }
     var soldPrice = Math.max(0, Number($("ffSoldPrice").value) || 0);
     var channel = $("ffSoldChannel").value || "eBay";
     var feesRaw = $("ffSoldFees").value;
     var fees = feesRaw === "" || feesRaw == null ? null : Math.max(0, Number(feesRaw) || 0);
     var id = it.id;
     var title = itemTitle(it);
+    // Close before mutate: prevents a stuck overlay on the no-reload path
+    // and a double-tap re-submitting (formItemId is cleared).
+    closeOverlay("ffSoldSheet");
     mutate(id, function (x) {
       x.phase = "sold";
       x.soldPrice = soldPrice;
@@ -405,6 +429,10 @@
   function openShipForm(id) {
     var it = getItem(id);
     if (!it) { toast("Item not found"); return; }
+    if (phaseFromItem(it) !== "packed") {
+      toast("Only packed items can be shipped");
+      return;
+    }
     formItemId = id;
     var line = statusLine(it) || "SOLD " + money(it.soldPrice != null ? it.soldPrice : it.price);
     $("ffShipItem").textContent = itemTitle(it) + " · " + line;
@@ -417,6 +445,11 @@
   function confirmShipped() {
     var it = formItemId ? getItem(formItemId) : null;
     if (!it) { closeOverlay("ffShipSheet"); return; }
+    if (phaseFromItem(it) !== "packed") {
+      closeOverlay("ffShipSheet");
+      toast("Only packed items can be shipped");
+      return;
+    }
     var tracking = ($("ffShipTracking").value || "").trim();
     if (!tracking) {
       toast("Tracking number required");
@@ -426,6 +459,9 @@
     var carrier = $("ffShipCarrier").value || "FedEx";
     var id = it.id;
     var title = itemTitle(it);
+    // Close before mutate: prevents a stuck overlay on the no-reload path
+    // and a double-tap re-submitting (formItemId is cleared).
+    closeOverlay("ffShipSheet");
     mutate(id, function (x) {
       x.phase = "shipped";
       x.trackingNumber = tracking;
