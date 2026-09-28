@@ -84,7 +84,15 @@
 
 .ebay-actions .btn {
   flex: 1;
-  min-height: 42px;
+  min-height: 44px;
+}
+
+/* Neutral near-black for plain buttons (no blue-tinted #161a22 here). */
+.ebay-card .btn {
+  background-color: #141518;
+}
+.ebay-card .btn-ghost {
+  background-color: transparent;
 }
 
 .ebay-actions .btn:disabled {

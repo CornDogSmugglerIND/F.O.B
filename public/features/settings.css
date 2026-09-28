@@ -74,7 +74,8 @@
 .stg-select {
   flex: 0 0 auto;
   max-width: 150px;
-  background: #161a22;
+  min-height: 44px;
+  background: #141518;
   color: var(--hud-text);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 6px;
@@ -85,7 +86,7 @@
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%238b939c' stroke-width='1.6' stroke-linecap='round'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23a89e86' stroke-width='1.6' stroke-linecap='round'/></svg>");
   background-repeat: no-repeat;
   background-position: right 10px center;
 }
@@ -94,13 +95,13 @@
   outline-offset: 1px;
 }
 
-/* Toggle switch */
+/* Toggle switch — iPhone-sized (51x31) */
 .stg-toggle {
   position: relative;
   flex: 0 0 auto;
   display: inline-block;
-  width: 46px;
-  height: 26px;
+  width: 51px;
+  height: 31px;
   cursor: pointer;
 }
 .stg-toggle input {
@@ -115,7 +116,7 @@
   position: absolute;
   inset: 0;
   border-radius: 999px;
-  background: #232a36;
+  background: #1e1e20;
   border: 1px solid rgba(255, 255, 255, 0.14);
   transition: background 160ms ease, border-color 160ms ease;
   pointer-events: none;
@@ -125,8 +126,8 @@
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 20px;
-  height: 20px;
+  width: 23px;
+  height: 23px;
   border-radius: 50%;
   background: var(--hud-text-dim);
   transition: transform 160ms ease, background 160ms ease;
@@ -136,7 +137,7 @@
   border-color: var(--hud-amber);
 }
 .stg-toggle input:checked + .stg-knob::after {
-  transform: translateX(20px);
+  transform: translateX(24px);
   background: var(--hud-amber-hot);
 }
 .stg-toggle input:focus-visible + .stg-knob {
@@ -152,11 +153,28 @@
   gap: 8px;
   padding: 12px 0 4px;
 }
+/* Every tap target in the data zone is a full 44px — no mis-taps. */
+.stg-actions .btn {
+  min-height: 44px;
+  padding: 12px 14px;
+  font-size: 13px;
+}
+.stg-row .btn {
+  min-height: 44px;
+}
+/* Neutral near-black for plain buttons (no blue-tinted #161a22 here). */
+.settings-block .btn {
+  background-color: #141518;
+}
+.settings-block .btn-ghost {
+  background-color: transparent;
+}
 .stg-btn-danger {
   color: #c65a4e;
   border-color: rgba(198, 90, 78, 0.45);
   background: rgba(198, 90, 78, 0.08);
 }
+.stg-actions .btn.armed,
 .stg-btn-danger.armed {
   background: #c65a4e;
   border-color: #c65a4e;

@@ -18,25 +18,50 @@
   }
 
   function esc(s) {
+    var c = window.HUDcore || null;
+    if (c && typeof c.escapeHtml === "function") return c.escapeHtml(String(s));
     if (typeof escapeHtml === "function") return escapeHtml(String(s));
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    return String(s).replace(/[&<>"']/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
     });
   }
 
   function say(msg) {
-    if (typeof toast === "function") toast(msg);
+    var c = window.HUDcore || null;
+    if (c && typeof c.toast === "function") c.toast(msg);
+    else if (typeof toast === "function") toast(msg);
     else console.log("[hud-ebay]", msg);
   }
 
   /* ---------- status fetchers ---------- */
 
+  // A hanging fetch would freeze the pill/badge on "CHECKING" forever.
+  var FETCH_TIMEOUT_MS = 8000;
+
+  function fetchJson(url, opts) {
+    var ctrl = null;
+    var timer = null;
+    try {
+      if (typeof AbortController === "function") {
+        ctrl = new AbortController();
+        timer = setTimeout(function () { ctrl.abort(); }, FETCH_TIMEOUT_MS);
+        opts = Object.assign({}, opts, { signal: ctrl.signal });
+      }
+    } catch (e) { /* no abort support — plain fetch */ }
+    return fetch(url, opts)
+      .then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (body) {
+          return { res: res, body: body };
+        });
+      })
+      .finally(function () { if (timer) clearTimeout(timer); });
+  }
+
   async function fetchStatusEntry() {
     try {
-      var res = await fetch("/api/channels/status");
-      if (!res.ok) return { configured: false };
-      var body = await res.json();
-      var list = (body && body.channels) || [];
+      var out = await fetchJson("/api/channels/status", { cache: "no-store" });
+      if (!out.res.ok) return { configured: false };
+      var list = (out.body && out.body.channels) || [];
       var ebay = null;
       for (var i = 0; i < list.length; i++) {
         if (list[i] && list[i].id === "ebay") { ebay = list[i]; break; }
@@ -47,12 +72,14 @@
     }
   }
 
-  // Deeper check: refresh token actually valid server-side?
+  // Deeper check: is the refresh token actually valid server-side?
+  // GET /api/channels/ebay/probe mints a real eBay access token via the
+  // OAuth refresh flow — ok:true only when the token is live.
   async function fetchProbe() {
     try {
-      var res = await fetch("/api/channels/ebay/probe");
-      var body = await res.json().catch(function () { return {}; });
-      return { ok: Boolean(res.ok && body && body.ok), detail: (body && body.error) || "" };
+      var out = await fetchJson("/api/channels/ebay/probe", { cache: "no-store" });
+      var ok = Boolean(out.res.ok && out.body && out.body.ok);
+      return { ok: ok, detail: ok ? "" : ((out.body && out.body.error) || "probe failed") };
     } catch (e) {
       return { ok: false, detail: "probe unreachable" };
     }
@@ -71,7 +98,11 @@
     pill.classList.toggle("ebay-live", connState === "live");
     pill.classList.toggle("ebay-error", connState === "error");
     pill.classList.toggle("ebay-offline", connState === "offline");
-    label.textContent = PILL_LABEL[connState];
+    // Write the label ONLY when it differs: guardPill's MutationObserver
+    // re-applies coalition.js's own pill writes, and an unconditional
+    // textContent write would re-trigger the observer forever.
+    var want = PILL_LABEL[connState];
+    if (label.textContent !== want) label.textContent = want;
   }
 
   // coalition.js renderChannels() rewrites the pill label/class on its own renders.
@@ -139,7 +170,7 @@
     if (connState === "live") {
       line.textContent = "Configured · token OK";
     } else if (connState === "error") {
-      line.textContent = "Configured · auth failing — link via Base44/Claude";
+      line.textContent = "Configured · " + (connDetail || "auth failing — link via Base44/Claude");
     } else {
       line.textContent = "Not configured — link via Base44/Claude";
     }
@@ -189,6 +220,12 @@
     return "Last sync: " + when + (s.pulled == null ? "" : " · " + s.pulled + " pulled");
   }
 
+  // Recorded by us and by the Settings sync button so "Last sync" stays honest.
+  function noteSync(pulled) {
+    writeLastSync(Date.now(), pulled);
+    renderCard();
+  }
+
   /* ---------- actions ---------- */
 
   async function refreshStatus() {
@@ -202,22 +239,32 @@
     else setState("error", probe.detail);
   }
 
+  var checkBusy = false;
+
   async function handleCheckConnection() {
+    if (checkBusy) return;
+    checkBusy = true;
+    var btn = $("btnEbayCardProbe");
+    if (btn) btn.disabled = true;
     say("Checking eBay…");
-    await refreshStatus();
-    if (connState === "live") say("eBay token OK");
-    else if (connState === "error") say("eBay error — " + (connDetail || "auth failing"));
-    else say("eBay not configured");
+    try {
+      await refreshStatus();
+      if (connState === "live") say("eBay token OK");
+      else if (connState === "error") say("eBay error — " + (connDetail || "auth failing"));
+      else say("eBay not configured");
+    } finally {
+      checkBusy = false;
+      if (btn) btn.disabled = false;
+    }
   }
 
-  // Fallback when coalition's global syncEbay isn't present: own POST + merge.
+  // Fallback when the host app bridge isn't present: own POST + merge.
   async function fallbackSync() {
-    var res = await fetch("/api/channels/ebay/sync", { method: "POST" });
-    var body = await res.json().catch(function () { return {}; });
-    if (!res.ok) {
-      throw new Error((body && body.error) || "sync failed (" + res.status + ")");
+    var out = await fetchJson("/api/channels/ebay/sync", { method: "POST" });
+    if (!out.res.ok) {
+      throw new Error((out.body && out.body.error) || "sync failed (" + out.res.status + ")");
     }
-    return body;
+    return out.body;
   }
 
   async function handleSync() {
@@ -226,15 +273,15 @@
     renderCard();
     say("Pulling eBay…");
     try {
-      if (typeof syncEbay === "function") {
-        // coalition's global: POST + merge into store + toast. Pulled count
-        // is reported by its own toast; timestamp recorded here.
-        await syncEbay();
-        writeLastSync(Date.now(), null);
+      var core = window.HUDcore || null;
+      if (core && typeof core.syncEbay === "function") {
+        // Host app's global: POST + merge into store + toast.
+        await core.syncEbay();
+        noteSync(null);
       } else {
         var body = await fallbackSync();
         var pulled = body && typeof body.pulled === "number" ? body.pulled : null;
-        writeLastSync(Date.now(), pulled);
+        noteSync(pulled);
         say("eBay sync · " + (pulled == null ? "?" : pulled) + " pulled");
       }
     } catch (e) {
@@ -261,5 +308,6 @@
   window.HUD_ebay = {
     init: init,
     refreshStatus: refreshStatus,
+    noteSync: noteSync,
   };
 })();

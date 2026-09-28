@@ -95,8 +95,25 @@
   var ebayStatus = { state: "checking" }; // checking | on | off | error
 
   /* ---------- backend calls ---------- */
+
+  // A hanging fetch would leave rows stuck on "Checking…" forever.
+  var FETCH_TIMEOUT_MS = 8000;
+
+  function fetchWithTimeout(url, opts) {
+    var ctrl = null;
+    var timer = null;
+    try {
+      if (typeof AbortController === "function") {
+        ctrl = new AbortController();
+        timer = setTimeout(function () { ctrl.abort(); }, FETCH_TIMEOUT_MS);
+        opts = Object.assign({}, opts || {}, { signal: ctrl.signal });
+      }
+    } catch (e) { /* no abort support — plain fetch */ }
+    return fetch(url, opts).finally(function () { if (timer) clearTimeout(timer); });
+  }
+
   function healthEbay() {
-    return fetch("/api/health", { cache: "no-store" })
+    return fetchWithTimeout("/api/health", { cache: "no-store" })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (body) {
         var ch = body && (body.channels || []).filter(function (c) { return c.id === "ebay"; })[0];
@@ -107,7 +124,7 @@
 
   function identifyProviderBackend() {
     // Optional endpoint; 404/401/anything non-200 = not present, use local preference.
-    return fetch("/api/identify/status", { cache: "no-store" })
+    return fetchWithTimeout("/api/identify/status", { cache: "no-store" })
       .then(function (r) {
         if (!r.ok) return null;
         return r.json().then(function (body) {
@@ -139,19 +156,43 @@
     } else if (ebayStatus.state === "on") {
       dot.classList.add("on");
       label.textContent = "Connected";
-      if (btn) btn.disabled = false;
+      if (btn) { btn.disabled = false; btn.title = ""; }
     } else {
       dot.classList.remove("on");
       label.textContent = "Not configured";
-      if (btn) btn.disabled = false;
+      // Syncing while unconfigured just 503s — keep the button inert
+      // until the backend reports the channel.
+      if (btn) { btn.disabled = true; btn.title = "eBay not configured"; }
     }
   }
 
   function syncEbayNow() {
     var btn = el("btnStgEbaySync");
     if (btn) { btn.disabled = true; btn.textContent = "Syncing\u2026"; }
+    var core = window.HUDcore || null;
+
+    function recordResult(pulled) {
+      if (window.HUD_ebay) {
+        if (typeof window.HUD_ebay.noteSync === "function") window.HUD_ebay.noteSync(pulled);
+        if (typeof window.HUD_ebay.refreshStatus === "function") window.HUD_ebay.refreshStatus();
+      }
+    }
+    function finish() {
+      if (btn) { btn.disabled = false; btn.textContent = "Sync now"; }
+      refreshEbayRow();
+    }
+
+    if (core && typeof core.syncEbay === "function") {
+      // Host app path: POST + merge into store + its own toasts.
+      core.syncEbay().then(
+        function () { recordResult(null); finish(); },
+        function () { toast("eBay sync failed"); finish(); }
+      );
+      return;
+    }
+
     toast("Pulling eBay\u2026");
-    fetch("/api/channels/ebay/sync", { method: "POST" })
+    fetchWithTimeout("/api/channels/ebay/sync", { method: "POST" })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (body) {
           return { ok: r.ok, body: body };
@@ -162,14 +203,13 @@
           toast(out.body && out.body.error ? out.body.error : "eBay sync failed");
           return;
         }
-        toast("eBay sync \u00b7 " + (out.body && out.body.pulled != null ? out.body.pulled : 0) + " pulled");
+        var pulled = out.body && out.body.pulled != null ? out.body.pulled : 0;
+        toast("eBay sync \u00b7 " + pulled + " pulled");
+        recordResult(pulled);
         if (prefs.notifications.syncComplete) { /* surfaced via the toast above */ }
       })
       .catch(function () { toast("eBay sync failed"); })
-      .finally(function () {
-        if (btn) { btn.disabled = false; btn.textContent = "Sync now"; }
-        refreshEbayRow();
-      });
+      .finally(finish);
   }
 
   /* ---------- data actions ---------- */
@@ -180,31 +220,85 @@
     } catch (e) { return fallback; }
   }
 
+  // The demo seeder (coalition.js) stamps demo rows with notes:"demo-seed".
+  // Only rows carrying that marker are ever removed here — real user data
+  // can never match this filter.
+  function isDemoItem(it) {
+    return it && typeof it.notes === "string" && it.notes.indexOf("demo-seed") !== -1;
+  }
+
   function clearDemoData() {
-    var items = readJson(LS_ITEMS, []);
-    var demoIds = {};
     var removed = 0;
-    var kept = items.filter(function (it) {
-      if (it && typeof it.notes === "string" && it.notes.indexOf("demo-seed") !== -1) {
-        if (it.id) demoIds[it.id] = true;
-        removed++;
-        return false;
-      }
-      return true;
-    });
-    try {
-      localStorage.setItem(LS_ITEMS, JSON.stringify(kept));
-      var spaces = readJson(LS_SPACES, []);
-      spaces.forEach(function (sp) {
+    var demoIds = {};
+    function pruneItems(items) {
+      return (items || []).filter(function (it) {
+        if (isDemoItem(it)) {
+          if (it.id) demoIds[it.id] = true;
+          removed++;
+          return false;
+        }
+        return true;
+      });
+    }
+    function pruneSpaces(spaces) {
+      (spaces || []).forEach(function (sp) {
         if (sp && Array.isArray(sp.itemIds)) {
           sp.itemIds = sp.itemIds.filter(function (id) { return !demoIds[id]; });
         }
       });
-      localStorage.setItem(LS_SPACES, JSON.stringify(spaces));
+      return spaces;
+    }
+    try {
+      var core = window.HUDcore || null;
+      if (core && core.state) {
+        // Live app state first, so the UI updates without a reload.
+        core.state.items = pruneItems(core.state.items);
+        core.state.spaces = pruneSpaces(core.state.spaces);
+        core.saveItems();
+        core.saveSpaces();
+        core.render();
+      } else {
+        localStorage.setItem(LS_ITEMS, JSON.stringify(pruneItems(readJson(LS_ITEMS, []))));
+        localStorage.setItem(LS_SPACES, JSON.stringify(pruneSpaces(readJson(LS_SPACES, []))));
+      }
     } catch (e) { /* keep running */ }
     // Demo flag stays set so nothing reseeds; remove-from-store is the whole job.
     toast(removed ? "Demo data cleared \u00b7 " + removed + " removed" : "No demo data found");
     render();
+  }
+
+  // Two-tap arming for both destructive buttons. Timers auto-disarm after 5s,
+  // and render() disarms whenever the view rebuilds (nav away/back), so a
+  // stale "armed" state can never survive without its red visual.
+  var clearArmed = false;
+  var clearTimer = null;
+
+  function disarmClearBtn() {
+    clearArmed = false;
+    clearTimeout(clearTimer);
+    var b = el("btnStgClearDemo");
+    if (b) { b.classList.remove("armed"); b.textContent = "Clear demo data"; }
+  }
+
+  function disarmResetBtn() {
+    resetArmed = false;
+    clearTimeout(resetTimer);
+    var b = el("btnStgReset");
+    if (b) { b.classList.remove("armed"); b.textContent = "Reset all data"; }
+  }
+
+  function armClear(btn) {
+    if (!clearArmed) {
+      clearArmed = true;
+      btn.classList.add("armed");
+      btn.textContent = "Tap again to clear demo";
+      toast("Tap again to remove demo-seeded items");
+      clearTimeout(clearTimer);
+      clearTimer = setTimeout(disarmClearBtn, 5000);
+      return;
+    }
+    disarmClearBtn();
+    clearDemoData();
   }
 
   function armReset(btn) {
@@ -214,11 +308,7 @@
       btn.textContent = "Tap again to confirm wipe";
       toast("Tap again to wipe all local data");
       clearTimeout(resetTimer);
-      resetTimer = setTimeout(function () {
-        resetArmed = false;
-        var b = el("btnStgReset");
-        if (b) { b.classList.remove("armed"); b.textContent = "Reset all data"; }
-      }, 5000);
+      resetTimer = setTimeout(disarmResetBtn, 5000);
       return;
     }
     clearTimeout(resetTimer);
@@ -283,6 +373,10 @@
   function render() {
     var view = el(VIEW_ID);
     if (!view) return;
+
+    // Rebuilds wipe button visuals — drop any stale armed state with them.
+    disarmResetBtn();
+    disarmClearBtn();
 
     var notifRows = NOTIF_META.map(function (m, i) {
       return toggleRow("stgNotif" + i, m);
@@ -351,7 +445,7 @@
       '<div class="panel settings-block stg-danger">' +
         '<div class="chrome stg-danger-title">Data</div>' +
         '<div class="stg-actions">' +
-          '<button type="button" class="btn btn-sm btn-ghost" data-action="clear-demo">Clear demo data</button>' +
+          '<button type="button" class="btn btn-sm btn-ghost" id="btnStgClearDemo" data-action="clear-demo">Clear demo data</button>' +
           '<button type="button" class="btn btn-sm" data-action="export">Export backup</button>' +
           '<button type="button" class="btn btn-sm stg-btn-danger" id="btnStgReset" data-action="reset">Reset all data</button>' +
         "</div>" +
@@ -373,10 +467,11 @@
 
     document.addEventListener("click", function (e) {
       var t = e.target.closest ? e.target.closest("[data-action]") : null;
-      if (!t || !el(VIEW_ID).contains(t)) return;
+      var view = el(VIEW_ID);
+      if (!t || !view || !view.contains(t)) return;
       var action = t.getAttribute("data-action");
       if (action === "ebay-sync") syncEbayNow();
-      else if (action === "clear-demo") clearDemoData();
+      else if (action === "clear-demo") armClear(t);
       else if (action === "export") exportBackup();
       else if (action === "reset") armReset(t);
     });

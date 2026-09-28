@@ -775,6 +775,11 @@ function stageItem(id) {
   if (!it) return;
   it.phase = "staged";
   it.staged = true;
+  // Settings → Defaults: auto-file into the chosen bin when staging.
+  const defBin = window.HUD_settings?.get("defaultBin");
+  if (!it.spaceId && (defBin === "bin1" || defBin === "bin2" || defBin === "staged")) {
+    it.spaceId = defBin;
+  }
   it.updatedAt = new Date().toISOString();
   saveItems();
   toast("Staged");
@@ -997,6 +1002,7 @@ function bind() {
     navigate,
     stageItem,
     assignSpace,
+    syncEbay,
   };
 }
 
@@ -1009,6 +1015,10 @@ async function boot() {
   const start = location.hash.replace(/^#\/?/, "") || "command";
   navigate(VIEWS.includes(start) ? start : "command");
   await probeEbay();
+  // Settings → eBay auto-sync: background pull on launch (opt-in, default off).
+  try {
+    if (window.HUD_settings?.get("ebayAutoSync")) syncEbay();
+  } catch {}
 }
 
 boot();
