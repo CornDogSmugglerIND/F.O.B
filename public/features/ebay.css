@@ -1,0 +1,120 @@
+/* Coalition H.U.D. — eBay connection card + pill states.
+ * Mobile-first (390px). Uses HUD vars: --hud-amber (olive live),
+ * --hud-cyan (sand), --hud-ok, --hud-danger, --hud-text-dim.
+ * No brown, no blue, no teal.
+ */
+
+/* ---------- status card ---------- */
+
+.ebay-card {
+  margin: 12px 12px 0;
+  padding: 14px;
+  background: var(--hud-panel);
+  border: 1px solid rgba(212, 196, 160, 0.14);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ebay-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ebay-card-title {
+  font-family: var(--hud-font-chrome);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--hud-cyan);
+}
+
+.ebay-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--hud-font-chrome);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--hud-text-dim);
+}
+
+.ebay-badge .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hud-text-dim);
+  opacity: 0.6;
+}
+
+.ebay-badge.ebay-live { color: var(--hud-amber-hot); }
+.ebay-badge.ebay-live .dot {
+  background: var(--hud-amber-hot);
+  opacity: 1;
+  box-shadow: 0 0 10px rgba(154, 168, 79, 0.85);
+}
+
+.ebay-badge.ebay-error { color: var(--hud-danger); }
+.ebay-badge.ebay-error .dot {
+  background: var(--hud-danger);
+  opacity: 1;
+  box-shadow: 0 0 10px rgba(212, 90, 104, 0.85);
+}
+
+.ebay-status-line {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--hud-text);
+}
+
+.ebay-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--hud-text-dim);
+}
+
+.ebay-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ebay-actions .btn {
+  flex: 1;
+  min-height: 42px;
+}
+
+.ebay-actions .btn:disabled {
+  opacity: 0.55;
+}
+
+/* ---------- header pill states (layer over .hud-pill) ---------- */
+
+#ebayPill.ebay-live {
+  color: var(--hud-amber-hot);
+  border-color: rgba(154, 168, 79, 0.55);
+}
+
+#ebayPill.ebay-live .dot {
+  background: var(--hud-amber-hot);
+  box-shadow: 0 0 8px rgba(154, 168, 79, 0.9);
+}
+
+#ebayPill.ebay-error {
+  color: var(--hud-danger);
+  border-color: rgba(212, 90, 104, 0.5);
+}
+
+#ebayPill.ebay-error .dot {
+  background: var(--hud-danger);
+  box-shadow: 0 0 8px rgba(212, 90, 104, 0.9);
+}
+
+#ebayPill.ebay-offline .dot {
+  background: var(--hud-text-dim);
+  opacity: 0.45;
+  box-shadow: none;
+}

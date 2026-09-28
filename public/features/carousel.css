@@ -1,0 +1,205 @@
+/* Coalition H.U.D — photo carousel styles.
+ * Mobile-first (390x844). Premium tactical minimal.
+ * ZERO brown, ZERO blue/teal. Olive + sand only.
+ * Scoped under .phcar-* — safe to include on any page.
+ */
+
+/* ---------- shell ---------- */
+.phcar {
+  width: 100%;
+}
+
+.phcar-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--hud-bg-lift, #08090c);
+  border: 1px solid var(--hud-line-strong, rgba(255, 255, 255, 0.14));
+  /* premium glow: restrained olive halo, no paint-color fills */
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 10px 28px rgba(0, 0, 0, 0.5),
+    0 0 22px rgba(122, 139, 63, 0.10);
+}
+
+/* ---------- track + slides ---------- */
+.phcar-track {
+  display: flex;
+  height: 100%;
+  transition: transform var(--hud-duration, 200ms) var(--hud-ease, cubic-bezier(0.22, 1, 0.36, 1));
+  will-change: transform;
+}
+
+.phcar-slide {
+  flex: 0 0 100%;
+  height: 100%;
+  min-width: 0;
+}
+
+.phcar-slide img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- arrows ---------- */
+.phcar-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 3, 4, 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--hud-line-strong, rgba(255, 255, 255, 0.14));
+  color: var(--hud-text, #eef0f3);
+  cursor: pointer;
+  padding: 0;
+  z-index: 2;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.phcar-arrow:active {
+  background: rgba(122, 139, 63, 0.28);
+  border-color: var(--hud-amber, #7a8b3f);
+  color: var(--hud-amber-hot, #9aa84f);
+}
+
+.phcar-prev { left: 10px; }
+.phcar-next { right: 10px; }
+
+/* ---------- counter ---------- */
+.phcar-counter {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 2;
+  font-family: var(--hud-font-chrome, ui-monospace, monospace);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--hud-cyan, #d4c4a0);
+  background: rgba(3, 3, 4, 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--hud-line, rgba(255, 255, 255, 0.08));
+  border-radius: 20px;
+  padding: 4px 10px;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  pointer-events: none;
+}
+
+.phcar-sep { color: var(--hud-text-dim, #8b939c); }
+
+/* ---------- dots ---------- */
+.phcar-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0 2px;
+}
+
+.phcar-dot {
+  width: 26px;            /* generous tap width, slim visual */
+  height: 22px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.phcar-dot::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hud-text-mute, #5c646c);
+  transition: background 160ms ease, width 160ms ease, box-shadow 160ms ease;
+}
+
+.phcar-dot.is-on::after {
+  width: 18px;
+  border-radius: 3px;
+  background: var(--hud-amber-hot, #9aa84f);
+  box-shadow: 0 0 8px rgba(154, 168, 79, 0.55);
+}
+
+/* ---------- single photo: hide chrome, keep premium frame ---------- */
+.phcar-single .phcar-arrow,
+.phcar-single .phcar-dots {
+  display: none;
+}
+
+/* ---------- empty state ---------- */
+.phcar-empty-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 10px;
+  background: var(--hud-bg-lift, #08090c);
+  border: 1px dashed var(--hud-line-strong, rgba(255, 255, 255, 0.14));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.phcar-empty-label {
+  font-family: var(--hud-font-chrome, ui-monospace, monospace);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--hud-text-mute, #5c646c);
+  padding-left: 0.3em; /* recenter tracked text */
+}
+
+.phcar-empty-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--hud-amber, #7a8b3f);
+  opacity: 0.7;
+}
+
+.phcar-empty-corner.tl { top: 8px; left: 8px; border-right: none; border-bottom: none; }
+.phcar-empty-corner.tr { top: 8px; right: 8px; border-left: none; border-bottom: none; }
+.phcar-empty-corner.bl { bottom: 8px; left: 8px; border-right: none; border-top: none; }
+.phcar-empty-corner.br { bottom: 8px; right: 8px; border-left: none; border-top: none; }
+
+/* ---------- larger screens: subtle upscale, layout unchanged ---------- */
+@media (min-width: 768px) {
+  .phcar-viewport {
+    border-radius: 12px;
+  }
+  .phcar-arrow {
+    width: 52px;
+    height: 52px;
+  }
+  .phcar-arrow:hover {
+    background: rgba(122, 139, 63, 0.22);
+    border-color: var(--hud-amber, #7a8b3f);
+  }
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .phcar-track {
+    transition: none;
+  }
+}

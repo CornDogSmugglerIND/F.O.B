@@ -1,0 +1,191 @@
+/* Coalition H.U.D. — Fulfillment (sold -> packed -> shipped -> delivered).
+ * 390px-first. Uses host vars; zero brown, zero blue/teal. */
+
+/* ---------- sheet section (injected into #itemSheet) ---------- */
+
+#ffSection {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hud-line);
+}
+
+#ffSection .chrome {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.ff-status {
+  font-family: var(--hud-font-chrome);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.7;
+  color: var(--hud-text-dim);
+}
+
+.ff-cta {
+  width: 100%;
+  margin-top: 10px;
+  font-size: 14px;
+  padding: 13px 14px;
+}
+
+.ff-done {
+  margin-top: 10px;
+  font-family: var(--hud-font-chrome);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hud-text-mute);
+}
+
+/* ---------- overlay sheets (sit above #itemSheet at z 60) ---------- */
+
+.ff-sheet { z-index: 65; }
+
+.ff-sheet h2 {
+  font-size: 20px;
+  margin: 8px 0 12px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.ff-itemline {
+  font-size: 13px;
+  color: var(--hud-text-dim);
+  margin-bottom: 12px;
+  line-height: 1.45;
+}
+
+.ff-form {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.ff-field {
+  display: grid;
+  gap: 6px;
+}
+
+.ff-field .chrome {
+  color: var(--hud-text-dim);
+}
+
+.ff-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0a0b0e;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--hud-text);
+  color-scheme: dark;
+  font-family: var(--hud-font-body);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px;
+  border-radius: 0;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+.ff-input:focus {
+  outline: none;
+  border-color: rgba(var(--hud-amber-rgb), 0.65);
+}
+
+select.ff-input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%238b939c' stroke-width='1.6'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+.ff-input::placeholder {
+  color: var(--hud-text-mute);
+  font-weight: 400;
+}
+
+.ff-hint {
+  min-height: 14px;
+  font-family: var(--hud-font-chrome);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hud-text-dim);
+}
+
+/* ---------- shipping queue (top of Map view) ---------- */
+
+#ffQueue {
+  margin-bottom: 14px;
+  padding: 14px;
+}
+
+.ff-queue-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.ff-queue-count {
+  font-family: var(--hud-font-chrome);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--hud-amber-hot);
+}
+
+.ff-qlist {
+  display: grid;
+  gap: 8px;
+}
+
+.ff-qrow {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  background: #0e1218;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+.ff-qrow img,
+.ff-qrow .ph {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  background: #0a0b0e;
+}
+
+.ff-qinfo {
+  min-width: 0;
+}
+
+.ff-qtitle {
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ff-qsub {
+  margin-top: 3px;
+  font-family: var(--hud-font-chrome);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--hud-text-dim);
+  line-height: 1.6;
+}
+
+.ff-qact {
+  white-space: nowrap;
+}

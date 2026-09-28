@@ -1,0 +1,171 @@
+/* Coalition H.U.D. — Settings feature styles
+ * 390px-first, tactical minimal. Uses coalition.css vars:
+ * --hud-panel, --hud-amber, --hud-amber-hot, --hud-cyan,
+ * --hud-text, --hud-text-dim, --hud-line
+ */
+
+/* Section shell reuses .panel + .settings-block from coalition.css */
+.stg-danger {
+  border-color: rgba(198, 90, 78, 0.35);
+}
+
+/* Row: label left, control right */
+.stg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--hud-line);
+  min-height: 56px;
+  box-sizing: border-box;
+}
+.stg-row:last-child { border-bottom: none; }
+
+.stg-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.stg-row-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--hud-text);
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stg-row-hint {
+  font-size: 11px;
+  color: var(--hud-text-dim);
+  line-height: 1.35;
+}
+.stg-foot {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--hud-text-dim);
+  line-height: 1.45;
+}
+
+/* Channel status dot */
+.stg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hud-text-dim);
+  flex: 0 0 auto;
+}
+.stg-dot.on {
+  background: var(--hud-amber);
+  box-shadow: 0 0 8px rgba(154, 168, 79, 0.55);
+}
+.stg-chan-status {
+  font-family: var(--hud-font-chrome, inherit);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+/* Selects */
+.stg-select {
+  flex: 0 0 auto;
+  max-width: 150px;
+  background: #161a22;
+  color: var(--hud-text);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  padding: 10px 30px 10px 12px;
+  font-family: var(--hud-font-body, inherit);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%238b939c' stroke-width='1.6' stroke-linecap='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.stg-select:focus-visible {
+  outline: 2px solid var(--hud-amber);
+  outline-offset: 1px;
+}
+
+/* Toggle switch */
+.stg-toggle {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-block;
+  width: 46px;
+  height: 26px;
+  cursor: pointer;
+}
+.stg-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+.stg-knob {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: #232a36;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: background 160ms ease, border-color 160ms ease;
+  pointer-events: none;
+}
+.stg-knob::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--hud-text-dim);
+  transition: transform 160ms ease, background 160ms ease;
+}
+.stg-toggle input:checked + .stg-knob {
+  background: rgba(122, 139, 63, 0.28);
+  border-color: var(--hud-amber);
+}
+.stg-toggle input:checked + .stg-knob::after {
+  transform: translateX(20px);
+  background: var(--hud-amber-hot);
+}
+.stg-toggle input:focus-visible + .stg-knob {
+  outline: 2px solid var(--hud-amber);
+  outline-offset: 2px;
+}
+
+/* Danger zone */
+.stg-danger-title { color: #c65a4e; }
+.stg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 0 4px;
+}
+.stg-btn-danger {
+  color: #c65a4e;
+  border-color: rgba(198, 90, 78, 0.45);
+  background: rgba(198, 90, 78, 0.08);
+}
+.stg-btn-danger.armed {
+  background: #c65a4e;
+  border-color: #c65a4e;
+  color: #0a0a0c;
+  font-weight: 700;
+}
+.stg-actions .btn:disabled { opacity: 0.45; }
+
+/* Small screens: keep buttons reachable with one thumb */
+@media (max-width: 420px) {
+  .stg-actions .btn { flex: 1 1 auto; text-align: center; }
+}

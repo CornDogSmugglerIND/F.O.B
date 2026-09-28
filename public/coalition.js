@@ -3,7 +3,7 @@ import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=1";
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";
 const DEMO_SEED_FLAG = "coalition-demo-seed-v4";
-const VIEWS = ["command", "scouter", "map", "spaces", "channels", "settings"];
+const VIEWS = ["command", "scouter", "map", "spaces", "channels", "collection", "settings"];
 
 const state = {
   view: "command",
@@ -655,11 +655,11 @@ function openSheet(id) {
   const sheet = $("itemSheet");
   if (!sheet) return;
   sheet.classList.add("open");
-  const src = it.photos?.[0]?.dataUrl || "";
-  $("sheetMedia").innerHTML = src ? `<img src="${src}" alt="" />` : "";
+  window.HUD_carousel?.renderInto($("sheetMedia"), it.photos || []);
   $("sheetTitle").textContent = it.title || it.productName || "Untitled";
   $("sheetMeta").textContent = `${phaseFromItem(it)} · ${listingStatusLabel(it)} · qty ${it.quantity || 1} · ${money(it.price || 0)}`;
   $("sheetSpace").textContent = it.spaceId ? spaceName(it.spaceId) : "No bin assigned";
+  window.HUD_fulfillment?.renderSheetSection(id);
 }
 
 function closeSheet() {
@@ -904,6 +904,9 @@ function render() {
   renderMap();
   renderSpaces();
   renderChannels();
+  window.HUD_collection?.refresh();
+  window.HUD_settings?.render();
+  window.HUD_invtools?.refresh();
 }
 
 function bind() {
@@ -964,6 +967,37 @@ function bind() {
     const view = location.hash.replace(/^#\/?/, "") || "command";
     if (VIEWS.includes(view) && view !== state.view) navigate(view);
   });
+
+  // Feature modules (loaded as classic scripts before this module)
+  window.HUD_carousel && null; // carousel needs no init; called from openSheet
+  window.HUD_spaces?.init();
+  window.HUD_csv?.init();
+  window.HUD_collection?.init();
+  window.HUD_settings?.init();
+  window.HUD_ebay?.init();
+  window.HUD_fulfillment?.init();
+  window.HUD_invtools?.init();
+
+  // Bridge: expose app internals so feature modules can use live state
+  // instead of localStorage fallbacks. Read-only for most; mutations go
+  // through saveItems()/render().
+  window.HUDcore = {
+    state,
+    toast,
+    $,
+    escapeHtml,
+    money,
+    uid,
+    spaceName,
+    openSheet,
+    closeSheet,
+    saveItems,
+    saveSpaces,
+    render,
+    navigate,
+    stageItem,
+    assignSpace,
+  };
 }
 
 async function boot() {
