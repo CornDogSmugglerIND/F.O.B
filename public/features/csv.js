@@ -324,6 +324,10 @@
       commitItems(items);
       closeOverlay();
       toast("Imported " + added + " item" + (added === 1 ? "" : "s"));
+      try {
+        var core = G("HUDcore");
+        if (core && typeof core.render === "function") core.render();
+      } catch (e) { /* render is best-effort */ }
     }
 
     function handleText(text, fileName) {
