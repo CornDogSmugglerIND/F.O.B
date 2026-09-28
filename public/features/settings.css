@@ -6,7 +6,7 @@
 
 /* Section shell reuses .panel + .settings-block from coalition.css */
 .stg-danger {
-  border-color: rgba(198, 90, 78, 0.35);
+  border-color: rgba(212, 90, 104, 0.35);
 }
 
 /* Row: label left, control right */
@@ -61,7 +61,7 @@
 }
 .stg-dot.on {
   background: var(--hud-amber);
-  box-shadow: 0 0 8px rgba(154, 168, 79, 0.55);
+  box-shadow: 0 0 8px var(--hud-amber-soft);
 }
 .stg-chan-status {
   font-family: var(--hud-font-chrome, inherit);
@@ -133,12 +133,12 @@
   transition: transform 160ms ease, background 160ms ease;
 }
 .stg-toggle input:checked + .stg-knob {
-  background: rgba(122, 139, 63, 0.28);
-  border-color: var(--hud-amber);
+  background: var(--hud-amber-soft);
+  border-color: var(--hud-amber-hairline);
 }
 .stg-toggle input:checked + .stg-knob::after {
   transform: translateX(24px);
-  background: var(--hud-amber-hot);
+  background: var(--hud-text);
 }
 .stg-toggle input:focus-visible + .stg-knob {
   outline: 2px solid var(--hud-amber);
@@ -146,7 +146,7 @@
 }
 
 /* Danger zone */
-.stg-danger-title { color: #c65a4e; }
+.stg-danger-title { color: var(--hud-danger, #d45a68); }
 .stg-actions {
   display: flex;
   flex-wrap: wrap;
@@ -170,14 +170,14 @@
   background-color: transparent;
 }
 .stg-btn-danger {
-  color: #c65a4e;
-  border-color: rgba(198, 90, 78, 0.45);
-  background: rgba(198, 90, 78, 0.08);
+  color: var(--hud-danger, #d45a68);
+  border-color: rgba(212, 90, 104, 0.45);
+  background: rgba(212, 90, 104, 0.08);
 }
 .stg-actions .btn.armed,
 .stg-btn-danger.armed {
-  background: #c65a4e;
-  border-color: #c65a4e;
+  background: var(--hud-danger, #d45a68);
+  border-color: var(--hud-danger, #d45a68);
   color: #0a0a0c;
   font-weight: 700;
 }

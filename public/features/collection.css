@@ -44,7 +44,8 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 .col-filter-btn.active {
-  background: rgba(122,139,63,0.22);
+  background: var(--hud-amber-soft);
+  border: 1px solid var(--hud-amber-hairline);
   color: var(--hud-amber-hot);
 }
 
@@ -221,7 +222,7 @@ label[for="colFPhoto"] { cursor: pointer; }
 }
 .col-fav-star { width: 20px; height: 20px; display: inline-block; }
 .col-fav-star svg { width: 20px; height: 20px; }
-.col-fav-toggle[aria-pressed="true"] { color: var(--hud-amber-hot); border-color: rgba(122,139,63,0.5); }
+.col-fav-toggle[aria-pressed="true"] { color: var(--hud-amber-hot); border-color: var(--hud-amber-hairline); }
 
 /* detail overlay */
 .col-detail-photo {

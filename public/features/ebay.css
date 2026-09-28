@@ -53,7 +53,7 @@
 .ebay-badge.ebay-live .dot {
   background: var(--hud-amber-hot);
   opacity: 1;
-  box-shadow: 0 0 10px rgba(154, 168, 79, 0.85);
+  box-shadow: 0 0 10px var(--hud-amber-soft);
 }
 
 .ebay-badge.ebay-error { color: var(--hud-danger); }
@@ -103,12 +103,12 @@
 
 #ebayPill.ebay-live {
   color: var(--hud-amber-hot);
-  border-color: rgba(154, 168, 79, 0.55);
+  border-color: var(--hud-amber-hairline);
 }
 
 #ebayPill.ebay-live .dot {
   background: var(--hud-amber-hot);
-  box-shadow: 0 0 8px rgba(154, 168, 79, 0.9);
+  box-shadow: 0 0 8px var(--hud-amber-soft);
 }
 
 #ebayPill.ebay-error {

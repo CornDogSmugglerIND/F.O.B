@@ -1,29 +1,36 @@
-/* Visor tokens — Base44 DNA. Amber is rare. Panels are solid, not wire. */
+/* Visor tokens — Coalition H.U.D premium rebuild (2026-09-28).
+ * Locked palette (Sawyer 2026-09-27): near-black ground, silver/white text.
+ * Premium comes from depth, motion, materials — NOT color.
+ * BANNED: green, brown, teal, gold/yellow fills, gold buttons, gold gradients.
+ * Amber #F2A03D is restrained: tiny status glyphs + one active state only,
+ * under 10% of screen area, never fills, never text-shadow bloom. */
 :root {
-  --hud-bg: #030304;
-  --hud-bg-lift: #08090c;
-  --hud-panel: #0c0e12;
-  --hud-panel-2: #111318;
-  --hud-raised: #16191f;
-  --hud-line: rgba(255, 255, 255, 0.08);
-  --hud-line-strong: rgba(255, 255, 255, 0.14);
-  /* Tactical palette per Sawyer 2026-09-27: olive drab primary, desert sand secondary.
-     No brown. No blue/teal. Minimal, premium, interactive. */
-  --hud-amber: #7a8b3f;
-  --hud-amber-hot: #9aa84f;
-  --hud-amber-soft: rgba(122, 139, 63, 0.14);
-  --hud-amber-rgb: 122, 139, 63;
-  --hud-cyan: #d4c4a0;
-  --hud-cyan-soft: rgba(212, 196, 160, 0.14);
-  --hud-text: #eef0f3;
-  --hud-text-dim: #8b939c;
-  --hud-text-mute: #5c646c;
+  --hud-bg: #07080a;
+  --hud-bg-lift: #0b0c0e;
+  --hud-panel: #0e1113;
+  --hud-panel-2: #111417;
+  --hud-raised: #151a1d;
+  --hud-line: rgba(255, 255, 255, 0.09);
+  --hud-line-strong: rgba(255, 255, 255, 0.16);
+  --hud-amber: #f2a03d;
+  --hud-amber-hot: #ffc46b;
+  --hud-amber-soft: rgba(242, 160, 61, 0.12);
+  --hud-amber-rgb: 242, 160, 61;
+  --hud-amber-hairline: rgba(242, 160, 61, 0.34);
+  /* --hud-cyan is a legacy name kept for JS/CSS compat; it now resolves to
+     silver — the secondary highlight. It is NOT teal. */
+  --hud-cyan: #c7ccd2;
+  --hud-cyan-soft: rgba(199, 204, 210, 0.12);
+  --hud-text: #e8edef;
+  --hud-text-dim: #9aa3ab;
+  --hud-text-mute: #646d75;
   --hud-danger: #d45a68;
-  --hud-danger-soft: rgba(212, 90, 104, 0.14);
-  --hud-ok: #5dce8a;
-  --hud-blur: 22px;
-  --hud-radius: 2px;
-  --hud-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --hud-danger-soft: rgba(212, 90, 104, 0.12);
+  /* Prices read in silver-white, never green. */
+  --hud-ok: #e8edef;
+  --hud-blur: 14px;
+  --hud-radius: 4px;
+  --hud-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --hud-duration: 200ms;
   --hud-font-chrome: "IBM Plex Mono", ui-monospace, monospace;
   --hud-font-body: "IBM Plex Sans", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
