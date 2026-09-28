@@ -72,7 +72,7 @@ test("coalition.css uses Visor accent tokens, not school-bus gold", async () => 
     const css = await (await fetch(`${baseUrl}/coalition.css`)).text();
     const tokens = await (await fetch(`${baseUrl}/visor/tokens.css`)).text();
     assert.match(css, /visor\/tokens\.css/);
-    assert.match(tokens, /--hud-amber:\s*#a08050/i);
+    assert.match(tokens, /--hud-amber:\s*#7a8b3f/i);
     assert.doesNotMatch(css + tokens, /#f5c518/i);
     assert.doesNotMatch(css + tokens, /#ffe566/i);
   } finally {

@@ -1,7 +1,7 @@
 /* Coalition H.U.D — Base44 materials. Filled panels · photo tiles · rare amber.
    NOT thin grey wire boxes. NOT empty 00 skeleton. */
 @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
-@import url("/visor/tokens.css?v=6");
+@import url("/visor/tokens.css?v=7");
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; height: 100%; }
@@ -130,8 +130,8 @@ body::after {
   clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
 }
 .hud-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hud-text-mute); }
-.hud-pill.on { color: var(--hud-cyan); border-color: rgba(158,201,212,0.45); }
-.hud-pill.on .dot { background: var(--hud-cyan); box-shadow: 0 0 8px rgba(158,201,212,0.45); }
+.hud-pill.on { color: var(--hud-cyan); border-color: rgba(212,196,160,0.45); }
+.hud-pill.on .dot { background: var(--hud-cyan); box-shadow: 0 0 8px rgba(212,196,160,0.45); }
 
 /* Edge-anchored counters — NO surrounding box (Base44) */
 .stat-row {
@@ -366,8 +366,8 @@ body::after {
   font-weight: 700;
   letter-spacing: 0.16em;
   color: var(--hud-cyan);
-  background: rgba(158,201,212,0.12);
-  border: 1px solid rgba(158,201,212,0.4);
+  background: rgba(212,196,160,0.12);
+  border: 1px solid rgba(212,196,160,0.4);
   clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
 }
 
@@ -384,7 +384,7 @@ body::after {
   display: grid;
   place-items: center;
   background: #0a0d12;
-  border: 1px solid rgba(158,201,212,0.3);
+  border: 1px solid rgba(212,196,160,0.3);
   clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
   color: var(--hud-cyan);
 }
