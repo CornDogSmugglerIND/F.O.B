@@ -79,6 +79,7 @@
       return (
         '<div class="phcar-slide" aria-hidden="' + (i === 0 ? "false" : "true") + '">' +
           '<img src="' + esc(p.dataUrl) + '" alt="Photo ' + (i + 1) + " of " + n + '"' +
+          ' draggable="false"' +
           (i === 0 ? "" : ' loading="lazy"') + " />" +
         "</div>"
       );
@@ -115,8 +116,19 @@
     var track = el.querySelector(".phcar-track");
     var viewport = el.querySelector(".phcar-viewport");
     var curEl = el.querySelector(".phcar-cur");
+    var dotsEl = el.querySelector(".phcar-dots");
     var dotEls = Array.prototype.slice.call(el.querySelectorAll(".phcar-dot"));
     var index = 0;
+
+    /* Keep the active dot visible in the scrollable dots strip (20+ photos).
+     * Manual scrollLeft math — scrollIntoView could yank the page vertically. */
+    function centerDot() {
+      if (!dotsEl || !dotEls[index]) return;
+      var dr = dotsEl.getBoundingClientRect();
+      var r = dotEls[index].getBoundingClientRect();
+      if (dr.width === 0) return;
+      dotsEl.scrollLeft += (r.left - dr.left) - (dr.width - r.width) / 2;
+    }
 
     function show(i) {
       index = ((i % n) + n) % n;
@@ -131,6 +143,7 @@
       for (var s = 0; s < slideEls.length; s++) {
         slideEls[s].setAttribute("aria-hidden", s === index ? "false" : "true");
       }
+      centerDot();
     }
 
     function next() { show(index + 1); }
@@ -166,9 +179,20 @@
         }
       }, { passive: true });
 
-      /* Keyboard arrows (desktop). Removed on next renderInto via teardown. */
+      /* Keyboard arrows (desktop). Removed on next renderInto via teardown.
+       * Ignored while typing in a field so caret movement isn't hijacked. */
       var keyHandler = function (e) {
         if (!document.body.contains(root)) return;
+        var t = e.target;
+        var tag = t && t.tagName;
+        if (
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT" ||
+          (t && t.isContentEditable)
+        ) {
+          return;
+        }
         if (e.key === "ArrowRight") { next(); }
         else if (e.key === "ArrowLeft") { prev(); }
         else return;

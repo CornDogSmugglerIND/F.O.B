@@ -6,7 +6,31 @@
 /* ---------- bin detail overlay ---------- */
 
 .bd-sheet {
-  z-index: 70; /* above the item sheet, below toasts */
+  /* above the item sheet (60), below the host toast (70) */
+  z-index: 68;
+}
+
+/* Sheet open animation: display:none↔flex can't transition, so the
+ * backdrop fades and the card rises via keyframes on open. 300ms ease. */
+.bd-sheet.open {
+  animation: bdFade 300ms var(--hud-ease, ease);
+}
+.bd-sheet.open .bd-card {
+  animation: bdRise 300ms var(--hud-ease, cubic-bezier(0.22, 1, 0.36, 1));
+}
+@keyframes bdFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes bdRise {
+  from { opacity: 0; transform: translateY(26px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bd-sheet.open,
+  .bd-sheet.open .bd-card {
+    animation: none;
+  }
 }
 
 .bd-card {
@@ -45,6 +69,10 @@
   letter-spacing: 0.12em;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 300ms var(--hud-ease, ease),
+    border-color 300ms var(--hud-ease, ease),
+    transform 300ms var(--hud-ease, ease);
 }
 
 .bd-back .bd-back-arrow {
@@ -57,6 +85,12 @@
 .bd-back:active {
   background: var(--hud-amber-soft);
   border-color: var(--hud-amber);
+  transform: scale(0.97);
+}
+
+.bd-back:focus-visible {
+  outline: 2px solid var(--hud-amber-hot);
+  outline-offset: 2px;
 }
 
 .bd-titlewrap {
@@ -133,10 +167,15 @@
   -webkit-user-select: none;
   user-select: none;
   touch-action: pan-x pan-y; /* long-press drags, swipes still scroll */
+  transition:
+    transform 300ms var(--hud-ease, ease),
+    box-shadow 300ms var(--hud-ease, ease),
+    opacity 200ms ease;
 }
 
 .sp-cell:active {
   cursor: grabbing;
+  transform: scale(0.97);
 }
 
 .sp-thumb {
@@ -191,7 +230,10 @@
   opacity: 0.35;
 }
 
-/* Clone that follows the finger during a touch drag */
+/* Clone that follows the finger during a touch drag.
+ * The JS replaces the cell's classes with exactly "sp-clone" (so the
+ * .sp-cell press transition can't lag the fingertip transform), which means
+ * the clone needs its own structural styles here. */
 .sp-clone {
   position: fixed;
   left: 0;
@@ -199,13 +241,28 @@
   z-index: 200;
   pointer-events: none;
   margin: 0;
-  opacity: 0.94;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--hud-raised);
   border: 2px solid var(--hud-amber-hot);
+  border-radius: var(--hud-radius);
+  color: var(--hud-text);
+  opacity: 0.94;
   box-shadow: 0 18px 44px -12px rgba(0, 0, 0, 0.8);
   will-change: transform;
 }
 
 /* ---------- drop-target highlight ---------- */
+
+/* Host bin nodes: additive transition so the olive highlight eases in/out
+ * instead of snapping. */
+.space-node {
+  transition:
+    box-shadow 300ms var(--hud-ease, ease),
+    background-color 300ms var(--hud-ease, ease);
+}
 
 .space-node.drop-hint {
   box-shadow:
@@ -213,6 +270,10 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     0 10px 28px -18px rgba(0, 0, 0, 0.85);
   background: #141711; /* faint olive lift — still near-black, not brown */
+}
+
+.bd-card {
+  transition: box-shadow 300ms var(--hud-ease, ease);
 }
 
 .bd-card.drop-hint {

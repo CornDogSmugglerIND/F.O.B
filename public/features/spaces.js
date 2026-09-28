@@ -27,10 +27,21 @@
   var suppressClickUntil = 0;
   var tDrag = null; // active/pending touch drag
   var fallbackItems = null; // localStorage-backed item array when window.state is absent
+  var lastFocused = null; // element focused before the overlay opened
 
   /* ---------------- app bridge (lazy, with fallbacks) ---------------- */
 
+  // coalition.js is an ES module: it exposes internals as window.HUDcore
+  // ({ state, saveItems, render, toast, spaceName, escapeHtml, money,
+  //   openSheet }), NOT as bare window.* globals. Resolve HUDcore first,
+  // then the legacy bare globals, then local fallbacks.
+  function hud() {
+    return window.HUDcore || null;
+  }
+
   function appState() {
+    var h = hud();
+    if (h && h.state && Array.isArray(h.state.items)) return h.state;
     if (window.state && Array.isArray(window.state.items)) return window.state;
     return null;
   }
@@ -62,6 +73,11 @@
   }
 
   function persistItems() {
+    var h = hud();
+    if (h && typeof h.saveItems === "function") {
+      h.saveItems();
+      return;
+    }
     if (typeof window.saveItems === "function") {
       window.saveItems();
       return;
@@ -78,6 +94,8 @@
   }
 
   function esc(s) {
+    var h = hud();
+    if (h && typeof h.escapeHtml === "function") return h.escapeHtml(s);
     if (typeof window.escapeHtml === "function") return window.escapeHtml(s);
     return String(s == null ? "" : s)
       .replace(/&/g, "&amp;")
@@ -87,11 +105,15 @@
   }
 
   function moneyOf(n) {
+    var h = hud();
+    if (h && typeof h.money === "function") return h.money(n);
     if (typeof window.money === "function") return window.money(n);
     return "$" + (Number(n) || 0).toFixed(2);
   }
 
   function spaceNameOf(id) {
+    var h = hud();
+    if (h && typeof h.spaceName === "function") return h.spaceName(id);
     if (typeof window.spaceName === "function") return window.spaceName(id);
     var spaces = readSpaces();
     for (var i = 0; i < spaces.length; i++) {
@@ -101,6 +123,11 @@
   }
 
   function showToast(msg) {
+    var h = hud();
+    if (h && typeof h.toast === "function") {
+      h.toast(msg);
+      return;
+    }
     if (typeof window.toast === "function") {
       window.toast(msg);
       return;
@@ -121,6 +148,11 @@
   }
 
   function openItemSheet(id) {
+    var h = hud();
+    if (h && typeof h.openSheet === "function") {
+      h.openSheet(id);
+      return;
+    }
     if (typeof window.openSheet === "function") window.openSheet(id);
   }
 
@@ -179,6 +211,9 @@
     ov.className = "sheet bd-sheet";
     ov.id = "binDetailSheet";
     ov.setAttribute("aria-hidden", "true");
+    ov.setAttribute("role", "dialog");
+    ov.setAttribute("aria-modal", "true");
+    ov.setAttribute("aria-label", "Bin detail");
     ov.innerHTML =
       '<div class="sheet-card bd-card" id="binDetailCard">' +
       '<div class="bd-head">' +
@@ -247,21 +282,39 @@
     if (!spaceId) return;
     currentSpaceId = spaceId;
     var ov = ensureOverlay();
+    lastFocused = document.activeElement;
     ov.querySelector("#binDetailCard").setAttribute("data-space", spaceId);
     renderBinGrid();
     ov.classList.add("open");
     ov.setAttribute("aria-hidden", "false");
     overlayOpen = true;
+    var back = ov.querySelector("#binDetailBack");
+    if (back && back.focus) {
+      try {
+        back.focus({ preventScroll: true });
+      } catch (e) {
+        back.focus();
+      }
+    }
   }
 
   function closeBinDetail() {
     currentSpaceId = null;
     overlayOpen = false;
+    cleanupTouchDrag();
     var ov = document.getElementById("binDetailSheet");
     if (ov) {
       ov.classList.remove("open");
       ov.setAttribute("aria-hidden", "true");
     }
+    if (lastFocused && lastFocused.focus) {
+      try {
+        lastFocused.focus({ preventScroll: true });
+      } catch (e) {
+        /* focus restore is best-effort */
+      }
+    }
+    lastFocused = null;
   }
 
   /* ---------------- unsorted pool strip ---------------- */
@@ -333,6 +386,9 @@
     if (!nodes) return;
     // Delegated — survives coalition.js re-rendering the node buttons.
     nodes.addEventListener("click", function (e) {
+      // Swallow the synthetic click that follows a touch drag onto a bin,
+      // or the drag would drop the item AND open the bin overlay.
+      if (Date.now() < suppressClickUntil) return;
       var n = e.target.closest ? e.target.closest("[data-space]") : null;
       if (n) openBinDetail(n.getAttribute("data-space"));
     });
@@ -341,8 +397,12 @@
       if (!n) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
-      clearDropHints();
-      n.classList.add("drop-hint");
+      // dragover fires continuously; only toggle classes on change so the
+      // 300ms highlight transition doesn't restart every tick.
+      if (!n.classList.contains("drop-hint")) {
+        clearDropHints();
+        n.classList.add("drop-hint");
+      }
     });
     nodes.addEventListener("dragleave", function (e) {
       var n = e.target.closest ? e.target.closest("[data-space]") : null;
@@ -507,7 +567,14 @@
   /* ---------------- public API ---------------- */
 
   function refresh() {
-    if (typeof window.renderSpaces === "function") {
+    var h = hud();
+    if (h && typeof h.render === "function") {
+      try {
+        h.render(); // host render() repaints spaces (nodes, counts, pool)
+      } catch (e) {
+        /* host render failed — still refresh our own bits */
+      }
+    } else if (typeof window.renderSpaces === "function") {
       try {
         window.renderSpaces();
       } catch (e) {

@@ -17,6 +17,9 @@
   border-radius: 10px;
   background: var(--hud-bg-lift, #08090c);
   border: 1px solid var(--hud-line-strong, rgba(255, 255, 255, 0.14));
+  /* Horizontal swipes are handled in JS; the browser keeps vertical panning
+   * so swiping up/down still scrolls the sheet behind the photo. */
+  touch-action: pan-y;
   /* premium glow: restrained olive halo, no paint-color fills */
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.55),
@@ -28,7 +31,7 @@
 .phcar-track {
   display: flex;
   height: 100%;
-  transition: transform var(--hud-duration, 200ms) var(--hud-ease, cubic-bezier(0.22, 1, 0.36, 1));
+  transition: transform 300ms var(--hud-ease, cubic-bezier(0.22, 1, 0.36, 1));
   will-change: transform;
 }
 
@@ -67,13 +70,18 @@
   cursor: pointer;
   padding: 0;
   z-index: 2;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+  transition:
+    background 300ms ease,
+    border-color 300ms ease,
+    color 300ms ease,
+    transform 300ms ease;
 }
 
 .phcar-arrow:active {
   background: rgba(122, 139, 63, 0.28);
   border-color: var(--hud-amber, #7a8b3f);
   color: var(--hud-amber-hot, #9aa84f);
+  transform: translateY(-50%) scale(0.94);
 }
 
 .phcar-prev { left: 10px; }
@@ -106,20 +114,32 @@
 /* ---------- dots ---------- */
 .phcar-dots {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   gap: 8px;
-  padding: 12px 0 2px;
+  /* width:fit-content + margin auto keeps short rows centered; when 20+
+   * photos overflow, the strip left-aligns and scrolls natively. */
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 12px 4px 2px;
+}
+.phcar-dots::-webkit-scrollbar {
+  display: none;
 }
 
 .phcar-dot {
   width: 44px;            /* full 44px tap target */
   height: 44px;
+  flex: 0 0 auto;
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
   position: relative;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .phcar-dot::after {
@@ -132,7 +152,7 @@
   height: 6px;
   border-radius: 50%;
   background: var(--hud-text-mute, #5c646c);
-  transition: background 160ms ease, width 160ms ease, box-shadow 160ms ease;
+  transition: background 300ms ease, width 300ms ease, box-shadow 300ms ease;
 }
 
 .phcar-dot.is-on::after {
