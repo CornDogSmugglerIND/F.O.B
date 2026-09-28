@@ -309,6 +309,17 @@ async function runIdentify() {
     els.btnIdentify.disabled = true;
     els.btnIdentify.setAttribute("aria-busy", "true");
   }
+
+  // Honor Settings → Identify provider. "manual" skips the API entirely.
+  try {
+    if (window.HUD_settings?.get("identifyProvider") === "manual") {
+      setIdentifyPhase("fail", "Manual mode");
+      setStatus("Manual mode — enter details.", "");
+      showToast("Manual identify");
+      return;
+    }
+  } catch { /* settings unavailable — fall through to API */ }
+
   renderCandidates([]);
 
   try {

@@ -470,6 +470,18 @@ async function runIdentify() {
     return;
   }
 
+  // Honor Settings → Identify provider. "manual" skips the API entirely.
+  try {
+    const provider = window.HUD_settings?.get("identifyProvider");
+    if (provider === "manual") {
+      els.manualRow?.classList.remove("hidden");
+      setStatus("Manual mode — enter title.", "");
+      showToast("Manual identify");
+      if (els.manualTitle) els.manualTitle.focus();
+      return;
+    }
+  } catch { /* settings unavailable — fall through to API */ }
+
   setStatus("Identify running — reading photos…", "busy");
   if (els.btnIdentify) els.btnIdentify.disabled = true;
 
