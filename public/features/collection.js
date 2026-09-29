@@ -83,27 +83,17 @@
     }
   }
 
-  /* Returns true on success. On quota failure, drops the photo of
-   * stripPhotoId (photos are the bulk) and retries so item metadata is
-   * never lost; returns false only if it still won't fit. */
-  function save(stripPhotoId) {
+  /* Returns true on success. On quota failure, REFUSES the save and returns
+   * false so the caller can tell the user. A photo is NEVER silently
+   * stripped to make a save fit — Sawyer's rule: never lose photos. */
+  function save() {
     try {
       localStorage.setItem(LS_COLLECTION, JSON.stringify(state.items));
       return true;
     } catch (e) {
-      /* quota exceeded */
+      /* quota exceeded: refuse, do not strip */
+      return false;
     }
-    if (stripPhotoId) {
-      const it = get(stripPhotoId);
-      if (it && it.photo) {
-        it.photo = "";
-        try {
-          localStorage.setItem(LS_COLLECTION, JSON.stringify(state.items));
-          return true;
-        } catch (e2) { /* still full */ }
-      }
-    }
-    return false;
   }
 
   function get(id) {
@@ -317,9 +307,9 @@
       it.notes = notes;
       it.favorite = favorite;
       it.photo = state.formPhoto || "";
-      if (!save(it.id)) {
+      if (!save()) {
         it.photo = oldPhoto; // restore, keep form open so nothing is lost
-        toast("Collection storage is full — changes not saved");
+        toast("Collection storage is full — nothing saved, your photo is safe");
         return;
       }
       toast("Keeper updated");
@@ -337,9 +327,9 @@
         order: state.items.length,
       };
       state.items.push(item);
-      if (!save(item.id)) {
+      if (!save()) {
         state.items = state.items.filter((x) => x.id !== item.id);
-        toast("Collection storage is full — keeper not saved");
+        toast("Collection storage is full — keeper not saved, photo is safe");
         return;
       }
       toast("Added to collection");
