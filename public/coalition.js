@@ -3,13 +3,14 @@ import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=1";
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";
 const DEMO_SEED_FLAG = "coalition-demo-seed-v4";
-const VIEWS = ["command", "scouter", "map", "spaces", "channels", "collection", "settings"];
+const VIEWS = ["command", "scouter", "constellation", "spaces", "channels", "settings"];
 
 const state = {
   view: "command",
   items: [],
   spaces: [],
   activePhase: "intake",
+  constellationMode: "tree", // "tree" | "collection"
   ebayOnline: false,
   sheetItemId: null,
   combineMode: false,
@@ -258,7 +259,7 @@ function renderCommand() {
       { n: reviewN || intakeN, title: "Scans needing review", hint: "Low confidence or unidentified", goto: "scouter" },
       { n: builtN, title: "Built, not published", hint: "Listing ready — push to channel", goto: "channels" },
       { n: needsBin, title: "Needs bin", hint: "No Spaces location yet", goto: "spaces" },
-      { n: shipN, title: "Ready to ship", hint: "Sold / packed awaiting dropoff", goto: "map" },
+      { n: shipN, title: "Ready to ship", hint: "Sold / packed awaiting dropoff", goto: "constellation" },
     ].map((r) => ({
       ...r,
       // Amber only when the row is actually urgent (count > 0); cyan default
@@ -339,7 +340,91 @@ function paintPkgs(rootId, items) {
   );
 }
 
-function renderMap() {
+function moveItemToPhase(itemId, phaseId) {
+  if (!PHASES.some((p) => p.id === phaseId)) return;
+  const it = state.items.find((i) => i.id === itemId);
+  if (!it) return;
+  if (phaseFromItem(it) === phaseId) return;
+  it.phase = phaseId;
+  it.staged = phaseId === "staged" ? true : it.staged;
+  saveItems();
+  render();
+  toast(`Moved to ${PHASES.find((p) => p.id === phaseId).label}`);
+}
+
+function setConstellationMode(mode) {
+  if (mode !== "tree" && mode !== "collection") return;
+  state.constellationMode = mode;
+  document.querySelectorAll(".constellation-mode").forEach((b) => {
+    const on = b.dataset.cmode === mode;
+    b.classList.toggle("active", on);
+    b.setAttribute("aria-selected", on ? "true" : "false");
+  });
+  renderConstellation();
+}
+
+function bindConstellationSwitch() {
+  document.querySelectorAll(".constellation-mode").forEach((b) =>
+    b.addEventListener("click", () => setConstellationMode(b.dataset.cmode))
+  );
+}
+
+/* Drag inventory between stages on the constellation tree (desktop HTML5). */
+function bindTreeDragDrop() {
+  const nodes = $("mapNodes");
+  const list = $("mapItems");
+  if (!nodes || !list || nodes.dataset.dragBound) return;
+  nodes.dataset.dragBound = "1";
+
+  list.addEventListener("dragstart", (e) => {
+    const card = e.target.closest ? e.target.closest("[data-item]") : null;
+    if (!card) return;
+    try { e.dataTransfer.setData("text/plain", card.dataset.item); } catch (_) {}
+    e.dataTransfer.effectAllowed = "move";
+    card.classList.add("dragging-src");
+  });
+  list.addEventListener("dragend", () => {
+    list.querySelectorAll(".dragging-src").forEach((el) => el.classList.remove("dragging-src"));
+    nodes.querySelectorAll(".drop-hint").forEach((el) => el.classList.remove("drop-hint"));
+  });
+  nodes.addEventListener("dragover", (e) => {
+    const node = e.target.closest ? e.target.closest("[data-phase]") : null;
+    if (!node) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (!node.classList.contains("drop-hint")) {
+      nodes.querySelectorAll(".drop-hint").forEach((el) => el.classList.remove("drop-hint"));
+      node.classList.add("drop-hint");
+    }
+  });
+  nodes.addEventListener("dragleave", (e) => {
+    const node = e.target.closest ? e.target.closest("[data-phase]") : null;
+    if (node && !node.contains(e.relatedTarget)) node.classList.remove("drop-hint");
+  });
+  nodes.addEventListener("drop", (e) => {
+    const node = e.target.closest ? e.target.closest("[data-phase]") : null;
+    if (!node) return;
+    e.preventDefault();
+    nodes.querySelectorAll(".drop-hint").forEach((el) => el.classList.remove("drop-hint"));
+    const itemId = e.dataTransfer.getData("text/plain");
+    moveItemToPhase(itemId, node.dataset.phase);
+  });
+}
+
+function renderConstellation() {
+  const tree = $("constellationTree");
+  const col = $("constellationCollection");
+  const inCollection = state.constellationMode === "collection";
+  if (tree) tree.hidden = inCollection;
+  if (col) col.hidden = !inCollection;
+  if (inCollection) {
+    window.HUD_collection?.render();
+    return;
+  }
+  renderTree();
+}
+
+function renderTree() {
   const counts = countsByPhase();
   const track = $("mapNodes");
   if (!track) return;
@@ -354,7 +439,7 @@ function renderMap() {
   track.querySelectorAll("[data-phase]").forEach((btn) =>
     btn.addEventListener("click", () => {
       state.activePhase = btn.dataset.phase;
-      renderMap();
+      renderTree();
     })
   );
   const phase = PHASES.find((p) => p.id === state.activePhase) || PHASES[0];
@@ -370,7 +455,7 @@ function renderMap() {
     .map((it) => {
       const src = it.photos?.[0]?.dataUrl || "";
       const status = listingStatusLabel(it);
-      return `<button type="button" class="item-card" data-item="${it.id}">
+      return `<button type="button" class="item-card" data-item="${it.id}" draggable="true">
         ${src ? `<img src="${src}" alt="" />` : `<div class="ph"></div>`}
         <div><h3>${escapeHtml(it.title || it.productName || "Untitled")}</h3>
         <p>${escapeHtml(phase.label)}${it.spaceId ? ` · ${escapeHtml(spaceName(it.spaceId))}` : ""}</p>
@@ -906,7 +991,7 @@ function closeBarcode() {
 function render() {
   renderCommand();
   renderScouter();
-  renderMap();
+  renderConstellation();
   renderSpaces();
   renderChannels();
   window.HUD_collection?.refresh();
@@ -918,6 +1003,8 @@ function bind() {
   document.querySelectorAll(".nav-tab").forEach((tab) =>
     tab.addEventListener("click", () => navigate(tab.dataset.view))
   );
+  bindConstellationSwitch();
+  bindTreeDragDrop();
 
   $("btnSnap")?.addEventListener("click", () => $("inputSnap")?.click());
   $("btnGallery")?.addEventListener("click", () => $("inputGallery")?.click());
@@ -948,7 +1035,7 @@ function bind() {
   $("btnEbaySync")?.addEventListener("click", syncEbay);
   $("btnLoadAllSold")?.addEventListener("click", loadAllSold);
   $("btnLoadAllSold2")?.addEventListener("click", loadAllSold);
-  $("btnOpenMap")?.addEventListener("click", () => navigate("map"));
+  $("btnOpenMap")?.addEventListener("click", () => navigate("constellation"));
   $("btnCombineMode")?.addEventListener("click", () => {
     navigate("channels");
     setCombineMode(true);

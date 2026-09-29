@@ -4,10 +4,11 @@
  * .chrome) come from /coalition.css; everything collection-specific is .col-*
  */
 
-#view-collection { padding-bottom: 12px; }
+#constellationCollection { padding-bottom: 12px; }
+.col-card.dragging-src { opacity: 0.45; }
 
 /* 44px minimum tap targets across collection UI */
-#view-collection .btn,
+#constellationCollection .btn,
 #colFormSheet .btn,
 #colDetailSheet .btn { min-height: 44px; }
 

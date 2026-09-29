@@ -438,6 +438,44 @@ body::after {
 
 input[type="file"] { display: none; }
 
+/* ---------- constellation: tree / collection view switch ---------- */
+.constellation-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  margin: 14px 0 12px;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-line);
+  border-radius: 8px;
+}
+.constellation-mode {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--hud-text-dim);
+  font-family: var(--hud-font-chrome, inherit);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 22px;
+  min-height: 44px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.constellation-mode.active {
+  background: var(--hud-amber-soft);
+  border: 1px solid var(--hud-amber-hairline);
+  color: var(--hud-amber-hot);
+}
+.map-node.drop-hint .orb {
+  border-color: var(--hud-amber);
+  box-shadow: 0 0 14px rgba(var(--hud-amber-rgb), 0.6);
+  transform: scale(1.25);
+}
+.item-card.dragging-src { opacity: 0.45; }
+
 /* ---------- map: fixed lifecycle route, never reflows ---------- */
 .map-stage {
   position: relative;

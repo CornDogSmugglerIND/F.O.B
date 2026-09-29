@@ -488,7 +488,7 @@
   }
 
   function ensureQueue() {
-    var view = $("view-map");
+    var view = $("constellationTree");
     if (!view || $("ffQueue")) return;
     var q = document.createElement("section");
     q.id = "ffQueue";
@@ -564,11 +564,11 @@
     buildSheets();
     drainToast();
     renderQueue();
-    var view = $("view-map");
-    if (view && typeof MutationObserver === "function") {
+    var host = $("view-constellation");
+    if (host && typeof MutationObserver === "function") {
       new MutationObserver(function () {
-        if (view.classList.contains("active")) renderQueue();
-      }).observe(view, { attributes: true, attributeFilter: ["class"] });
+        if (host.classList.contains("active")) renderQueue();
+      }).observe(host, { attributes: true, attributeFilter: ["class"] });
     }
   }
 
