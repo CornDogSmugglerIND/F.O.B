@@ -894,6 +894,8 @@ input[type="file"] { display: none; }
 }
 .btn:active { transform: translateY(-1px); border-color: var(--hud-text-mute); }
 .btn-ghost { color: var(--hud-text-dim); background: transparent; border-color: var(--hud-line); }
+.btn-danger { color: var(--hud-danger, #d45a68); background: transparent; border-color: rgba(212, 90, 104, 0.45); }
+.btn-danger.armed { background: var(--hud-danger, #d45a68); border-color: var(--hud-danger, #d45a68); color: #0a0a0c; font-weight: 700; }
 .btn-amber {
   color: var(--hud-amber);
   background: transparent;

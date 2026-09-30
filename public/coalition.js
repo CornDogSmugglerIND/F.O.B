@@ -2,7 +2,6 @@ import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=1";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";
-const DEMO_SEED_FLAG = "coalition-demo-seed-v4";
 const VIEWS = ["command", "scouter", "constellation", "spaces", "channels", "settings"];
 
 const state = {
@@ -82,17 +81,20 @@ function uid() {
   return crypto.randomUUID ? crypto.randomUUID() : `i_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-function seedDemoIfEmpty() {
-  // Force photo-filled demo once per v4 key so first paint never shows empty 00 wireframe.
-  const forced = !localStorage.getItem(DEMO_SEED_FLAG);
-  if (state.items.length && !forced) return;
+function seedDemoItems() {
+  // Explicit opt-in only — NEVER called automatically. Fresh installs start
+  // empty (honest empty state); demo data appears only when the operator taps
+  // "Load demo data" in Settings. Appends to the current inventory — real
+  // items are never wiped. Safe to call repeatedly: skips when demo items
+  // already exist. Returns the number of demo items added (0 = none).
+  if (state.items.some((i) => i && i.notes === "demo-seed")) return 0;
   const now = new Date().toISOString();
   const idPika = uid();
   const idPack = uid();
   const idDeck = uid();
   const idEtb = uid();
   const idDest = uid();
-  state.items = [
+  const demo = [
     {
       id: idPika,
       createdAt: now,
@@ -134,8 +136,8 @@ function seedDemoIfEmpty() {
       setName: "Scarlet & Violet",
       quantity: 1,
       price: 35.5,
-      phase: "intake",
-      staged: false,
+      phase: "staged",
+      staged: true,
       spaceId: "bin1",
       channels: {},
       photos: [{ id: uid(), dataUrl: "/demo/card-morpeko.jpg", createdAt: now }],
@@ -174,13 +176,23 @@ function seedDemoIfEmpty() {
       notes: "demo-seed",
     },
   ];
-  state.spaces = defaultSpaces().map((sp) => {
-    const ids = state.items.filter((i) => i.spaceId === sp.id).map((i) => i.id);
-    return { ...sp, itemIds: ids };
-  });
-  saveItems();
+  const itemsBefore = state.items.length;
+  const spacesBefore = JSON.stringify(state.spaces);
+  state.items.push(...demo);
+  for (const sp of state.spaces) {
+    const ids = demo.filter((i) => i.spaceId === sp.id).map((i) => i.id);
+    if (ids.length) sp.itemIds = [...(sp.itemIds || []), ...ids];
+  }
+  if (!saveItems()) {
+    // Storage refused — roll back so memory matches disk. saveItems() already
+    // showed the honest "storage full" toast.
+    state.items.length = itemsBefore;
+    try { state.spaces = JSON.parse(spacesBefore); } catch { /* keep running */ }
+    return 0;
+  }
   saveSpaces();
-  localStorage.setItem(DEMO_SEED_FLAG, "1");
+  render();
+  return demo.length;
 }
 
 async function fileToDataUrl(file) {
@@ -751,6 +763,7 @@ function openSheet(id) {
   const it = state.items.find((x) => x.id === id);
   if (!it) return;
   state.sheetItemId = id;
+  disarmDelete();
   const sheet = $("itemSheet");
   if (!sheet) return;
   sheet.classList.add("open");
@@ -766,8 +779,60 @@ function openSheet(id) {
 }
 window.HUD_openSheet = openSheet;
 function closeSheet() {
+  disarmDelete();
   state.sheetItemId = null;
   $("itemSheet")?.classList.remove("open");
+}
+
+let deleteArmedId = null;
+let deleteTimer = null;
+
+function disarmDelete() {
+  deleteArmedId = null;
+  clearTimeout(deleteTimer);
+  const b = $("btnDeleteItem");
+  if (b) {
+    b.classList.remove("armed");
+    b.textContent = "Delete";
+  }
+}
+
+function deleteItem(id) {
+  const idx = state.items.findIndex((x) => x.id === id);
+  if (idx < 0) return;
+  if (deleteArmedId !== id) {
+    // First tap arms — destructive actions always need a confirm step.
+    deleteArmedId = id;
+    const b = $("btnDeleteItem");
+    if (b) {
+      b.classList.add("armed");
+      b.textContent = "Tap again to delete";
+    }
+    toast("Tap again to delete this item");
+    clearTimeout(deleteTimer);
+    deleteTimer = setTimeout(disarmDelete, 5000);
+    return;
+  }
+  clearTimeout(deleteTimer);
+  // Snapshot for rollback if storage refuses the write.
+  const [it] = state.items.splice(idx, 1);
+  const spacesBefore = JSON.stringify(state.spaces);
+  for (const sp of state.spaces) {
+    if (sp && Array.isArray(sp.itemIds)) sp.itemIds = sp.itemIds.filter((x) => x !== id);
+  }
+  if (!saveItems()) {
+    // Storage refused — restore so memory matches disk. saveItems() already
+    // showed the honest "storage full" toast. Nothing is lost.
+    state.items.splice(idx, 0, it);
+    try { state.spaces = JSON.parse(spacesBefore); } catch { /* keep running */ }
+    disarmDelete();
+    return;
+  }
+  saveSpaces();
+  disarmDelete();
+  closeSheet();
+  render();
+  toast("Deleted");
 }
 
 async function addPhotos(fileList) {
@@ -1334,6 +1399,7 @@ function bind() {
   $("btnAssignBin1")?.addEventListener("click", () => assignSpace(state.sheetItemId, "bin1"));
   $("btnAssignBin2")?.addEventListener("click", () => assignSpace(state.sheetItemId, "bin2"));
   $("btnAssignStaged")?.addEventListener("click", () => assignSpace(state.sheetItemId, "staged"));
+  $("btnDeleteItem")?.addEventListener("click", () => deleteItem(state.sheetItemId));
 
   $("btnCloseBarcode")?.addEventListener("click", closeBarcode);
   $("btnBarcodeAdd")?.addEventListener("click", () => addBarcode($("barcodeInput")?.value));
@@ -1399,6 +1465,7 @@ function bind() {
     stageItem,
     assignSpace,
     syncEbay,
+    seedDemoItems,
   };
 }
 
@@ -1406,7 +1473,6 @@ async function boot() {
   state.items = loadItems();
   state.spaces = loadSpaces();
   saveSpaces();
-  seedDemoIfEmpty();
   bind();
   const start = location.hash.replace(/^#\/?/, "") || "command";
   navigate(VIEWS.includes(start) ? start : "command");

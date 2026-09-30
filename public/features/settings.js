@@ -11,7 +11,6 @@
 
   var LS_ITEMS = "coalition-items-v4";
   var LS_SPACES = "coalition-spaces-v4";
-  var LS_DEMO_FLAG = "coalition-demo-seed-v4";
   var LS_SETTINGS = "coalition-settings-v1";
   var VIEW_ID = "view-settings";
 
@@ -262,8 +261,33 @@
         localStorage.setItem(LS_SPACES, JSON.stringify(pruneSpaces(readJson(LS_SPACES, []))));
       }
     } catch (e) { /* keep running */ }
-    // Demo flag stays set so nothing reseeds; remove-from-store is the whole job.
+    // Nothing auto-seeds anymore — demo items only exist when explicitly loaded
+    // via "Load demo data", so remove-from-store is the whole job.
     toast(removed ? "Demo data cleared \u00b7 " + removed + " removed" : "No demo data found");
+    render();
+  }
+
+  // Explicit opt-in: demo items are NEVER seeded automatically. This is the
+  // only path that creates them — it appends to the live inventory via the
+  // HUD core seeder (which guards against double-load and rolls back if
+  // storage refuses). Not destructive, so no two-tap arm.
+  function loadDemoData() {
+    var core = window.HUDcore || null;
+    if (!core || typeof core.seedDemoItems !== "function") {
+      toast("Demo loader unavailable — reload the app and try again");
+      return;
+    }
+    var already = (core.state.items || []).some(function (it) { return isDemoItem(it); });
+    if (already) {
+      toast("Demo data already loaded");
+      render();
+      return;
+    }
+    var added = 0;
+    try { added = core.seedDemoItems() || 0; } catch (e) { added = 0; }
+    if (added > 0) toast("Demo data loaded \u00b7 " + added + " items");
+    // added === 0 with no demo present means storage refused — the seeder's
+    // save already showed the honest "storage full" toast.
     render();
   }
 
@@ -313,7 +337,7 @@
     }
     clearTimeout(resetTimer);
     try {
-      [LS_ITEMS, LS_SPACES, LS_DEMO_FLAG, LS_SETTINGS].forEach(function (k) {
+      [LS_ITEMS, LS_SPACES, LS_SETTINGS].forEach(function (k) {
         localStorage.removeItem(k);
       });
     } catch (e) { /* ignore */ }
@@ -446,10 +470,11 @@
         '<div class="chrome stg-danger-title">Data</div>' +
         '<div class="stg-actions">' +
           '<button type="button" class="btn btn-sm btn-ghost" id="btnStgClearDemo" data-action="clear-demo">Clear demo data</button>' +
+          '<button type="button" class="btn btn-sm btn-ghost" id="btnStgLoadDemo" data-action="load-demo">Load demo data</button>' +
           '<button type="button" class="btn btn-sm" data-action="export">Export backup</button>' +
           '<button type="button" class="btn btn-sm stg-btn-danger" id="btnStgReset" data-action="reset">Reset all data</button>' +
         "</div>" +
-        '<p class="stg-foot">Export downloads every localStorage key as JSON. Reset wipes items, spaces, demo flag and prefs, then reloads.</p>' +
+        '<p class="stg-foot">Export downloads every localStorage key as JSON. Reset wipes items, spaces and prefs, then reloads.</p>' +
       "</div>";
 
     paintEbayRow();
@@ -472,6 +497,7 @@
       var action = t.getAttribute("data-action");
       if (action === "ebay-sync") syncEbayNow();
       else if (action === "clear-demo") armClear(t);
+      else if (action === "load-demo") loadDemoData();
       else if (action === "export") exportBackup();
       else if (action === "reset") armReset(t);
     });
