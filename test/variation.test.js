@@ -29,7 +29,8 @@ test("combineVariationBatch builds Pick Your Card title and per-card lines", () 
   ]);
   assert.match(batch.title, /Pick Your Card/);
   assert.match(batch.title, /Ascended Heroes/);
-  assert.match(batch.title, /Common/);
+  // Sawyer's locked rule: [Set Name] Pick Your Card [Game] TCG Singles NM — no rarity slot.
+  assert.equal(batch.title, "Ascended Heroes Pick Your Card Pokemon TCG Singles NM");
   assert.equal(batch.childCount, 2);
   assert.equal(batch.totalQty, 3);
   assert.equal(batch.parent.variationParent, true);
@@ -38,7 +39,7 @@ test("combineVariationBatch builds Pick Your Card title and per-card lines", () 
   assert.ok(batch.variations.some((v) => /Erika's Gloom/.test(v.line)));
   assert.match(batch.description, /Erika's Gloom 002\/217/);
   assert.equal(batch.csv.charCodeAt(0), 0xfeff);
-  assert.match(batch.csv, /Pick Your Card Common NM/);
+  assert.match(batch.csv, /Ascended Heroes Pick Your Card Pokemon TCG Singles NM/);
   // Parent StartPrice column is empty (FE rule) — verified via parent.price + FE exporter unit test
   assert.match(batch.csv, /"hud-var-/);
 });

@@ -73,24 +73,79 @@
   }
 
   function persistItems() {
+    // Returns true when the write landed. Callers must roll back on false —
+    // a silent success toast after a failed save is a lie the app tells often.
     var h = hud();
     if (h && typeof h.saveItems === "function") {
-      h.saveItems();
-      return;
+      try {
+        return h.saveItems() === true;
+      } catch (e) {
+        return false;
+      }
     }
     if (typeof window.saveItems === "function") {
-      window.saveItems();
-      return;
+      try {
+        return window.saveItems() === true;
+      } catch (e) {
+        return false;
+      }
     }
     var st = appState();
     var items = st ? st.items : fallbackItems;
     if (items) {
       try {
         localStorage.setItem(LS_ITEMS, JSON.stringify(items));
+        return true;
       } catch (e) {
-        /* storage full/blocked — nothing more we can do */
+        showToast("Storage full — filing not saved, nothing changed");
+        return false;
       }
     }
+    return false;
+  }
+
+  function readSpace(id) {
+    var spaces = readSpaces();
+    for (var i = 0; i < spaces.length; i++) {
+      if (spaces[i] && spaces[i].id === id) return spaces[i];
+    }
+    return null;
+  }
+
+  function persistSpaces() {
+    // Returns true when the write landed. Bin-cover changes must roll back
+    // on false, same contract as persistItems().
+    var h = hud();
+    if (h && typeof h.saveSpaces === "function") {
+      try {
+        return h.saveSpaces() === true;
+      } catch (e) {
+        return false;
+      }
+    }
+    var spaces = readSpaces();
+    try {
+      localStorage.setItem(LS_SPACES, JSON.stringify(spaces));
+      return true;
+    } catch (e) {
+      showToast("Storage full — bin change not saved, nothing changed");
+      return false;
+    }
+  }
+
+  function setSpaceCover(spaceId, dataUrl) {
+    var sp = readSpace(spaceId);
+    if (!sp) return;
+    var before = sp.cover || null;
+    sp.cover = dataUrl || null;
+    if (!persistSpaces()) {
+      // Storage refused — restore so memory matches disk. The save path
+      // already showed the honest toast. Nothing is lost.
+      sp.cover = before;
+      return;
+    }
+    paintCover();
+    refresh();
   }
 
   function esc(s) {
@@ -170,22 +225,60 @@
     }
     if (!it) return;
     if (it.spaceId === spaceId) return; // dropped back in its own bin: no-op
+    var before = it.spaceId;
     it.spaceId = spaceId;
     it.updatedAt = new Date().toISOString();
-    persistItems();
+    if (!persistItems()) {
+      // Storage refused — restore so memory matches disk. The save path
+      // already showed the honest toast. Nothing is lost.
+      it.spaceId = before;
+      return;
+    }
     showToast("Filed in " + spaceNameOf(spaceId));
+    refresh();
+  }
+
+  function unfileItem(itemId) {
+    // Remove an item from its bin back to the unsorted pool.
+    if (!itemId) return;
+    var items = readItems();
+    var it = null;
+    for (var i = 0; i < items.length; i++) {
+      if (String(items[i].id) === String(itemId)) {
+        it = items[i];
+        break;
+      }
+    }
+    if (!it || !it.spaceId) return;
+    var before = it.spaceId;
+    it.spaceId = null;
+    it.updatedAt = new Date().toISOString();
+    if (!persistItems()) {
+      it.spaceId = before;
+      return;
+    }
+    showToast("Moved to unsorted");
     refresh();
   }
 
   /* ---------------- item cell markup (shared) ---------------- */
 
-  function cellHTML(it) {
+  function cellHTML(it, opts) {
     var src = (it.photos && it.photos[0] && it.photos[0].dataUrl) || "";
     var title = esc(it.title || it.productName || "Untitled");
     var thumb = src
       ? '<img src="' + src + '" alt="" loading="lazy" draggable="false" />'
       : '<span class="sp-ph" aria-hidden="true"></span>';
+    // The remove button is a sibling of the cell button, never nested —
+    // nested buttons are invalid HTML and break tap handling.
+    var unfile =
+      opts && opts.unfile
+        ? '<button type="button" class="sp-unfile" data-unfile="' +
+          esc(it.id) +
+          '" aria-label="Remove from bin">&times;</button>'
+        : "";
     return (
+      '<span class="sp-cellwrap">' +
       '<button type="button" class="sp-cell" data-item="' +
       esc(it.id) +
       '" draggable="true">' +
@@ -198,7 +291,9 @@
       '<span class="sp-price">' +
       esc(moneyOf(it.price)) +
       "</span>" +
-      "</button>"
+      "</button>" +
+      unfile +
+      "</span>"
     );
   }
 
@@ -225,6 +320,10 @@
       '<h2 class="bd-title" id="binDetailTitle">Bin</h2>' +
       '<span class="bd-count" id="binDetailCount"></span>' +
       "</div>" +
+      "</div>" +
+      '<div class="bd-coverwrap" id="binCoverWrap">' +
+      '<button type="button" class="bd-cover" id="binDetailCover" aria-label="Bin photo — tap to add or change"></button>' +
+      '<div class="bd-chooser" id="binCoverChooser" hidden></div>' +
       "</div>" +
       '<div class="bd-grid" id="binDetailGrid"></div>' +
       '<p class="bd-hint">Drag items onto a bin to file them</p>' +
@@ -274,17 +373,223 @@
       items.length + (items.length === 1 ? " ITEM" : " ITEMS");
     var grid = ov.querySelector("#binDetailGrid");
     grid.innerHTML = items.length
-      ? items.map(cellHTML).join("")
+      ? items
+          .map(function (it) {
+            return cellHTML(it, { unfile: true });
+          })
+          .join("")
       : '<div class="bd-empty">No items filed here yet.<br />Drag items onto this bin to file them.</div>';
+  }
+
+  /* ---------------- bin photo slot (swappable, never fake art) ---------------- */
+
+  // The bin's hero photo. Null until Sawyer adds a real one — the slot then
+  // renders as an obvious empty placeholder. No stock art, ever.
+  var coverChooserOpen = false;
+
+  function safeCover(sp) {
+    var c = sp && sp.cover;
+    // Only data URLs we wrote ourselves. Anything else (old stock paths,
+    // junk from an older save) renders as the empty slot.
+    return typeof c === "string" && c.indexOf("data:image/") === 0 ? c : null;
+  }
+
+  function paintCover() {
+    if (!overlayOpen || !currentSpaceId) return;
+    var slot = document.getElementById("binDetailCover");
+    var chooser = document.getElementById("binCoverChooser");
+    if (!slot || !chooser) return;
+    var cover = safeCover(readSpace(currentSpaceId));
+    if (coverChooserOpen) {
+      slot.setAttribute("hidden", "");
+      chooser.removeAttribute("hidden");
+      paintChooser(chooser, cover);
+      return;
+    }
+    chooser.setAttribute("hidden", "");
+    slot.removeAttribute("hidden");
+    slot.classList.toggle("has-photo", !!cover);
+    slot.innerHTML = cover
+      ? '<img src="' + cover + '" alt="" draggable="false" />' +
+        '<span class="bd-cover-change">Swap photo</span>'
+      : '<span class="bd-cover-empty">' +
+        '<span class="bd-cover-empty-t">Tap to add photo</span>' +
+        '<span class="bd-cover-empty-s">A real photo of this bin — nothing shown until you add one</span>' +
+        "</span>";
+  }
+
+  function paintChooser(chooser, cover) {
+    var items = readItems().filter(function (i) {
+      return (
+        i.spaceId === currentSpaceId && i.photos && i.photos.length && i.photos[0].dataUrl
+      );
+    });
+    var thumbs = items
+      .map(function (it) {
+        return (
+          '<button type="button" class="bd-pick" data-cover-pick="' +
+          esc(it.id) +
+          '" aria-label="Use this item photo as the bin photo">' +
+          '<img src="' +
+          it.photos[0].dataUrl +
+          '" alt="" loading="lazy" draggable="false" />' +
+          "</button>"
+        );
+      })
+      .join("");
+    chooser.innerHTML =
+      '<div class="bd-chooser-t">Bin photo</div>' +
+      (thumbs
+        ? '<div class="bd-chooser-grid">' +
+          thumbs +
+          "</div>" +
+          '<div class="bd-chooser-s">Use an item photo</div>'
+        : "") +
+      '<div class="bd-chooser-btns">' +
+      '<button type="button" class="bd-chooser-btn" data-cover-act="camera">Take photo</button>' +
+      '<button type="button" class="bd-chooser-btn" data-cover-act="library">Choose from library</button>' +
+      (cover
+        ? '<button type="button" class="bd-chooser-btn danger" data-cover-act="remove">Remove photo</button>'
+        : "") +
+      '<button type="button" class="bd-chooser-btn ghost" data-cover-act="cancel">Cancel</button>' +
+      "</div>";
+  }
+
+  function coverFileInput() {
+    var inp = document.getElementById("binCoverFile");
+    if (inp) return inp;
+    inp = document.createElement("input");
+    inp.type = "file";
+    inp.id = "binCoverFile";
+    inp.accept = "image/*";
+    inp.style.display = "none";
+    inp.addEventListener("change", onCoverFile);
+    document.body.appendChild(inp);
+    return inp;
+  }
+
+  function readAsDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      var SI = window.ScouterImage;
+      if (SI && typeof SI.fileToDataUrl === "function") {
+        SI.fileToDataUrl(file).then(resolve, reject);
+        return;
+      }
+      var r = new FileReader();
+      r.onload = function () {
+        resolve(r.result);
+      };
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  function onCoverFile(e) {
+    var files = (e.target && e.target.files) || [];
+    var file = files[0];
+    e.target.value = ""; // allow picking the same file twice
+    if (!file || !currentSpaceId) return;
+    var spaceId = currentSpaceId;
+    var finish = function (f) {
+      readAsDataUrl(f).then(
+        function (dataUrl) {
+          coverChooserOpen = false;
+          setSpaceCover(spaceId, dataUrl);
+        },
+        function () {
+          showToast("Could not read that photo — nothing changed");
+        }
+      );
+    };
+    // Compress the copy like intake does; the stored photo is untouched.
+    // On any failure we keep the original file — never lose the photo.
+    var SI = window.ScouterImage;
+    if (SI && typeof SI.compressPhoto === "function") {
+      SI.compressPhoto(file).then(finish, function () {
+        finish(file);
+      });
+    } else {
+      finish(file);
+    }
+  }
+
+  function openCoverChooser() {
+    coverChooserOpen = true;
+    paintCover();
+  }
+
+  function closeCoverChooser() {
+    coverChooserOpen = false;
+    paintCover();
+  }
+
+  function onCoverAction(act) {
+    if (!currentSpaceId) return;
+    var spaceId = currentSpaceId;
+    if (act === "cancel") {
+      closeCoverChooser();
+      return;
+    }
+    if (act === "remove") {
+      coverChooserOpen = false;
+      setSpaceCover(spaceId, null);
+      showToast("Bin photo removed");
+      return;
+    }
+    if (act === "camera" || act === "library") {
+      var inp = coverFileInput();
+      if (act === "camera") inp.setAttribute("capture", "environment");
+      else inp.removeAttribute("capture");
+      inp.click();
+    }
+  }
+
+  function onCoverPick(itemId) {
+    if (!currentSpaceId) return;
+    var items = readItems();
+    var it = null;
+    for (var i = 0; i < items.length; i++) {
+      if (String(items[i].id) === String(itemId)) {
+        it = items[i];
+        break;
+      }
+    }
+    var src = it && it.photos && it.photos[0] && it.photos[0].dataUrl;
+    if (!src) {
+      showToast("That photo is gone — nothing changed");
+      return;
+    }
+    // Item photos are already intake-compressed; reuse the data as-is.
+    coverChooserOpen = false;
+    setSpaceCover(currentSpaceId, src);
+  }
+
+  function bindCover() {
+    document.addEventListener("click", function (e) {
+      var slot = e.target.closest ? e.target.closest("#binDetailCover") : null;
+      if (slot) {
+        openCoverChooser();
+        return;
+      }
+      var pick = e.target.closest ? e.target.closest("[data-cover-pick]") : null;
+      if (pick) {
+        onCoverPick(pick.getAttribute("data-cover-pick"));
+        return;
+      }
+      var act = e.target.closest ? e.target.closest("[data-cover-act]") : null;
+      if (act) onCoverAction(act.getAttribute("data-cover-act"));
+    });
   }
 
   function openBinDetail(spaceId) {
     if (!spaceId) return;
     currentSpaceId = spaceId;
+    coverChooserOpen = false;
     var ov = ensureOverlay();
     lastFocused = document.activeElement;
     ov.querySelector("#binDetailCard").setAttribute("data-space", spaceId);
     renderBinGrid();
+    paintCover();
     ov.classList.add("open");
     ov.setAttribute("aria-hidden", "false");
     overlayOpen = true;
@@ -301,6 +606,7 @@
   function closeBinDetail() {
     currentSpaceId = null;
     overlayOpen = false;
+    coverChooserOpen = false;
     cleanupTouchDrag();
     var ov = document.getElementById("binDetailSheet");
     if (ov) {
@@ -552,6 +858,14 @@
       "click",
       function (e) {
         if (Date.now() < suppressClickUntil) return;
+        // Remove-from-bin: the × sits beside the cell button, never inside it,
+        // so this never collides with the open-sheet tap below.
+        var un = e.target.closest ? e.target.closest("[data-unfile]") : null;
+        if (un) {
+          e.stopPropagation();
+          unfileItem(un.getAttribute("data-unfile"));
+          return;
+        }
         var cell = e.target.closest ? e.target.closest(".sp-cell") : null;
         if (!cell) return;
         var id = cell.getAttribute("data-item");
@@ -582,7 +896,10 @@
       }
     }
     augmentPool();
-    if (overlayOpen && currentSpaceId) renderBinGrid();
+    if (overlayOpen && currentSpaceId) {
+      renderBinGrid();
+      paintCover();
+    }
   }
 
   function init() {
@@ -592,6 +909,7 @@
     bindNodes();
     bindDesktopDrag();
     bindTaps();
+    bindCover();
     watchPool();
     augmentPool();
   }

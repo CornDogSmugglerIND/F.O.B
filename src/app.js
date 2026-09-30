@@ -3,7 +3,6 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { scouterRouter } from "./routes/scouter.js";
 import { channelsRouter } from "./routes/channels.js";
-import { ariRouter } from "./routes/ari.js";
 import { getUploadsDir } from "./store.js";
 import { getChannelStatuses } from "./channels/config.js";
 
@@ -26,7 +25,6 @@ export function createApp() {
 
   app.use("/api/scouter", scouterRouter());
   app.use("/api/channels", channelsRouter());
-  app.use("/api/identify", ariRouter());
   app.use("/uploads", express.static(getUploadsDir()));
   app.use(express.static(join(__dirname, "..", "public")));
 
@@ -34,6 +32,13 @@ export function createApp() {
     console.error(err);
     if (err.code === "LIMIT_FILE_SIZE") {
       return res.status(413).json({ error: "Photo file too large" });
+    }
+    // Oversized JSON (e.g. full-size phone photos pasted into an Identify
+    // request) must come back honest, not as a 500. Photos are kept client-side.
+    if (err.type === "entity.too.large") {
+      return res
+        .status(413)
+        .json({ ok: false, error: "Photos too large — downscale and retry. Nothing was changed." });
     }
     res.status(500).json({ error: "Internal server error" });
   });

@@ -6,12 +6,6 @@ import { runIdentify, identityToItemPatch } from "../identify/router.js";
 import { runBarcodeScan } from "../identify/barcode.js";
 import { visionKeyStatus } from "../identify/vision.js";
 import {
-  ariQueueStorageStatus,
-  enqueueIdentifyRequest,
-  getAriIdentifyConfig,
-  getIdentifyQueueStatus,
-} from "../identify/ariQueue.js";
-import {
   addInlinePhotoToItem,
   addPhotoToItem,
   createScoutItem,
@@ -165,54 +159,14 @@ export function scouterRouter() {
    * Identify — photos in, identity out. Command #59 correction.
    * Barcode is not accepted as an Identify path.
    *
-   * Provider switch (IDENTIFY_PROVIDER):
-   *   "anthropic" (default) — direct in-app vision call, gated on
-   *     ANTHROPIC_API_KEY. Photos in, identity out, no middleman.
-   *   "ari" — legacy queue path (A.R.I. as vision provider via R2).
-   *     Rejected — do not use.
+   * Single provider: direct Anthropic vision (IDENTIFY_PROVIDER=anthropic),
+   * gated on ANTHROPIC_API_KEY. The A.R.I. R2 queue path was removed —
+   * no worker loop exists in this repo, so IDENTIFY_PROVIDER=ari would
+   * leave the UI polling for a result that can never arrive.
    */
   router.post("/identify", async (req, res, next) => {
     try {
       const body = req.body ?? {};
-      const provider = getAriIdentifyConfig().provider;
-
-      if (provider === "ari") {
-        try {
-          const { queueId } = await enqueueIdentifyRequest({
-            photos: body.photos,
-            notes: body.notes,
-            category: body.category,
-            quantity: body.quantity,
-          });
-          return res.json({
-            ok: true,
-            queued: true,
-            queueId,
-            path: "ari",
-            message: "A.R.I. is identifying…",
-          });
-        } catch (err) {
-          if (err.code === "ARI_QUEUE_CONFIG") {
-            return res.status(503).json({
-              ok: false,
-              queued: false,
-              path: "none",
-              message: "Identify isn't set up yet.",
-              missingKeys: err.missing || [],
-            });
-          }
-          if (err.code === "ARI_QUEUE_NO_PHOTOS") {
-            return res.status(422).json({
-              ok: false,
-              queued: false,
-              path: "none",
-              message: err.message,
-            });
-          }
-          throw err;
-        }
-      }
-
       const result = await runIdentify({
         photos: body.photos,
         notes: body.notes,
@@ -230,8 +184,6 @@ export function scouterRouter() {
 
   router.get("/identify/status", (_req, res) => {
     const keys = visionKeyStatus();
-    const ariStorage = ariQueueStorageStatus();
-    const provider = getAriIdentifyConfig().provider;
     res.json({
       service: "identify",
       feature: "photo",
@@ -240,37 +192,11 @@ export function scouterRouter() {
         separate: true,
         endpoint: "/api/scouter/barcode/:code",
       },
-      provider,
-      photoSearchReady:
-        provider === "ari" ? ariStorage.ok : keys.ready,
-      missingKeys: provider === "ari" ? ariStorage.missing : [],
-      setupTask:
-        provider === "ari"
-          ? ariStorage.ok
-            ? null
-            : "Identify isn't set up yet."
-          : keys.ready
-            ? null
-            : keys.message,
+      provider: "anthropic",
+      photoSearchReady: keys.ready,
+      missingKeys: keys.missingKeys,
+      setupTask: keys.ready ? null : keys.message,
     });
-  });
-
-  /**
-   * Frontend poll for an A.R.I.-queued identify. Public; queueId is an
-   * unguessable UUID.
-   */
-  router.get("/identify/queue/:queueId", async (req, res, next) => {
-    try {
-      const { status, result } = await getIdentifyQueueStatus(
-        req.params.queueId
-      );
-      if (status === "not_found") {
-        return res.status(404).json({ status, result: null });
-      }
-      res.json({ status, result });
-    } catch (err) {
-      next(err);
-    }
   });
 
   router.post("/items/:id/identify", async (req, res, next) => {

@@ -147,17 +147,27 @@
     // Prefer live host state via HUDcore bridge (no reload); fall back to reload.
     var core = window.HUDcore;
     if (core && core.state && Array.isArray(core.state.items) && core.saveItems && core.render) {
-      var it = null;
+      var it = null, idx = -1;
       for (var i = 0; i < core.state.items.length; i++) {
-        if (core.state.items[i] && core.state.items[i].id === id) { it = core.state.items[i]; break; }
+        if (core.state.items[i] && core.state.items[i].id === id) { it = core.state.items[i]; idx = i; break; }
       }
       if (!it) {
         toast("Item not found");
         return false;
       }
+      var before = null;
+      try { before = JSON.parse(JSON.stringify(it)); } catch (e) { before = null; }
       fn(it);
       it.updatedAt = nowIso();
-      try { core.saveItems(); } catch (e) { /* fall through to reload */ }
+      var saved = false;
+      try { saved = core.saveItems(); } catch (e) { saved = false; }
+      if (!saved) {
+        // Refuse the mutation: restore the pre-mutation item so in-memory
+        // state matches what is actually stored. Never report success.
+        if (before && idx >= 0) { try { core.state.items[idx] = before; } catch (e2) { /* ignore */ } }
+        try { core.toast("Storage full — could not save"); } catch (e3) { toast("Storage full — could not save"); }
+        return false;
+      }
       if (toastMsg) { try { core.toast(toastMsg); } catch (e) { toast(toastMsg); } }
       try { core.render(); } catch (e) { /* ignore */ }
       try { renderSheetSection(id); } catch (e) { /* ignore */ }

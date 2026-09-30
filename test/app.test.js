@@ -212,7 +212,7 @@ test("barcode lookup returns structured response", async () => {
 
 test("Identify is photo-first and does not accept barcode as a path", async () => {
   // This test covers the direct (anthropic) provider path's photo-first gate.
-  // The A.R.I. queue path's honest-failure behavior is covered in ariQueue.test.js.
+  // The removed A.R.I. queue path is gone; anthropic is the only provider.
   const prevProvider = process.env.IDENTIFY_PROVIDER;
   process.env.IDENTIFY_PROVIDER = "anthropic";
   const { baseUrl, close } = await startServer();

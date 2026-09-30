@@ -3,7 +3,7 @@
  * Mirrors src/listing/variation.js for offline Channels combine.
  */
 
-import { buildVariationTitle, buildEbayDescription, LISTING_CONFIG } from "/visor/listing-engine.js?v=1";
+import { buildVariationTitle, buildEbayDescription, LISTING_CONFIG } from "/visor/listing-engine.js?v=2";
 
 function csvEscape(value) {
   const s = value == null ? "" : String(value);

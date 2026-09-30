@@ -2,7 +2,6 @@ import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=1";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";
-const DEMO_SEED_FLAG = "coalition-demo-seed-v4";
 const VIEWS = ["command", "scouter", "constellation", "spaces", "channels", "settings"];
 
 const state = {
@@ -42,14 +41,26 @@ function loadItems() {
 }
 
 function saveItems() {
-  localStorage.setItem(LS_ITEMS, JSON.stringify(state.items));
+  try {
+    localStorage.setItem(LS_ITEMS, JSON.stringify(state.items));
+    return true;
+  } catch (err) {
+    // Refuse the save, keep everything in memory, and say so plainly.
+    // Stored photos are never stripped to force a fit.
+    const full = err && (err.name === "QuotaExceededError" || err.code === 22);
+    toast(full ? "Storage full — nothing saved, your photos are safe" : "Could not save — your photos are safe");
+    return false;
+  }
 }
 
 function defaultSpaces() {
+  // Bin covers are intentionally empty: Sawyer's real bin photos are not
+  // taken yet. The Spaces UI renders an obvious "Tap to add photo" slot for
+  // a null cover — never stock art, never fake bin photos.
   return [
-    { id: "bin1", name: "Bin 1", kind: "ebay_listed", itemIds: [], cover: "/spaces/bin1.jpg" },
-    { id: "bin2", name: "Bin 2", kind: "ebay_listed", itemIds: [], cover: "/spaces/bin2.jpg" },
-    { id: "staged", name: "Staged", kind: "staged", itemIds: [], cover: "/spaces/staged.jpg" },
+    { id: "bin1", name: "Bin 1", kind: "ebay_listed", itemIds: [], cover: null },
+    { id: "bin2", name: "Bin 2", kind: "ebay_listed", itemIds: [], cover: null },
+    { id: "staged", name: "Staged", kind: "staged", itemIds: [], cover: null },
   ];
 }
 
@@ -57,33 +68,52 @@ function loadSpaces() {
   try {
     const raw = JSON.parse(localStorage.getItem(LS_SPACES) || "null");
     if (Array.isArray(raw) && raw.length) {
-      // Ensure covers land for older saves
       const defaults = Object.fromEntries(defaultSpaces().map((s) => [s.id, s]));
-      return raw.map((s) => ({ ...defaults[s.id], ...s, cover: s.cover || defaults[s.id]?.cover || null }));
+      return raw.map((s) => {
+        const merged = { ...defaults[s.id], ...s };
+        // Migrate off the old stock-art covers: anything we shipped under
+        // /spaces/ was a fake bin photo. Real bin photos are data URLs.
+        if (typeof merged.cover === "string" && merged.cover.startsWith("/spaces/")) {
+          merged.cover = null;
+        }
+        return merged;
+      });
     }
   } catch { /* ignore */ }
   return defaultSpaces();
 }
 
 function saveSpaces() {
-  localStorage.setItem(LS_SPACES, JSON.stringify(state.spaces));
+  // Quota-guarded like saveItems(): never write a partial state, and say so
+  // honestly when storage refuses. Returns true/false.
+  try {
+    localStorage.setItem(LS_SPACES, JSON.stringify(state.spaces));
+    return true;
+  } catch (err) {
+    const full = err && (err.name === "QuotaExceededError" || err.code === 22);
+    toast(full ? "Storage full — bin change not saved, nothing changed" : "Could not save bins — nothing changed");
+    return false;
+  }
 }
 
 function uid() {
   return crypto.randomUUID ? crypto.randomUUID() : `i_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-function seedDemoIfEmpty() {
-  // Force photo-filled demo once per v4 key so first paint never shows empty 00 wireframe.
-  const forced = !localStorage.getItem(DEMO_SEED_FLAG);
-  if (state.items.length && !forced) return;
+function seedDemoItems() {
+  // Explicit opt-in only — NEVER called automatically. Fresh installs start
+  // empty (honest empty state); demo data appears only when the operator taps
+  // "Load demo data" in Settings. Appends to the current inventory — real
+  // items are never wiped. Safe to call repeatedly: skips when demo items
+  // already exist. Returns the number of demo items added (0 = none).
+  if (state.items.some((i) => i && i.notes === "demo-seed")) return 0;
   const now = new Date().toISOString();
   const idPika = uid();
   const idPack = uid();
   const idDeck = uid();
   const idEtb = uid();
   const idDest = uid();
-  state.items = [
+  const demo = [
     {
       id: idPika,
       createdAt: now,
@@ -125,8 +155,8 @@ function seedDemoIfEmpty() {
       setName: "Scarlet & Violet",
       quantity: 1,
       price: 35.5,
-      phase: "intake",
-      staged: false,
+      phase: "staged",
+      staged: true,
       spaceId: "bin1",
       channels: {},
       photos: [{ id: uid(), dataUrl: "/demo/card-morpeko.jpg", createdAt: now }],
@@ -165,13 +195,23 @@ function seedDemoIfEmpty() {
       notes: "demo-seed",
     },
   ];
-  state.spaces = defaultSpaces().map((sp) => {
-    const ids = state.items.filter((i) => i.spaceId === sp.id).map((i) => i.id);
-    return { ...sp, itemIds: ids };
-  });
-  saveItems();
+  const itemsBefore = state.items.length;
+  const spacesBefore = JSON.stringify(state.spaces);
+  state.items.push(...demo);
+  for (const sp of state.spaces) {
+    const ids = demo.filter((i) => i.spaceId === sp.id).map((i) => i.id);
+    if (ids.length) sp.itemIds = [...(sp.itemIds || []), ...ids];
+  }
+  if (!saveItems()) {
+    // Storage refused — roll back so memory matches disk. saveItems() already
+    // showed the honest "storage full" toast.
+    state.items.length = itemsBefore;
+    try { state.spaces = JSON.parse(spacesBefore); } catch { /* keep running */ }
+    return 0;
+  }
   saveSpaces();
-  localStorage.setItem(DEMO_SEED_FLAG, "1");
+  render();
+  return demo.length;
 }
 
 async function fileToDataUrl(file) {
@@ -496,7 +536,7 @@ function renderSpaces() {
         const n = state.items.filter((i) => i.spaceId === sp.id).length;
         const cover = sp.cover
           ? `<img src="${sp.cover}" alt="" />`
-          : `<div class="ph-bin">${escapeHtml(sp.name).toUpperCase()}</div>`;
+          : `<div class="ph-bin ph-bin-empty"><span>Tap to add photo</span></div>`;
         return `<button type="button" class="space-node" data-space="${sp.id}">
           <div class="frame">${cover}</div>
           <div class="tag">${escapeHtml(sp.name)}<em>${String(n).padStart(2, "0")}</em></div>
@@ -681,7 +721,7 @@ async function runCombineBatch() {
   const children = ids.map((id) => state.items.find((i) => i.id === id)).filter(Boolean);
   toast(`Combining ${children.length}…`);
   try {
-    const mod = await import("/visor/variation.js?v=1");
+    const mod = await import("/visor/variation.js?v=2");
     const batch = mod.combineVariationBatch(children);
     const parent = {
       id: uid(),
@@ -742,6 +782,7 @@ function openSheet(id) {
   const it = state.items.find((x) => x.id === id);
   if (!it) return;
   state.sheetItemId = id;
+  disarmDelete();
   const sheet = $("itemSheet");
   if (!sheet) return;
   sheet.classList.add("open");
@@ -749,12 +790,68 @@ function openSheet(id) {
   $("sheetTitle").textContent = it.title || it.productName || "Untitled";
   $("sheetMeta").textContent = `${phaseFromItem(it)} · ${listingStatusLabel(it)} · qty ${it.quantity || 1} · ${money(it.price || 0)}`;
   $("sheetSpace").textContent = it.spaceId ? spaceName(it.spaceId) : "No bin assigned";
+  const idHost = $("identifyResults");
+  if (idHost) idHost.innerHTML = "";
+  const idBtn = $("btnIdentify");
+  if (idBtn) idBtn.disabled = false;
   window.HUD_fulfillment?.renderSheetSection(id);
 }
 window.HUD_openSheet = openSheet;
 function closeSheet() {
+  disarmDelete();
   state.sheetItemId = null;
   $("itemSheet")?.classList.remove("open");
+}
+
+let deleteArmedId = null;
+let deleteTimer = null;
+
+function disarmDelete() {
+  deleteArmedId = null;
+  clearTimeout(deleteTimer);
+  const b = $("btnDeleteItem");
+  if (b) {
+    b.classList.remove("armed");
+    b.textContent = "Delete";
+  }
+}
+
+function deleteItem(id) {
+  const idx = state.items.findIndex((x) => x.id === id);
+  if (idx < 0) return;
+  if (deleteArmedId !== id) {
+    // First tap arms — destructive actions always need a confirm step.
+    deleteArmedId = id;
+    const b = $("btnDeleteItem");
+    if (b) {
+      b.classList.add("armed");
+      b.textContent = "Tap again to delete";
+    }
+    toast("Tap again to delete this item");
+    clearTimeout(deleteTimer);
+    deleteTimer = setTimeout(disarmDelete, 5000);
+    return;
+  }
+  clearTimeout(deleteTimer);
+  // Snapshot for rollback if storage refuses the write.
+  const [it] = state.items.splice(idx, 1);
+  const spacesBefore = JSON.stringify(state.spaces);
+  for (const sp of state.spaces) {
+    if (sp && Array.isArray(sp.itemIds)) sp.itemIds = sp.itemIds.filter((x) => x !== id);
+  }
+  if (!saveItems()) {
+    // Storage refused — restore so memory matches disk. saveItems() already
+    // showed the honest "storage full" toast. Nothing is lost.
+    state.items.splice(idx, 0, it);
+    try { state.spaces = JSON.parse(spacesBefore); } catch { /* keep running */ }
+    disarmDelete();
+    return;
+  }
+  saveSpaces();
+  disarmDelete();
+  closeSheet();
+  render();
+  toast("Deleted");
 }
 
 async function addPhotos(fileList) {
@@ -763,12 +860,24 @@ async function addPhotos(fileList) {
     toast("No images in that drop");
     return;
   }
+  let added = 0;
   for (const file of files) {
-    const dataUrl = await fileToDataUrl(file);
-    const item = {
+    let dataUrl = null;
+    try {
+      // Compress on intake so phone photos fit local storage. The compressor
+      // returns a copy — on any failure we keep the original, never lose it.
+      const shrunk = window.ScouterImage
+        ? await window.ScouterImage.compressPhoto(file).catch(() => file)
+        : file;
+      dataUrl = await fileToDataUrl(shrunk);
+    } catch {
+      continue; // unreadable photo: skip it, keep the rest
+    }
+    const now = new Date().toISOString();
+    state.items.unshift({
       id: uid(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
       title: file.name.replace(/\.[^.]+$/, "") || "Scan",
       productName: null,
       quantity: 1,
@@ -778,13 +887,33 @@ async function addPhotos(fileList) {
       spaceId: null,
       barcode: null,
       channels: {},
-      photos: [{ id: uid(), dataUrl, createdAt: new Date().toISOString() }],
-    };
-    state.items.unshift(item);
+      photos: [{ id: uid(), dataUrl, createdAt: now }],
+    });
+    added++;
   }
-  saveItems();
-  toast(`${files.length} on Scouter`);
+  if (!added) {
+    toast("No photos could be read — nothing added");
+    return;
+  }
+  if (!saveItems()) return; // honest toast already shown; items stay in memory
+  toast(`${added} on Scouter`);
   navigate("scouter");
+}
+
+// Shrink an oversized photo data URL via the shared compressor (copy only).
+// Returns the original on any failure — a photo is never destroyed to shrink it.
+async function shrinkDataUrl(dataUrl) {
+  if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return dataUrl;
+  if (dataUrl.length < 400 * 1024) return dataUrl; // already small enough
+  try {
+    if (!window.ScouterImage) return dataUrl;
+    const blob = await (await fetch(dataUrl)).blob();
+    const file = new File([blob], "photo.jpg", { type: blob.type || "image/jpeg" });
+    const shrunk = await window.ScouterImage.compressPhoto(file);
+    return await fileToDataUrl(shrunk);
+  } catch {
+    return dataUrl;
+  }
 }
 
 async function addBarcode(code) {
@@ -819,32 +948,19 @@ async function addBarcode(code) {
   navigate("scouter");
 }
 
+/* Listing engine runs client-side only.
+ * public/visor/listing-engine.js is byte-identical to src/listing/engine.js
+ * (twin parity is asserted in test/listing-titles.test.js).
+ * The server route POST /api/scouter/items/:id/listing-engine only knows
+ * server-side items; HUD item ids are client-generated and never exist in
+ * the server store, so that call can never resolve — it is not attempted.
+ * No silent 404 fallback: one engine, one path. */
 async function runEngine(id) {
   const it = state.items.find((x) => x.id === id);
   if (!it) return;
   toast("Running listing engine…");
   try {
-    const res = await fetch(`/api/scouter/items/${encodeURIComponent(id)}/listing-engine`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "regular", soldAvg: it.price }),
-    });
-    if (res.ok) {
-      const body = await res.json();
-      it.title = body.listing?.title || it.title;
-      it.description = body.listing?.description || it.description;
-      if (body.listing?.suggestedPrice != null) it.price = body.listing.suggestedPrice;
-      it.phase = it.phase === "intake" ? "staged" : it.phase;
-      it.staged = true;
-      saveItems();
-      toast("Listing built");
-      openSheet(id);
-      render();
-      return;
-    }
-  } catch { /* fall through to client engine */ }
-  try {
-    const mod = await import("/visor/listing-engine.js?v=1");
+    const mod = await import("/visor/listing-engine.js?v=2");
     const listing = mod.runListingEngine(it, { soldAvg: it.price });
     it.title = listing.title;
     it.description = listing.description;
@@ -877,12 +993,272 @@ function stageItem(id) {
   render();
 }
 
+/* ---------- Identify: photo in → identity out ----------
+ * One ID action (item sheet). POSTs /api/scouter/identify with the item's
+ * photos, renders candidates as a pick list on low confidence, and always
+ * offers manual entry. Never a silent guess, never an infinite spinner —
+ * every path ends in a message, a pick list, or the manual form. */
+
+function identifyPhotos(it) {
+  return (it.photos || [])
+    .map((p) => p?.dataUrl)
+    .filter((u) => typeof u === "string" && u.startsWith("data:image/"));
+}
+
+/* Downscale just for the identify POST so the 2MB JSON body limit holds
+ * on full-size phone photos. The stored photo is never touched. */
+function identifyDownscale(dataUrl, maxDim = 1280) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        const scale = Math.min(1, maxDim / Math.max(w, h));
+        if (scale >= 1) {
+          resolve(dataUrl);
+          return;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(w * scale));
+        canvas.height = Math.max(1, Math.round(h * scale));
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+/* Client mirror of the server gate.js identityToItemPatch field mapping. */
+function identifyApplyPatch(it, identity, path) {
+  const name = [identity.product_name, identity.collector_number, identity.set_name, identity.finish]
+    .filter(Boolean)
+    .join(" ")
+    .trim() || identity.product_name;
+  it.title = name || it.title;
+  it.productName = identity.product_name || it.productName;
+  it.collectorNumber = identity.collector_number || it.collectorNumber;
+  it.setName = identity.set_name || it.setName;
+  it.setCode = identity.set_code || it.setCode;
+  it.game = identity.game || it.game;
+  it.rarity = identity.rarity || it.rarity;
+  it.finish = identity.finish || it.finish;
+  it.language = identity.language || it.language;
+  it.condition = identity.condition || it.condition;
+  it.identifyConfidence = identity.confidence || null;
+  it.identifyPath = path;
+  it.updatedAt = new Date().toISOString();
+}
+
+function identifyApply(id, identity, path) {
+  const it = state.items.find((x) => x.id === id);
+  if (!it || !identity) return false;
+  identifyApplyPatch(it, identity, path);
+  saveItems();
+  render();
+  openSheet(id);
+  const host = $("identifyResults");
+  if (host) {
+    const name = it.productName || it.title || "item";
+    host.innerHTML = `<div class="identify-head">Identified: ${escapeHtml(name)}${it.collectorNumber ? ` · ${escapeHtml(it.collectorNumber)}` : ""}${it.setName ? ` · ${escapeHtml(it.setName)}` : ""}</div>`;
+  }
+  return true;
+}
+
+function identifyCandidateLabel(c) {
+  return (
+    [c.product_name, c.collector_number, c.set_name, c.finish].filter(Boolean).join(" · ") ||
+    "Unknown item"
+  );
+}
+
+function identifyShowMessage(html) {
+  const host = $("identifyResults");
+  if (host) host.innerHTML = html;
+}
+
+function identifyShowCandidates(id, candidates, intro) {
+  const host = $("identifyResults");
+  if (!host) return;
+  const picks = candidates.slice(0, 5);
+  host.innerHTML =
+    `<div class="identify-head">${escapeHtml(intro)}</div>` +
+    picks
+      .map(
+        (c, i) =>
+          `<button type="button" class="identify-pick" data-pick="${i}">` +
+          `<span class="pick-name">${escapeHtml(identifyCandidateLabel(c))}</span>` +
+          `<span class="pick-sub">${escapeHtml(
+            [c.confidence === "high" ? "High confidence" : "Low confidence", c.source]
+              .filter(Boolean)
+              .join(" · ")
+          )}</span></button>`
+      )
+      .join("") +
+    `<button type="button" class="btn btn-ghost btn-sm" id="idfManualBtn">Enter manually</button>`;
+  host.querySelectorAll("[data-pick]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const c = picks[Number(btn.dataset.pick)];
+      if (identifyApply(id, c, "photo_search")) toast("Identity applied");
+    })
+  );
+  $("idfManualBtn")?.addEventListener("click", () => identifyShowManualForm(id));
+}
+
+function identifyShowManualForm(id) {
+  const host = $("identifyResults");
+  if (!host) return;
+  host.innerHTML = `
+    <div class="identify-head">Enter the identity — nothing here is a guess.</div>
+    <div class="identify-form">
+      <label>Product name<input id="idfName" autocomplete="off" placeholder="e.g. Charizard ex" /></label>
+      <label>Collector number<input id="idfNum" autocomplete="off" placeholder="e.g. 223/197" /></label>
+      <label>Set name<input id="idfSet" autocomplete="off" placeholder="e.g. Obsidian Flames" /></label>
+      <label>Set code<input id="idfSetCode" autocomplete="off" placeholder="e.g. OBF" /></label>
+      <label>Game<input id="idfGame" autocomplete="off" placeholder="e.g. Pokemon" /></label>
+      <label>Rarity<input id="idfRarity" autocomplete="off" placeholder="e.g. Double Rare" /></label>
+      <label>Finish<input id="idfFinish" autocomplete="off" placeholder="e.g. Holo" /></label>
+      <div class="identify-form-row">
+        <button type="button" class="btn btn-amber" id="idfApply">Apply</button>
+        <button type="button" class="btn btn-ghost" id="idfCancel">Back</button>
+      </div>
+      <div class="identify-err" id="idfErr" hidden></div>
+    </div>`;
+  $("idfCancel")?.addEventListener("click", () => {
+    host.innerHTML = "";
+  });
+  $("idfApply")?.addEventListener("click", async () => {
+    const btn = $("idfApply");
+    btn.disabled = true;
+    const err = $("idfErr");
+    try {
+      const res = await fetch("/api/scouter/identify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          forcePath: "manual",
+          manual: {
+            product_name: $("idfName")?.value.trim() || null,
+            collector_number: $("idfNum")?.value.trim() || null,
+            set_name: $("idfSet")?.value.trim() || null,
+            set_code: $("idfSetCode")?.value.trim() || null,
+            game: $("idfGame")?.value.trim() || null,
+            rarity: $("idfRarity")?.value.trim() || null,
+            finish: $("idfFinish")?.value.trim() || null,
+          },
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (body.ok && body.identity) {
+        if (identifyApply(id, body.identity, "manual")) toast("Manual identity applied");
+      } else {
+        err.hidden = false;
+        err.textContent = body.message || "Manual identity incomplete — check the fields and try again.";
+      }
+    } catch {
+      err.hidden = false;
+      err.textContent = "Could not reach the server. Try again.";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+async function identifyFromSheet(id) {
+  const it = state.items.find((x) => x.id === id);
+  if (!it) return;
+  const btn = $("btnIdentify");
+
+  // Settings → Identify → Manual skips vision entirely.
+  if (window.HUD_settings?.get("identifyProvider") === "manual") {
+    identifyShowManualForm(id);
+    return;
+  }
+
+  const photos = identifyPhotos(it);
+  if (!photos.length) {
+    toast("Take a photo first, then tap ID.");
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  identifyShowMessage(
+    `<div class="identify-progress"><span class="identify-spin" aria-hidden="true"></span>Identifying from ${photos.length} photo${photos.length === 1 ? "" : "s"}…</div>`
+  );
+  try {
+    const small = await Promise.all(photos.slice(0, 5).map((u) => identifyDownscale(u)));
+    const res = await fetch("/api/scouter/identify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        photos: small,
+        notes: it.notes || null,
+        quantity: Number(it.quantity) || 1,
+      }),
+      signal: AbortSignal.timeout(60000),
+    });
+    const body = await res.json().catch(() => ({}));
+
+    if (res.status === 503 || /isn't set up yet/i.test(String(body.message || ""))) {
+      // No key / no credits: honest line, manual entry always available.
+      identifyShowMessage(
+        `<div class="identify-head">${escapeHtml(body.message || "Identify isn't set up yet.")}</div>` +
+          `<button type="button" class="btn btn-ghost btn-sm" id="idfManualBtn">Enter manually</button>`
+      );
+      $("idfManualBtn")?.addEventListener("click", () => identifyShowManualForm(id));
+      return;
+    }
+
+    if (body.ok && body.identity) {
+      if (identifyApply(id, body.identity, body.path || "photo_search")) toast("Identified");
+      return;
+    }
+
+    const candidates = Array.isArray(body.candidates) ? body.candidates : [];
+    if (candidates.length) {
+      // Low confidence → pick list, never a silent guess.
+      identifyShowCandidates(id, candidates, body.message || "Low confidence — pick the right one.");
+      return;
+    }
+
+    identifyShowMessage(
+      `<div class="identify-head">${escapeHtml(body.message || "Could not identify this item. Photos kept.")}</div>` +
+        `<button type="button" class="btn btn-ghost btn-sm" id="idfManualBtn">Enter manually</button>`
+    );
+    $("idfManualBtn")?.addEventListener("click", () => identifyShowManualForm(id));
+  } catch (err) {
+    const timedOut = err?.name === "AbortError" || err?.name === "TimeoutError";
+    identifyShowMessage(
+      `<div class="identify-head">${escapeHtml(
+        timedOut
+          ? "Identify timed out after 60 seconds. Photos kept."
+          : "Identify failed to reach the server. Photos kept."
+      )}</div>` +
+        `<button type="button" class="btn btn-ghost btn-sm" id="idfManualBtn">Enter manually</button>`
+    );
+    $("idfManualBtn")?.addEventListener("click", () => identifyShowManualForm(id));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 function assignSpace(id, spaceId) {
   const it = state.items.find((x) => x.id === id);
   if (!it) return;
+  const before = it.spaceId;
   it.spaceId = spaceId;
   it.updatedAt = new Date().toISOString();
-  saveItems();
+  if (!saveItems()) {
+    // Storage refused — restore so memory matches disk. saveItems() already
+    // showed the honest "storage full" toast. Nothing is lost.
+    it.spaceId = before;
+    return;
+  }
   toast(`Filed in ${spaceName(spaceId)}`);
   closeSheet();
   render();
@@ -935,6 +1311,10 @@ async function syncEbay() {
               .filter((p) => p.dataUrl || p.url)
               .map((p) => ({ id: p.id, dataUrl: p.dataUrl || p.url })),
           };
+          // Downscale oversized server photos before they hit local storage.
+          for (const p of mapped.photos) {
+            p.dataUrl = await shrinkDataUrl(p.dataUrl);
+          }
           if (idx >= 0) state.items[idx] = { ...state.items[idx], ...mapped };
           else state.items.unshift(mapped);
         }
@@ -1025,11 +1405,13 @@ function bind() {
 
   $("btnCloseSheet")?.addEventListener("click", closeSheet);
   $("btnStage")?.addEventListener("click", () => stageItem(state.sheetItemId));
+  $("btnIdentify")?.addEventListener("click", () => identifyFromSheet(state.sheetItemId));
   $("btnRunEngine")?.addEventListener("click", () => runEngine(state.sheetItemId));
   $("btnLoadSold")?.addEventListener("click", () => loadSoldPrice(state.sheetItemId));
   $("btnAssignBin1")?.addEventListener("click", () => assignSpace(state.sheetItemId, "bin1"));
   $("btnAssignBin2")?.addEventListener("click", () => assignSpace(state.sheetItemId, "bin2"));
   $("btnAssignStaged")?.addEventListener("click", () => assignSpace(state.sheetItemId, "staged"));
+  $("btnDeleteItem")?.addEventListener("click", () => deleteItem(state.sheetItemId));
 
   $("btnCloseBarcode")?.addEventListener("click", closeBarcode);
   $("btnBarcodeAdd")?.addEventListener("click", () => addBarcode($("barcodeInput")?.value));
@@ -1095,6 +1477,7 @@ function bind() {
     stageItem,
     assignSpace,
     syncEbay,
+    seedDemoItems,
   };
 }
 
@@ -1102,7 +1485,6 @@ async function boot() {
   state.items = loadItems();
   state.spaces = loadSpaces();
   saveSpaces();
-  seedDemoIfEmpty();
   bind();
   const start = location.hash.replace(/^#\/?/, "") || "command";
   navigate(VIEWS.includes(start) ? start : "command");

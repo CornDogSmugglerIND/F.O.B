@@ -8,11 +8,11 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>Coalition H.U.D</title>
   <link rel="manifest" href="/manifest.json" />
-  <link rel="stylesheet" href="/coalition.css?v=13" />
+  <link rel="stylesheet" href="/coalition.css?v=16" />
   <link rel="stylesheet" href="/features/carousel.css?v=2" />
-  <link rel="stylesheet" href="/features/spaces.css?v=2" />
+  <link rel="stylesheet" href="/features/spaces.css?v=3" />
   <link rel="stylesheet" href="/features/csv.css?v=2" />
-  <link rel="stylesheet" href="/features/collection.css?v=3" />
+  <link rel="stylesheet" href="/features/collection.css?v=4" />
   <link rel="stylesheet" href="/features/settings.css?v=3" />
   <link rel="stylesheet" href="/features/ebay.css?v=2" />
   <link rel="stylesheet" href="/features/fulfillment.css?v=3" />
@@ -121,7 +121,7 @@
       <section class="view" id="view-constellation">
         <div class="constellation-switch" role="tablist" aria-label="Constellation view">
           <button type="button" class="constellation-mode active" data-cmode="tree" role="tab" aria-selected="true">Tree</button>
-          <button type="button" class="constellation-mode" data-cmode="collection" role="tab" aria-selected="false">Collection</button>
+          <button type="button" class="constellation-mode" data-cmode="collection" role="tab" aria-selected="false">Inventory</button>
         </div>
         <div id="constellationTree">
           <div class="roadmap" id="roadmap" aria-label="Constellation roadmap">
@@ -203,13 +203,16 @@
       <h2 id="sheetTitle" style="font-size:21px;margin:6px 0;font-weight:650;letter-spacing:-0.02em">Title</h2>
       <p id="sheetMeta" style="color:var(--hud-text-dim);font-size:13px;font-weight:400"></p>
       <p id="sheetSpace" class="chrome" style="margin-top:10px"></p>
+      <div id="identifyResults"></div>
       <div class="sheet-actions">
         <button type="button" class="btn btn-amber" id="btnStage">Stage</button>
+        <button type="button" class="btn btn-amber" id="btnIdentify">ID</button>
         <button type="button" class="btn" id="btnRunEngine">Run listing engine</button>
         <button type="button" class="btn" id="btnLoadSold">Load sold avg</button>
         <button type="button" class="btn btn-ghost" id="btnAssignBin1">Bin 1</button>
         <button type="button" class="btn btn-ghost" id="btnAssignBin2">Bin 2</button>
         <button type="button" class="btn btn-ghost" id="btnAssignStaged">Staged bin</button>
+        <button type="button" class="btn btn-danger" id="btnDeleteItem">Delete</button>
         <button type="button" class="btn btn-ghost" id="btnCloseSheet">Back</button>
       </div>
     </div>
@@ -228,14 +231,15 @@
   </div>
 
   <div class="toast" id="toast" role="status"></div>
+  <script src="/lib/image.js?v=1"></script>
   <script src="/features/carousel.js?v=2"></script>
-  <script src="/features/spaces.js?v=2"></script>
+  <script src="/features/spaces.js?v=3"></script>
   <script src="/features/csv.js?v=2"></script>
-  <script src="/features/collection.js?v=2"></script>
-  <script src="/features/settings.js?v=2"></script>
+  <script src="/features/collection.js?v=3"></script>
+  <script src="/features/settings.js?v=3"></script>
   <script src="/features/ebay.js?v=2"></script>
-  <script src="/features/fulfillment.js?v=3"></script>
-  <script src="/features/inventory-tools.js?v=2"></script>
-  <script type="module" src="/coalition.js?v=16"></script>
+  <script src="/features/fulfillment.js?v=4"></script>
+  <script src="/features/inventory-tools.js?v=3"></script>
+  <script type="module" src="/coalition.js?v=21"></script>
 </body>
 </html>

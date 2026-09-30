@@ -78,10 +78,21 @@
   }
 
   function persist(items) {
-    try { localStorage.setItem(LS_ITEMS, JSON.stringify(items)); } catch (e) { /* ignore */ }
+    // Returns true when the write landed. Callers must roll back on false.
     var b = bridge();
     if (b && typeof b.saveItems === "function") {
-      try { b.saveItems(); } catch (e) { /* ignore */ }
+      try {
+        return b.saveItems() === true;
+      } catch (e) {
+        return false;
+      }
+    }
+    try {
+      localStorage.setItem(LS_ITEMS, JSON.stringify(items));
+      return true;
+    } catch (e) {
+      say("Storage full — bulk action not saved, nothing changed");
+      return false;
     }
   }
 
@@ -183,6 +194,11 @@
 
   function matches(it, q) {
     var fields = [it.title, it.productName, it.setName, it.barcode, skuOf(it)];
+    // Search by location: the bin name is searchable too.
+    try {
+      var bin = spaceName(it.spaceId);
+      if (bin) fields.push(bin);
+    } catch (e) { /* location search is best-effort */ }
     for (var i = 0; i < fields.length; i++) {
       var v = fields[i];
       if (v != null && String(v).toLowerCase().indexOf(q) !== -1) return true;
@@ -440,9 +456,12 @@
     var items = getItems();
     var now = new Date().toISOString();
     var n = 0, i, it;
+    // Snapshot the fields we touch so a refused save rolls back cleanly.
+    var before = {};
     for (i = 0; i < items.length; i++) {
       it = items[i];
       if (!isSelected(it.id)) continue;
+      before[it.id] = { phase: it.phase, staged: it.staged, spaceId: it.spaceId };
       if (act === "stage") {
         it.phase = "staged";
         it.staged = true;
@@ -452,7 +471,19 @@
       it.updatedAt = now;
       n++;
     }
-    persist(items);
+    if (!persist(items)) {
+      // Storage refused — restore so memory matches disk. persist() already
+      // showed the honest toast. Nothing is lost.
+      for (i = 0; i < items.length; i++) {
+        it = items[i];
+        var b = before[it.id];
+        if (!b) continue;
+        it.phase = b.phase;
+        it.staged = b.staged;
+        it.spaceId = b.spaceId;
+      }
+      return;
+    }
     if (act === "stage") say(n + " staged");
     else say(n + " filed in " + spaceName(act));
     setSelectMode(false);
@@ -475,7 +506,7 @@
           '<svg class="invtools-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
             '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>' +
           "</svg>" +
-          '<input type="search" id="invtoolsInput" placeholder="Search title, set, barcode, SKU" ' +
+          '<input type="search" id="invtoolsInput" placeholder="Search title, set, barcode, SKU, bin" ' +
             'autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" ' +
             'enterkeyhint="search" aria-label="Search inventory" />' +
           '<button type="button" class="invtools-x" id="invtoolsClear" aria-label="Clear search" hidden>&times;</button>' +
