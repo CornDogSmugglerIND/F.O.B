@@ -22,7 +22,7 @@
   <div class="hud-app" id="app">
     <header class="hud-edge">
       <div class="hud-edge-top">
-        <div class="hud-mark" aria-hidden="true">C</div>
+        <div class="hud-wordmark" aria-hidden="true">COALITION H.U.D</div>
         <div class="hud-pill" id="ebayPill"><span class="dot"></span><span id="ebayPillLabel">EBAY OFFLINE</span></div>
       </div>
       <div class="stat-row">
@@ -124,14 +124,10 @@
           <button type="button" class="constellation-mode" data-cmode="collection" role="tab" aria-selected="false">Collection</button>
         </div>
         <div id="constellationTree">
-          <div class="map-stage">
-            <div class="map-route" aria-hidden="true"></div>
-            <div class="map-nodes" id="mapNodes"></div>
-          </div>
-          <div class="panel map-detail">
-            <div class="chrome">Stage</div>
-            <h2 id="mapStageName">Intake</h2>
-            <div class="item-list" id="mapItems"></div>
+          <div class="roadmap" id="roadmap" aria-label="Constellation roadmap">
+            <div class="road-clusters" id="roadClusters"></div>
+            <div class="road-track" id="roadTrack" aria-hidden="false"></div>
+            <div class="road-labels" id="roadLabels"></div>
           </div>
         </div>
         <div id="constellationCollection" hidden>
