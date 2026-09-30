@@ -7,7 +7,7 @@
  *
  * Contract:
  *   window.HUD_collection = { init(), render(), refresh() }
- *   - init()   : wire everything. Waits for #view-collection to exist, so it
+ *   - init()   : wire everything. Waits for #constellationCollection to exist, so it
  *                is safe to load this script before the coordinator pastes the
  *                section skeleton into index.html.
  *   - render() : repaint header stats + grid (no-op until wired).
@@ -83,27 +83,17 @@
     }
   }
 
-  /* Returns true on success. On quota failure, drops the photo of
-   * stripPhotoId (photos are the bulk) and retries so item metadata is
-   * never lost; returns false only if it still won't fit. */
-  function save(stripPhotoId) {
+  /* Returns true on success. On quota failure, REFUSES the save and returns
+   * false so the caller can tell the user. A photo is NEVER silently
+   * stripped to make a save fit — Sawyer's rule: never lose photos. */
+  function save() {
     try {
       localStorage.setItem(LS_COLLECTION, JSON.stringify(state.items));
       return true;
     } catch (e) {
-      /* quota exceeded */
+      /* quota exceeded: refuse, do not strip */
+      return false;
     }
-    if (stripPhotoId) {
-      const it = get(stripPhotoId);
-      if (it && it.photo) {
-        it.photo = "";
-        try {
-          localStorage.setItem(LS_COLLECTION, JSON.stringify(state.items));
-          return true;
-        } catch (e2) { /* still full */ }
-      }
-    }
-    return false;
   }
 
   function get(id) {
@@ -317,9 +307,9 @@
       it.notes = notes;
       it.favorite = favorite;
       it.photo = state.formPhoto || "";
-      if (!save(it.id)) {
+      if (!save()) {
         it.photo = oldPhoto; // restore, keep form open so nothing is lost
-        toast("Collection storage is full — changes not saved");
+        toast("Collection storage is full — nothing saved, your photo is safe");
         return;
       }
       toast("Keeper updated");
@@ -334,11 +324,12 @@
         photo: state.formPhoto || "",
         notes,
         addedAt: now,
+        order: state.items.length,
       };
-      state.items.unshift(item);
-      if (!save(item.id)) {
+      state.items.push(item);
+      if (!save()) {
         state.items = state.items.filter((x) => x.id !== item.id);
-        toast("Collection storage is full — keeper not saved");
+        toast("Collection storage is full — keeper not saved, photo is safe");
         return;
       }
       toast("Added to collection");
@@ -405,7 +396,7 @@
   /* ---------- grid card ---------- */
   function cardHtml(it) {
     return `
-      <button type="button" class="col-card" data-col="${it.id}">
+      <button type="button" class="col-card" data-col="${it.id}" draggable="true">
         <span class="col-thumb">${it.photo ? `<img src="${it.photo}" alt="" loading="lazy" />` : PHOTO_PH}</span>
         <span class="col-star ${it.favorite ? "on" : ""}">${it.favorite ? STAR_ON : STAR_OFF}</span>
         <span class="col-card-title">${escapeHtml(it.title)}</span>
@@ -417,11 +408,51 @@
   /* ---------- main render ---------- */
   function visibleItems() {
     const list = state.filter === "favorites" ? state.items.filter((i) => i.favorite) : state.items;
+    const manual = list.some((i) => i.order != null);
+    if (manual) return [...list].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     return [...list].sort((a, b) => String(b.addedAt || "").localeCompare(String(a.addedAt || "")));
   }
 
+  /* ---------- drag-and-drop reorder ---------- */
+  function bindReorder(section) {
+    const grid = section.querySelector(".col-grid");
+    if (!grid) return;
+    let dragId = null;
+    grid.addEventListener("dragstart", (e) => {
+      const card = e.target.closest ? e.target.closest("[data-col]") : null;
+      if (!card) return;
+      dragId = card.dataset.col;
+      try { e.dataTransfer.setData("text/plain", dragId); } catch (_) {}
+      e.dataTransfer.effectAllowed = "move";
+      card.classList.add("dragging-src");
+    });
+    grid.addEventListener("dragend", () => {
+      dragId = null;
+      section.querySelectorAll(".dragging-src").forEach((el) => el.classList.remove("dragging-src"));
+    });
+    grid.addEventListener("dragover", (e) => {
+      const card = e.target.closest ? e.target.closest("[data-col]") : null;
+      if (!card || card.dataset.col === dragId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    });
+    grid.addEventListener("drop", (e) => {
+      const card = e.target.closest ? e.target.closest("[data-col]") : null;
+      if (!card || !dragId || card.dataset.col === dragId) return;
+      e.preventDefault();
+      const fromIdx = state.items.findIndex((i) => i.id === dragId);
+      const toIdx = state.items.findIndex((i) => i.id === card.dataset.col);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const [moved] = state.items.splice(fromIdx, 1);
+      state.items.splice(toIdx, 0, moved);
+      state.items.forEach((it, idx) => { it.order = idx; });
+      save();
+      render();
+    });
+  }
+
   function render() {
-    const section = $("view-collection");
+    const section = $("constellationCollection");
     if (!section || !state.wired) return;
     const total = state.items.reduce((s, i) => s + Number(i.estValue || 0) * Number(i.quantity || 1), 0);
     const favs = state.items.filter((i) => i.favorite).length;
@@ -457,33 +488,38 @@
     section.querySelectorAll("[data-col]").forEach((c) =>
       c.addEventListener("click", () => openDetail(c.dataset.col))
     );
+    bindReorder(section);
   }
 
   /* ---------- wiring ---------- */
   function wire() {
     if (state.wired) return;
-    const section = $("view-collection");
+    const section = $("constellationCollection");
     if (!section) return;
     state.wired = true;
     state.items = load();
     buildSheets();
 
-    // Repaint whenever the host app switches to this view (MutationObserver
-    // keeps this module self-contained: no edits to navigate() needed).
-    new MutationObserver(() => {
-      if (section.classList.contains("active")) render();
-    }).observe(section, { attributes: true, attributeFilter: ["class"] });
+    // Repaint whenever the host app shows the collection mode of the
+    // constellation view (MutationObserver keeps this module self-contained:
+    // no edits to navigate() needed).
+    const host = $("view-constellation");
+    const maybeRender = () => {
+      if (host && host.classList.contains("active") && !section.hasAttribute("hidden")) render();
+    };
+    if (host) new MutationObserver(maybeRender).observe(host, { attributes: true, attributeFilter: ["class"] });
+    new MutationObserver(maybeRender).observe(section, { attributes: true, attributeFilter: ["hidden"] });
 
-    if (section.classList.contains("active")) render();
+    maybeRender();
   }
 
   function waitForSection() {
-    if ($("view-collection")) {
+    if ($("constellationCollection")) {
       wire();
       return;
     }
     new MutationObserver((_, obs) => {
-      if ($("view-collection")) {
+      if ($("constellationCollection")) {
         obs.disconnect();
         wire();
       }

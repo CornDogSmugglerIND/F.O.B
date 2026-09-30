@@ -38,7 +38,7 @@
   background: transparent;
   border: 1px solid var(--hud-line, rgba(255, 255, 255, 0.08));
   border-radius: 8px;
-  color: var(--hud-text, #eef0f3);
+  color: var(--hud-text, #e8edef);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -49,7 +49,7 @@
 .csv-title {
   font-size: 18px;
   font-weight: 700;
-  color: var(--hud-text, #eef0f3);
+  color: var(--hud-text, #e8edef);
   margin: 12px 0 14px;
   letter-spacing: 0.02em;
 }
@@ -65,7 +65,7 @@
   cursor: pointer;
 }
 .csv-drop:focus-visible {
-  outline: 2px solid var(--hud-amber-hot, #9aa84f);
+  outline: 2px solid var(--hud-amber-hot, #f2a03d);
   outline-offset: 2px;
 }
 /* Visually hidden (not display:none): iOS Safari won't open the picker from a
@@ -78,34 +78,34 @@
   pointer-events: none;
 }
 .csv-drop-hot {
-  border-color: var(--hud-amber-hot, #9aa84f);
-  background: rgba(154, 168, 79, 0.08);
+  border-color: var(--hud-amber-hot, #f2a03d);
+  background: rgba(242, 160, 61, 0.08);
 }
 .csv-drop-text {
   display: block;
   font-size: 15px;
   font-weight: 600;
-  color: var(--hud-text, #eef0f3);
+  color: var(--hud-text, #e8edef);
   line-height: 1.5;
 }
 .csv-drop-sub {
   display: block;
   margin-top: 8px;
   font-size: 12px;
-  color: var(--hud-text-dim, #8b939c);
+  color: var(--hud-text-dim, #9aa3ab);
 }
 
 .csv-hint {
   font-size: 12px;
   line-height: 1.5;
-  color: var(--hud-text-dim, #8b939c);
+  color: var(--hud-text-dim, #9aa3ab);
   margin: 14px 0;
 }
 
 .csv-error {
   font-size: 13px;
   line-height: 1.5;
-  color: var(--hud-amber-hot, #9aa84f);
+  color: var(--hud-amber-hot, #f2a03d);
   border: 1px solid var(--hud-line, rgba(255, 255, 255, 0.08));
   border-radius: 8px;
   padding: 10px 12px;
@@ -118,7 +118,7 @@
 .csv-mapline {
   font-size: 13px;
   font-weight: 600;
-  color: var(--hud-cyan, #d4c4a0);
+  color: var(--hud-cyan, #c7ccd2);
   margin: 0 0 10px;
 }
 
@@ -145,24 +145,24 @@
   max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--hud-text, #eef0f3);
+  color: var(--hud-text, #e8edef);
 }
 .csv-preview thead th {
   background: rgba(255, 255, 255, 0.04);
   font-weight: 700;
-  color: var(--hud-cyan, #d4c4a0);
+  color: var(--hud-cyan, #c7ccd2);
 }
 .csv-preview .csv-src {
   display: block;
   font-size: 10px;
   font-weight: 400;
-  color: var(--hud-text-dim, #8b939c);
+  color: var(--hud-text-dim, #9aa3ab);
 }
 .csv-preview tbody tr:last-child td { border-bottom: none; }
 
 .csv-count {
   font-size: 12px;
-  color: var(--hud-text-dim, #8b939c);
+  color: var(--hud-text-dim, #9aa3ab);
   margin: 0 0 12px;
 }
 

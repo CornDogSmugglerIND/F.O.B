@@ -18,6 +18,7 @@
 
 .invtools-field {
   flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -29,7 +30,7 @@
 }
 
 .invtools-field:focus-within {
-  border-color: rgba(122, 139, 63, 0.55); /* olive */
+  border-color: var(--hud-amber-hairline);
 }
 
 .invtools-ico {
@@ -80,7 +81,7 @@
   min-height: 44px;
   padding: 0 16px;
   background: transparent;
-  border: 1px solid rgba(122, 139, 63, 0.6); /* olive */
+  border: 1px solid var(--hud-amber-hairline);
   border-radius: 12px;
   color: var(--hud-amber-hot);
   font-size: 13px;
@@ -91,13 +92,13 @@
 }
 
 .invtools-select:active {
-  background: rgba(122, 139, 63, 0.16);
+  background: var(--hud-amber-soft);
 }
 
 .invtools-select.active {
-  background: var(--hud-amber);
-  border-color: var(--hud-amber);
-  color: #0a0c08;
+  background: var(--hud-amber-soft);
+  border-color: var(--hud-amber-hairline);
+  color: var(--hud-amber-hot);
 }
 
 .invtools-sub {
@@ -128,8 +129,9 @@
   height: 24px;
   display: grid;
   place-items: center;
-  background: var(--hud-amber);
-  color: #0a0c08;
+  background: var(--hud-amber-soft);
+  border: 1px solid var(--hud-amber-hairline);
+  color: var(--hud-amber-hot);
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.35);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
@@ -190,10 +192,10 @@
   min-width: 64px;
   min-height: 48px;
   padding: 0 14px;
-  background: var(--hud-amber);
-  border: 1px solid var(--hud-amber);
+  background: var(--hud-raised);
+  border: 1px solid var(--hud-amber-hairline);
   border-radius: 12px;
-  color: #0a0c08;
+  color: var(--hud-amber-hot);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
