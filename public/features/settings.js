@@ -1,9 +1,9 @@
 /* Coalition H.U.D. — Settings feature
  * Classic (non-module) script. Renders real controls into #view-settings.
- * Exposes window.HUD_settings = { init(), render(), get(), set(), notify() }.
+ * Exposes window.HUD_settings = { init(), render(), get(), set() }.
  *
  * Persistence: localStorage "coalition-settings-v1"
- *   { identifyProvider, defaultBin, ebayAutoSync, notifications }
+ *   { identifyProvider, defaultBin, ebayAutoSync }
  * No credentials ever live here — eBay auth is server-side only.
  */
 (function () {
@@ -18,14 +18,7 @@
     identifyProvider: "anthropic", // "anthropic" | "manual"
     defaultBin: "none",            // "bin1" | "bin2" | "staged" | "none"
     ebayAutoSync: false,
-    notifications: { sales: true, priceDrops: true, syncComplete: true },
   };
-
-  var NOTIF_META = [
-    { key: "sales", label: "Sale alerts", hint: "Sold / order activity" },
-    { key: "priceDrops", label: "Price drops", hint: "Repricer or market moves" },
-    { key: "syncComplete", label: "Sync complete", hint: "Channel syncs finish" },
-  ];
 
   var BIN_OPTIONS = [
     { value: "bin1", label: "Bin 1" },
@@ -205,7 +198,6 @@
         var pulled = out.body && out.body.pulled != null ? out.body.pulled : 0;
         toast("eBay sync \u00b7 " + pulled + " pulled");
         recordResult(pulled);
-        if (prefs.notifications.syncComplete) { /* surfaced via the toast above */ }
       })
       .catch(function () { toast("eBay sync failed"); })
       .finally(finish);
@@ -371,22 +363,6 @@
   }
 
   /* ---------- render ---------- */
-  function toggleRow(id, meta) {
-    var on = prefs.notifications[meta.key] === true;
-    return (
-      '<label class="stg-row" for="' + id + '">' +
-        '<span class="stg-row-main">' +
-          '<span class="stg-row-label">' + esc(meta.label) + "</span>" +
-          '<span class="stg-row-hint">' + esc(meta.hint) + "</span>" +
-        "</span>" +
-        '<span class="stg-toggle"><input type="checkbox" id="' + id + '" data-notif="' + meta.key + '"' +
-          (on ? " checked" : "") + " />" +
-          '<span class="stg-knob" aria-hidden="true"></span>' +
-        "</span>" +
-      "</label>"
-    );
-  }
-
   function optionsList(list, current) {
     return list.map(function (o) {
       return '<option value="' + esc(o.value) + '"' + (o.value === current ? " selected" : "") + ">" +
@@ -401,10 +377,6 @@
     // Rebuilds wipe button visuals — drop any stale armed state with them.
     disarmResetBtn();
     disarmClearBtn();
-
-    var notifRows = NOTIF_META.map(function (m, i) {
-      return toggleRow("stgNotif" + i, m);
-    }).join("");
 
     view.innerHTML =
       '<div class="panel settings-block bracket">' +
@@ -460,12 +432,6 @@
         "</div>" +
       "</div>" +
 
-      '<div class="panel settings-block">' +
-        '<div class="chrome">Notifications</div>' +
-        notifRows +
-        '<p class="stg-foot">Toast banners are the only channel.</p>' +
-      "</div>" +
-
       '<div class="panel settings-block stg-danger">' +
         '<div class="chrome stg-danger-title">Data</div>' +
         '<div class="stg-actions">' +
@@ -518,10 +484,6 @@
         prefs.ebayAutoSync = t.checked;
         save();
         toast(t.checked ? "eBay auto-sync on" : "eBay auto-sync off");
-      } else if (t.hasAttribute("data-notif")) {
-        var key = t.getAttribute("data-notif");
-        prefs.notifications[key] = t.checked;
-        save();
       }
     });
 
@@ -549,16 +511,6 @@
     save();
   }
 
-  function notifyEnabled(kind) {
-    return prefs.notifications[kind] !== false;
-  }
-
-  function notify(kind, msg) {
-    if (!notifyEnabled(kind)) return false;
-    toast(msg);
-    return true;
-  }
-
   function init() {
     bindOnce();
     render();
@@ -569,7 +521,5 @@
     render: render,
     get: get,
     set: set,
-    notify: notify,
-    notifyEnabled: notifyEnabled,
   };
 })();

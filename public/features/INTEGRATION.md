@@ -184,7 +184,7 @@ window.HUD_settings && window.HUD_settings.render();
 
 ## 3. What it renders (self-rendering into #view-settings)
 
-Replaces the two static placeholder `.settings-block` panels with five real sections:
+Replaces the two static placeholder `.settings-block` panels with four real sections:
 
 - **CHANNELS** — eBay row, live status from `GET /api/health`
   (`channels[].{id,configured}` → Connected / Not configured), "Sync now"
@@ -199,8 +199,6 @@ Replaces the two static placeholder `.settings-block` panels with five real sect
 - **DEFAULTS** — default bin select (Bin 1 / Bin 2 / Staged / None) persisted
   as `defaultBin`; values `bin1|bin2|staged|none` match the existing
   `assignSpace` space ids, intended for `stageItem()`.
-- **NOTIFICATIONS** — three real toggles (sale alerts, price drops, sync
-  complete), persisted under `notifications`. Toast is the only channel.
 - **DATA** — "Clear demo data" (drops items whose `notes` includes
   `demo-seed`, prunes their ids from spaces, leaves the demo flag set),
   "Export backup" (downloads all localStorage keys as JSON),
@@ -208,7 +206,7 @@ Replaces the two static placeholder `.settings-block` panels with five real sect
   keys → reload).
 
 Prefs persist in `localStorage` key `coalition-settings-v1`
-(`{identifyProvider, defaultBin, ebayAutoSync, notifications}`).
+(`{identifyProvider, defaultBin, ebayAutoSync}`).
 Never logs or exposes credentials — eBay auth stays server-side.
 
 ## 4. API surface for other features
@@ -219,13 +217,7 @@ HUD_settings.get("identifyProvider");  // "anthropic" | "manual"
 HUD_settings.get("ebayAutoSync");      // boolean
 HUD_settings.get();                    // full prefs object (copy)
 HUD_settings.set("defaultBin", "bin1");
-HUD_settings.notifyEnabled("sales");   // boolean
-HUD_settings.notify("sales", msg);     // toasts only if enabled, returns bool
 ```
-
-Suggested future wiring: `stageItem()` applies `get("defaultBin")` as the
-item's `spaceId` when it isn't `"none"`; channel code gates toasts behind
-`HUD_settings.notify(kind, msg)`.
 
 ## 5. Notes for coordinator
 

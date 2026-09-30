@@ -103,38 +103,13 @@ test("GET /hud.html twins index Coalition H.U.D", async () => {
   }
 });
 
-test("GET /trio-setup.html serves truthful wire status", async () => {
+test("orphaned debug pages stay gone (404)", async () => {
   const { baseUrl, close } = await startServer();
   try {
-    const res = await fetch(`${baseUrl}/trio-setup.html`);
-    const html = await res.text();
-    assert.equal(res.status, 200);
-    assert.match(html, /Triple Threat/);
-    assert.match(html, /Root cause/);
-    assert.match(html, /CornDogSmugglerCoalition7/);
-    assert.match(html, /allowed_non_write_users/);
-    assert.match(html, /GITHUB_TOKEN/);
-    assert.match(html, /continue-on-error/);
-    assert.match(html, /github-actions\[bot\]/);
-  } finally {
-    await close();
-  }
-});
-
-test("GET /hud-status.html serves numbered Coalition H.U.D checklist", async () => {
-  const { baseUrl, close } = await startServer();
-  try {
-    const res = await fetch(`${baseUrl}/hud-status.html`);
-    const html = await res.text();
-    assert.equal(res.status, 200);
-    assert.match(html, /Coalition H\.U\.D/);
-    assert.match(html, /Build checklist/);
-    assert.match(html, /Working now/);
-    assert.match(html, /class="done"/);
-    assert.match(html, /class="now"/);
-    assert.match(html, /Scouter live on phone/);
-    assert.match(html, /Misprint live hook/);
-    assert.match(html, /Auto sync across channels/);
+    for (const p of ["/trio-setup.html", "/hud-status.html", "/listing-copy.html"]) {
+      const res = await fetch(`${baseUrl}${p}`);
+      assert.equal(res.status, 404, `${p} should not exist`);
+    }
   } finally {
     await close();
   }
@@ -151,16 +126,13 @@ test("claude.yml allows Coalition7 with workflow GITHUB_TOKEN", async () => {
   assert.doesNotMatch(yml, /continue-on-error:\s*true/);
 });
 
-test("GET /ba-paper-checklist.html serves BA paper checklist", async () => {
+test("orphaned school study pages stay gone (404)", async () => {
   const { baseUrl, close } = await startServer();
   try {
-    const res = await fetch(`${baseUrl}/ba-paper-checklist.html`);
-    const html = await res.text();
-    assert.equal(res.status, 200);
-    assert.match(html, /BA Paper/);
-    assert.match(html, /ba-paper-checklist-v1/);
-    assert.match(html, /Syne/);
-    assert.match(html, /Copy notes/);
+    for (const p of ["/ba-paper-checklist.html", "/ba-terms.html"]) {
+      const res = await fetch(`${baseUrl}${p}`);
+      assert.equal(res.status, 404, `${p} should not exist`);
+    }
   } finally {
     await close();
   }
