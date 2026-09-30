@@ -702,7 +702,7 @@ async function runCombineBatch() {
   const children = ids.map((id) => state.items.find((i) => i.id === id)).filter(Boolean);
   toast(`Combining ${children.length}…`);
   try {
-    const mod = await import("/visor/variation.js?v=1");
+    const mod = await import("/visor/variation.js?v=2");
     const batch = mod.combineVariationBatch(children);
     const parent = {
       id: uid(),
@@ -929,32 +929,19 @@ async function addBarcode(code) {
   navigate("scouter");
 }
 
+/* Listing engine runs client-side only.
+ * public/visor/listing-engine.js is byte-identical to src/listing/engine.js
+ * (twin parity is asserted in test/listing-titles.test.js).
+ * The server route POST /api/scouter/items/:id/listing-engine only knows
+ * server-side items; HUD item ids are client-generated and never exist in
+ * the server store, so that call can never resolve — it is not attempted.
+ * No silent 404 fallback: one engine, one path. */
 async function runEngine(id) {
   const it = state.items.find((x) => x.id === id);
   if (!it) return;
   toast("Running listing engine…");
   try {
-    const res = await fetch(`/api/scouter/items/${encodeURIComponent(id)}/listing-engine`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "regular", soldAvg: it.price }),
-    });
-    if (res.ok) {
-      const body = await res.json();
-      it.title = body.listing?.title || it.title;
-      it.description = body.listing?.description || it.description;
-      if (body.listing?.suggestedPrice != null) it.price = body.listing.suggestedPrice;
-      it.phase = it.phase === "intake" ? "staged" : it.phase;
-      it.staged = true;
-      saveItems();
-      toast("Listing built");
-      openSheet(id);
-      render();
-      return;
-    }
-  } catch { /* fall through to client engine */ }
-  try {
-    const mod = await import("/visor/listing-engine.js?v=1");
+    const mod = await import("/visor/listing-engine.js?v=2");
     const listing = mod.runListingEngine(it, { soldAvg: it.price });
     it.title = listing.title;
     it.description = listing.description;

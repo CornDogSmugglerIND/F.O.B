@@ -9,22 +9,75 @@ import {
   LISTING_CONFIG,
 } from "../src/listing/engine.js";
 
-test("buildEbayTitle leads with product name, no bangs, ≤80", () => {
+test("buildEbayTitle: TCG single ends 'NM Single', locked order, no #", () => {
   const title = buildEbayTitle({
     productName: "Charizard ex",
-    collectorNumber: "223",
+    collectorNumber: "223/197",
     setName: "Obsidian Flames",
     condition: "NM",
   });
-  assert.match(title, /^Charizard ex/);
+  assert.equal(title, "Charizard ex 223/197 Obsidian Flames- NM Single");
   assert.doesNotMatch(title, /!/);
+  assert.doesNotMatch(title, /#/);
   assert.ok(title.length <= 80);
 });
 
-test("buildVariationTitle matches Pick Your Card template", () => {
-  const title = buildVariationTitle({ setName: "Prismatic Evolutions", rarity: "Illustration Rare" });
-  assert.match(title, /Pick Your Card/);
-  assert.match(title, /Prismatic Evolutions/);
+test("buildEbayTitle: single with finish keeps it before the locked ending", () => {
+  const title = buildEbayTitle({
+    productName: "Moonbreon",
+    collectorNumber: "215/167",
+    setName: "Twilight Masquerade",
+    finish: "Holo",
+    game: "Pokemon",
+  });
+  assert.equal(title, "Moonbreon 215/167 Twilight Masquerade Holo- NM Single");
+});
+
+test("buildEbayTitle: sealed ends 'New/Factory Sealed', never bare 'Sealed'", () => {
+  const title = buildEbayTitle({
+    productName: "Dragon Ball Super TCG SD16 Darkness Reborn Starter Deck",
+    sealed: true,
+  });
+  assert.equal(
+    title,
+    "Dragon Ball Super TCG SD16 Darkness Reborn Starter Deck- New/Factory Sealed",
+  );
+  assert.doesNotMatch(title, /- Sealed$/);
+});
+
+test("buildEbayTitle: truncation never cuts the locked ending", () => {
+  const long = buildEbayTitle({
+    productName: "A".repeat(100),
+    collectorNumber: "001/100",
+    setName: "Some Very Long Set Name Here",
+    game: "Pokemon",
+  });
+  assert.ok(long.length <= 80, `within 80 chars: ${long.length}`);
+  assert.match(long, /- NM Single$/);
+  const longSealed = buildEbayTitle({ productName: "B".repeat(100), sealed: true });
+  assert.ok(longSealed.length <= 80);
+  assert.match(longSealed, /- New\/Factory Sealed$/);
+});
+
+test("buildEbayTitle: non-card, non-sealed items get no locked ending", () => {
+  const title = buildEbayTitle({ productName: "Microwave Oven", condition: "Used" });
+  assert.doesNotMatch(title, /NM Single/);
+  assert.match(title, /^Microwave Oven/);
+});
+
+test("buildVariationTitle follows Sawyer's locked rule, not the old template", () => {
+  const title = buildVariationTitle({
+    setName: "Prismatic Evolutions",
+    rarity: "Illustration Rare",
+    game: "Pokemon",
+  });
+  assert.equal(title, "Prismatic Evolutions Pick Your Card Pokemon TCG Singles NM");
+  assert.ok(title.length <= 80);
+});
+
+test("buildVariationTitle: set leads, game named, ≤80", () => {
+  const title = buildVariationTitle({ setName: "151", game: "Pokemon" });
+  assert.equal(title, "151 Pick Your Card Pokemon TCG Singles NM");
 });
 
 test("buildEbayDescription includes facts + locked sign-off", () => {
@@ -62,6 +115,7 @@ test("runListingEngine returns title description specifics", () => {
     { soldAvg: 10 },
   );
   assert.match(out.title, /Mew ex/);
+  assert.match(out.title, /- NM Single$/, "single title ends with the locked NM Single");
   assert.match(out.description, /Sign-off|CornDogSmuggler/i);
   assert.equal(out.specifics.Manufacturer, "The Pokémon Company");
   assert.ok(out.suggestedPrice > 10);

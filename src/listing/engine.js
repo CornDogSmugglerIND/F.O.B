@@ -41,8 +41,41 @@ function clean(s) {
     .trim();
 }
 
+/** Card games whose singles use the locked TCG-single title format. */
+const CARD_GAMES = /pok[eé]mon|magic|one piece|dragon ball|digimon|sports/i;
+
+/** Finish worth naming in a title — never NM / Near Mint. @param {{ finish?: string|null }} id */
+function cardFinish(id) {
+  const finish = clean(id.finish);
+  return finish && !/^(nm|near mint)\b/i.test(finish) ? finish : "";
+}
+
+/** @param {object} id */
+function isCardLike(id) {
+  if (id.collectorNumber || id.setName || cardFinish(id)) return true;
+  return CARD_GAMES.test(id.game || "");
+}
+
 /**
- * Build eBay title — product name leads, dash segments, ≤80, no !.
+ * Fit a product block ahead of a locked suffix without ever cutting the suffix.
+ * @param {string} head
+ * @param {string} suffix e.g. "- NM Single" (leading dash/space included)
+ * @param {number} max
+ */
+function fitHead(head, suffix, max) {
+  const room = max - suffix.length;
+  const h = head.length > room ? head.slice(0, Math.max(0, room)).trim() : head;
+  return h ? `${h}${suffix}` : suffix.trim();
+}
+
+/**
+ * Build eBay title — Sawyer's locked rules (design/LISTING-ENGINE.md §3):
+ * - TCG single: [Card Name] [Number] [Set Name] [Finish]- NM Single
+ *   e.g. "Charizard ex 223/197 Obsidian Flames- NM Single"
+ * - Sealed: [Product Name]- New/Factory Sealed
+ *   e.g. "Dragon Ball Super TCG SD16 Darkness Reborn Starter Deck- New/Factory Sealed"
+ * Product/card name leads, no !, ≤80 chars, truncation never cuts the locked ending.
+ * Non-card, non-sealed items keep name-first dash segments with no locked ending.
  * @param {{
  *   productName?: string|null,
  *   setName?: string|null,
@@ -55,35 +88,44 @@ function clean(s) {
  * }} id
  */
 export function buildEbayTitle(id = {}) {
-  const parts = [];
+  const max = LISTING_CONFIG.titleMaxLen;
   const name = clean(id.productName);
-  if (name) parts.push(name);
-  if (id.collectorNumber) parts.push(`#${clean(id.collectorNumber)}`);
-  if (id.setName) parts.push(clean(id.setName));
-  if (id.finish && !/nm|near mint/i.test(id.finish)) parts.push(clean(id.finish));
-  if (id.rarity) parts.push(clean(id.rarity));
-  if (id.sealed) parts.push("Sealed");
-  else if (id.condition) parts.push(clean(id.condition));
-  let title = parts.join(" - ");
-  if (title.length > LISTING_CONFIG.titleMaxLen) {
-    title = title.slice(0, LISTING_CONFIG.titleMaxLen - 1).trim();
+
+  if (id.sealed) {
+    return fitHead(name, `- ${LISTING_CONFIG.sealedCondition}`, max);
   }
+
+  if (isCardLike(id)) {
+    const parts = [];
+    if (name) parts.push(name);
+    if (id.collectorNumber) parts.push(clean(id.collectorNumber));
+    if (id.setName) parts.push(clean(id.setName));
+    const finish = cardFinish(id);
+    if (finish) parts.push(finish);
+    return fitHead(parts.join(" "), "- NM Single", max);
+  }
+
+  const parts = [];
+  if (name) parts.push(name);
+  if (id.condition) parts.push(clean(id.condition));
+  let title = parts.join(" - ");
+  if (title.length > max) title = title.slice(0, max - 1).trim();
   return title;
 }
 
 /**
- * Pick-your-card variation title template.
+ * Pick-your-card variation title — Sawyer's locked rule:
+ * [Set Name] Pick Your Card [Game] TCG Singles NM
+ * (design/LISTING-ENGINE.md §3.3 still shows the older
+ * "Pokemon [Set Name] - Pick Your Card [Rarity] NM" template;
+ * the locked rule wins — set leads, game named, no rarity slot.
+ * `rarity` is accepted but unused.)
  * @param {{ setName?: string|null, rarity?: string|null, game?: string|null }} id
  */
 export function buildVariationTitle(id = {}) {
-  const game = /pokemon/i.test(id.game || "") || !id.game ? "Pokemon" : clean(id.game);
+  const game = clean(id.game) || "Pokemon";
   const set = clean(id.setName) || "Set";
-  const rarity = clean(id.rarity) || "Mixed";
-  let title = `${game} ${set} - Pick Your Card ${rarity} NM`;
-  if (title.length > LISTING_CONFIG.titleMaxLen) {
-    title = title.slice(0, LISTING_CONFIG.titleMaxLen).trim();
-  }
-  return title;
+  return fitHead(set, ` Pick Your Card ${game} TCG Singles NM`, LISTING_CONFIG.titleMaxLen);
 }
 
 /**
