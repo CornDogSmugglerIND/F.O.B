@@ -503,20 +503,24 @@
     return null;
   }
 
-  function queueRow(it) {
+  var FF_STAGES = [
+    { id: "sold", label: "Dropoff" },
+    { id: "packed", label: "Scan" },
+    { id: "shipped", label: "In Transit" },
+  ];
+
+  function queueRow(it, idx) {
     var ph = phaseFromItem(it);
     var act = queueAction(ph);
     var src = (it.photos && it.photos[0] && it.photos[0].dataUrl) || "";
+    var name = itemTitle(it) || "Untitled";
     var thumb = src
-      ? '<img src="' + esc(src) + '" alt="" loading="lazy" />'
-      : '<div class="ph"></div>';
+      ? '<img src="' + esc(src) + '" alt="" loading="lazy" draggable="false" />'
+      : '<span class="node-initial" aria-hidden="true">' + esc(name.charAt(0).toUpperCase()) + "</span>";
     return (
-      '<div class="ff-qrow">' +
-        thumb +
-        '<div class="ff-qinfo">' +
-          '<div class="ff-qtitle">' + esc(itemTitle(it)) + "</div>" +
-          '<div class="ff-qsub">' + esc(statusLine(it)) + "</div>" +
-        "</div>" +
+      '<div class="ff-node">' +
+        '<button type="button" class="node-item ff-thumb" data-ffsheet="' + esc(it.id) + '"' +
+        ' style="animation-delay:' + (idx * 0.4).toFixed(2) + 's" aria-label="' + esc(name) + '">' + thumb + "</button>" +
         (act
           ? '<button type="button" class="btn btn-amber btn-sm ff-qact" data-ffq="' + esc(it.id) + '" data-act="' + act.run + '">' + esc(act.label) + "</button>"
           : "") +
@@ -529,16 +533,36 @@
     var q = $("ffQueue");
     if (!q) return;
     var list = queueItems();
+    var byStage = { sold: [], packed: [], shipped: [] };
+    list.forEach(function (it) {
+      var ph = phaseFromItem(it);
+      if (byStage[ph]) byStage[ph].push(it);
+    });
+    var clusters = FF_STAGES.map(function (st) {
+      var nodes = byStage[st.id].map(function (it, i) { return queueRow(it, i); }).join("");
+      return '<div class="ff-cluster" data-ffphase="' + st.id + '">' + nodes + "</div>";
+    }).join("");
+    var track = FF_STAGES.map(function (st, i) {
+      return (i ? '<span class="seg" aria-hidden="true"><span class="chev">\u203a</span></span>' : "") +
+        '<span class="orb-wrap"><span class="orb"></span></span>';
+    }).join("");
+    var labels = FF_STAGES.map(function (st) {
+      return '<div class="rlabel"><span class="rl-name">' + st.label + "</span>" +
+        '<span class="rl-count">' + String(byStage[st.id].length).padStart(2, "0") + "</span></div>";
+    }).join("");
     q.innerHTML =
       '<div class="ff-queue-head"><div class="chrome">SHIPPING QUEUE</div>' +
       '<div class="ff-queue-count">' + String(list.length).padStart(2, "0") + "</div></div>" +
       (list.length
-        ? '<div class="ff-qlist">' + list.map(queueRow).join("") + "</div>"
+        ? '<div class="ff-road"><div class="ff-clusters">' + clusters + "</div>" +
+          '<div class="ff-track">' + track + "</div>" +
+          '<div class="ff-labels">' + labels + "</div></div>"
         : '<div class="empty-quiet">Queue clear — nothing sold, packed, or shipped</div>');
     var btns = q.querySelectorAll("[data-ffq]");
     for (var i = 0; i < btns.length; i++) {
       (function (b) {
-        b.addEventListener("click", function () {
+        b.addEventListener("click", function (ev) {
+          ev.stopPropagation();
           var id = b.getAttribute("data-ffq");
           var act = b.getAttribute("data-act");
           if (act === "pack") packItem(id);
@@ -546,6 +570,14 @@
           else if (act === "deliver") deliverItem(id);
         });
       })(btns[i]);
+    }
+    var sheets = q.querySelectorAll("[data-ffsheet]");
+    for (var j = 0; j < sheets.length; j++) {
+      (function (b) {
+        b.addEventListener("click", function () {
+          if (window.HUD_openSheet) window.HUD_openSheet(b.getAttribute("data-ffsheet"));
+        });
+      })(sheets[j]);
     }
   }
 

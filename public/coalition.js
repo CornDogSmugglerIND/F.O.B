@@ -9,7 +9,7 @@ const state = {
   view: "command",
   items: [],
   spaces: [],
-  activePhase: "intake",
+  justMovedId: null,
   constellationMode: "tree", // "tree" | "collection"
   ebayOnline: false,
   sheetItemId: null,
@@ -187,6 +187,7 @@ function navigate(view) {
   if (!VIEWS.includes(view)) view = "command";
   state.view = view;
   location.hash = `#/${view}`;
+  $("app")?.classList.toggle("wide", view === "constellation");
   for (const v of VIEWS) {
     $(`view-${v}`)?.classList.toggle("active", v === view);
     document.querySelector(`.nav-tab[data-view="${v}"]`)?.classList.toggle("active", v === view);
@@ -347,6 +348,7 @@ function moveItemToPhase(itemId, phaseId) {
   if (phaseFromItem(it) === phaseId) return;
   it.phase = phaseId;
   it.staged = phaseId === "staged" ? true : it.staged;
+  state.justMovedId = itemId;
   saveItems();
   render();
   toast(`Moved to ${PHASES.find((p) => p.id === phaseId).label}`);
@@ -369,45 +371,45 @@ function bindConstellationSwitch() {
   );
 }
 
-/* Drag inventory between stages on the constellation tree (desktop HTML5). */
-function bindTreeDragDrop() {
-  const nodes = $("mapNodes");
-  const list = $("mapItems");
-  if (!nodes || !list || nodes.dataset.dragBound) return;
-  nodes.dataset.dragBound = "1";
-
-  list.addEventListener("dragstart", (e) => {
+/* Drag inventory between stages on the constellation roadmap (desktop HTML5).
+ * Delegated on #roadmap: survives innerHTML re-renders, bound once. */
+function bindRoadDragDrop() {
+  const host = $("roadmap");
+  if (!host || host.dataset.dragBound) return;
+  host.dataset.dragBound = "1";
+  host.addEventListener("dragstart", (e) => {
     const card = e.target.closest ? e.target.closest("[data-item]") : null;
     if (!card) return;
     try { e.dataTransfer.setData("text/plain", card.dataset.item); } catch (_) {}
     e.dataTransfer.effectAllowed = "move";
     card.classList.add("dragging-src");
   });
-  list.addEventListener("dragend", () => {
-    list.querySelectorAll(".dragging-src").forEach((el) => el.classList.remove("dragging-src"));
-    nodes.querySelectorAll(".drop-hint").forEach((el) => el.classList.remove("drop-hint"));
+  host.addEventListener("dragend", () => {
+    host.querySelectorAll(".dragging-src").forEach((el) => el.classList.remove("dragging-src"));
+    host.querySelectorAll(".drop-hint").forEach((el) => el.classList.remove("drop-hint"));
   });
-  nodes.addEventListener("dragover", (e) => {
-    const node = e.target.closest ? e.target.closest("[data-phase]") : null;
-    if (!node) return;
+  const phaseOf = (t) => (t && t.closest ? t.closest("[data-phase]") : null);
+  host.addEventListener("dragover", (e) => {
+    const st = phaseOf(e.target);
+    if (!st) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    if (!node.classList.contains("drop-hint")) {
-      nodes.querySelectorAll(".drop-hint").forEach((el) => el.classList.remove("drop-hint"));
-      node.classList.add("drop-hint");
+    if (!st.classList.contains("drop-hint")) {
+      host.querySelectorAll(".drop-hint").forEach((el) => el.classList.remove("drop-hint"));
+      st.classList.add("drop-hint");
     }
   });
-  nodes.addEventListener("dragleave", (e) => {
-    const node = e.target.closest ? e.target.closest("[data-phase]") : null;
-    if (node && !node.contains(e.relatedTarget)) node.classList.remove("drop-hint");
+  host.addEventListener("dragleave", (e) => {
+    const st = phaseOf(e.target);
+    if (st && !st.contains(e.relatedTarget)) st.classList.remove("drop-hint");
   });
-  nodes.addEventListener("drop", (e) => {
-    const node = e.target.closest ? e.target.closest("[data-phase]") : null;
-    if (!node) return;
+  host.addEventListener("drop", (e) => {
+    const st = phaseOf(e.target);
+    if (!st) return;
     e.preventDefault();
-    nodes.querySelectorAll(".drop-hint").forEach((el) => el.classList.remove("drop-hint"));
+    host.querySelectorAll(".drop-hint").forEach((el) => el.classList.remove("drop-hint"));
     const itemId = e.dataTransfer.getData("text/plain");
-    moveItemToPhase(itemId, node.dataset.phase);
+    moveItemToPhase(itemId, st.dataset.phase);
   });
 }
 
@@ -421,52 +423,55 @@ function renderConstellation() {
     window.HUD_collection?.render();
     return;
   }
-  renderTree();
+  renderRoadmap();
 }
 
-function renderTree() {
+/* Constellation roadmap: items ride the line as floating nodes.
+ * Row 1: item clusters per stage. Row 2: the glowing track (orb, chevron, orb…).
+ * Row 3: full-word stage labels + counts. Click a node → half-zoom sheet. */
+function renderRoadmap() {
+  const clusters = $("roadClusters");
+  const track = $("roadTrack");
+  const labels = $("roadLabels");
+  if (!clusters || !track || !labels) return;
   const counts = countsByPhase();
-  const track = $("mapNodes");
-  if (!track) return;
-  track.innerHTML = PHASES.map((p) => {
-    const active = state.activePhase === p.id ? " active" : "";
-    return `<button type="button" class="map-node${active}" data-phase="${p.id}">
-      <span class="orb"></span>
-      <span class="lbl">${p.short}</span>
-      <span class="cnt">${String(counts[p.id] || 0).padStart(2, "0")}</span>
-    </button>`;
-  }).join("");
-  track.querySelectorAll("[data-phase]").forEach((btn) =>
-    btn.addEventListener("click", () => {
-      state.activePhase = btn.dataset.phase;
-      renderTree();
-    })
-  );
-  const phase = PHASES.find((p) => p.id === state.activePhase) || PHASES[0];
-  if ($("mapStageName")) $("mapStageName").textContent = phase.label;
-  const list = $("mapItems");
-  if (!list) return;
-  const items = state.items.filter((i) => phaseFromItem(i) === phase.id);
-  if (!items.length) {
-    list.innerHTML = `<div class="empty-quiet">Nothing in ${escapeHtml(phase.label)} yet</div>`;
-    return;
+  const byPhase = Object.fromEntries(PHASES.map((p) => [p.id, []]));
+  for (const it of state.items) {
+    const ph = phaseFromItem(it);
+    if (byPhase[ph]) byPhase[ph].push(it);
   }
-  list.innerHTML = items
-    .map((it) => {
+  const justMoved = state.justMovedId;
+  state.justMovedId = null;
+
+  clusters.innerHTML = PHASES.map((p) => {
+    const nodes = (byPhase[p.id] || []).map((it, idx) => {
       const src = it.photos?.[0]?.dataUrl || "";
-      const status = listingStatusLabel(it);
-      return `<button type="button" class="item-card" data-item="${it.id}" draggable="true">
-        ${src ? `<img src="${src}" alt="" />` : `<div class="ph"></div>`}
-        <div><h3>${escapeHtml(it.title || it.productName || "Untitled")}</h3>
-        <p>${escapeHtml(phase.label)}${it.spaceId ? ` · ${escapeHtml(spaceName(it.spaceId))}` : ""}</p>
-        <span class="listing-status">${escapeHtml(status)}</span></div>
-        <div class="price-col">${money(it.price || 0)}</div>
-      </button>`;
-    })
-    .join("");
-  list.querySelectorAll("[data-item]").forEach((btn) =>
+      const name = it.title || it.productName || "Untitled";
+      const thumb = src
+        ? `<img src="${src}" alt="" loading="lazy" draggable="false" />`
+        : `<span class="node-initial" aria-hidden="true">${escapeHtml(name.charAt(0).toUpperCase())}</span>`;
+      const land = justMoved === it.id ? " land" : "";
+      return `<button type="button" class="node-item${land}" data-item="${it.id}" draggable="true"` +
+        ` style="animation-delay:${(idx * 0.4).toFixed(2)}s" aria-label="${escapeHtml(name)} — ${p.label}">` +
+        `${thumb}</button>`;
+    }).join("");
+    return `<div class="cluster" data-phase="${p.id}" aria-label="${p.label} items">${nodes}</div>`;
+  }).join("");
+
+  track.innerHTML = PHASES.map((p, i) =>
+    `${i ? `<span class="seg" aria-hidden="true"><span class="chev">\u203a</span></span>` : ""}` +
+    `<span class="orb-wrap" data-phase="${p.id}"><span class="orb"></span></span>`
+  ).join("");
+
+  labels.innerHTML = PHASES.map((p) =>
+    `<div class="rlabel" data-phase="${p.id}"><span class="rl-name">${p.label}</span>` +
+    `<span class="rl-count">${String(counts[p.id] || 0).padStart(2, "0")}</span></div>`
+  ).join("");
+
+  clusters.querySelectorAll("[data-item]").forEach((btn) =>
     btn.addEventListener("click", () => openSheet(btn.dataset.item))
   );
+  bindRoadDragDrop();
 }
 
 function spaceName(id) {
@@ -746,7 +751,7 @@ function openSheet(id) {
   $("sheetSpace").textContent = it.spaceId ? spaceName(it.spaceId) : "No bin assigned";
   window.HUD_fulfillment?.renderSheetSection(id);
 }
-
+window.HUD_openSheet = openSheet;
 function closeSheet() {
   state.sheetItemId = null;
   $("itemSheet")?.classList.remove("open");
@@ -1004,7 +1009,7 @@ function bind() {
     tab.addEventListener("click", () => navigate(tab.dataset.view))
   );
   bindConstellationSwitch();
-  bindTreeDragDrop();
+  bindRoadDragDrop();
 
   $("btnSnap")?.addEventListener("click", () => $("inputSnap")?.click());
   $("btnGallery")?.addEventListener("click", () => $("inputGallery")?.click());
