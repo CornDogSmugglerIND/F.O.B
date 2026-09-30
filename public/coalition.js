@@ -42,7 +42,16 @@ function loadItems() {
 }
 
 function saveItems() {
-  localStorage.setItem(LS_ITEMS, JSON.stringify(state.items));
+  try {
+    localStorage.setItem(LS_ITEMS, JSON.stringify(state.items));
+    return true;
+  } catch (err) {
+    // Refuse the save, keep everything in memory, and say so plainly.
+    // Stored photos are never stripped to force a fit.
+    const full = err && (err.name === "QuotaExceededError" || err.code === 22);
+    toast(full ? "Storage full — nothing saved, your photos are safe" : "Could not save — your photos are safe");
+    return false;
+  }
 }
 
 function defaultSpaces() {
@@ -767,12 +776,24 @@ async function addPhotos(fileList) {
     toast("No images in that drop");
     return;
   }
+  let added = 0;
   for (const file of files) {
-    const dataUrl = await fileToDataUrl(file);
-    const item = {
+    let dataUrl = null;
+    try {
+      // Compress on intake so phone photos fit local storage. The compressor
+      // returns a copy — on any failure we keep the original, never lose it.
+      const shrunk = window.ScouterImage
+        ? await window.ScouterImage.compressPhoto(file).catch(() => file)
+        : file;
+      dataUrl = await fileToDataUrl(shrunk);
+    } catch {
+      continue; // unreadable photo: skip it, keep the rest
+    }
+    const now = new Date().toISOString();
+    state.items.unshift({
       id: uid(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
       title: file.name.replace(/\.[^.]+$/, "") || "Scan",
       productName: null,
       quantity: 1,
@@ -782,13 +803,33 @@ async function addPhotos(fileList) {
       spaceId: null,
       barcode: null,
       channels: {},
-      photos: [{ id: uid(), dataUrl, createdAt: new Date().toISOString() }],
-    };
-    state.items.unshift(item);
+      photos: [{ id: uid(), dataUrl, createdAt: now }],
+    });
+    added++;
   }
-  saveItems();
-  toast(`${files.length} on Scouter`);
+  if (!added) {
+    toast("No photos could be read — nothing added");
+    return;
+  }
+  if (!saveItems()) return; // honest toast already shown; items stay in memory
+  toast(`${added} on Scouter`);
   navigate("scouter");
+}
+
+// Shrink an oversized photo data URL via the shared compressor (copy only).
+// Returns the original on any failure — a photo is never destroyed to shrink it.
+async function shrinkDataUrl(dataUrl) {
+  if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return dataUrl;
+  if (dataUrl.length < 400 * 1024) return dataUrl; // already small enough
+  try {
+    if (!window.ScouterImage) return dataUrl;
+    const blob = await (await fetch(dataUrl)).blob();
+    const file = new File([blob], "photo.jpg", { type: blob.type || "image/jpeg" });
+    const shrunk = await window.ScouterImage.compressPhoto(file);
+    return await fileToDataUrl(shrunk);
+  } catch {
+    return dataUrl;
+  }
 }
 
 async function addBarcode(code) {
@@ -1193,6 +1234,10 @@ async function syncEbay() {
               .filter((p) => p.dataUrl || p.url)
               .map((p) => ({ id: p.id, dataUrl: p.dataUrl || p.url })),
           };
+          // Downscale oversized server photos before they hit local storage.
+          for (const p of mapped.photos) {
+            p.dataUrl = await shrinkDataUrl(p.dataUrl);
+          }
           if (idx >= 0) state.items[idx] = { ...state.items[idx], ...mapped };
           else state.items.unshift(mapped);
         }
