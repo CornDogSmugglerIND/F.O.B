@@ -54,10 +54,13 @@ function saveItems() {
 }
 
 function defaultSpaces() {
+  // Bin covers are intentionally empty: Sawyer's real bin photos are not
+  // taken yet. The Spaces UI renders an obvious "Tap to add photo" slot for
+  // a null cover — never stock art, never fake bin photos.
   return [
-    { id: "bin1", name: "Bin 1", kind: "ebay_listed", itemIds: [], cover: "/spaces/bin1.jpg" },
-    { id: "bin2", name: "Bin 2", kind: "ebay_listed", itemIds: [], cover: "/spaces/bin2.jpg" },
-    { id: "staged", name: "Staged", kind: "staged", itemIds: [], cover: "/spaces/staged.jpg" },
+    { id: "bin1", name: "Bin 1", kind: "ebay_listed", itemIds: [], cover: null },
+    { id: "bin2", name: "Bin 2", kind: "ebay_listed", itemIds: [], cover: null },
+    { id: "staged", name: "Staged", kind: "staged", itemIds: [], cover: null },
   ];
 }
 
@@ -65,16 +68,32 @@ function loadSpaces() {
   try {
     const raw = JSON.parse(localStorage.getItem(LS_SPACES) || "null");
     if (Array.isArray(raw) && raw.length) {
-      // Ensure covers land for older saves
       const defaults = Object.fromEntries(defaultSpaces().map((s) => [s.id, s]));
-      return raw.map((s) => ({ ...defaults[s.id], ...s, cover: s.cover || defaults[s.id]?.cover || null }));
+      return raw.map((s) => {
+        const merged = { ...defaults[s.id], ...s };
+        // Migrate off the old stock-art covers: anything we shipped under
+        // /spaces/ was a fake bin photo. Real bin photos are data URLs.
+        if (typeof merged.cover === "string" && merged.cover.startsWith("/spaces/")) {
+          merged.cover = null;
+        }
+        return merged;
+      });
     }
   } catch { /* ignore */ }
   return defaultSpaces();
 }
 
 function saveSpaces() {
-  localStorage.setItem(LS_SPACES, JSON.stringify(state.spaces));
+  // Quota-guarded like saveItems(): never write a partial state, and say so
+  // honestly when storage refuses. Returns true/false.
+  try {
+    localStorage.setItem(LS_SPACES, JSON.stringify(state.spaces));
+    return true;
+  } catch (err) {
+    const full = err && (err.name === "QuotaExceededError" || err.code === 22);
+    toast(full ? "Storage full — bin change not saved, nothing changed" : "Could not save bins — nothing changed");
+    return false;
+  }
 }
 
 function uid() {
@@ -517,7 +536,7 @@ function renderSpaces() {
         const n = state.items.filter((i) => i.spaceId === sp.id).length;
         const cover = sp.cover
           ? `<img src="${sp.cover}" alt="" />`
-          : `<div class="ph-bin">${escapeHtml(sp.name).toUpperCase()}</div>`;
+          : `<div class="ph-bin ph-bin-empty"><span>Tap to add photo</span></div>`;
         return `<button type="button" class="space-node" data-space="${sp.id}">
           <div class="frame">${cover}</div>
           <div class="tag">${escapeHtml(sp.name)}<em>${String(n).padStart(2, "0")}</em></div>
@@ -1231,9 +1250,15 @@ async function identifyFromSheet(id) {
 function assignSpace(id, spaceId) {
   const it = state.items.find((x) => x.id === id);
   if (!it) return;
+  const before = it.spaceId;
   it.spaceId = spaceId;
   it.updatedAt = new Date().toISOString();
-  saveItems();
+  if (!saveItems()) {
+    // Storage refused — restore so memory matches disk. saveItems() already
+    // showed the honest "storage full" toast. Nothing is lost.
+    it.spaceId = before;
+    return;
+  }
   toast(`Filed in ${spaceName(spaceId)}`);
   closeSheet();
   render();

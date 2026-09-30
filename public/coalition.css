@@ -732,6 +732,21 @@ input[type="file"] { display: none; }
   font-size: 11px;
   letter-spacing: 0.12em;
 }
+/* Empty bin photo slot: obviously a placeholder, never fake art. */
+.space-node .frame .ph-bin-empty {
+  background:
+    repeating-linear-gradient(135deg, transparent 0 14px, rgba(255, 255, 255, 0.018) 14px 28px),
+    var(--hud-bg);
+}
+.space-node .frame .ph-bin-empty span {
+  padding: 10px 16px;
+  border: 1px dashed var(--hud-line-strong);
+  border-radius: var(--hud-radius);
+  color: var(--hud-text-dim);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
 .space-node .tag {
   margin: 0;
   padding: 13px 15px;

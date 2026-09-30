@@ -149,6 +149,207 @@
   text-align: center;
 }
 
+/* ---------- bin photo slot + chooser ---------- */
+
+.bd-coverwrap {
+  flex: 0 0 auto;
+  margin-bottom: 10px;
+}
+
+.bd-cover {
+  display: block;
+  width: 100%;
+  height: 118px;
+  padding: 0;
+  overflow: hidden;
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  color: var(--hud-text);
+}
+
+.bd-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.bd-cover-change {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 7px 12px;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid var(--hud-line-strong);
+  border-radius: var(--hud-radius);
+  font-family: var(--hud-font-chrome);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hud-text);
+  pointer-events: none;
+}
+
+/* Obviously-empty slot: never fake art. */
+.bd-cover-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 14px, rgba(255, 255, 255, 0.018) 14px 28px);
+}
+
+.bd-cover-empty-t {
+  padding: 9px 16px;
+  border: 1px dashed var(--hud-line-strong);
+  border-radius: var(--hud-radius);
+  font-family: var(--hud-font-chrome);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hud-text-dim);
+}
+
+.bd-cover-empty-s {
+  font-size: 11px;
+  color: var(--hud-text-mute);
+  padding: 0 18px;
+  text-align: center;
+}
+
+.bd-chooser {
+  border: 1px solid var(--hud-line-strong);
+  border-radius: var(--hud-radius);
+  background: var(--hud-raised);
+  padding: 12px;
+}
+
+.bd-chooser-t {
+  font-family: var(--hud-font-chrome);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hud-text-dim);
+  margin-bottom: 10px;
+}
+
+.bd-chooser-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.bd-pick {
+  padding: 0;
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius);
+  overflow: hidden;
+  background: var(--hud-panel-2);
+  cursor: pointer;
+  aspect-ratio: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bd-pick img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.bd-pick:active {
+  border-color: var(--hud-amber-hot);
+}
+
+.bd-chooser-s {
+  font-size: 11px;
+  color: var(--hud-text-mute);
+  margin-bottom: 10px;
+}
+
+.bd-chooser-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.bd-chooser-btn {
+  min-height: 48px;
+  padding: 0 12px;
+  background: var(--hud-panel-2);
+  color: var(--hud-text);
+  border: 1px solid var(--hud-line-strong);
+  border-radius: var(--hud-radius);
+  font-family: var(--hud-font-chrome);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bd-chooser-btn:active {
+  border-color: var(--hud-amber);
+  background: var(--hud-amber-soft);
+}
+
+.bd-chooser-btn.danger {
+  color: #e08a94;
+  border-color: rgba(212, 90, 104, 0.5);
+}
+
+.bd-chooser-btn.ghost {
+  color: var(--hud-text-dim);
+}
+
+/* ---------- remove-from-bin ---------- */
+
+.sp-cellwrap {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.sp-unfile {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.66);
+  border: 1px solid var(--hud-line-strong);
+  border-radius: 50%;
+  color: var(--hud-text-dim);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sp-unfile:active {
+  color: #e08a94;
+  border-color: rgba(212, 90, 104, 0.6);
+}
+
 /* ---------- draggable item cells (bin grid + unsorted strip) ---------- */
 
 .sp-cell {
@@ -292,9 +493,13 @@
   scrollbar-width: thin;
 }
 
-.pool-strip .sp-cell {
+.pool-strip .sp-cellwrap {
   flex: 0 0 88px;
   max-width: 88px;
+}
+
+.pool-strip .sp-cell {
+  width: 100%;
 }
 
 .pool-strip .sp-name {
@@ -344,7 +549,7 @@
   .bd-grid {
     grid-template-columns: repeat(4, 1fr);
   }
-  .pool-strip .sp-cell {
+  .pool-strip .sp-cellwrap {
     flex-basis: 96px;
     max-width: 96px;
   }
