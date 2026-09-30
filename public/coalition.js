@@ -749,6 +749,10 @@ function openSheet(id) {
   $("sheetTitle").textContent = it.title || it.productName || "Untitled";
   $("sheetMeta").textContent = `${phaseFromItem(it)} · ${listingStatusLabel(it)} · qty ${it.quantity || 1} · ${money(it.price || 0)}`;
   $("sheetSpace").textContent = it.spaceId ? spaceName(it.spaceId) : "No bin assigned";
+  const idHost = $("identifyResults");
+  if (idHost) idHost.innerHTML = "";
+  const idBtn = $("btnIdentify");
+  if (idBtn) idBtn.disabled = false;
   window.HUD_fulfillment?.renderSheetSection(id);
 }
 window.HUD_openSheet = openSheet;
@@ -875,6 +879,260 @@ function stageItem(id) {
   toast("Staged");
   closeSheet();
   render();
+}
+
+/* ---------- Identify: photo in → identity out ----------
+ * One ID action (item sheet). POSTs /api/scouter/identify with the item's
+ * photos, renders candidates as a pick list on low confidence, and always
+ * offers manual entry. Never a silent guess, never an infinite spinner —
+ * every path ends in a message, a pick list, or the manual form. */
+
+function identifyPhotos(it) {
+  return (it.photos || [])
+    .map((p) => p?.dataUrl)
+    .filter((u) => typeof u === "string" && u.startsWith("data:image/"));
+}
+
+/* Downscale just for the identify POST so the 2MB JSON body limit holds
+ * on full-size phone photos. The stored photo is never touched. */
+function identifyDownscale(dataUrl, maxDim = 1280) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        const scale = Math.min(1, maxDim / Math.max(w, h));
+        if (scale >= 1) {
+          resolve(dataUrl);
+          return;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(w * scale));
+        canvas.height = Math.max(1, Math.round(h * scale));
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+/* Client mirror of the server gate.js identityToItemPatch field mapping. */
+function identifyApplyPatch(it, identity, path) {
+  const name = [identity.product_name, identity.collector_number, identity.set_name, identity.finish]
+    .filter(Boolean)
+    .join(" ")
+    .trim() || identity.product_name;
+  it.title = name || it.title;
+  it.productName = identity.product_name || it.productName;
+  it.collectorNumber = identity.collector_number || it.collectorNumber;
+  it.setName = identity.set_name || it.setName;
+  it.setCode = identity.set_code || it.setCode;
+  it.game = identity.game || it.game;
+  it.rarity = identity.rarity || it.rarity;
+  it.finish = identity.finish || it.finish;
+  it.language = identity.language || it.language;
+  it.condition = identity.condition || it.condition;
+  it.identifyConfidence = identity.confidence || null;
+  it.identifyPath = path;
+  it.updatedAt = new Date().toISOString();
+}
+
+function identifyApply(id, identity, path) {
+  const it = state.items.find((x) => x.id === id);
+  if (!it || !identity) return false;
+  identifyApplyPatch(it, identity, path);
+  saveItems();
+  render();
+  openSheet(id);
+  const host = $("identifyResults");
+  if (host) {
+    const name = it.productName || it.title || "item";
+    host.innerHTML = `<div class="identify-head">Identified: ${escapeHtml(name)}${it.collectorNumber ? ` · ${escapeHtml(it.collectorNumber)}` : ""}${it.setName ? ` · ${escapeHtml(it.setName)}` : ""}</div>`;
+  }
+  return true;
+}
+
+function identifyCandidateLabel(c) {
+  return (
+    [c.product_name, c.collector_number, c.set_name, c.finish].filter(Boolean).join(" · ") ||
+    "Unknown item"
+  );
+}
+
+function identifyShowMessage(html) {
+  const host = $("identifyResults");
+  if (host) host.innerHTML = html;
+}
+
+function identifyShowCandidates(id, candidates, intro) {
+  const host = $("identifyResults");
+  if (!host) return;
+  const picks = candidates.slice(0, 5);
+  host.innerHTML =
+    `<div class="identify-head">${escapeHtml(intro)}</div>` +
+    picks
+      .map(
+        (c, i) =>
+          `<button type="button" class="identify-pick" data-pick="${i}">` +
+          `<span class="pick-name">${escapeHtml(identifyCandidateLabel(c))}</span>` +
+          `<span class="pick-sub">${escapeHtml(
+            [c.confidence === "high" ? "High confidence" : "Low confidence", c.source]
+              .filter(Boolean)
+              .join(" · ")
+          )}</span></button>`
+      )
+      .join("") +
+    `<button type="button" class="btn btn-ghost btn-sm" id="idfManualBtn">Enter manually</button>`;
+  host.querySelectorAll("[data-pick]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const c = picks[Number(btn.dataset.pick)];
+      if (identifyApply(id, c, "photo_search")) toast("Identity applied");
+    })
+  );
+  $("idfManualBtn")?.addEventListener("click", () => identifyShowManualForm(id));
+}
+
+function identifyShowManualForm(id) {
+  const host = $("identifyResults");
+  if (!host) return;
+  host.innerHTML = `
+    <div class="identify-head">Enter the identity — nothing here is a guess.</div>
+    <div class="identify-form">
+      <label>Product name<input id="idfName" autocomplete="off" placeholder="e.g. Charizard ex" /></label>
+      <label>Collector number<input id="idfNum" autocomplete="off" placeholder="e.g. 223/197" /></label>
+      <label>Set name<input id="idfSet" autocomplete="off" placeholder="e.g. Obsidian Flames" /></label>
+      <label>Set code<input id="idfSetCode" autocomplete="off" placeholder="e.g. OBF" /></label>
+      <label>Game<input id="idfGame" autocomplete="off" placeholder="e.g. Pokemon" /></label>
+      <label>Rarity<input id="idfRarity" autocomplete="off" placeholder="e.g. Double Rare" /></label>
+      <label>Finish<input id="idfFinish" autocomplete="off" placeholder="e.g. Holo" /></label>
+      <div class="identify-form-row">
+        <button type="button" class="btn btn-amber" id="idfApply">Apply</button>
+        <button type="button" class="btn btn-ghost" id="idfCancel">Back</button>
+      </div>
+      <div class="identify-err" id="idfErr" hidden></div>
+    </div>`;
+  $("idfCancel")?.addEventListener("click", () => {
+    host.innerHTML = "";
+  });
+  $("idfApply")?.addEventListener("click", async () => {
+    const btn = $("idfApply");
+    btn.disabled = true;
+    const err = $("idfErr");
+    try {
+      const res = await fetch("/api/scouter/identify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          forcePath: "manual",
+          manual: {
+            product_name: $("idfName")?.value.trim() || null,
+            collector_number: $("idfNum")?.value.trim() || null,
+            set_name: $("idfSet")?.value.trim() || null,
+            set_code: $("idfSetCode")?.value.trim() || null,
+            game: $("idfGame")?.value.trim() || null,
+            rarity: $("idfRarity")?.value.trim() || null,
+            finish: $("idfFinish")?.value.trim() || null,
+          },
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (body.ok && body.identity) {
+        if (identifyApply(id, body.identity, "manual")) toast("Manual identity applied");
+      } else {
+        err.hidden = false;
+        err.textContent = body.message || "Manual identity incomplete — check the fields and try again.";
+      }
+    } catch {
+      err.hidden = false;
+      err.textContent = "Could not reach the server. Try again.";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+async function identifyFromSheet(id) {
+  const it = state.items.find((x) => x.id === id);
+  if (!it) return;
+  const btn = $("btnIdentify");
+
+  // Settings → Identify → Manual skips vision entirely.
+  if (window.HUD_settings?.get("identifyProvider") === "manual") {
+    identifyShowManualForm(id);
+    return;
+  }
+
+  const photos = identifyPhotos(it);
+  if (!photos.length) {
+    toast("Take a photo first, then tap ID.");
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  identifyShowMessage(
+    `<div class="identify-progress"><span class="identify-spin" aria-hidden="true"></span>Identifying from ${photos.length} photo${photos.length === 1 ? "" : "s"}…</div>`
+  );
+  try {
+    const small = await Promise.all(photos.slice(0, 5).map((u) => identifyDownscale(u)));
+    const res = await fetch("/api/scouter/identify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        photos: small,
+        notes: it.notes || null,
+        quantity: Number(it.quantity) || 1,
+      }),
+      signal: AbortSignal.timeout(60000),
+    });
+    const body = await res.json().catch(() => ({}));
+
+    if (res.status === 503 || /isn't set up yet/i.test(String(body.message || ""))) {
+      // No key / no credits: honest line, manual entry always available.
+      identifyShowMessage(
+        `<div class="identify-head">${escapeHtml(body.message || "Identify isn't set up yet.")}</div>` +
+          `<button type="button" class="btn btn-ghost btn-sm" id="idfManualBtn">Enter manually</button>`
+      );
+      $("idfManualBtn")?.addEventListener("click", () => identifyShowManualForm(id));
+      return;
+    }
+
+    if (body.ok && body.identity) {
+      if (identifyApply(id, body.identity, body.path || "photo_search")) toast("Identified");
+      return;
+    }
+
+    const candidates = Array.isArray(body.candidates) ? body.candidates : [];
+    if (candidates.length) {
+      // Low confidence → pick list, never a silent guess.
+      identifyShowCandidates(id, candidates, body.message || "Low confidence — pick the right one.");
+      return;
+    }
+
+    identifyShowMessage(
+      `<div class="identify-head">${escapeHtml(body.message || "Could not identify this item. Photos kept.")}</div>` +
+        `<button type="button" class="btn btn-ghost btn-sm" id="idfManualBtn">Enter manually</button>`
+    );
+    $("idfManualBtn")?.addEventListener("click", () => identifyShowManualForm(id));
+  } catch (err) {
+    const timedOut = err?.name === "AbortError" || err?.name === "TimeoutError";
+    identifyShowMessage(
+      `<div class="identify-head">${escapeHtml(
+        timedOut
+          ? "Identify timed out after 60 seconds. Photos kept."
+          : "Identify failed to reach the server. Photos kept."
+      )}</div>` +
+        `<button type="button" class="btn btn-ghost btn-sm" id="idfManualBtn">Enter manually</button>`
+    );
+    $("idfManualBtn")?.addEventListener("click", () => identifyShowManualForm(id));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 function assignSpace(id, spaceId) {
@@ -1025,6 +1283,7 @@ function bind() {
 
   $("btnCloseSheet")?.addEventListener("click", closeSheet);
   $("btnStage")?.addEventListener("click", () => stageItem(state.sheetItemId));
+  $("btnIdentify")?.addEventListener("click", () => identifyFromSheet(state.sheetItemId));
   $("btnRunEngine")?.addEventListener("click", () => runEngine(state.sheetItemId));
   $("btnLoadSold")?.addEventListener("click", () => loadSoldPrice(state.sheetItemId));
   $("btnAssignBin1")?.addEventListener("click", () => assignSpace(state.sheetItemId, "bin1"));

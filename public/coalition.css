@@ -983,6 +983,24 @@ input[type="file"] { display: none; }
 }
 .sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
 
+/* ---------- identify: photo in, identity out ---------- */
+#identifyResults { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+#identifyResults:empty { display: none; }
+.identify-head { font-size: 13px; font-weight: 600; color: var(--hud-text-dim); line-height: 1.45; }
+.identify-progress { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--hud-text-dim); }
+.identify-spin { width: 16px; height: 16px; flex: none; border: 2px solid var(--hud-line-strong); border-top-color: var(--hud-amber); border-radius: 50%; animation: identifySpin 0.9s linear infinite; }
+@keyframes identifySpin { to { transform: rotate(360deg); } }
+.identify-pick { text-align: left; border: 1px solid var(--hud-line-strong); border-radius: 5px; background: rgba(255, 255, 255, 0.03); color: var(--hud-text); padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; font-family: var(--hud-font-body); }
+.identify-pick:active { border-color: var(--hud-amber-hairline); }
+.identify-pick .pick-name { font-size: 14px; font-weight: 650; }
+.identify-pick .pick-sub { font-size: 11.5px; color: var(--hud-text-dim); }
+.identify-form { display: flex; flex-direction: column; gap: 8px; }
+.identify-form label { display: flex; flex-direction: column; gap: 4px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--hud-text-dim); }
+.identify-form input { min-height: 44px; border: 1px solid var(--hud-line-strong); border-radius: 5px; background: rgba(255, 255, 255, 0.03); color: var(--hud-text); font-size: 14px; padding: 0 12px; font-family: var(--hud-font-body); }
+.identify-form-row { display: flex; gap: 8px; }
+.identify-err { font-size: 13px; font-weight: 600; color: var(--hud-amber); line-height: 1.45; }
+@media (prefers-reduced-motion: reduce) { .identify-spin { animation: none; } }
+
 /* ---------- toast ---------- */
 .toast {
   position: fixed;
