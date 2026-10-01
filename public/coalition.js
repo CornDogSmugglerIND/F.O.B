@@ -2,12 +2,76 @@ import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=1";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";
+const LS_COLLECTIONS = "coalition-collections-v1";
 const VIEWS = ["command", "scouter", "constellation", "spaces", "channels", "settings"];
+
+/* Base44 parity (stage b): the full item model. `price` stays the market /
+ * listing value — every downstream flow (listing engine, eBay/Misprint
+ * publish, CSV, value rollups) already treats it that way, so the form's
+ * "Market value" field binds it directly. purchasePrice is what he paid.
+ * estProfit() is the live auto-calc: market value minus purchase price. */
+const LISTING_STATUSES = ["draft", "sorted", "photographed", "ready to list", "listed", "sold", "error"];
+const GRADING_COMPANIES = ["PSA", "BGS", "CGC", "SGC"];
+const LIVE_CHANNELS = ["eBay", "Double Holo", "Misprint", "Shopify", "Courtyard", "Facebook Marketplace"];
+
+function normalizeItem(it) {
+  if (!it || typeof it !== "object") return it;
+  if (it.purchasePrice === undefined) it.purchasePrice = null;
+  if (it.listingStatus === undefined || !LISTING_STATUSES.includes(it.listingStatus)) it.listingStatus = "draft";
+  if (!Array.isArray(it.collections)) it.collections = [];
+  if (it.category === undefined) it.category = "";
+  if (it.condition === undefined) it.condition = "";
+  if (it.sku === undefined) it.sku = "";
+  if (it.grade === undefined) it.grade = "";
+  if (it.gradingCompany === undefined) it.gradingCompany = "";
+  if (it.liveChannel === undefined) it.liveChannel = "";
+  if (it.notes === undefined) it.notes = "";
+  return it;
+}
+
+function estProfit(it) {
+  return (Number(it && it.price) || 0) - (Number(it && it.purchasePrice) || 0);
+}
+
+function loadCollections() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_COLLECTIONS) || "[]");
+    return Array.isArray(raw) ? raw.filter((c) => c && c.id && c.name) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCollections() {
+  try {
+    localStorage.setItem(LS_COLLECTIONS, JSON.stringify(state.collections));
+    return true;
+  } catch (err) {
+    const full = err && (err.name === "QuotaExceededError" || err.code === 22);
+    toast(full ? "Storage full — collection not saved" : "Could not save collections");
+    return false;
+  }
+}
+
+function addCollection(name) {
+  const clean = String(name || "").trim();
+  if (!clean) return null;
+  const existing = state.collections.find((c) => c.name.toLowerCase() === clean.toLowerCase());
+  if (existing) return existing;
+  const col = { id: uid(), name: clean, createdAt: new Date().toISOString() };
+  state.collections.push(col);
+  if (!saveCollections()) {
+    state.collections.pop();
+    return null;
+  }
+  return col;
+}
 
 const state = {
   view: "command",
   items: [],
   spaces: [],
+  collections: [],
   justMovedId: null,
   constellationMode: "tree", // "tree" | "collection"
   ebayOnline: false,
@@ -34,7 +98,8 @@ function money(n) {
 function loadItems() {
   try {
     const raw = JSON.parse(localStorage.getItem(LS_ITEMS) || "[]");
-    return Array.isArray(raw) ? raw : [];
+    // Backward-compatible: old items pick up the new model defaults.
+    return Array.isArray(raw) ? raw.map(normalizeItem) : [];
   } catch {
     return [];
   }
@@ -106,7 +171,7 @@ function seedDemoItems() {
   // "Load demo data" in Settings. Appends to the current inventory — real
   // items are never wiped. Safe to call repeatedly: skips when demo items
   // already exist. Returns the number of demo items added (0 = none).
-  if (state.items.some((i) => i && i.notes === "demo-seed")) return 0;
+  if (state.items.some((i) => i && (i.demo === true || i.notes === "demo-seed"))) return 0;
   const now = new Date().toISOString();
   const idPika = uid();
   const idPack = uid();
@@ -123,12 +188,15 @@ function seedDemoItems() {
       setName: "Pokemon Promo",
       quantity: 2,
       price: 49.97,
+      purchasePrice: 30,
+      listingStatus: "draft",
       phase: "intake",
       staged: false,
       spaceId: null,
       channels: {},
       photos: [{ id: uid(), dataUrl: "/demo/pack-silver-tempest.jpg", createdAt: now }],
-      notes: "demo-seed",
+      demo: true,
+      notes: "",
     },
     {
       id: idPack,
@@ -139,12 +207,15 @@ function seedDemoItems() {
       setName: "Mega Evolution",
       quantity: 2,
       price: 6.49,
+      purchasePrice: 4,
+      listingStatus: "sorted",
       phase: "intake",
       staged: false,
       spaceId: null,
       channels: {},
       photos: [{ id: uid(), dataUrl: "/demo/pack-pitch-black.jpg", createdAt: now }],
-      notes: "demo-seed",
+      demo: true,
+      notes: "",
     },
     {
       id: idDeck,
@@ -155,12 +226,15 @@ function seedDemoItems() {
       setName: "Scarlet & Violet",
       quantity: 1,
       price: 35.5,
+      purchasePrice: 22,
+      listingStatus: "photographed",
       phase: "staged",
       staged: true,
       spaceId: "bin1",
       channels: {},
       photos: [{ id: uid(), dataUrl: "/demo/card-morpeko.jpg", createdAt: now }],
-      notes: "demo-seed",
+      demo: true,
+      notes: "",
     },
     {
       id: idEtb,
@@ -171,12 +245,15 @@ function seedDemoItems() {
       setName: "Mega Evolution",
       quantity: 1,
       price: 68.13,
+      purchasePrice: 45,
+      listingStatus: "ready to list",
       phase: "staged",
       staged: true,
       spaceId: "staged",
       channels: {},
       photos: [{ id: uid(), dataUrl: "/demo/etb-chaos-rising.jpg", createdAt: now }],
-      notes: "demo-seed",
+      demo: true,
+      notes: "",
     },
     {
       id: idDest,
@@ -187,17 +264,20 @@ function seedDemoItems() {
       setName: "Destined Rivals",
       quantity: 1,
       price: 115.53,
+      purchasePrice: 80,
+      listingStatus: "listed",
       phase: "listed",
       staged: true,
       spaceId: "bin2",
       channels: { ebay: { status: "active", listingId: "demo-listed-1" } },
       photos: [{ id: uid(), dataUrl: "/demo/etb-destined.jpg", createdAt: now }],
-      notes: "demo-seed",
+      demo: true,
+      notes: "",
     },
   ];
   const itemsBefore = state.items.length;
   const spacesBefore = JSON.stringify(state.spaces);
-  state.items.push(...demo);
+  state.items.push(...demo.map(normalizeItem));
   for (const sp of state.spaces) {
     const ids = demo.filter((i) => i.spaceId === sp.id).map((i) => i.id);
     if (ids.length) sp.itemIds = [...(sp.itemIds || []), ...ids];
@@ -747,7 +827,7 @@ function escapeHtml(s) {
 }
 
 function openSheet(id) {
-  const it = state.items.find((x) => x.id === id);
+  const it = normalizeItem(state.items.find((x) => x.id === id));
   if (!it) return;
   state.sheetItemId = id;
   disarmDelete();
@@ -755,9 +835,7 @@ function openSheet(id) {
   if (!sheet) return;
   sheet.classList.add("open");
   window.HUD_carousel?.renderInto($("sheetMedia"), it.photos || []);
-  $("sheetTitle").textContent = it.title || it.productName || "Untitled";
-  $("sheetMeta").textContent = `${phaseFromItem(it)} · ${listingStatusLabel(it)} · qty ${it.quantity || 1} · ${money(it.price || 0)}`;
-  $("sheetSpace").textContent = it.spaceId ? spaceName(it.spaceId) : "No bin assigned";
+  paintSheetForm(it);
   const idHost = $("identifyResults");
   if (idHost) idHost.innerHTML = "";
   const idBtn = $("btnIdentify");
@@ -765,6 +843,158 @@ function openSheet(id) {
   window.HUD_fulfillment?.renderSheetSection(id);
 }
 window.HUD_openSheet = openSheet;
+
+/* ---------- Item details form (Base44 parity: the full Add/Edit model) ----------
+ * One form, one sheet. Add flow (Inventory "+ Add item" → Scouter intake) and
+ * edit flow (tap any item) both land here. "Market value" binds it.price —
+ * the listing/market value every downstream flow already uses. */
+
+function setField(id, value) {
+  const el = $(id);
+  if (el) el.value = value == null ? "" : String(value);
+}
+
+function checkedCollectionIds() {
+  return [...document.querySelectorAll("#fCollections input[type=\"checkbox\"]:checked")].map((c) => c.value);
+}
+
+function renderCollectionChecks(selectedIds) {
+  const host = $("fCollections");
+  if (!host) return;
+  const selected = new Set(selectedIds || []);
+  if (!state.collections.length) {
+    host.innerHTML = '<p class="fld-hint">No collections yet — name one below to start a set.</p>';
+    return;
+  }
+  host.innerHTML = state.collections
+    .map(
+      (c) =>
+        `<label class="fld-check"><input type="checkbox" value="${escapeHtml(c.id)}"${
+          selected.has(c.id) ? " checked" : ""
+        } /><span>${escapeHtml(c.name)}</span></label>`
+    )
+    .join("");
+}
+
+function renderSpaceOptions(selectedId) {
+  const el = $("fSpace");
+  if (!el) return;
+  const opts = ['<option value="">No bin assigned</option>'].concat(
+    (state.spaces || []).map(
+      (s) => `<option value="${escapeHtml(s.id)}"${s.id === selectedId ? " selected" : ""}>${escapeHtml(s.name)}</option>`
+    )
+  );
+  el.innerHTML = opts.join("");
+}
+
+function fillSelect(id, options, selected) {
+  const el = $(id);
+  if (!el) return;
+  el.innerHTML = options
+    .map((o) => `<option value="${escapeHtml(o.value)}"${o.value === selected ? " selected" : ""}>${escapeHtml(o.label)}</option>`)
+    .join("");
+}
+
+function repaintProfit() {
+  const el = $("fEstProfit");
+  if (!el) return;
+  const purchase = parseMoney($("fPurchasePrice")?.value);
+  const market = parseMoney($("fMarketValue")?.value);
+  const profit = (market == null ? 0 : market) - (purchase == null ? 0 : purchase);
+  el.textContent = money(profit);
+  el.classList.toggle("neg", profit < 0);
+}
+
+function parseMoney(v) {
+  if (v == null || String(v).trim() === "") return null;
+  const n = Number(String(v).replace(/[$,]/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+function paintSheetForm(it) {
+  $("sheetTitle").textContent = it.title || it.productName || "Untitled";
+  const status = it.listingStatus || "draft";
+  $("sheetMeta").textContent =
+    `${phaseFromItem(it)} · ${status} · qty ${it.quantity || 1} · Market ${money(it.price || 0)} · Profit ${money(estProfit(it))}`;
+  $("sheetSpace").textContent = it.spaceId ? spaceName(it.spaceId) : "No bin assigned";
+
+  setField("fTitle", it.title || it.productName || "");
+  setField("fCategory", it.category);
+  setField("fQuantity", it.quantity == null ? 1 : it.quantity);
+  setField("fPurchasePrice", it.purchasePrice);
+  setField("fMarketValue", it.price);
+  setField("fCondition", it.condition);
+  setField("fSku", it.sku);
+  setField("fGrade", it.grade);
+  setField("fNotes", it.notes);
+  setField("fNewCollection", "");
+  fillSelect("fListingStatus", LISTING_STATUSES.map((s) => ({ value: s, label: s[0].toUpperCase() + s.slice(1) })), status);
+  fillSelect(
+    "fGradingCompany",
+    [{ value: "", label: "None" }].concat(GRADING_COMPANIES.map((g) => ({ value: g, label: g }))),
+    it.gradingCompany || ""
+  );
+  fillSelect(
+    "fLiveChannel",
+    [{ value: "", label: "None" }].concat(LIVE_CHANNELS.map((c) => ({ value: c, label: c }))),
+    it.liveChannel || ""
+  );
+  renderSpaceOptions(it.spaceId);
+  renderCollectionChecks(it.collections);
+  repaintProfit();
+}
+
+function saveItemForm(id) {
+  const it = state.items.find((x) => x.id === id);
+  if (!it) return;
+  // Snapshot for rollback if storage refuses the write — same contract as
+  // deleteItem/assignSpace: never report success on a failed save.
+  const snapshot = JSON.stringify(it);
+  const spacesBefore = JSON.stringify(state.spaces);
+
+  const qty = parseInt($("fQuantity")?.value, 10);
+  it.title = String($("fTitle")?.value || "").trim() || it.title || "Untitled";
+  it.category = String($("fCategory")?.value || "").trim();
+  it.quantity = Number.isFinite(qty) && qty >= 0 ? qty : 1;
+  it.purchasePrice = parseMoney($("fPurchasePrice")?.value);
+  it.price = parseMoney($("fMarketValue")?.value);
+  it.listingStatus = LISTING_STATUSES.includes($("fListingStatus")?.value) ? $("fListingStatus").value : "draft";
+  it.condition = String($("fCondition")?.value || "").trim();
+  it.sku = String($("fSku")?.value || "").trim();
+  it.grade = String($("fGrade")?.value || "").trim();
+  it.gradingCompany = GRADING_COMPANIES.includes($("fGradingCompany")?.value) ? $("fGradingCompany").value : "";
+  it.liveChannel = LIVE_CHANNELS.includes($("fLiveChannel")?.value) ? $("fLiveChannel").value : "";
+  it.notes = String($("fNotes")?.value || "");
+  it.collections = checkedCollectionIds();
+
+  // Storage location picker: same move semantics as assignSpace.
+  const newSpace = $("fSpace")?.value || null;
+  if (newSpace !== it.spaceId) {
+    it.spaceId = newSpace;
+    for (const sp of state.spaces) {
+      if (!sp || !Array.isArray(sp.itemIds)) continue;
+      sp.itemIds = sp.itemIds.filter((x) => x !== id);
+      if (newSpace && sp.id === newSpace) sp.itemIds.push(id);
+    }
+  }
+  it.updatedAt = new Date().toISOString();
+
+  if (!saveItems()) {
+    // Storage refused — restore so memory matches disk. saveItems() already
+    // showed the honest toast. Photos are untouched.
+    try {
+      const restored = JSON.parse(snapshot);
+      const idx = state.items.findIndex((x) => x.id === id);
+      if (idx >= 0) state.items[idx] = restored;
+    } catch { /* keep running */ }
+    try { state.spaces = JSON.parse(spacesBefore); } catch { /* keep running */ }
+    return;
+  }
+  saveSpaces();
+  toast("Saved");
+  paintSheetForm(normalizeItem(it));
+  render();
+}
 function closeSheet() {
   disarmDelete();
   state.sheetItemId = null;
@@ -845,7 +1075,7 @@ async function addPhotos(fileList, opts) {
     const now = new Date().toISOString();
     const itemId = uid();
     if (!firstNewId) firstNewId = itemId;
-    state.items.unshift({
+    state.items.unshift(normalizeItem({
       id: itemId,
       createdAt: now,
       updatedAt: now,
@@ -859,7 +1089,7 @@ async function addPhotos(fileList, opts) {
       barcode: null,
       channels: {},
       photos: [{ id: uid(), dataUrl, createdAt: now }],
-    });
+    }));
     added++;
   }
   if (!added) {
@@ -925,7 +1155,7 @@ async function addBarcode(code) {
       lookupMiss = true;
     }
   } catch { lookupMiss = true; /* offline ok */ }
-  state.items.unshift({
+  state.items.unshift(normalizeItem({
     id: uid(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -939,7 +1169,7 @@ async function addBarcode(code) {
     barcode: trimmed,
     channels: {},
     photos: [],
-  });
+  }));
   saveItems();
   toast(lookupMiss ? "Barcode added — no product match, filed under the code" : "Barcode added");
   closeBarcode();
@@ -1295,7 +1525,7 @@ async function syncEbay() {
           const idx = state.items.findIndex(
             (i) => i.channels?.ebay?.sku === sku || i.id === r.id
           );
-          const mapped = {
+          const mapped = normalizeItem({
             id: r.id,
             title: r.title || r.productName,
             productName: r.productName || r.title,
@@ -1308,7 +1538,7 @@ async function syncEbay() {
             photos: (r.photos || [])
               .filter((p) => p.dataUrl || p.url)
               .map((p) => ({ id: p.id, dataUrl: p.dataUrl || p.url })),
-          };
+          });
           // Downscale oversized server photos before they hit local storage.
           for (const p of mapped.photos) {
             p.dataUrl = await shrinkDataUrl(p.dataUrl);
@@ -1373,6 +1603,16 @@ function bind() {
   });
 
   $("btnCloseSheet")?.addEventListener("click", closeSheet);
+  $("btnSaveItem")?.addEventListener("click", () => saveItemForm(state.sheetItemId));
+  $("fPurchasePrice")?.addEventListener("input", repaintProfit);
+  $("fMarketValue")?.addEventListener("input", repaintProfit);
+  $("fAddCollectionBtn")?.addEventListener("click", () => {
+    const col = addCollection($("fNewCollection")?.value);
+    if (!col) return;
+    setField("fNewCollection", "");
+    renderCollectionChecks(checkedCollectionIds().concat(col.id));
+    toast(`Collection "${col.name}" added`);
+  });
   $("btnStage")?.addEventListener("click", () => stageItem(state.sheetItemId));
   $("btnIdentify")?.addEventListener("click", () => identifyFromSheet(state.sheetItemId));
   $("btnRunEngine")?.addEventListener("click", () => runEngine(state.sheetItemId));
@@ -1436,6 +1676,10 @@ function bind() {
     spaceName,
     openSheet,
     closeSheet,
+    saveItemForm,
+    estProfit,
+    normalizeItem,
+    addCollection,
     startInventoryIntake,
     saveItems,
     saveSpaces,
@@ -1451,6 +1695,7 @@ function bind() {
 async function boot() {
   state.items = loadItems();
   state.spaces = loadSpaces();
+  state.collections = loadCollections();
   saveSpaces();
   bind();
   const start = location.hash.replace(/^#\/?/, "") || "command";

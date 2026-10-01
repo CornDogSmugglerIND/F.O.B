@@ -35,7 +35,7 @@ test("seedDemoItems() is opt-in, append-only, and rolls back on save failure", a
   const body = fnBody(js, "function seedDemoItems()", "async function fileToDataUrl(");
   assert.ok(/notes === "demo-seed"/.test(body), "skips when demo items already exist");
   assert.ok(/return 0/.test(body), "reports zero when nothing was added");
-  assert.ok(/state\.items\.push\(\.\.\.demo\)/.test(body), "appends demo items — never wipes real items");
+  assert.ok(/state\.items\.push\(\.\.\.demo(\.map\(normalizeItem\))?\)/.test(body), "appends demo items — never wipes real items");
   assert.ok(!/state\.items = \[/.test(body), "never replaces the whole item array");
   assert.ok(/if\s*\(!saveItems\(\)\)/.test(body), "checks the save result");
   assert.ok(/state\.items\.length = itemsBefore/.test(body), "rolls back the push when storage refuses");
@@ -100,7 +100,7 @@ test("index.html and hud.html stay byte-identical with bumped versions", async (
   const a = await src("index.html");
   const b = await src("hud.html");
   assert.equal(a, b, "index.html and hud.html are byte-identical");
-  for (const v of ["coalition.js?v=23", "coalition.css?v=16", "features/settings.js?v=4"]) {
+  for (const v of ["coalition.js?v=24", "coalition.css?v=17", "features/settings.js?v=5"]) {
     assert.ok(a.includes(v), `${v} referenced`);
     const file = v.split("?")[0].replace(/^\//, "");
     assert.ok(existsSync(join(pub, file)), `${file} exists on disk`);

@@ -98,6 +98,7 @@
 
   function cardHtml(item) {
     var demo = item.demo ? '<span class="inv-demo">Demo</span>' : "";
+    var profit = window.HUDcore && window.HUDcore.estProfit ? window.HUDcore.estProfit(item) : 0;
     return (
       '<button type="button" class="inv-card" data-item="' + esc(item.id) + '"' +
       ' aria-label="' + esc(itemName(item)) + " — " + PHASE_LABELS[phaseOf(item)] + '">' +
@@ -105,7 +106,7 @@
       '<span class="inv-card-body">' +
       '<span class="inv-card-title">' + esc(itemName(item)) + demo + "</span>" +
       '<span class="inv-card-sub">' + PHASE_LABELS[phaseOf(item)] + " · " + esc(binName(item)) + "</span>" +
-      '<span class="inv-card-meta">qty ' + (item.quantity || 1) + " · " + money(item.price || 0) + "</span>" +
+      '<span class="inv-card-meta">qty ' + (item.quantity || 1) + " · Profit " + money(profit) + "</span>" +
       "</span>" +
       "</button>"
     );
