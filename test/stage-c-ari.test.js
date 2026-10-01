@@ -117,7 +117,7 @@ test("Fulfilment: Out for delivery is a recorded sub-stage of shipped", async ()
 test("cache versions bumped for changed bundles", async () => {
   for (const page of ["index.html", "hud.html"]) {
     const html = await src(page);
-    assert.ok(html.includes("/coalition.js?v=28"), `${page}: coalition.js?v=28`);
+    assert.ok(html.includes("/coalition.js?v=29"), `${page}: coalition.js?v=29`);
     assert.ok(html.includes("/coalition.css?v=24"), `${page}: coalition.css?v=24`);
   }
 });
@@ -138,4 +138,18 @@ test("no banned words in the new Stage C surface copy", async () => {
       assert.ok(!re.test(text), `${name}: banned word "${w}"`);
     }
   }
+});
+
+test("stage filter pool includes non-channel items in that fulfilment stage", async () => {
+  const js = await src("coalition.js");
+  // Regression: strip counted a locally-sold item (no channel listing) but the
+  // filtered grids came up empty. With a filter active the pool must widen.
+  assert.ok(/state\.channelStageFilter\s*\n?\s*\?\s*state\.items\.filter\(\(i\) => inPool\(i\) \|\| stageOk\(i\)\)/.test(js),
+    "filtered pool = channel items + items in the stage");
+});
+
+test("SKU prefix saves on input, not only on blur/change", async () => {
+  const js = await src("coalition.js");
+  assert.ok(/skuInput\.addEventListener\("input"/.test(js),
+    "prefix persists on every keystroke (reload before blur keeps it)");
 });

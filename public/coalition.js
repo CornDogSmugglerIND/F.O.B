@@ -804,10 +804,14 @@ function paintChannelGrid(grid, items, emptyText) {
 function renderChannels() {
   renderFfStages();
 
-  const pool = state.items.filter(
-    (i) => phaseFromItem(i) === "listed" || i.channels?.ebay || i.variationParent
-  );
+  const inPool = (i) => phaseFromItem(i) === "listed" || i.channels?.ebay || i.variationParent;
   const stageOk = (it) => !state.channelStageFilter || fulfilStage(it) === state.channelStageFilter;
+  // With a fulfilment stage filter active, also show items in that stage that
+  // have no channel listing — a sold/shipped item still needs its fulfilment
+  // tracked. Without a filter the grids stay pure channel listings.
+  const pool = state.channelStageFilter
+    ? state.items.filter((i) => inPool(i) || stageOk(i))
+    : state.items.filter(inPool);
   const active = pool.filter((i) => phaseFromItem(i) === "listed" && stageOk(i));
   const ended = pool.filter((i) => phaseFromItem(i) !== "listed" && stageOk(i));
 
@@ -1806,6 +1810,8 @@ function bind() {
   if (skuInput && !skuInput.dataset.wired) {
     skuInput.dataset.wired = "1";
     skuInput.value = readSkuPrefix();
+    // Save on every keystroke too — a reload before blur must not lose it.
+    skuInput.addEventListener("input", () => writeSkuPrefix(skuInput.value.trim().toUpperCase()));
     skuInput.addEventListener("change", () => {
       const v = skuInput.value.trim().toUpperCase();
       skuInput.value = v;

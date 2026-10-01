@@ -100,7 +100,7 @@ test("index.html and hud.html stay byte-identical with bumped versions", async (
   const a = await src("index.html");
   const b = await src("hud.html");
   assert.equal(a, b, "index.html and hud.html are byte-identical");
-  for (const v of ["coalition.js?v=28", "coalition.css?v=24", "features/settings.js?v=6"]) {
+  for (const v of ["coalition.js?v=29", "coalition.css?v=24", "features/settings.js?v=6"]) {
     assert.ok(a.includes(v), `${v} referenced`);
     const file = v.split("?")[0].replace(/^\//, "");
     assert.ok(existsSync(join(pub, file)), `${file} exists on disk`);
