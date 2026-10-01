@@ -1250,3 +1250,10 @@ button.stat:active .n { opacity: 0.55; }
   color: var(--hud-amber);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- Channels polish (claude): aligned cards, 5 stages visible, full-width empties ---------- */
+#view-channels .ebay-card { margin: 0 0 14px; }
+.channel-grid > .empty-quiet { grid-column: 1 / -1; padding: 14px 0 6px; text-align: left; }
+.ff-stage-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+.ff-stage { min-width: 0; }
+.ff-stage .k { letter-spacing: 0.06em; line-height: 1.3; }
