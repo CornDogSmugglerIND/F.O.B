@@ -90,6 +90,7 @@ function toast(msg) {
   const el = $("toast");
   if (!el) return;
   el.textContent = msg;
+  el.classList.toggle("top", !!document.querySelector(".sheet.open"));
   el.classList.add("show");
   clearTimeout(toast._t);
   toast._t = setTimeout(() => el.classList.remove("show"), 2200);

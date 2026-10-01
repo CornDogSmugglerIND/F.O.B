@@ -96,20 +96,126 @@
     return '<span class="inv-thumb-empty" aria-hidden="true"></span>';
   }
 
+  var STATUSES = ["draft", "sorted", "photographed", "ready to list", "listed", "sold", "error"];
+  var view = { q: "", status: "all", sort: "newest", select: false, sel: {} };
+
+  function statusOf(item) {
+    return STATUSES.indexOf(item.listingStatus) >= 0 ? item.listingStatus : "draft";
+  }
+
+  function profitOf(item) {
+    var c = core();
+    return c && c.estProfitTotal ? c.estProfitTotal(item) : 0;
+  }
+
   function cardHtml(item) {
     var demo = item.demo ? '<span class="inv-demo">Demo</span>' : "";
-    var profit = window.HUDcore && window.HUDcore.estProfitTotal ? window.HUDcore.estProfitTotal(item) : 0;
+    var picked = view.select && view.sel[item.id];
+    var st = statusOf(item);
+    var profit = profitOf(item);
     return (
-      '<button type="button" class="inv-card" data-item="' + esc(item.id) + '"' +
-      ' aria-label="' + esc(itemName(item)) + " — " + PHASE_LABELS[phaseOf(item)] + '">' +
+      '<button type="button" class="inv-card' + (picked ? " picked" : "") + '" data-item="' + esc(item.id) + '"' +
+      ' aria-label="' + esc(itemName(item)) + " — " + PHASE_LABELS[phaseOf(item)] + '"' +
+      (view.select ? ' aria-pressed="' + (picked ? "true" : "false") + '"' : "") + ">" +
+      (view.select ? '<span class="inv-check" aria-hidden="true">' + (picked ? "\u2713" : "") + "</span>" : "") +
       '<span class="inv-thumb">' + thumbHtml(item) + "</span>" +
       '<span class="inv-card-body">' +
-      '<span class="inv-card-title">' + esc(itemName(item)) + demo + "</span>" +
-      '<span class="inv-card-sub">' + PHASE_LABELS[phaseOf(item)] + " · " + esc(binName(item)) + "</span>" +
-      '<span class="inv-card-meta">qty ' + (item.quantity || 1) + " · Profit " + money(profit) + "</span>" +
+      '<span class="inv-card-title"><span class="inv-t">' + esc(itemName(item)) + "</span></span>" +
+      '<span class="inv-card-sub">' + PHASE_LABELS[phaseOf(item)] + " \u00b7 " + esc(binName(item)) + "</span>" +
+      '<span class="inv-card-meta"><span class="inv-pill st-' + st.replace(/ /g, "-") + '">' + esc(st) + "</span>" +
+      "qty " + (item.quantity === undefined ? 1 : item.quantity) + demo + "</span>" +
       "</span>" +
+      '<span class="inv-card-money"><b>' + money(item.price || 0) + '</b><i class="' + (profit < 0 ? "neg" : "") + '">' +
+      (profit < 0 ? "-" : "+") + money(Math.abs(profit)) + "</i></span>" +
       "</button>"
     );
+  }
+
+  function visibleItems() {
+    var q = view.q.trim().toLowerCase();
+    var list = items().filter(function (i) {
+      if (view.status !== "all" && statusOf(i) !== view.status) return false;
+      if (!q) return true;
+      var hay = [itemName(i), i.sku, i.category, i.condition, i.notes, i.setName, i.barcode].join(" ").toLowerCase();
+      return hay.indexOf(q) >= 0;
+    });
+    var by = {
+      newest: function (a, b) { return String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")); },
+      profit: function (a, b) { return profitOf(b) - profitOf(a); },
+      value: function (a, b) { return Number(b.price || 0) - Number(a.price || 0); },
+      name: function (a, b) { return itemName(a).localeCompare(itemName(b)); },
+    };
+    return list.sort(by[view.sort] || by.newest);
+  }
+
+  function selectedIds() {
+    return Object.keys(view.sel).filter(function (k) { return view.sel[k]; });
+  }
+
+  function paintList() {
+    var host = document.getElementById("invListHost");
+    if (!host) return;
+    var all = items();
+    var list = visibleItems();
+    if (!all.length) {
+      host.innerHTML = '<div class="inv-empty"><p>No items yet \u2014 tap + Add item above.</p></div>';
+    } else if (!list.length) {
+      host.innerHTML = '<div class="inv-empty"><p>Nothing matches. Clear the search or pick All.</p></div>';
+    } else {
+      host.innerHTML = '<div class="inv-list">' + list.map(cardHtml).join("") + "</div>";
+    }
+    var c = core();
+    host.querySelectorAll("[data-item]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-item");
+        if (view.select) {
+          view.sel[id] = !view.sel[id];
+          paintList();
+          paintBulk();
+          return;
+        }
+        if (c && c.openSheet) c.openSheet(id);
+        else if (window.HUD_openSheet) window.HUD_openSheet(id);
+      });
+    });
+  }
+
+  function paintBulk() {
+    var bar = document.getElementById("invBulk");
+    if (!bar) return;
+    var n = selectedIds().length;
+    bar.hidden = !view.select;
+    if (!view.select) return;
+    var c = core();
+    var spaces = (c && c.state && c.state.spaces) || [];
+    bar.innerHTML =
+      '<span class="inv-bulk-n">' + n + " selected</span>" +
+      '<select id="invBulkStatus" aria-label="Set listing status"><option value="">Set status\u2026</option>' +
+      STATUSES.map(function (s) { return '<option value="' + s + '">' + s + "</option>"; }).join("") + "</select>" +
+      '<select id="invBulkBin" aria-label="Move to bin"><option value="">Move to bin\u2026</option>' +
+      spaces.map(function (sp) { return '<option value="' + esc(sp.id) + '">' + esc(sp.name) + "</option>"; }).join("") + "</select>";
+    bar.querySelector("#invBulkStatus").addEventListener("change", function (e) { bulkApply({ status: e.target.value }); });
+    bar.querySelector("#invBulkBin").addEventListener("change", function (e) { bulkApply({ bin: e.target.value }); });
+  }
+
+  function bulkApply(change) {
+    var c = core();
+    var ids = selectedIds();
+    if (!c || !ids.length) { if (c && c.toast) c.toast("Tap items first"); paintBulk(); return; }
+    if (change.status) {
+      ids.forEach(function (id) {
+        var it = c.state.items.find(function (x) { return x.id === id; });
+        if (it) { it.listingStatus = change.status; it.updatedAt = new Date().toISOString(); }
+      });
+      if (!c.saveItems()) return;
+      c.toast("Updated " + ids.length + " item" + (ids.length === 1 ? "" : "s"));
+    } else if (change.bin) {
+      ids.forEach(function (id) { c.assignSpace(id, change.bin); });
+    }
+    view.sel = {};
+    view.select = false;
+    c.render();
+    render();
   }
 
   var wired = false;
@@ -119,55 +225,66 @@
     if (!section || !wired) return;
     var list = items();
     var total = list.reduce(function (s, i) {
-      return s + Number(i.price || 0) * Number(i.quantity || 1);
+      return s + Number(i.price || 0) * Number(i.quantity === undefined ? 1 : i.quantity);
+    }, 0);
+    var paid = list.reduce(function (s, i) {
+      return s + Number(i.purchasePrice || 0) * Number(i.quantity === undefined ? 1 : i.quantity);
     }, 0);
     var unfiled = list.filter(function (i) { return !i.spaceId; }).length;
+    var counts = { all: list.length };
+    STATUSES.forEach(function (s) { counts[s] = 0; });
+    list.forEach(function (i) { counts[statusOf(i)]++; });
 
-    var body;
-    if (!list.length) {
-      body =
-        '<div class="inv-empty">' +
-        "<p>No items yet — tap + Add item above.</p>" +
-        "</div>";
-    } else {
-      body = '<div class="inv-list">' + list.map(cardHtml).join("") + "</div>";
-    }
+    var chips = ["all"].concat(STATUSES).map(function (s) {
+      return '<button type="button" class="inv-chip' + (view.status === s ? " on" : "") + '" data-status="' + s + '">' +
+        (s === "all" ? "All" : s) + " <b>" + counts[s] + "</b></button>";
+    }).join("");
 
     section.innerHTML =
       '<div class="inv-head">' +
-      '<div class="inv-source chrome">On this device · ' + list.length + " item" + (list.length === 1 ? "" : "s") + "</div>" +
+      '<div class="inv-source chrome">On this device \u00b7 ' + list.length + " item" + (list.length === 1 ? "" : "s") + "</div>" +
       '<button type="button" class="inv-add" id="invAddBtn">+ Add item</button>' +
       "</div>" +
-      '<div class="stat-row">' +
-      '<div class="stat"><div class="k">ITEMS</div><div class="n">' + list.length + "</div></div>" +
-      '<div class="stat"><div class="k">EST VALUE</div><div class="n">' + money(total) + "</div></div>" +
-      '<div class="stat"><div class="k">UNFILED</div><div class="n">' + unfiled + "</div></div>" +
+      '<div class="inv-stats">' +
+      '<div class="inv-stat"><div class="k">Items</div><div class="v">' + list.length + "</div></div>" +
+      '<div class="inv-stat"><div class="k">Paid</div><div class="v">' + money(paid) + "</div></div>" +
+      '<div class="inv-stat"><div class="k">Market</div><div class="v">' + money(total) + "</div></div>" +
+      '<div class="inv-stat hot"><div class="k">Profit</div><div class="v">' + money(total - paid) + "</div></div>" +
       "</div>" +
-      body;
+      '<div class="inv-tools">' +
+      '<input type="search" id="invSearch" placeholder="Search items" autocomplete="off" value="' + esc(view.q) + '" />' +
+      '<select id="invSort" aria-label="Sort">' +
+      [["newest", "Newest"], ["profit", "Most profit"], ["value", "Highest value"], ["name", "Name A\u2013Z"]].map(function (o) {
+        return '<option value="' + o[0] + '"' + (view.sort === o[0] ? " selected" : "") + ">" + o[1] + "</option>";
+      }).join("") + "</select>" +
+      '<button type="button" class="inv-selbtn' + (view.select ? " on" : "") + '" id="invSelBtn">' + (view.select ? "Done" : "Select") + "</button>" +
+      "</div>" +
+      '<div class="inv-chips" id="invChips">' + chips + "</div>" +
+      '<div class="inv-bulk" id="invBulk" hidden></div>' +
+      '<div id="invListHost"></div>';
 
     var c = core();
-    var addBtn = section.querySelector("#invAddBtn");
-    if (addBtn) {
-      addBtn.addEventListener("click", function () {
-        // Same intake flow Scouter uses (photo picker → addPhotos) — no
-        // second form. The new item's sheet opens for name entry after save.
-        if (c && typeof c.startInventoryIntake === "function") {
-          c.startInventoryIntake();
-        } else if (window.HUDcore && typeof window.HUDcore.startInventoryIntake === "function") {
-          window.HUDcore.startInventoryIntake();
-        } else {
-          if (c && c.toast) c.toast("Intake is not ready yet");
-        }
-      });
-    }
-
-    var c = core();
-    section.querySelectorAll("[data-item]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        if (c && c.openSheet) c.openSheet(btn.getAttribute("data-item"));
-        else if (window.HUD_openSheet) window.HUD_openSheet(btn.getAttribute("data-item"));
-      });
+    section.querySelector("#invAddBtn").addEventListener("click", function () {
+      if (c && typeof c.startInventoryIntake === "function") {
+        c.startInventoryIntake();
+      } else if (window.HUDcore && typeof window.HUDcore.startInventoryIntake === "function") {
+        window.HUDcore.startInventoryIntake();
+      } else {
+        if (c && c.toast) c.toast("Intake is not ready yet");
+      }
     });
+    section.querySelector("#invSearch").addEventListener("input", function (e) { view.q = e.target.value; paintList(); });
+    section.querySelector("#invSort").addEventListener("change", function (e) { view.sort = e.target.value; paintList(); });
+    section.querySelector("#invSelBtn").addEventListener("click", function () {
+      view.select = !view.select;
+      if (!view.select) view.sel = {};
+      render();
+    });
+    section.querySelectorAll("[data-status]").forEach(function (b) {
+      b.addEventListener("click", function () { view.status = b.getAttribute("data-status"); render(); });
+    });
+    paintList();
+    paintBulk();
   }
 
   /* ---------- wiring ---------- */

@@ -1040,17 +1040,16 @@ input[type="file"] { display: none; }
 .toast {
   position: fixed;
   left: 50%;
-  top: calc(10px + var(--safe-top, env(safe-area-inset-top, 0px)));
-  transform: translateX(-50%) translateY(-10px);
+  bottom: calc(92px + var(--safe-bottom));
+  transform: translateX(-50%) translateY(10px);
   opacity: 0;
   pointer-events: none;
   z-index: 200;
   padding: 10px 16px;
   font-size: 13px;
   font-weight: 600;
-  background: rgba(14, 17, 19, 0.92);
-  backdrop-filter: blur(var(--hud-blur));
-  border: 1px solid var(--hud-line-strong);
+  background: #0e1113;
+  border: 1px solid var(--hud-amber-hairline);
   border-radius: 999px;
   color: var(--hud-text);
   box-shadow: 0 14px 34px -12px rgba(0, 0, 0, 0.8);
@@ -1113,7 +1112,7 @@ input[type="file"] { display: none; }
 .sheet-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 12px; }
 .sheet-chip {
   padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
-  border: 1px solid var(--hud-line-strong); color: var(--hud-text-dim); text-transform: capitalize;
+  border: 1px solid var(--hud-line-strong); color: var(--hud-text-dim); text-transform: lowercase;
 }
 .sheet-chip.hot { border-color: var(--hud-amber-hairline); color: var(--hud-amber-hot); background: var(--hud-amber-soft); }
 .sheet-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
@@ -1125,3 +1124,9 @@ input[type="file"] { display: none; }
 #sheetMedia { margin: 6px 0 14px; }
 
 #sheetMedia .phcar-viewport { aspect-ratio: 4 / 3; border: 1px solid var(--hud-line); border-radius: 6px; background: var(--hud-bg); }
+
+/* While a sheet is open the toast rides above it (never over its controls). */
+.toast.top { bottom: auto; top: calc(108px + var(--safe-top)); transform: translateX(-50%) translateY(-8px); }
+.toast.top.show { transform: translateX(-50%) translateY(0); }
+
+.sheet-chip::first-letter { text-transform: uppercase; }
