@@ -524,7 +524,6 @@ input[type="file"] { display: none; }
   cursor: pointer;
   overflow: hidden;
   flex: 0 0 auto;
-  animation: node-float 3.4s ease-in-out infinite;
   transition: transform var(--hud-duration) var(--hud-ease),
     border-color var(--hud-duration) var(--hud-ease),
     box-shadow var(--hud-duration) var(--hud-ease);
@@ -1044,12 +1043,12 @@ input[type="file"] { display: none; }
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(96px + var(--safe-bottom));
-  transform: translateX(-50%) translateY(10px);
+  top: calc(10px + var(--safe-top, env(safe-area-inset-top, 0px)));
+  transform: translateX(-50%) translateY(-10px);
   opacity: 0;
   pointer-events: none;
-  z-index: 70;
-  padding: 12px 18px;
+  z-index: 200;
+  padding: 10px 16px;
   font-size: 13px;
   font-weight: 600;
   background: rgba(14, 17, 19, 0.92);

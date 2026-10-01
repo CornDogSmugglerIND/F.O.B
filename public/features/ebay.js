@@ -170,9 +170,9 @@
     if (connState === "live") {
       line.textContent = "Configured · token OK";
     } else if (connState === "error") {
-      line.textContent = "Configured · " + (connDetail || "auth failing — link via Base44/Claude");
+      line.textContent = "Configured · " + (connDetail || "auth failing — add your eBay keys in Vercel settings");
     } else {
-      line.textContent = "Not configured — link via Base44/Claude";
+      line.textContent = "Not configured — add your eBay keys in Vercel settings";
     }
     if (meta) meta.textContent = metaText();
     if (syncBtn) {

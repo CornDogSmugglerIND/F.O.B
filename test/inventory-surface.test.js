@@ -86,7 +86,7 @@ test("cache busters bumped in both HTML files; files stay byte-identical", async
   const index = await src("index.html");
   const hud = await src("hud.html");
   assert.equal(index, hud, "index.html and hud.html are byte-identical");
-  for (const asset of ["features/collection.js?v=5", "features/collection.css?v=5"]) {
+  for (const asset of ["features/collection.js?v=6", "features/collection.css?v=5"]) {
     assert.ok(index.includes(asset), `${asset} referenced in HTML`);
     const file = asset.split("?")[0];
     const body = await src(file);

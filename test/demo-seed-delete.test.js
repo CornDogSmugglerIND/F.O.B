@@ -70,7 +70,7 @@ test("item sheet has a Delete button with a two-tap confirm", async () => {
   const body = fnBody(js, "function deleteItem(id)", "async function addPhotos(");
   assert.ok(/deleteArmedId !== id/.test(body), "first tap arms instead of deleting");
   assert.ok(/Tap again to delete/.test(body), "armed state says what the second tap does");
-  assert.ok(/setTimeout\(disarmDelete, 5000\)/.test(body), "arm auto-expires after 5s");
+  assert.ok(/setTimeout\(disarmDelete, 3000\)/.test(body), "arm auto-expires after 3s");
   assert.ok(/state\.items\.splice\(idx, 1\)/.test(body), "second tap removes the item from state");
   assert.ok(/sp\.itemIds\.filter/.test(body) || /itemIds = sp\.itemIds\.filter/.test(body),
     "deleted item is pruned from every space's itemIds");
@@ -100,7 +100,7 @@ test("index.html and hud.html stay byte-identical with bumped versions", async (
   const a = await src("index.html");
   const b = await src("hud.html");
   assert.equal(a, b, "index.html and hud.html are byte-identical");
-  for (const v of ["coalition.js?v=24", "coalition.css?v=17", "features/settings.js?v=5"]) {
+  for (const v of ["coalition.js?v=25", "coalition.css?v=19", "features/settings.js?v=5"]) {
     assert.ok(a.includes(v), `${v} referenced`);
     const file = v.split("?")[0].replace(/^\//, "");
     assert.ok(existsSync(join(pub, file)), `${file} exists on disk`);

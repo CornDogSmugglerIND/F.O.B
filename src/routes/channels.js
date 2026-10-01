@@ -28,7 +28,7 @@ export function channelsRouter() {
       if (!ebay?.configured) {
         return res.status(503).json({
           ok: false,
-          error: "eBay not configured on this deploy — port Base44-linked credentials",
+          error: "eBay isn't connected yet. Add your eBay keys in Vercel to turn this on.",
           code: "CHANNEL_NOT_CONFIGURED",
           missing: ebay?.missing || [],
         });

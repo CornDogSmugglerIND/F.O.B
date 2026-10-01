@@ -29,6 +29,10 @@ function normalizeItem(it) {
   return it;
 }
 
+function estProfitTotal(it) {
+  return estProfit(it) * (Number(it && it.quantity) >= 0 && it && it.quantity !== undefined ? Number(it.quantity) : 1);
+}
+
 function estProfit(it) {
   return (Number(it && it.price) || 0) - (Number(it && it.purchasePrice) || 0);
 }
@@ -88,7 +92,7 @@ function toast(msg) {
   el.textContent = msg;
   el.classList.add("show");
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => el.classList.remove("show"), 2800);
+  toast._t = setTimeout(() => el.classList.remove("show"), 2200);
 }
 
 function money(n) {
@@ -305,6 +309,7 @@ async function fileToDataUrl(file) {
 
 function navigate(view) {
   if (!VIEWS.includes(view)) view = "command";
+  { const t = $("toast"); if (t) { clearTimeout(toast._t); t.classList.remove("show"); } }
   state.view = view;
   location.hash = `#/${view}`;
   $("app")?.classList.toggle("wide", view === "constellation");
@@ -360,7 +365,7 @@ function oldestAge(phaseId) {
 
 function renderCommand() {
   const c = countsByPhase();
-  const toList = c.staged || 0;
+  const toList = state.items.filter((i) => i.listingStatus === "ready to list" || (phaseFromItem(i) === "staged" && i.listingStatus !== "listed")).length;
   const listed = c.listed || 0;
   const inventory = state.items.length;
   const needsBin = state.items.filter((i) => !i.spaceId && phaseFromItem(i) !== "listed").length;
@@ -834,6 +839,7 @@ function openSheet(id) {
   const sheet = $("itemSheet");
   if (!sheet) return;
   sheet.classList.add("open");
+  sheet.setAttribute("aria-hidden", "false");
   window.HUD_carousel?.renderInto($("sheetMedia"), it.photos || []);
   paintSheetForm(it);
   const idHost = $("identifyResults");
@@ -851,7 +857,14 @@ window.HUD_openSheet = openSheet;
 
 function setField(id, value) {
   const el = $(id);
-  if (el) el.value = value == null ? "" : String(value);
+  if (!el) return;
+  const v = value == null ? "" : String(value);
+  if (el.tagName === "SELECT" && v && ![...el.options].some((o) => o.value === v || o.text === v)) {
+    const o = document.createElement("option");
+    o.textContent = v;
+    el.appendChild(o);
+  }
+  el.value = v;
 }
 
 function checkedCollectionIds() {
@@ -915,7 +928,7 @@ function paintSheetForm(it) {
   $("sheetTitle").textContent = it.title || it.productName || "Untitled";
   const status = it.listingStatus || "draft";
   $("sheetMeta").textContent =
-    `${phaseFromItem(it)} · ${status} · qty ${it.quantity || 1} · Market ${money(it.price || 0)} · Profit ${money(estProfit(it))}`;
+    `${phaseFromItem(it)} · ${status} · qty ${it.quantity || 1} · Market ${money(it.price || 0)} · Profit ${money(estProfitTotal(it))}`;
   $("sheetSpace").textContent = it.spaceId ? spaceName(it.spaceId) : "No bin assigned";
 
   setField("fTitle", it.title || it.productName || "");
@@ -991,7 +1004,7 @@ function saveItemForm(id) {
     return;
   }
   saveSpaces();
-  toast("Saved");
+  toast("Item updated");
   paintSheetForm(normalizeItem(it));
   render();
 }
@@ -999,6 +1012,7 @@ function closeSheet() {
   disarmDelete();
   state.sheetItemId = null;
   $("itemSheet")?.classList.remove("open");
+  $("itemSheet")?.setAttribute("aria-hidden", "true");
 }
 
 let deleteArmedId = null;
@@ -1027,7 +1041,7 @@ function deleteItem(id) {
     }
     toast("Tap again to delete this item");
     clearTimeout(deleteTimer);
-    deleteTimer = setTimeout(disarmDelete, 5000);
+    deleteTimer = setTimeout(disarmDelete, 3000);
     return;
   }
   clearTimeout(deleteTimer);
@@ -1510,7 +1524,7 @@ async function syncEbay() {
     const res = await fetch("/api/channels/ebay/sync", { method: "POST" });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
-      toast(body.error || "eBay sync not configured yet — Base44 link still being ported");
+      toast(body.error || "eBay isn't connected yet. Add your eBay keys to turn this on.");
       return;
     }
     // Merge server-side sync into phone store for Channels tab
@@ -1678,6 +1692,7 @@ function bind() {
     closeSheet,
     saveItemForm,
     estProfit,
+    estProfitTotal,
     normalizeItem,
     addCollection,
     startInventoryIntake,
