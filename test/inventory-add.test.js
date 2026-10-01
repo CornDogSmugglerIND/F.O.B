@@ -93,7 +93,7 @@ test("cache-busters bumped and index.html == hud.html", async () => {
   const index = await src("index.html");
   const hud = await src("hud.html");
   assert.equal(index, hud, "hud.html is byte-identical to index.html");
-  for (const v of ["coalition.js?v=27", "features/collection.js?v=8", "features/collection.css?v=8"]) {
+  for (const v of ["coalition.js?v=28", "features/collection.js?v=8", "features/collection.css?v=8"]) {
     assert.ok(index.includes(v), `${v} present in both pages`);
   }
 });

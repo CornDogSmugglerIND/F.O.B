@@ -117,8 +117,8 @@ test("Fulfilment: Out for delivery is a recorded sub-stage of shipped", async ()
 test("cache versions bumped for changed bundles", async () => {
   for (const page of ["index.html", "hud.html"]) {
     const html = await src(page);
-    assert.ok(html.includes("/coalition.js?v=26"), `${page}: coalition.js?v=26`);
-    assert.ok(html.includes("/coalition.css?v=20"), `${page}: coalition.css?v=20`);
+    assert.ok(html.includes("/coalition.js?v=28"), `${page}: coalition.js?v=28`);
+    assert.ok(html.includes("/coalition.css?v=24"), `${page}: coalition.css?v=24`);
   }
 });
 
