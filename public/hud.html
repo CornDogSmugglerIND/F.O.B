@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>Coalition H.U.D</title>
   <link rel="manifest" href="/manifest.json" />
-  <link rel="stylesheet" href="/coalition.css?v=16" />
+  <link rel="stylesheet" href="/coalition.css?v=17" />
   <link rel="stylesheet" href="/features/carousel.css?v=2" />
   <link rel="stylesheet" href="/features/spaces.css?v=3" />
   <link rel="stylesheet" href="/features/csv.css?v=2" />
@@ -202,6 +202,84 @@
       <p id="sheetMeta" style="color:var(--hud-text-dim);font-size:13px;font-weight:400"></p>
       <p id="sheetSpace" class="chrome" style="margin-top:10px"></p>
       <div id="identifyResults"></div>
+      <div class="sheet-form" id="sheetForm">
+        <div class="chrome">Item details</div>
+        <div class="fld">
+          <label for="fTitle">Title</label>
+          <input type="text" id="fTitle" autocomplete="off" />
+        </div>
+        <div class="fld-row">
+          <div class="fld">
+            <label for="fCategory">Category</label>
+            <input type="text" id="fCategory" placeholder="Trading cards, Sealed product, Electronics" autocomplete="off" />
+          </div>
+          <div class="fld">
+            <label for="fQuantity">Quantity</label>
+            <input type="number" id="fQuantity" inputmode="numeric" min="0" step="1" />
+          </div>
+        </div>
+        <div class="fld-row">
+          <div class="fld">
+            <label for="fPurchasePrice">Purchase price</label>
+            <input type="number" id="fPurchasePrice" inputmode="decimal" min="0" step="0.01" placeholder="What you paid" />
+          </div>
+          <div class="fld">
+            <label for="fMarketValue">Market value</label>
+            <input type="number" id="fMarketValue" inputmode="decimal" min="0" step="0.01" placeholder="What it sells for" />
+          </div>
+        </div>
+        <div class="fld">
+          <label>Est. profit (auto)</label>
+          <div class="fld-profit" id="fEstProfit">$0.00</div>
+        </div>
+        <div class="fld-row">
+          <div class="fld">
+            <label for="fListingStatus">Listing status</label>
+            <select id="fListingStatus"></select>
+          </div>
+          <div class="fld">
+            <label for="fSpace">Storage location</label>
+            <select id="fSpace"></select>
+          </div>
+        </div>
+        <div class="fld">
+          <label>Collections</label>
+          <div id="fCollections"></div>
+          <div class="fld-addrow">
+            <input type="text" id="fNewCollection" placeholder="New collection name" autocomplete="off" />
+            <button type="button" class="btn btn-ghost" id="fAddCollectionBtn">Add</button>
+          </div>
+        </div>
+        <div class="fld-row">
+          <div class="fld">
+            <label for="fCondition">Condition</label>
+            <input type="text" id="fCondition" placeholder="Near mint, New, Used" autocomplete="off" />
+          </div>
+          <div class="fld">
+            <label for="fSku">SKU</label>
+            <input type="text" id="fSku" autocomplete="off" />
+          </div>
+        </div>
+        <div class="fld-row">
+          <div class="fld">
+            <label for="fGrade">Grade</label>
+            <input type="text" id="fGrade" placeholder="10, 9.5" autocomplete="off" />
+          </div>
+          <div class="fld">
+            <label for="fGradingCompany">Grading company</label>
+            <select id="fGradingCompany"></select>
+          </div>
+        </div>
+        <div class="fld">
+          <label for="fLiveChannel">Live channel</label>
+          <select id="fLiveChannel"></select>
+        </div>
+        <div class="fld">
+          <label for="fNotes">Notes</label>
+          <textarea id="fNotes" rows="3"></textarea>
+        </div>
+        <button type="button" class="btn btn-amber" id="btnSaveItem" style="width:100%">Save details</button>
+      </div>
       <div class="sheet-actions">
         <button type="button" class="btn btn-amber" id="btnStage">Stage</button>
         <button type="button" class="btn btn-amber" id="btnIdentify">ID</button>
@@ -232,11 +310,11 @@
   <script src="/features/carousel.js?v=2"></script>
   <script src="/features/spaces.js?v=3"></script>
   <script src="/features/csv.js?v=2"></script>
-  <script src="/features/collection.js?v=4"></script>
-  <script src="/features/settings.js?v=4"></script>
+  <script src="/features/collection.js?v=5"></script>
+  <script src="/features/settings.js?v=5"></script>
   <script src="/features/ebay.js?v=2"></script>
   <script src="/features/fulfillment.js?v=4"></script>
   <script src="/features/inventory-tools.js?v=3"></script>
-  <script type="module" src="/coalition.js?v=23"></script>
+  <script type="module" src="/coalition.js?v=24"></script>
 </body>
 </html>

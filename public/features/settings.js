@@ -215,7 +215,10 @@
   // Only rows carrying that marker are ever removed here — real user data
   // can never match this filter.
   function isDemoItem(it) {
-    return it && typeof it.notes === "string" && it.notes.indexOf("demo-seed") !== -1;
+    // Explicit flag first (notes are user-editable now); the old magic string
+    // stays as a fallback for rows seeded before the flag existed.
+    return it && (it.demo === true ||
+      (typeof it.notes === "string" && it.notes.indexOf("demo-seed") !== -1));
   }
 
   function clearDemoData() {
