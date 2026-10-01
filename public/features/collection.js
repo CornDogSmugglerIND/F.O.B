@@ -98,7 +98,7 @@
 
   function cardHtml(item) {
     var demo = item.demo ? '<span class="inv-demo">Demo</span>' : "";
-    var profit = window.HUDcore && window.HUDcore.estProfit ? window.HUDcore.estProfit(item) : 0;
+    var profit = window.HUDcore && window.HUDcore.estProfitTotal ? window.HUDcore.estProfitTotal(item) : 0;
     return (
       '<button type="button" class="inv-card" data-item="' + esc(item.id) + '"' +
       ' aria-label="' + esc(itemName(item)) + " — " + PHASE_LABELS[phaseOf(item)] + '">' +

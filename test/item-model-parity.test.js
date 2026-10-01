@@ -108,7 +108,7 @@ test("saveItemForm keeps the honest-save contract (rollback, no photo stripping)
   const body = js.slice(start, js.indexOf("function repaintProfit") >= 0 ? js.length : start + 4000).slice(0, 4000);
   assert.ok(/JSON\.stringify\(it\)/.test(body), "item is snapshotted before mutation");
   assert.ok(/if \(!saveItems\(\)\)/.test(body), "save failure is detected");
-  assert.ok(/toast\("Saved"\)/.test(body), "success says Saved");
+  assert.ok(/toast\("Item updated"\)/.test(body), "success says Item updated");
   assert.ok(!/stripPhoto|photo = null/.test(body), "no photo stripping in the save path");
   // Space change keeps bin membership consistent (mirrors assignSpace semantics).
   assert.ok(/it\.spaceId = newSpace/.test(body), "storage picker writes spaceId");
@@ -116,7 +116,7 @@ test("saveItemForm keeps the honest-save contract (rollback, no photo stripping)
 
 test("sheet meta line shows purchase-model money, not the old vague price", async () => {
   const js = await src("coalition.js");
-  assert.ok(/Market \$\{money\(it\.price \|\| 0\)\} · Profit \$\{money\(estProfit\(it\)\)\}/.test(js),
+  assert.ok(/Market \$\{money\(it\.price \|\| 0\)\} · Profit \$\{money\(estProfitTotal\(it\)\)\}/.test(js),
     "sheet meta reads: phase · status · qty · Market · Profit");
 });
 
@@ -130,7 +130,7 @@ test("cache-busters bumped and entry points stay byte-identical", async () => {
   const index = await src("index.html");
   const hud = await src("hud.html");
   assert.equal(index, hud, "index.html and hud.html are byte-identical");
-  for (const v of ["coalition.js?v=24", "coalition.css?v=17", "features/collection.js?v=5"]) {
+  for (const v of ["coalition.js?v=25", "coalition.css?v=19", "features/collection.js?v=6"]) {
     assert.ok(index.includes(v), `${v} is referenced`);
     assert.ok(index.includes(v) && hud.includes(v), `${v} resolves in both files`);
   }

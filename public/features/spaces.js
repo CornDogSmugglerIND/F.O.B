@@ -593,6 +593,7 @@
     ov.classList.add("open");
     ov.setAttribute("aria-hidden", "false");
     overlayOpen = true;
+    paintCover();
     var back = ov.querySelector("#binDetailBack");
     if (back && back.focus) {
       try {
