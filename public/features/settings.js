@@ -435,6 +435,8 @@
         "</div>" +
       "</div>" +
 
+      '<div id="stgPresetsHost"></div>' +
+
       '<div class="panel settings-block stg-danger">' +
         '<div class="chrome stg-danger-title">Data</div>' +
         '<div class="stg-actions">' +
@@ -446,6 +448,7 @@
         '<p class="stg-foot">Export downloads every localStorage key as JSON. Reset wipes items, spaces and prefs, then reloads.</p>' +
       "</div>";
 
+    if (window.HUD_presets) window.HUD_presets.render(el("stgPresetsHost"));
     paintEbayRow();
     refreshEbayRow();
     identifyProviderBackend().then(function (provider) {

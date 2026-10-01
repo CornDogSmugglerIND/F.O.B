@@ -1,0 +1,27 @@
+/* Settings: templates / shipping presets / storage */
+.pre-block { padding-bottom: 8px; }
+.pre-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.pre-h { font-size: 16px; font-weight: 700; color: var(--hud-text); }
+.pre-hint { font-size: 13px; color: var(--hud-text-dim); margin-top: 2px; line-height: 1.35; }
+.pre-head .btn[hidden] { display: none; }
+.pre-row { display: flex; align-items: stretch; gap: 8px; border-top: 1px solid var(--hud-line); }
+.pre-main { flex: 1 1 auto; min-width: 0; text-align: left; padding: 12px 0; min-height: 56px; background: transparent; border: 0; color: inherit; font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 3px; justify-content: center; }
+.pre-title { font-size: 15px; font-weight: 650; color: var(--hud-text); display: flex; align-items: center; gap: 8px; }
+.pre-sub { font-size: 13px; color: var(--hud-text-dim); }
+.pre-badge { font-size: 11px; font-weight: 700; color: var(--hud-amber-hot); border: 1px solid var(--hud-amber-hairline); background: var(--hud-amber-soft); padding: 1px 7px; border-radius: 999px; }
+.pre-del { flex: 0 0 auto; align-self: center; min-height: 40px; padding: 0 12px; font: inherit; font-size: 13px; font-weight: 600; color: var(--hud-text-mute); background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; }
+.pre-del.armed { color: var(--hud-danger); border-color: rgba(212, 90, 104, 0.5); background: var(--hud-danger-soft); }
+.pre-empty { font-size: 13px; color: var(--hud-text-mute); padding: 10px 0 12px; border-top: 1px solid var(--hud-line); line-height: 1.45; }
+.pre-form { display: grid; gap: 12px; padding: 14px 0 12px; border-top: 1px solid var(--hud-line); }
+.pre-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--hud-text-dim); }
+.pre-form input[type="text"], .pre-form input[type="number"], .pre-form select, .pre-form textarea {
+  font: inherit; font-size: 15px; font-weight: 500; color: var(--hud-text); background: var(--hud-panel-2);
+  border: 1px solid var(--hud-line-strong); border-radius: 6px; padding: 11px 12px; min-height: 44px; width: 100%; min-width: 0;
+}
+.pre-form textarea { resize: vertical; line-height: 1.4; }
+.pre-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pre-check { display: flex !important; align-items: center; gap: 10px; font-weight: 600; color: var(--hud-text) !important; }
+.pre-check input { width: 20px; height: 20px; accent-color: var(--hud-amber); }
+.pre-actions { display: flex; gap: 8px; }
+.pre-actions .btn { flex: 1 1 0; min-height: 44px; }
+.pre-head .btn{white-space:nowrap;flex:none}
