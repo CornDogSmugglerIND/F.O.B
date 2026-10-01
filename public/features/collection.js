@@ -5,7 +5,9 @@
  * mode of the Constellation view). Tapping an item opens the ONE item sheet
  * (window.HUD_openSheet from coalition.js); all actions (Identify, listing
  * engine, bin filing, delete, fulfillment) live there. This module builds no
- * sheets, no forms, no second store.
+ * sheets, no forms, no second store. The "+ Add item" button reuses Scouter's
+ * photo intake (HUDcore.startInventoryIntake) — the new item's sheet opens
+ * for name entry after the photo saves.
  *
  * Contract:
  *   window.HUD_collection = { init(), render(), refresh() }
@@ -124,20 +126,39 @@
     if (!list.length) {
       body =
         '<div class="inv-empty">' +
-        "<p>No items yet. Add them from the Scouter tab.</p>" +
+        "<p>No items yet — tap + Add item above.</p>" +
         "</div>";
     } else {
       body = '<div class="inv-list">' + list.map(cardHtml).join("") + "</div>";
     }
 
     section.innerHTML =
+      '<div class="inv-head">' +
       '<div class="inv-source chrome">On this device · ' + list.length + " item" + (list.length === 1 ? "" : "s") + "</div>" +
+      '<button type="button" class="inv-add" id="invAddBtn">+ Add item</button>' +
+      "</div>" +
       '<div class="stat-row">' +
       '<div class="stat"><div class="k">ITEMS</div><div class="n">' + list.length + "</div></div>" +
       '<div class="stat"><div class="k">EST VALUE</div><div class="n">' + money(total) + "</div></div>" +
       '<div class="stat"><div class="k">UNFILED</div><div class="n">' + unfiled + "</div></div>" +
       "</div>" +
       body;
+
+    var c = core();
+    var addBtn = section.querySelector("#invAddBtn");
+    if (addBtn) {
+      addBtn.addEventListener("click", function () {
+        // Same intake flow Scouter uses (photo picker → addPhotos) — no
+        // second form. The new item's sheet opens for name entry after save.
+        if (c && typeof c.startInventoryIntake === "function") {
+          c.startInventoryIntake();
+        } else if (window.HUDcore && typeof window.HUDcore.startInventoryIntake === "function") {
+          window.HUDcore.startInventoryIntake();
+        } else {
+          if (c && c.toast) c.toast("Intake is not ready yet");
+        }
+      });
+    }
 
     var c = core();
     section.querySelectorAll("[data-item]").forEach(function (btn) {

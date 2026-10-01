@@ -578,66 +578,34 @@ function renderChannels() {
   const listed = state.items.filter(
     (i) => phaseFromItem(i) === "listed" || i.channels?.ebay || i.variationParent
   );
-  const cards = listed.length
-    ? listed
-    : [
-        {
-          id: "_demo_ebay",
-          title: "eBay",
-          productName: "Live inventory sync",
-          price: 0,
-          demo: true,
-          tone: "ebay",
-          badge: "PORT",
-        },
-        {
-          id: "_demo_dh",
-          title: "Double Holo",
-          productName: "Vendor hub mirror",
-          price: 0,
-          demo: true,
-          tone: "dh",
-          badge: "HUB",
-        },
-        {
-          id: "_demo_shop",
-          title: "Shopify",
-          productName: "Claude holds connection",
-          price: 0,
-          demo: true,
-          tone: "shop",
-          badge: "LIVE",
-        },
-        {
-          id: "_demo_mp",
-          title: "Misprint",
-          productName: "Key ready · base URL next",
-          price: 0,
-          demo: true,
-          tone: "mp",
-          badge: "KEY",
-        },
-      ];
-  grid.innerHTML = cards
-    .slice(0, 12)
-    .map((it) => {
-      const src = it.photos?.[0]?.dataUrl;
-      const status = it.demo ? "Channel" : listingStatusLabel(it);
-      const badge = it.demo ? it.badge || "SYNC" : it.condition || it.grade || "NM";
-      const artClass = it.demo ? `art tone-${it.tone || "ebay"}` : "art";
-      return `<button type="button" class="channel-card" data-item="${it.demo ? "" : it.id}">
-        <div class="${artClass}">
+  if (!listed.length) {
+    // Honest empty state: no fake channel tiles. eBay connection status
+    // is shown by the pill below; other channels have no surface yet.
+    grid.innerHTML =
+      '<div class="empty-quiet">' +
+        "No channel listings yet — items you list on eBay will show here with their live status." +
+      "</div>";
+  } else {
+    grid.innerHTML = listed
+      .slice(0, 12)
+      .map((it) => {
+        const src = it.photos?.[0]?.dataUrl;
+        const status = listingStatusLabel(it);
+        const badge = it.condition || it.grade || "NM";
+        return `<button type="button" class="channel-card" data-item="${it.id}">
+        <div class="art">
           ${src ? `<img src="${src}" alt="" />` : `<div class="art-mark">${escapeHtml((it.title || "?").slice(0, 2).toUpperCase())}</div>`}
           <span class="badge">${escapeHtml(badge)}</span>
         </div>
         <div class="body">
           <h3>${escapeHtml(it.title || it.productName || "Listing")}</h3>
-          <p>${escapeHtml(it.setName || it.productName || (it.demo ? "Channel surface" : status))}</p>
-          <div class="price">${it.demo ? "Connect" : money(it.price || 0)}</div>
+          <p>${escapeHtml(it.setName || it.productName || status)}</p>
+          <div class="price">${money(it.price || 0)}</div>
         </div>
       </button>`;
-    })
-    .join("");
+      })
+      .join("");
+  }
   grid.querySelectorAll("[data-item]").forEach((btn) => {
     if (btn.dataset.item) btn.addEventListener("click", () => openSheet(btn.dataset.item));
   });
@@ -854,13 +822,14 @@ function deleteItem(id) {
   toast("Deleted");
 }
 
-async function addPhotos(fileList) {
+async function addPhotos(fileList, opts) {
   const files = [...(fileList || [])].filter((f) => f.type.startsWith("image/"));
   if (!files.length) {
     toast("No images in that drop");
     return;
   }
   let added = 0;
+  let firstNewId = null;
   for (const file of files) {
     let dataUrl = null;
     try {
@@ -874,8 +843,10 @@ async function addPhotos(fileList) {
       continue; // unreadable photo: skip it, keep the rest
     }
     const now = new Date().toISOString();
+    const itemId = uid();
+    if (!firstNewId) firstNewId = itemId;
     state.items.unshift({
-      id: uid(),
+      id: itemId,
       createdAt: now,
       updatedAt: now,
       title: file.name.replace(/\.[^.]+$/, "") || "Scan",
@@ -896,8 +867,25 @@ async function addPhotos(fileList) {
     return;
   }
   if (!saveItems()) return; // honest toast already shown; items stay in memory
+  if (opts && opts.fromInventory) {
+    // Inventory "+ Add item" path: same intake as Scouter, but stay put —
+    // open the new item's sheet immediately so the name gets entered here.
+    toast("Item added");
+    render();
+    if (firstNewId) openSheet(firstNewId);
+    return;
+  }
   toast(`${added} on Scouter`);
   navigate("scouter");
+}
+
+/* Inventory "+ Add item" entry: same photo intake Scouter uses (the shared
+ * gallery picker → addPhotos), no second form. The gallery change handler
+ * reads inventoryIntake to route the save back to Inventory. */
+let inventoryIntake = false;
+function startInventoryIntake() {
+  inventoryIntake = true;
+  $("inputGallery")?.click();
 }
 
 // Shrink an oversized photo data URL via the shared compressor (copy only).
@@ -920,13 +908,23 @@ async function addBarcode(code) {
   const trimmed = String(code || "").trim();
   if (!trimmed) return;
   let title = trimmed;
+  let lookupMiss = false;
   try {
     const res = await fetch(`/api/scouter/barcode/${encodeURIComponent(trimmed)}`);
     if (res.ok) {
       const body = await res.json();
-      title = body.title || body.name || trimmed;
+      // Server shape: { found, barcode, product: { title, ... } | null }.
+      // Never title an item with the raw digits when a real title exists.
+      const foundTitle = body && body.found ? body.product?.title : null;
+      if (foundTitle) {
+        title = String(foundTitle);
+      } else {
+        lookupMiss = true;
+      }
+    } else {
+      lookupMiss = true;
     }
-  } catch { /* offline ok */ }
+  } catch { lookupMiss = true; /* offline ok */ }
   state.items.unshift({
     id: uid(),
     createdAt: new Date().toISOString(),
@@ -943,7 +941,7 @@ async function addBarcode(code) {
     photos: [],
   });
   saveItems();
-  toast("Barcode added");
+  toast(lookupMiss ? "Barcode added — no product match, filed under the code" : "Barcode added");
   closeBarcode();
   navigate("scouter");
 }
@@ -1329,39 +1327,9 @@ async function syncEbay() {
   }
 }
 
-async function loadSoldPrice(id) {
-  const it = state.items.find((x) => x.id === id);
-  if (!it) return;
-  toast("Load sold avg — wiring to eBay sold comps");
-  // Live beta: mark intent; real comps need eBay browse/finding once creds ported
-  try {
-    const q = encodeURIComponent(it.title || it.productName || "");
-    const res = await fetch(`/api/scouter/identify?probe=price&q=${q}`);
-    if (res.ok) {
-      const body = await res.json();
-      if (body.price != null) {
-        it.price = Number(body.price);
-        saveItems();
-        toast(`Loaded ${money(it.price)}`);
-        render();
-        return;
-      }
-    }
-  } catch { /* fall through */ }
-  toast("Sold-average load needs eBay comps live — creds from Base44 next");
-}
-
-async function loadAllSold() {
-  const batch = state.items.filter((i) => phaseFromItem(i) === "intake" || phaseFromItem(i) === "staged");
-  if (!batch.length) {
-    toast("Nothing to price");
-    return;
-  }
-  toast(`Load all on ${batch.length} items — eBay comps next`);
-  for (const it of batch) {
-    await loadSoldPrice(it.id);
-  }
-}
+/* Sold-average loading was removed: it fetched a probe endpoint that never
+ * produced a price and only showed excuse toasts. It returns when a real
+ * eBay sold-comps source is wired — not before. */
 
 function openBarcode() {
   $("barcodeSheet")?.classList.add("open");
@@ -1399,7 +1367,8 @@ function bind() {
     e.target.value = "";
   });
   $("inputGallery")?.addEventListener("change", (e) => {
-    addPhotos(e.target.files);
+    addPhotos(e.target.files, { fromInventory: inventoryIntake });
+    inventoryIntake = false;
     e.target.value = "";
   });
 
@@ -1407,7 +1376,6 @@ function bind() {
   $("btnStage")?.addEventListener("click", () => stageItem(state.sheetItemId));
   $("btnIdentify")?.addEventListener("click", () => identifyFromSheet(state.sheetItemId));
   $("btnRunEngine")?.addEventListener("click", () => runEngine(state.sheetItemId));
-  $("btnLoadSold")?.addEventListener("click", () => loadSoldPrice(state.sheetItemId));
   $("btnAssignBin1")?.addEventListener("click", () => assignSpace(state.sheetItemId, "bin1"));
   $("btnAssignBin2")?.addEventListener("click", () => assignSpace(state.sheetItemId, "bin2"));
   $("btnAssignStaged")?.addEventListener("click", () => assignSpace(state.sheetItemId, "staged"));
@@ -1420,8 +1388,6 @@ function bind() {
   });
 
   $("btnEbaySync")?.addEventListener("click", syncEbay);
-  $("btnLoadAllSold")?.addEventListener("click", loadAllSold);
-  $("btnLoadAllSold2")?.addEventListener("click", loadAllSold);
   $("btnOpenMap")?.addEventListener("click", () => navigate("constellation"));
   $("btnCombineMode")?.addEventListener("click", () => {
     navigate("channels");
@@ -1470,6 +1436,7 @@ function bind() {
     spaceName,
     openSheet,
     closeSheet,
+    startInventoryIntake,
     saveItems,
     saveSpaces,
     render,

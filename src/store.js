@@ -3,7 +3,16 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-/** Vercel serverless only allows writes under /tmp (ephemeral). */
+/**
+ * Server-side item store.
+ *
+ * HONESTY CONTRACT: on Vercel this lives under /tmp, which is EPHEMERAL —
+ * per-instance, wiped on cold start. It is a short-lived cache for the
+ * channels/identify flows, NEVER the system of record. The durable store is
+ * localStorage on Sawyer's device ("coalition-items-v4" etc.); the app's
+ * client never writes items to this server. No route or UI copy may imply
+ * server-side durability — if a save must survive, it belongs in localStorage.
+ */
 let dataRoot = process.env.VERCEL
   ? join(tmpdir(), "scouter-data")
   : join(process.cwd(), "data");
@@ -160,7 +169,7 @@ export async function addPhotoToItem(id, photo) {
   return updateScoutItem(id, { photos: [...item.photos, photo] });
 }
 
-/** Store inline base64 so photos survive Vercel /tmp file churn. */
+/** Store inline base64 so photos stay readable while the ephemeral /tmp cache lives. */
 export async function addInlinePhotoToItem(itemId, dataUrl) {
   const photoId = randomUUID();
   const photo = {

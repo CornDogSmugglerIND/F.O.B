@@ -1,6 +1,6 @@
 /**
  * Lifecycle phases — single source of truth (Base44 catalog.js pattern).
- * Spine: 7 fixed nodes, left → right. Never reflows.
+ * Constellation: 7 fixed nodes, left → right. Never reflows.
  */
 /** @typedef {'intake'|'staged'|'listed'|'sold'|'packed'|'shipped'|'delivered'} PhaseId */
 
