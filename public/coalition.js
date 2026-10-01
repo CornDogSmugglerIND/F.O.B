@@ -618,13 +618,16 @@ function renderSpaces() {
   if (nodes) {
     nodes.innerHTML = state.spaces
       .map((sp) => {
-        const n = state.items.filter((i) => i.spaceId === sp.id).length;
+        const here = state.items.filter((i) => i.spaceId === sp.id);
+        const n = here.length;
+        const worth = here.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
         const cover = sp.cover
           ? `<img src="${sp.cover}" alt="" />`
-          : `<div class="ph-bin ph-bin-empty"><span>Tap to add photo</span></div>`;
+          : `<div class="ph-bin ph-bin-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Tap to add photo</span></div>`;
         return `<button type="button" class="space-node" data-space="${sp.id}">
           <div class="frame">${cover}</div>
-          <div class="tag">${escapeHtml(sp.name)}<em>${String(n).padStart(2, "0")}</em></div>
+          <div class="tag"><strong>${escapeHtml(sp.name)}</strong><span class="tag-sub">${n === 0 ? "Empty" : `${n} item${n === 1 ? "" : "s"} \u00b7 ${money(worth)}`}</span></div>
+          <span class="tag-go" aria-hidden="true">\u203a</span>
         </button>`;
       })
       .join("");
@@ -927,8 +930,16 @@ function parseMoney(v) {
 function paintSheetForm(it) {
   $("sheetTitle").textContent = it.title || it.productName || "Untitled";
   const status = it.listingStatus || "draft";
-  $("sheetMeta").textContent =
-    `${phaseFromItem(it)} · ${status} · qty ${it.quantity || 1} · Market ${money(it.price || 0)} · Profit ${money(estProfitTotal(it))}`;
+  const qty = it.quantity === undefined ? 1 : it.quantity;
+  const tot = estProfitTotal(it);
+  $("sheetMeta").innerHTML =
+    `<div class="sheet-chips"><span class="sheet-chip hot">${escapeHtml(phaseFromItem(it))}</span><span class="sheet-chip">${escapeHtml(status)}</span></div>` +
+    `<div class="sheet-stats">` +
+    `<div class="sheet-stat"><div class="k">Qty</div><div class="v">${qty}</div></div>` +
+    `<div class="sheet-stat"><div class="k">Paid</div><div class="v">${money(it.purchasePrice || 0)}</div></div>` +
+    `<div class="sheet-stat"><div class="k">Market</div><div class="v">${money(it.price || 0)}</div></div>` +
+    `<div class="sheet-stat profit${tot < 0 ? " neg" : ""}"><div class="k">Profit</div><div class="v">${money(tot)}</div></div>` +
+    `</div>`;
   $("sheetSpace").textContent = it.spaceId ? spaceName(it.spaceId) : "No bin assigned";
 
   setField("fTitle", it.title || it.productName || "");

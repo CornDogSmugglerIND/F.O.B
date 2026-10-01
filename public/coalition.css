@@ -991,11 +991,8 @@ input[type="file"] { display: none; }
 }
 #sheetMedia img {
   width: 100%;
-  max-height: 220px;
-  object-fit: cover;
-  margin: 12px 0;
-  border: 1px solid var(--hud-line);
-  border-radius: 5px;
+  object-fit: contain;
+  background: var(--hud-bg);
 }
 .sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
 
@@ -1088,3 +1085,43 @@ input[type="file"] { display: none; }
   .channel-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .spaces-nodes { grid-template-columns: 1fr 1fr; }
 }
+
+/* ---------- Spaces: compact bin rows (photo left, facts right) ---------- */
+.spaces-nodes { gap: 10px; }
+.space-node {
+  display: grid;
+  grid-template-columns: 88px 1fr 28px;
+  align-items: center;
+  min-height: 88px;
+}
+.space-node .frame { width: 88px; height: 88px; border-right: 1px solid var(--hud-line); }
+.space-node .frame .ph-bin {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--hud-text-mute);
+}
+.space-node .frame .ph-bin svg { width: 24px; height: 24px; }
+.space-node .frame .ph-bin-empty span { padding: 0; border: 0; font-size: 9px; letter-spacing: 0.08em; }
+.space-node .tag {
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px;
+  padding: 10px 12px; border-top: 0; letter-spacing: 0.02em;
+}
+.space-node .tag strong { font-size: 17px; font-weight: 650; color: var(--hud-text); }
+.space-node .tag-sub { font-family: var(--hud-font-body); font-size: 13px; font-weight: 500; color: var(--hud-text-dim); font-variant-numeric: tabular-nums; }
+.space-node .tag-go { font-size: 22px; color: var(--hud-text-mute); text-align: center; }
+
+/* ---------- Item sheet: stat strip + photo that never crops a card ---------- */
+.sheet-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 12px; }
+.sheet-chip {
+  padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  border: 1px solid var(--hud-line-strong); color: var(--hud-text-dim); text-transform: capitalize;
+}
+.sheet-chip.hot { border-color: var(--hud-amber-hairline); color: var(--hud-amber-hot); background: var(--hud-amber-soft); }
+.sheet-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.sheet-stat { padding: 10px 10px 9px; background: var(--hud-bg); border: 1px solid var(--hud-line); border-radius: 6px; }
+.sheet-stat .k { font-size: 11px; font-weight: 600; color: var(--hud-text-mute); margin-bottom: 4px; }
+.sheet-stat .v { font-size: 16px; font-weight: 700; color: var(--hud-text); font-variant-numeric: tabular-nums; }
+.sheet-stat.profit .v { color: var(--hud-amber-hot); }
+.sheet-stat.profit.neg .v { color: var(--hud-danger); }
+#sheetMedia { margin: 6px 0 14px; }
+
+#sheetMedia .phcar-viewport { aspect-ratio: 4 / 3; border: 1px solid var(--hud-line); border-radius: 6px; background: var(--hud-bg); }
