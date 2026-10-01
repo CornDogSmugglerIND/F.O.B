@@ -26,6 +26,8 @@ function normalizeItem(it) {
   if (it.gradingCompany === undefined) it.gradingCompany = "";
   if (it.liveChannel === undefined) it.liveChannel = "";
   if (it.notes === undefined) it.notes = "";
+  if (it.batchId === undefined) it.batchId = null; // Scouter scan batch (one id per photo drop)
+  if (it.outForDeliveryAt === undefined) it.outForDeliveryAt = null; // fulfilment sub-stage
   return it;
 }
 
@@ -82,6 +84,7 @@ const state = {
   sheetItemId: null,
   combineMode: false,
   combineSelected: new Set(),
+  channelStageFilter: null, // fulfilment stage id or null = show all
 };
 
 const $ = (id) => document.getElementById(id);
@@ -426,6 +429,13 @@ function renderCommand() {
         <div class="age">${oldestAge("staged")}</div>
       </div>`;
   }
+
+  // Command tiles are tappable: each goes to the view where that work happens.
+  document.querySelectorAll(".stat[data-goto]").forEach((btn) => {
+    if (btn.dataset.tileWired) return;
+    btn.dataset.tileWired = "1";
+    btn.addEventListener("click", () => navigate(btn.dataset.goto));
+  });
 }
 
 function renderScouter() {
@@ -438,10 +448,25 @@ function renderScouter() {
 
   const intake = state.items.filter((i) => phaseFromItem(i) === "intake");
   const staged = state.items.filter((i) => phaseFromItem(i) === "staged");
-  paintPkgs("pkgIntake", intake);
+  paintBatches("pkgIntake", intake);
   paintPkgs("pkgStaged", staged);
   if ($("intakeCount")) $("intakeCount").textContent = String(intake.length).padStart(2, "0");
   if ($("stagedCount")) $("stagedCount").textContent = String(staged.length).padStart(2, "0");
+}
+
+function pkgCardHtml(it) {
+  const src = it.photos?.[0]?.dataUrl || "";
+  const qty = Number(it.quantity) || 1;
+  return `<button type="button" class="pkg" data-item="${it.id}">
+    ${src ? `<img src="${src}" alt="" />` : `<div class="pkg empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="14" height="14" rx="1"/></svg></div>`}
+    ${qty > 1 ? `<span class="qty">x${qty}</span>` : ""}
+  </button>`;
+}
+
+function wirePkgCards(root) {
+  root.querySelectorAll("[data-item]").forEach((btn) =>
+    btn.addEventListener("click", () => openSheet(btn.dataset.item))
+  );
 }
 
 function paintPkgs(rootId, items) {
@@ -451,20 +476,55 @@ function paintPkgs(rootId, items) {
     root.innerHTML = `<div class="pkg empty" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 014.5 1.5c0 1.5-2.5 2-2.5 3.5M12 17h.01"/></svg></div>`;
     return;
   }
-  root.innerHTML = items
-    .slice(0, 12)
-    .map((it) => {
-      const src = it.photos?.[0]?.dataUrl || "";
-      const qty = Number(it.quantity) || 1;
-      return `<button type="button" class="pkg" data-item="${it.id}">
-        ${src ? `<img src="${src}" alt="" />` : `<div class="pkg empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="14" height="14" rx="1"/></svg></div>`}
-        ${qty > 1 ? `<span class="qty">x${qty}</span>` : ""}
-      </button>`;
+  root.innerHTML = items.slice(0, 12).map(pkgCardHtml).join("");
+  wirePkgCards(root);
+}
+
+/* ---------- Scouter scan batches ---------- */
+
+// One batch = one photo drop. Header shows when it came in, scan count,
+// and the batch's market value (price is the market/listing value).
+function batchLabel(batchId, items) {
+  if (!batchId) return "Earlier scans";
+  const times = items.map((i) => Date.parse(i.createdAt || "") || 0).filter(Boolean);
+  const d = new Date(times.length ? Math.min(...times) : Date.now());
+  const when =
+    d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+    ", " +
+    d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return `Batch · ${when}`;
+}
+
+function batchValue(items) {
+  return items.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
+}
+
+function paintBatches(rootId, items) {
+  const root = $(rootId);
+  if (!root) return;
+  if (!items.length) {
+    root.innerHTML = `<div class="empty-quiet">Snap or drop photos to start a batch</div>`;
+    return;
+  }
+  const groups = new Map();
+  for (const it of items) {
+    const key = it.batchId || "";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(it);
+  }
+  const newest = (list) => Math.max(...list.map((i) => Date.parse(i.createdAt || "") || 0));
+  const sorted = [...groups.entries()].sort((a, b) => newest(b[1]) - newest(a[1]));
+  root.innerHTML = sorted
+    .map(([key, list]) => {
+      const n = list.length;
+      return `<div class="batch">
+        <div class="batch-head"><span class="chrome">${escapeHtml(batchLabel(key || null, list))}</span>
+          <span class="batch-meta">${n} scan${n === 1 ? "" : "s"} · ${money(batchValue(list))}</span></div>
+        <div class="pkg-row batch-row">${list.slice(0, 12).map(pkgCardHtml).join("")}</div>
+      </div>`;
     })
     .join("");
-  root.querySelectorAll("[data-item]").forEach((btn) =>
-    btn.addEventListener("click", () => openSheet(btn.dataset.item))
-  );
+  wirePkgCards(root);
 }
 
 function moveItemToPhase(itemId, phaseId) {
@@ -661,48 +721,122 @@ function listingStatusLabel(it) {
   return ph;
 }
 
-function renderChannels() {
-  const grid = $("channelGrid");
-  if (!grid) return;
-  const listed = state.items.filter(
-    (i) => phaseFromItem(i) === "listed" || i.channels?.ebay || i.variationParent
-  );
-  if (!listed.length) {
-    // Honest empty state: no fake channel tiles. eBay connection status
-    // is shown by the pill below; other channels have no surface yet.
-    grid.innerHTML =
-      '<div class="empty-quiet">' +
-        "No channel listings yet — items you list on eBay will show here with their live status." +
-      "</div>";
-  } else {
-    grid.innerHTML = listed
-      .slice(0, 12)
-      .map((it) => {
-        const src = it.photos?.[0]?.dataUrl;
-        const status = listingStatusLabel(it);
-        const badge = it.condition || it.grade || "NM";
-        return `<button type="button" class="channel-card" data-item="${it.id}">
-        <div class="art">
-          ${src ? `<img src="${src}" alt="" />` : `<div class="art-mark">${escapeHtml((it.title || "?").slice(0, 2).toUpperCase())}</div>`}
-          <span class="badge">${escapeHtml(badge)}</span>
-        </div>
-        <div class="body">
-          <h3>${escapeHtml(it.title || it.productName || "Listing")}</h3>
-          <p>${escapeHtml(it.setName || it.productName || status)}</p>
-          <div class="price">${money(it.price || 0)}</div>
-        </div>
-      </button>`;
-      })
-      .join("");
-  }
-  grid.querySelectorAll("[data-item]").forEach((btn) => {
+/* ---------- Channels: fulfilment stages (Base44 words) ---------- */
+const FF_STAGES = [
+  { id: "ready", label: "Ready to ship" },
+  { id: "dropped", label: "Dropped at carrier" },
+  { id: "scanned", label: "Carrier scanned" },
+  { id: "out", label: "Out for delivery" },
+  { id: "delivered", label: "Delivered" },
+];
+
+// sold -> Ready to ship; packed -> Dropped at carrier;
+// shipped -> Carrier scanned, or Out for delivery once the carrier leg is
+// confirmed (outForDeliveryAt); delivered -> Delivered.
+function fulfilStage(it) {
+  const ph = phaseFromItem(it);
+  if (ph === "sold") return "ready";
+  if (ph === "packed") return "dropped";
+  if (ph === "shipped") return it.outForDeliveryAt ? "out" : "scanned";
+  if (ph === "delivered") return "delivered";
+  return null;
+}
+
+function channelCardHtml(it) {
+  const src = it.photos?.[0]?.dataUrl;
+  const status = listingStatusLabel(it);
+  const badge = it.condition || it.grade || "NM";
+  return `<button type="button" class="channel-card" data-item="${it.id}">
+    <div class="art">
+      ${src ? `<img src="${src}" alt="" />` : `<div class="art-mark">${escapeHtml((it.title || "?").slice(0, 2).toUpperCase())}</div>`}
+      <span class="badge">${escapeHtml(badge)}</span>
+    </div>
+    <div class="body">
+      <h3>${escapeHtml(it.title || it.productName || "Listing")}</h3>
+      <p>${escapeHtml(it.setName || it.productName || status)}</p>
+      <div class="price">${money(it.price || 0)}</div>
+    </div>
+  </button>`;
+}
+
+function wireChannelCards(root) {
+  if (!root) return;
+  root.querySelectorAll("[data-item]").forEach((btn) => {
     if (btn.dataset.item) btn.addEventListener("click", () => openSheet(btn.dataset.item));
   });
+}
+
+function renderFfStages() {
+  const row = $("ffStageRow");
+  if (!row) return;
+  const counts = Object.fromEntries(FF_STAGES.map((s) => [s.id, 0]));
+  for (const it of state.items) {
+    const st = fulfilStage(it);
+    if (st) counts[st]++;
+  }
+  row.innerHTML = FF_STAGES.map((s) => {
+    const on = state.channelStageFilter === s.id;
+    return `<button type="button" class="ff-stage${on ? " on" : ""}" data-stage="${s.id}" aria-pressed="${on ? "true" : "false"}">
+      <span class="n">${String(counts[s.id]).padStart(2, "0")}</span>
+      <span class="k">${s.label}</span>
+    </button>`;
+  }).join("");
+  row.querySelectorAll("[data-stage]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.stage;
+      // Toggle: tapping the active stage clears the filter.
+      state.channelStageFilter = state.channelStageFilter === id ? null : id;
+      renderChannels();
+    })
+  );
+}
+
+function paintChannelGrid(grid, items, emptyText) {
+  if (!grid) return;
+  if (!items.length) {
+    grid.innerHTML = `<div class="empty-quiet">${escapeHtml(emptyText)}</div>`;
+    return;
+  }
+  grid.innerHTML = items.slice(0, 24).map(channelCardHtml).join("");
+  wireChannelCards(grid);
+}
+
+function renderChannels() {
+  renderFfStages();
+
+  const pool = state.items.filter(
+    (i) => phaseFromItem(i) === "listed" || i.channels?.ebay || i.variationParent
+  );
+  const stageOk = (it) => !state.channelStageFilter || fulfilStage(it) === state.channelStageFilter;
+  const active = pool.filter((i) => phaseFromItem(i) === "listed" && stageOk(i));
+  const ended = pool.filter((i) => phaseFromItem(i) !== "listed" && stageOk(i));
+
+  const stageName = state.channelStageFilter
+    ? FF_STAGES.find((s) => s.id === state.channelStageFilter)?.label
+    : null;
+  setCount("activeCount", active.length);
+  setCount("endedCount", ended.length);
+  paintChannelGrid(
+    $("channelGrid"),
+    active,
+    stageName ? `No active listings in “${stageName}”.` : "No channel listings yet — items you list on eBay will show here with their live status."
+  );
+  paintChannelGrid(
+    $("channelGridEnded"),
+    ended,
+    stageName ? `Nothing in “${stageName}” right now.` : "Nothing ended yet."
+  );
+
   if ($("ebayPill")) {
     $("ebayPill").classList.toggle("on", state.ebayOnline);
     $("ebayPillLabel").textContent = state.ebayOnline ? "EBAY ONLINE" : "EBAY OFFLINE";
   }
   renderCombinePool();
+}
+
+function setCount(id, n) {
+  const el = $(id);
+  if (el) el.textContent = String(Number(n) || 0).padStart(2, "0");
 }
 
 function renderCombinePool() {
@@ -1078,6 +1212,39 @@ function deleteItem(id) {
   toast("Deleted");
 }
 
+/* ---------- SKU prefix (Scouter intake auto-numbering) ---------- */
+const LS_SKU_PREFIX = "coalition-sku-prefix";
+const LS_SKU_SEQ = "coalition-sku-seq";
+
+function readSkuPrefix() {
+  try {
+    return String(localStorage.getItem(LS_SKU_PREFIX) || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function writeSkuPrefix(v) {
+  try {
+    localStorage.setItem(LS_SKU_PREFIX, String(v || ""));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Next SKU for the prefix, e.g. prefix "CDS-" -> "CDS-0007". Counter survives
+// reloads; a failed storage write still returns a SKU (may repeat — the form
+// lets him fix it).
+function nextSku(prefix) {
+  let seq = 1;
+  try {
+    seq = Math.max(1, parseInt(localStorage.getItem(LS_SKU_SEQ) || "1", 10) || 1);
+    localStorage.setItem(LS_SKU_SEQ, String(seq + 1));
+  } catch { /* storage unavailable — best effort */ }
+  return `${prefix}${String(seq).padStart(4, "0")}`;
+}
+
 async function addPhotos(fileList, opts) {
   const files = [...(fileList || [])].filter((f) => f.type.startsWith("image/"));
   if (!files.length) {
@@ -1086,6 +1253,10 @@ async function addPhotos(fileList, opts) {
   }
   let added = 0;
   let firstNewId = null;
+  // One batch per drop: every photo in this picker/drop shares a batch id so
+  // Scouter can show "what came in together".
+  const batchId = uid();
+  const skuPrefix = readSkuPrefix();
   for (const file of files) {
     let dataUrl = null;
     try {
@@ -1113,6 +1284,8 @@ async function addPhotos(fileList, opts) {
       staged: false,
       spaceId: null,
       barcode: null,
+      batchId,
+      sku: skuPrefix ? nextSku(skuPrefix) : "",
       channels: {},
       photos: [{ id: uid(), dataUrl, createdAt: now }],
     }));
@@ -1627,6 +1800,19 @@ function bind() {
     inventoryIntake = false;
     e.target.value = "";
   });
+
+  // SKU prefix: new scans auto-number as PREFIX-0001, -0002, … (opt-in).
+  const skuInput = $("skuPrefix");
+  if (skuInput && !skuInput.dataset.wired) {
+    skuInput.dataset.wired = "1";
+    skuInput.value = readSkuPrefix();
+    skuInput.addEventListener("change", () => {
+      const v = skuInput.value.trim().toUpperCase();
+      skuInput.value = v;
+      writeSkuPrefix(v);
+      toast(v ? `SKU prefix ${v} — new scans auto-number` : "SKU prefix cleared");
+    });
+  }
 
   $("btnCloseSheet")?.addEventListener("click", closeSheet);
   $("btnSaveItem")?.addEventListener("click", () => saveItemForm(state.sheetItemId));

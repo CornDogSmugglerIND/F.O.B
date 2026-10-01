@@ -27,10 +27,10 @@
         <div class="hud-pill" id="ebayPill"><span class="dot"></span><span id="ebayPillLabel">EBAY OFFLINE</span></div>
       </div>
       <div class="stat-row">
-        <div class="stat"><div class="k">TO LIST</div><div class="n" id="statToList">00</div></div>
-        <div class="stat"><div class="k">NEEDS BIN</div><div class="n" id="statNeedsBin">00</div></div>
-        <div class="stat"><div class="k">LISTED</div><div class="n cyan" id="statListed">00</div></div>
-        <div class="stat"><div class="k">INVENTORY</div><div class="n" id="statInventory">00</div></div>
+        <button type="button" class="stat" data-goto="channels" aria-label="To list — open Channels"><span class="k">To list</span><span class="n" id="statToList">00</span></button>
+        <button type="button" class="stat" data-goto="spaces" aria-label="Needs bin — open Spaces"><span class="k">Needs bin</span><span class="n" id="statNeedsBin">00</span></button>
+        <button type="button" class="stat" data-goto="channels" aria-label="Listed — open Channels"><span class="k">Listed</span><span class="n cyan" id="statListed">00</span></button>
+        <button type="button" class="stat" data-goto="constellation" aria-label="Inventory — open Constellation"><span class="k">Inventory</span><span class="n" id="statInventory">00</span></button>
       </div>
     </header>
 
@@ -83,6 +83,11 @@
           <div class="side">
             <span class="live-badge">LIVE</span>
           </div>
+        </div>
+
+        <div class="scout-sku">
+          <label class="chrome" for="skuPrefix">SKU prefix</label>
+          <input id="skuPrefix" type="text" placeholder="e.g. CDS-" autocomplete="off" autocapitalize="characters" spellcheck="false" />
         </div>
 
         <div class="panel step">
@@ -148,13 +153,20 @@
       </section>
 
       <section class="view" id="view-channels">
+        <div class="panel ff-stages">
+          <div class="chrome">Fulfilment</div>
+          <div class="ff-stage-row" id="ffStageRow"></div>
+        </div>
         <div class="channel-toolbar">
           <button type="button" class="btn" id="btnCombineMode">Combine</button>
           <button type="button" class="btn btn-amber" id="btnCombineRun" hidden>Combine selected</button>
           <button type="button" class="btn btn-ghost" id="btnCombineCancel" hidden>Cancel</button>
         </div>
         <p class="chrome" id="combineHint" style="margin:0 0 12px" hidden>Select 2+ staged → Pick Your Card CSV</p>
+        <div class="chrome ch-head">Active listings <span class="ch-count" id="activeCount">00</span></div>
         <div class="channel-grid" id="channelGrid"></div>
+        <div class="chrome ch-head">Ended listings <span class="ch-count" id="endedCount">00</span></div>
+        <div class="channel-grid" id="channelGridEnded"></div>
         <div class="panel" id="combinePool" style="margin-top:14px;padding:14px" hidden>
           <div class="chrome" style="margin-bottom:10px">Staged pool</div>
           <div class="combine-grid" id="combineGrid"></div>

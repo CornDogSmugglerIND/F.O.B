@@ -1130,3 +1130,123 @@ input[type="file"] { display: none; }
 .toast.top.show { transform: translateX(-50%) translateY(0); }
 
 .sheet-chip::first-letter { text-transform: uppercase; }
+/* ---------- Stage C (ari): tappable Command tiles ---------- */
+button.stat {
+  background: none;
+  border: 0;
+  padding: 2px 2px 0;
+  margin: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+button.stat .k,
+button.stat .n { display: block; }
+button.stat:active .n { opacity: 0.55; }
+
+/* ---------- Stage C (ari): Scouter SKU prefix ---------- */
+.scout-sku {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 14px 12px;
+}
+.scout-sku input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hud-line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--hud-text);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+}
+.scout-sku input::placeholder { color: var(--hud-text-mute); }
+
+/* ---------- Stage C (ari): Scouter scan batches ---------- */
+.batch { margin-bottom: 14px; }
+.batch:last-child { margin-bottom: 0; }
+.batch-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.batch-meta {
+  font-family: var(--hud-font-chrome);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--hud-text-dim);
+  white-space: nowrap;
+}
+.batch-row { min-height: 0; }
+
+/* ---------- Stage C (ari): Channels fulfilment stages ---------- */
+.ff-stages { padding: 14px; margin-bottom: 14px; }
+.ff-stage-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-top: 10px;
+  padding-bottom: 2px;
+}
+.ff-stage-row::-webkit-scrollbar { display: none; }
+.ff-stage {
+  flex: 1 0 auto;
+  min-width: 104px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--hud-line);
+  border-radius: 6px;
+  padding: 10px 8px;
+  text-align: center;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.ff-stage .n {
+  display: block;
+  font-family: var(--hud-font-chrome);
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--hud-text-dim);
+  line-height: 1.1;
+}
+.ff-stage .k {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--hud-font-chrome);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hud-text-mute);
+}
+.ff-stage.on {
+  border-color: var(--hud-amber);
+  background: rgba(255, 176, 32, 0.07);
+}
+.ff-stage.on .n { color: var(--hud-amber); }
+.ff-stage:active { opacity: 0.7; }
+
+/* ---------- Stage C (ari): Active / Ended channel sections ---------- */
+.ch-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 18px 2px 10px;
+}
+.ch-head:first-of-type { margin-top: 0; }
+.ch-count {
+  font-family: var(--hud-font-chrome);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hud-amber);
+  font-variant-numeric: tabular-nums;
+}
