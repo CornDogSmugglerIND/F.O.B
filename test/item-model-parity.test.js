@@ -114,23 +114,24 @@ test("saveItemForm keeps the honest-save contract (rollback, no photo stripping)
   assert.ok(/it\.spaceId = newSpace/.test(body), "storage picker writes spaceId");
 });
 
-test("sheet meta line shows purchase-model money, not the old vague price", async () => {
+test("sheet header shows Qty / Paid / Market / Profit stat strip", async () => {
   const js = await src("coalition.js");
-  assert.ok(/Market \$\{money\(it\.price \|\| 0\)\} · Profit \$\{money\(estProfitTotal\(it\)\)\}/.test(js),
-    "sheet meta reads: phase · status · qty · Market · Profit");
+  for (const k of ["sheet-stat", "Paid", "Market", "Profit", "estProfitTotal(it)"]) {
+    assert.ok(js.includes(k), "sheet header has " + k);
+  }
 });
 
 test("inventory cards show est profit", async () => {
   const js = await src("features/collection.js");
-  assert.ok(/Profit " \+ money\(profit\)/.test(js), "card meta shows est profit");
-  assert.ok(/HUDcore\.estProfit/.test(js), "card uses the shared estProfit helper");
+  assert.ok(/estProfitTotal/.test(js) && /inv-card-money/.test(js), "card shows total profit");
+  assert.ok(/c\.estProfitTotal/.test(js), "card uses the shared estProfitTotal helper");
 });
 
 test("cache-busters bumped and entry points stay byte-identical", async () => {
   const index = await src("index.html");
   const hud = await src("hud.html");
   assert.equal(index, hud, "index.html and hud.html are byte-identical");
-  for (const v of ["coalition.js?v=25", "coalition.css?v=19", "features/collection.js?v=6"]) {
+  for (const v of ["coalition.js?v=27", "coalition.css?v=23", "features/collection.js?v=8"]) {
     assert.ok(index.includes(v), `${v} is referenced`);
     assert.ok(index.includes(v) && hud.includes(v), `${v} resolves in both files`);
   }

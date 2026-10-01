@@ -86,7 +86,7 @@ test("index.html and hud.html stay byte-identical with the compressor wired", as
   for (const html of [index, hud]) {
     assert.ok(html.includes('<script src="/lib/image.js?v=1"></script>'), "compressor script tag present");
     assert.ok(html.includes('<script src="/features/fulfillment.js?v=4"></script>'), "fulfillment v4 present");
-    assert.ok(html.includes('<script type="module" src="/coalition.js?v=25"></script>'), "coalition v20 present");
+    assert.ok(html.includes('<script type="module" src="/coalition.js?v=27"></script>'), "coalition v20 present");
   }
   // Every ?v= asset resolves to a real file under public/.
   const versions = [...index.matchAll(/src="(\/[^"]+)\?v=\d+"/g)].map((m) => m[1]);
