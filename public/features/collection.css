@@ -6,12 +6,43 @@
 
 #constellationCollection { padding-bottom: 12px; }
 
+/* header: source line + add button on one row */
+.inv-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 2px 10px;
+}
+
+.inv-head .inv-source {
+  margin: 0;
+}
+
 /* honest source line */
 .inv-source {
-  margin: 12px 2px 10px;
   font-size: 11px;
   letter-spacing: 0.08em;
   color: var(--hud-text-mute);
+}
+
+/* + Add item — same amber accent language as the rest of the HUD */
+.inv-add {
+  flex: 0 0 auto;
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--hud-amber-hot);
+  background: var(--hud-amber-soft);
+  border: 1px solid var(--hud-amber-hairline);
+  border-radius: var(--hud-radius);
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.inv-add:active {
+  border-color: var(--hud-amber-hot);
 }
 
 /* item list */

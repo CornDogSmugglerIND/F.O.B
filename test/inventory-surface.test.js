@@ -58,10 +58,10 @@ test("source of truth is explicit in the UI copy", async () => {
   assert.ok(/On this device/.test(js), '"On this device" source line is rendered');
 });
 
-test("empty state is honest and points at the intake tab", async () => {
+test("empty state is honest and points at the add button", async () => {
   const js = await src("features/collection.js");
   assert.ok(/No items yet/.test(js), "empty state says there are no items");
-  assert.ok(/Scouter tab/.test(js), "empty state points at the Scouter tab for intake");
+  assert.ok(/\+ Add item/.test(js), "empty state points at the + Add item button");
 });
 
 test("demo items are marked honestly", async () => {
@@ -86,7 +86,7 @@ test("cache busters bumped in both HTML files; files stay byte-identical", async
   const index = await src("index.html");
   const hud = await src("hud.html");
   assert.equal(index, hud, "index.html and hud.html are byte-identical");
-  for (const asset of ["features/collection.js?v=3", "features/collection.css?v=4"]) {
+  for (const asset of ["features/collection.js?v=4", "features/collection.css?v=5"]) {
     assert.ok(index.includes(asset), `${asset} referenced in HTML`);
     const file = asset.split("?")[0];
     const body = await src(file);

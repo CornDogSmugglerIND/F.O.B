@@ -103,12 +103,14 @@ test("GET /hud.html twins index Coalition H.U.D", async () => {
   }
 });
 
-test("orphaned debug pages stay gone (404)", async () => {
+test("restored phone-workflow pages serve (200), not 404", async () => {
+  // Claude's d364a4d review: listing-copy.html, trio-setup.html, hud-status.html
+  // are part of Sawyer's phone workflow (routed in vercel.json) — restored.
   const { baseUrl, close } = await startServer();
   try {
     for (const p of ["/trio-setup.html", "/hud-status.html", "/listing-copy.html"]) {
       const res = await fetch(`${baseUrl}${p}`);
-      assert.equal(res.status, 404, `${p} should not exist`);
+      assert.equal(res.status, 200, `${p} should exist`);
     }
   } finally {
     await close();

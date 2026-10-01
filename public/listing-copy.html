@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Listing Copy — CornDogSmuggler</title>
+  <style>
+    :root {
+      --bg: #0e1114;
+      --panel: #1a2229;
+      --text: #e8ecef;
+      --muted: #8b98a5;
+      --btn: #2f6fed;
+      --btn-ok: #1f8a4c;
+      --border: #2a3540;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      padding-bottom: 48px;
+    }
+    h1 { font-size: 1.15rem; margin: 0 0 4px; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin: 0 0 20px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .preview {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.95rem;
+      line-height: 1.35;
+      margin-bottom: 12px;
+      max-height: 280px;
+      overflow: auto;
+    }
+    button.copy {
+      display: block;
+      width: 100%;
+      min-height: 56px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--btn);
+      color: #fff;
+      font-size: 1.15rem;
+      font-weight: 700;
+      padding: 14px 16px;
+      -webkit-tap-highlight-color: transparent;
+      margin-bottom: 8px;
+    }
+    button.copy.ok { background: var(--btn-ok); }
+    button.copy:active { opacity: 0.85; }
+    #fallback { display: none; margin-top: 8px; }
+    #fallback.show { display: block; }
+    #fallbackBox {
+      width: 100%;
+      min-height: 160px;
+      background: #0b0e11;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.95rem;
+      line-height: 1.35;
+    }
+    .hint { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
+  </style>
+</head>
+<body>
+  <h1>Pitch Black — Pick Your Card</h1>
+  <p class="sub">Open ONLY: f-o-b.vercel.app/listing-copy.html</p>
+
+  <div class="card">
+    <div class="label">Title</div>
+    <div class="preview" id="titlePreview"></div>
+    <button class="copy" type="button" id="copyTitle">Copy Title</button>
+  </div>
+
+  <div class="card">
+    <div class="label">Description</div>
+    <div class="preview" id="descPreview"></div>
+    <button class="copy" type="button" id="copyDesc">Copy Description</button>
+  </div>
+
+  <div class="card" id="fallback">
+    <div class="label">Manual copy (iPhone fallback)</div>
+    <textarea id="fallbackBox" readonly></textarea>
+    <p class="hint">Tap the box → Select All → Copy</p>
+  </div>
+
+  <script>
+    const LISTING = {
+      title: "Pokemon Pitch Black - Pick Your Card NM",
+      description: `Pokemon Pitch Black — Pick Your Card, Near Mint
+
+English singles from Pitch Black (PBL). Raw, ungraded. Ships sleeved + toploaded.
+
+Game: Pokemon TCG
+Set: Pitch Black (PBL)
+Condition: Near Mint
+Language: English
+
+---
+Mega Excadrill ex 065/084
+Type: Metal | HP: 340 | Stage 1 Mega ex
+Undermine — 90: Discard the top 2 cards of your opponent's deck.
+Maximum Drilling — 200+: If this Pokemon has at least 2 extra Energy attached (in addition to this attack's cost), this attack does 130 more damage.
+Qty: 1
+
+---
+Koraidon 047/084
+Type: Fighting | HP: 130 | Basic
+Battle Claw — 30+: If your opponent's Active Pokemon is an Evolution Pokemon, this attack does 30 more damage.
+Gaia Impact — 190: Discard all Energy from this Pokemon.
+Qty: 1
+
+---
+Primarina 020/084
+Type: Water | HP: 150 | Stage 2
+Ability — Enriching Melody: Once during your turn, when you play this Pokemon from your hand to evolve 1 of your Pokemon, you may use this Ability. Heal all damage from 1 of your Pokemon.
+Aqua Return — 120: Shuffle this Pokemon and all attached cards into your deck.
+Qty: 1
+
+---
+Silvally 070/084
+Type: Colorless | HP: 140 | Stage 1
+Ability — Call a Buddy: Once during your turn, if you have no cards in your hand, you may use this Ability. Search your deck for a Supporter card, reveal it, and put it into your hand. Then, shuffle your deck.
+Air Slash — 130: Discard an Energy from this Pokemon.
+Qty: 1
+
+---
+Trumbeak 067/084
+Type: Colorless | HP: 90 | Stage 1
+Fly — 30: Flip a coin. If tails, this attack does nothing. If heads, during your opponent's next turn, prevent all damage from and effects of attacks done to this Pokemon.
+Qty: 1
+
+---
+Primeape 043/084
+Type: Fighting | HP: 110 | Stage 1
+Corkscrew Punch — 50
+Qty: 1
+
+---
+Sizzlipede 009/084
+Type: Fire | HP: 80 | Basic
+Controlled Burn: Discard the top card of your opponent's deck.
+Bug Out — 50x: Reveal the bottom 7 cards of your deck. This attack does 50 damage for each Fire Energy found there. Shuffle revealed Pokemon back into your deck. Discard the other cards.
+Qty: 1
+
+---
+Litwick 036/084
+Type: Psychic | HP: 70 | Basic
+Will-O-Wisp — 20
+Qty: 1
+
+---
+Seaking 014/084
+Type: Water | HP: 110 | Stage 1
+Hydro Jet: This attack does 30 damage to 1 of your opponent's Pokemon for each Water Energy attached to this Pokemon. (Don't apply Weakness and Resistance for Benched Pokemon.)
+Qty: 1
+
+CornDogSmuggler Coalition — Operating To Marine Corps Standards.`
+    };
+
+    document.getElementById("titlePreview").textContent = LISTING.title;
+    document.getElementById("descPreview").textContent = LISTING.description;
+
+    const fallback = document.getElementById("fallback");
+    const fallbackBox = document.getElementById("fallbackBox");
+
+    function showFallback(text) {
+      fallback.classList.add("show");
+      fallbackBox.value = text;
+      fallbackBox.focus();
+      fallbackBox.setSelectionRange(0, text.length);
+    }
+
+    async function copyText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (_) {}
+      }
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.readOnly = true;
+      ta.style.position = "absolute";
+      ta.style.top = "0";
+      ta.style.left = "0";
+      ta.style.width = "1px";
+      ta.style.height = "1px";
+      ta.style.opacity = "0.01";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.setSelectionRange(0, text.length);
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (_) { ok = false; }
+      document.body.removeChild(ta);
+      return ok;
+    }
+
+    async function handleCopy(btn, text) {
+      const ok = await copyText(text);
+      const prev = btn.textContent;
+      if (ok) {
+        btn.textContent = "Copied";
+        btn.classList.add("ok");
+        setTimeout(() => {
+          btn.textContent = prev;
+          btn.classList.remove("ok");
+        }, 1500);
+      } else {
+        btn.textContent = "Use box below";
+        showFallback(text);
+        setTimeout(() => { btn.textContent = prev; }, 2000);
+      }
+    }
+
+    document.getElementById("copyTitle").addEventListener("click", () => {
+      handleCopy(document.getElementById("copyTitle"), LISTING.title);
+    });
+    document.getElementById("copyDesc").addEventListener("click", () => {
+      handleCopy(document.getElementById("copyDesc"), LISTING.description);
+    });
+  </script>
+</body>
+</html>

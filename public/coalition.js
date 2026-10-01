@@ -822,13 +822,14 @@ function deleteItem(id) {
   toast("Deleted");
 }
 
-async function addPhotos(fileList) {
+async function addPhotos(fileList, opts) {
   const files = [...(fileList || [])].filter((f) => f.type.startsWith("image/"));
   if (!files.length) {
     toast("No images in that drop");
     return;
   }
   let added = 0;
+  let firstNewId = null;
   for (const file of files) {
     let dataUrl = null;
     try {
@@ -842,8 +843,10 @@ async function addPhotos(fileList) {
       continue; // unreadable photo: skip it, keep the rest
     }
     const now = new Date().toISOString();
+    const itemId = uid();
+    if (!firstNewId) firstNewId = itemId;
     state.items.unshift({
-      id: uid(),
+      id: itemId,
       createdAt: now,
       updatedAt: now,
       title: file.name.replace(/\.[^.]+$/, "") || "Scan",
@@ -864,8 +867,25 @@ async function addPhotos(fileList) {
     return;
   }
   if (!saveItems()) return; // honest toast already shown; items stay in memory
+  if (opts && opts.fromInventory) {
+    // Inventory "+ Add item" path: same intake as Scouter, but stay put —
+    // open the new item's sheet immediately so the name gets entered here.
+    toast("Item added");
+    render();
+    if (firstNewId) openSheet(firstNewId);
+    return;
+  }
   toast(`${added} on Scouter`);
   navigate("scouter");
+}
+
+/* Inventory "+ Add item" entry: same photo intake Scouter uses (the shared
+ * gallery picker → addPhotos), no second form. The gallery change handler
+ * reads inventoryIntake to route the save back to Inventory. */
+let inventoryIntake = false;
+function startInventoryIntake() {
+  inventoryIntake = true;
+  $("inputGallery")?.click();
 }
 
 // Shrink an oversized photo data URL via the shared compressor (copy only).
@@ -1347,7 +1367,8 @@ function bind() {
     e.target.value = "";
   });
   $("inputGallery")?.addEventListener("change", (e) => {
-    addPhotos(e.target.files);
+    addPhotos(e.target.files, { fromInventory: inventoryIntake });
+    inventoryIntake = false;
     e.target.value = "";
   });
 
@@ -1415,6 +1436,7 @@ function bind() {
     spaceName,
     openSheet,
     closeSheet,
+    startInventoryIntake,
     saveItems,
     saveSpaces,
     render,

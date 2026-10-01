@@ -70,15 +70,15 @@ test("Settings has no dead notification controls", async () => {
 
 /* ---------- branch 7: orphaned files are gone ---------- */
 
-test("orphaned public files were removed", async () => {
+test("orphaned public files were removed (restored pages excluded)", async () => {
+  // Claude's d364a4d review reversed the sweep for three pages that are part
+  // of Sawyer's phone workflow (routed in vercel.json): listing-copy.html,
+  // trio-setup.html, hud-status.html. Those are restored, not orphans.
   for (const f of [
     "scouter.js",
     "scouter.css",
     "hud-visor.js",
-    "listing-copy.html",
-    "trio-setup.html",
     "desk-trio.sh",
-    "hud-status.html",
     "ba-terms.html",
     "ba-paper-checklist.html",
     "lib/html5-qrcode.min.js",

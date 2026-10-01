@@ -55,12 +55,12 @@ test("versioned visor imports resolve to real files", async () => {
   assert.ok(existsSync(join(pub, "visor/variation.js")), "visor/variation.js on disk");
 });
 
-test("both HTML files load coalition.js?v=22 and stay byte-identical", async () => {
+test("both HTML files load coalition.js?v=23 and stay byte-identical", async () => {
   const index = await src("index.html");
   const hud = await src("hud.html");
   assert.equal(index, hud, "index.html and hud.html are byte-identical");
   assert.ok(
-    index.includes('<script type="module" src="/coalition.js?v=22"></script>'),
+    index.includes('<script type="module" src="/coalition.js?v=23"></script>'),
     "coalition v20 present in both",
   );
 });
