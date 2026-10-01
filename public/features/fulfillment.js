@@ -212,6 +212,7 @@
       var s = sold + " → SHIPPED";
       if (it.carrier) s += " · " + it.carrier;
       if (it.trackingNumber) s += " " + trackShort(it.trackingNumber);
+      if (it.outForDeliveryAt) s += " → OUT FOR DELIVERY";
       return s;
     }
     if (ph === "delivered") {
@@ -222,11 +223,16 @@
 
   /* ---------- next action per phase ---------- */
 
-  function nextAction(ph) {
+  function nextAction(ph, it) {
     if (ph === "listed" || ph === "staged") return { label: "Mark sold", run: openSoldForm };
     if (ph === "sold") return { label: "Pack", run: packItem };
     if (ph === "packed") return { label: "Ship", run: openShipForm };
-    if (ph === "shipped") return { label: "Mark delivered", run: deliverItem };
+    if (ph === "shipped") {
+      // Base44's five shipping stages: "Carrier scanned" is the plain shipped
+      // state; "Out for delivery" is a real recorded tap on top of it.
+      if (it && it.outForDeliveryAt) return { label: "Mark delivered", run: deliverItem };
+      return { label: "Out for delivery", run: outForDeliveryItem };
+    }
     return null;
   }
 
@@ -255,7 +261,7 @@
     }
     sec.style.display = "";
     var line = statusLine(it);
-    var act = nextAction(ph);
+    var act = nextAction(ph, it);
     sec.innerHTML =
       '<div class="chrome">FULFILLMENT</div>' +
       (line ? '<div class="ff-status">' + esc(line) + "</div>" : "") +
@@ -296,6 +302,18 @@
       x.phase = "delivered";
       x.deliveredAt = nowIso();
     }, "Delivered · " + itemTitle(it));
+  }
+
+  function outForDeliveryItem(id) {
+    var it = getItem(id);
+    if (!it) { toast("Item not found"); return; }
+    if (phaseFromItem(it) !== "shipped" || it.outForDeliveryAt) {
+      toast("Already out for delivery");
+      return;
+    }
+    mutate(id, function (x) {
+      x.outForDeliveryAt = nowIso();
+    }, "Out for delivery · " + itemTitle(it));
   }
 
   /* ---------- overlay sheets ---------- */
@@ -506,10 +524,14 @@
     view.insertBefore(q, view.firstChild);
   }
 
-  function queueAction(ph) {
+  function queueAction(ph, it) {
     if (ph === "sold") return { label: "PACK", run: "pack" };
     if (ph === "packed") return { label: "SHIP", run: "ship" };
-    if (ph === "shipped") return { label: "DELIVERED", run: "deliver" };
+    if (ph === "shipped") {
+      return (it && it.outForDeliveryAt)
+        ? { label: "DELIVERED", run: "deliver" }
+        : { label: "OUT FOR DELIVERY", run: "out" };
+    }
     return null;
   }
 
@@ -521,7 +543,7 @@
 
   function queueRow(it, idx) {
     var ph = phaseFromItem(it);
-    var act = queueAction(ph);
+    var act = queueAction(ph, it);
     var src = (it.photos && it.photos[0] && it.photos[0].dataUrl) || "";
     var name = itemTitle(it) || "Untitled";
     var thumb = src
@@ -577,6 +599,7 @@
           var act = b.getAttribute("data-act");
           if (act === "pack") packItem(id);
           else if (act === "ship") openShipForm(id);
+          else if (act === "out") outForDeliveryItem(id);
           else if (act === "deliver") deliverItem(id);
         });
       })(btns[i]);
