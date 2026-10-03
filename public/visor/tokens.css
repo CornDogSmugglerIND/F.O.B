@@ -1,5 +1,5 @@
-/* Coalition tokens v2 — "Glass" (2026-10-03). Neutral graphite, system type, one cool accent.
- * No brown, no warm tints. Accent lives in ONE place: change --hud-amber-rgb to retheme.
+/* Coalition tokens v2 — "Glass" (2026-10-03). Neutral graphite, system type, NO accent hue (pure monochrome).
+ * No brown, no warm tints. Sawyer hates blue, brown, green, gold: do not add a hue. Active = white.
  * (Token names kept from v1 so every screen picks this up.) */
 :root {
   --hud-bg: #000000;
@@ -9,11 +9,11 @@
   --hud-raised: #2c2c2e;
   --hud-line: rgba(255, 255, 255, 0.08);
   --hud-line-strong: rgba(255, 255, 255, 0.16);
-  --hud-amber: #4da3ff;
-  --hud-amber-hot: #7dbbff;
-  --hud-amber-soft: rgba(77, 163, 255, 0.14);
-  --hud-amber-rgb: 77, 163, 255;
-  --hud-amber-hairline: rgba(77, 163, 255, 0.40);
+  --hud-amber: #f5f5f7;
+  --hud-amber-hot: #ffffff;
+  --hud-amber-soft: rgba(255, 255, 255, 0.10);
+  --hud-amber-rgb: 245, 245, 247;
+  --hud-amber-hairline: rgba(255, 255, 255, 0.28);
   --hud-cyan: #d1d1d6;
   --hud-cyan-soft: rgba(209, 209, 214, 0.12);
   --hud-text: #f5f5f7;
