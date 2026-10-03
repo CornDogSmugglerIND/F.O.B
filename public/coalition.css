@@ -1299,3 +1299,5 @@ button.stat:active .n { opacity: 0.55; }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 #roadmap .node-item:active .node-thumb { border-color: var(--hud-amber); }
+#ffQueue .empty-quiet { padding: 6px 0 2px; }
+#ffQueue { padding-bottom: 14px; }

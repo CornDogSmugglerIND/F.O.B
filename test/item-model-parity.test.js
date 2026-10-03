@@ -131,7 +131,7 @@ test("cache-busters bumped and entry points stay byte-identical", async () => {
   const index = await src("index.html");
   const hud = await src("hud.html");
   assert.equal(index, hud, "index.html and hud.html are byte-identical");
-  for (const v of ["coalition.js?v=30", "coalition.css?v=26", "features/collection.js?v=8"]) {
+  for (const v of ["coalition.js?v=30", "coalition.css?v=27", "features/collection.js?v=8"]) {
     assert.ok(index.includes(v), `${v} is referenced`);
     assert.ok(index.includes(v) && hud.includes(v), `${v} resolves in both files`);
   }
