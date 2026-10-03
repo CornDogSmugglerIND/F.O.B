@@ -73,7 +73,7 @@ test("coalition.css uses locked premium palette, not school-bus gold or olive", 
     const tokens = await (await fetch(`${baseUrl}/visor/tokens.css`)).text();
     assert.match(css, /visor\/tokens\.css/);
     // Glass palette (Sawyer 2026-10-03): graphite neutrals, cool blue accent, no brown.
-    assert.match(tokens, /--hud-amber:\s*#4da3ff/i);
+    assert.match(tokens, /--hud-amber:\s*#f5f5f7/i);
     assert.match(tokens, /--hud-bg:\s*#000000/i);
     assert.doesNotMatch(css + tokens, /#f5c518/i);
     assert.doesNotMatch(css + tokens, /#ffe566/i);
