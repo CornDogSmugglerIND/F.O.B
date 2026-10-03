@@ -1257,3 +1257,45 @@ button.stat:active .n { opacity: 0.55; }
 .ff-stage-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
 .ff-stage { min-width: 0; }
 .ff-stage .k { letter-spacing: 0.06em; line-height: 1.3; }
+
+/* ---------- Constellation tree: vertical stage list ---------- */
+#roadClusters { display: flex; flex-direction: column; gap: 10px; }
+#roadTrack, #roadLabels { display: none; }
+#roadmap { padding: 0; background: none; border: 0; min-width: 0; }
+#roadmap .stage {
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+#roadmap .stage.empty { padding: 10px 14px; opacity: 0.6; }
+#roadmap .stage.drop-hint { border-color: var(--hud-amber); }
+#roadmap .stage-head { display: flex; align-items: center; justify-content: space-between; }
+#roadmap .stage-name {
+  font-family: var(--hud-font-chrome); font-size: 11px; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--hud-text-dim);
+}
+#roadmap .stage-count {
+  font-family: var(--hud-font-chrome); font-size: 14px; font-weight: 600;
+  font-variant-numeric: tabular-nums; color: var(--hud-text-mute);
+}
+#roadmap .stage:not(.empty) .stage-count { color: var(--hud-amber); }
+#roadmap .stage-items {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px;
+}
+#roadmap .node-item {
+  all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column;
+  gap: 6px; min-width: 0; -webkit-tap-highlight-color: transparent; animation: none;
+  position: static; width: auto; height: auto;
+}
+#roadmap .node-thumb {
+  display: block; aspect-ratio: 1; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--hud-line); background: rgba(255,255,255,0.04);
+  display: flex; align-items: center; justify-content: center;
+}
+#roadmap .node-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 0; }
+#roadmap .node-name {
+  font-size: 11px; line-height: 1.25; color: var(--hud-text-dim);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+#roadmap .node-item:active .node-thumb { border-color: var(--hud-amber); }
