@@ -11,10 +11,10 @@
 #view-command {
   --cmd-r: 16px;          /* the one corner radius on this screen */
   --cmd-gap: 16px;        /* the one spacing rhythm */
-  display: flex;
   flex-direction: column;
   gap: var(--cmd-gap);
 }
+#view-command.active { display: flex; }
 
 /* ---------- SITREP chunk: frosted glass hero ---------- */
 #view-command .panel.sitrep {
