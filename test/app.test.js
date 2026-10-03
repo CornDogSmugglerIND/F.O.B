@@ -49,10 +49,10 @@ test("GET / serves Coalition H.U.D live beta", async () => {
     assert.match(html, /Coalition H\.U\.D|Coalition <span>H\.U\.D/);
     assert.match(html, /coalition\.css/);
     assert.match(html, /coalition\.js/);
-    assert.match(html, /SCOUTER/);
-    assert.match(html, /COMMAND/);
-    assert.match(html, /CHANNEL/);
-    assert.match(html, /SPACES/);
+    assert.match(html, /SCOUTER/i);
+    assert.match(html, /COMMAND/i);
+    assert.match(html, /CHANNEL/i);
+    assert.match(html, /SPACES/i);
     assert.match(html, /btnSnap/);
     assert.match(html, /btnBarcode/);
     assert.match(html, /SNAP/);
@@ -72,9 +72,9 @@ test("coalition.css uses locked premium palette, not school-bus gold or olive", 
     const css = await (await fetch(`${baseUrl}/coalition.css`)).text();
     const tokens = await (await fetch(`${baseUrl}/visor/tokens.css`)).text();
     assert.match(css, /visor\/tokens\.css/);
-    // Locked palette (Sawyer 2026-09-27): restrained amber, near-black ground.
-    assert.match(tokens, /--hud-amber:\s*#f2a03d/i);
-    assert.match(tokens, /--hud-bg:\s*#07080a/i);
+    // Glass palette (Sawyer 2026-10-03): graphite neutrals, cool blue accent, no brown.
+    assert.match(tokens, /--hud-amber:\s*#4da3ff/i);
+    assert.match(tokens, /--hud-bg:\s*#000000/i);
     assert.doesNotMatch(css + tokens, /#f5c518/i);
     assert.doesNotMatch(css + tokens, /#ffe566/i);
     // Banned: olive/green accent, teal, brown.
@@ -95,7 +95,7 @@ test("GET /hud.html twins index Coalition H.U.D", async () => {
     assert.match(html, /Coalition/);
     assert.match(html, /coalition\.js/);
     assert.match(html, /Scouter|SCOUTER/);
-    assert.match(html, /Command Core|COMMAND/);
+    assert.match(html, /Command Core|COMMAND/i);
     assert.match(html, /btnSnap/);
     assert.doesNotMatch(html, /base44\/shell\.js/);
   } finally {

@@ -118,7 +118,7 @@ test("cache versions bumped for changed bundles", async () => {
   for (const page of ["index.html", "hud.html"]) {
     const html = await src(page);
     assert.ok(html.includes("/coalition.js?v=30"), `${page}: coalition.js?v=30`);
-    assert.ok(html.includes("/coalition.css?v=27"), `${page}: coalition.css?v=27`);
+    assert.ok(html.includes("/coalition.css?v=28"), `${page}: coalition.css?v=28`);
   }
 });
 

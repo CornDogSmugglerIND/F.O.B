@@ -1,39 +1,33 @@
-/* Visor tokens — Coalition H.U.D premium rebuild (2026-09-28).
- * Locked palette (Sawyer 2026-09-27): near-black ground, silver/white text.
- * Premium comes from depth, motion, materials — NOT color.
- * BANNED: green, brown, teal, gold/yellow fills, gold buttons, gold gradients.
- * Amber #F2A03D is restrained: tiny status glyphs + one active state only,
- * under 10% of screen area, never fills, never text-shadow bloom. */
+/* Coalition tokens v2 — "Glass" (2026-10-03). Neutral graphite, system type, one cool accent.
+ * No brown, no warm tints. Accent lives in ONE place: change --hud-amber-rgb to retheme.
+ * (Token names kept from v1 so every screen picks this up.) */
 :root {
-  --hud-bg: #07080a;
-  --hud-bg-lift: #0b0c0e;
-  --hud-panel: #0e1113;
-  --hud-panel-2: #111417;
-  --hud-raised: #151a1d;
-  --hud-line: rgba(255, 255, 255, 0.09);
+  --hud-bg: #000000;
+  --hud-bg-lift: #0a0a0c;
+  --hud-panel: #1c1c1e;
+  --hud-panel-2: #232326;
+  --hud-raised: #2c2c2e;
+  --hud-line: rgba(255, 255, 255, 0.08);
   --hud-line-strong: rgba(255, 255, 255, 0.16);
-  --hud-amber: #f2a03d;
-  --hud-amber-hot: #ffc46b;
-  --hud-amber-soft: rgba(242, 160, 61, 0.12);
-  --hud-amber-rgb: 242, 160, 61;
-  --hud-amber-hairline: rgba(242, 160, 61, 0.34);
-  /* --hud-cyan is a legacy name kept for JS/CSS compat; it now resolves to
-     silver — the secondary highlight. It is NOT teal. */
-  --hud-cyan: #c7ccd2;
-  --hud-cyan-soft: rgba(199, 204, 210, 0.12);
-  --hud-text: #e8edef;
-  --hud-text-dim: #9aa3ab;
-  --hud-text-mute: #646d75;
-  --hud-danger: #d45a68;
-  --hud-danger-soft: rgba(212, 90, 104, 0.12);
-  /* Prices read in silver-white, never green. */
-  --hud-ok: #e8edef;
-  --hud-blur: 14px;
-  --hud-radius: 4px;
+  --hud-amber: #4da3ff;
+  --hud-amber-hot: #7dbbff;
+  --hud-amber-soft: rgba(77, 163, 255, 0.14);
+  --hud-amber-rgb: 77, 163, 255;
+  --hud-amber-hairline: rgba(77, 163, 255, 0.40);
+  --hud-cyan: #d1d1d6;
+  --hud-cyan-soft: rgba(209, 209, 214, 0.12);
+  --hud-text: #f5f5f7;
+  --hud-text-dim: #a1a1a6;
+  --hud-text-mute: #6e6e73;
+  --hud-danger: #ff6b6b;
+  --hud-danger-soft: rgba(255, 107, 107, 0.14);
+  --hud-ok: #f5f5f7;
+  --hud-blur: 24px;
+  --hud-radius: 16px;
   --hud-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --hud-duration: 200ms;
-  --hud-font-chrome: "IBM Plex Mono", ui-monospace, monospace;
-  --hud-font-body: "IBM Plex Sans", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --hud-font-chrome: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --hud-font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
