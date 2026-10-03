@@ -630,29 +630,26 @@ function renderRoadmap() {
   state.justMovedId = null;
 
   clusters.innerHTML = PHASES.map((p) => {
-    const nodes = (byPhase[p.id] || []).map((it, idx) => {
+    const list = byPhase[p.id] || [];
+    const nodes = list.map((it) => {
       const src = it.photos?.[0]?.dataUrl || "";
       const name = it.title || it.productName || "Untitled";
       const thumb = src
         ? `<img src="${src}" alt="" loading="lazy" draggable="false" />`
         : `<span class="node-initial" aria-hidden="true">${escapeHtml(name.charAt(0).toUpperCase())}</span>`;
       const land = justMoved === it.id ? " land" : "";
-      return `<button type="button" class="node-item${land}" data-item="${it.id}" draggable="true"` +
-        ` style="animation-delay:${(idx * 0.4).toFixed(2)}s" aria-label="${escapeHtml(name)} — ${p.label}">` +
-        `${thumb}</button>`;
+      return `<button type="button" class="node-item${land}" data-item="${it.id}" draggable="true" aria-label="${escapeHtml(name)} \u2014 ${p.label}">` +
+        `<span class="node-thumb">${thumb}</span><span class="node-name">${escapeHtml(name)}</span></button>`;
     }).join("");
-    return `<div class="cluster" data-phase="${p.id}" aria-label="${p.label} items">${nodes}</div>`;
+    const n = String(counts[p.id] || 0).padStart(2, "0");
+    return `<section class="stage${list.length ? "" : " empty"}" data-phase="${p.id}" aria-label="${p.label}">` +
+      `<header class="stage-head"><span class="stage-name">${p.label}</span><span class="stage-count">${n}</span></header>` +
+      (list.length ? `<div class="stage-items">${nodes}</div>` : "") +
+      `</section>`;
   }).join("");
 
-  track.innerHTML = PHASES.map((p, i) =>
-    `${i ? `<span class="seg" aria-hidden="true"><span class="chev">\u203a</span></span>` : ""}` +
-    `<span class="orb-wrap" data-phase="${p.id}"><span class="orb"></span></span>`
-  ).join("");
-
-  labels.innerHTML = PHASES.map((p) =>
-    `<div class="rlabel" data-phase="${p.id}"><span class="rl-name">${p.label}</span>` +
-    `<span class="rl-count">${String(counts[p.id] || 0).padStart(2, "0")}</span></div>`
-  ).join("");
+  track.innerHTML = "";
+  labels.innerHTML = "";
 
   clusters.querySelectorAll("[data-item]").forEach((btn) =>
     btn.addEventListener("click", () => openSheet(btn.dataset.item))
