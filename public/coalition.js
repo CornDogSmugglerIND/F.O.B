@@ -658,8 +658,8 @@ function renderSpaces() {
 
   if ($("unsortedPool")) {
     $("unsortedPool").innerHTML = unsorted.length
-      ? `<strong>UNSORTED</strong>${unsorted.length} item${unsorted.length === 1 ? "" : "s"} — assign from the item card`
-      : `<strong>UNSORTED</strong>Pool empty`;
+      ? `<strong>Unsorted</strong>${unsorted.length} item${unsorted.length === 1 ? "" : "s"} — assign from the item card`
+      : `<strong>Unsorted</strong>Pool empty`;
   }
 }
 

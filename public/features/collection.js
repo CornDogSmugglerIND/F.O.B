@@ -97,7 +97,7 @@
   }
 
   var STATUSES = ["draft", "sorted", "photographed", "ready to list", "listed", "sold", "error"];
-  var view = { q: "", status: "all", sort: "newest", select: false, sel: {} };
+  var view = { q: "", status: "all", sort: "newest", select: false, sel: {}, mode: "grid" };
 
   function statusOf(item) {
     return STATUSES.indexOf(item.listingStatus) >= 0 ? item.listingStatus : "draft";
@@ -127,6 +127,27 @@
       "</span>" +
       '<span class="inv-card-money"><b>' + money(item.price || 0) + '</b><i class="' + (profit < 0 ? "neg" : "") + '">' +
       (profit < 0 ? "-" : "+") + money(Math.abs(profit)) + "</i></span>" +
+      "</button>"
+    );
+  }
+
+  function tileHtml(item) {
+    var picked = view.select && view.sel[item.id];
+    var st = statusOf(item);
+    var profit = profitOf(item);
+    var q = item.quantity === undefined ? 1 : item.quantity;
+    return (
+      '<button type="button" class="inv-card inv-tile' + (picked ? " picked" : "") + '" data-item="' + esc(item.id) + '"' +
+      ' aria-label="' + esc(itemName(item)) + " \u2014 " + PHASE_LABELS[phaseOf(item)] + '"' +
+      (view.select ? ' aria-pressed="' + (picked ? "true" : "false") + '"' : "") + ">" +
+      '<span class="inv-art">' + thumbHtml(item) +
+      (view.select ? '<span class="inv-check" aria-hidden="true">' + (picked ? "\u2713" : "") + "</span>" : "") +
+      '<span class="inv-st st-' + st.replace(/ /g, "-") + '">' + esc(st) + "</span>" +
+      (q > 1 ? '<span class="inv-qty">\u00d7' + q + "</span>" : "") +
+      '<span class="inv-price">' + money(item.price || 0) + "</span></span>" +
+      '<span class="inv-tname">' + esc(itemName(item)) + "</span>" +
+      '<span class="inv-tsub">' + PHASE_LABELS[phaseOf(item)] + " \u00b7 " + esc(binName(item)) +
+      ' <i class="' + (profit < 0 ? "neg" : "") + '">' + (profit < 0 ? "\u2212" : "+") + money(Math.abs(profit)) + "</i></span>" +
       "</button>"
     );
   }
@@ -162,7 +183,9 @@
     } else if (!list.length) {
       host.innerHTML = '<div class="inv-empty"><p>Nothing matches. Clear the search or pick All.</p></div>';
     } else {
-      host.innerHTML = '<div class="inv-list">' + list.map(cardHtml).join("") + "</div>";
+      host.innerHTML = view.mode === "grid"
+        ? '<div class="inv-grid">' + list.map(tileHtml).join("") + "</div>"
+        : '<div class="inv-list">' + list.map(cardHtml).join("") + "</div>";
     }
     var c = core();
     host.querySelectorAll("[data-item]").forEach(function (btn) {
@@ -257,6 +280,7 @@
       [["newest", "Newest"], ["profit", "Most profit"], ["value", "Highest value"], ["name", "Name A\u2013Z"]].map(function (o) {
         return '<option value="' + o[0] + '"' + (view.sort === o[0] ? " selected" : "") + ">" + o[1] + "</option>";
       }).join("") + "</select>" +
+      '<button type="button" class="inv-selbtn" id="invModeBtn" aria-label="Switch grid or list">' + (view.mode === "grid" ? "List" : "Grid") + "</button>" +
       '<button type="button" class="inv-selbtn' + (view.select ? " on" : "") + '" id="invSelBtn">' + (view.select ? "Done" : "Select") + "</button>" +
       "</div>" +
       '<div class="inv-chips" id="invChips">' + chips + "</div>" +
@@ -275,6 +299,10 @@
     });
     section.querySelector("#invSearch").addEventListener("input", function (e) { view.q = e.target.value; paintList(); });
     section.querySelector("#invSort").addEventListener("change", function (e) { view.sort = e.target.value; paintList(); });
+    section.querySelector("#invModeBtn").addEventListener("click", function () {
+      view.mode = view.mode === "grid" ? "list" : "grid";
+      render();
+    });
     section.querySelector("#invSelBtn").addEventListener("click", function () {
       view.select = !view.select;
       if (!view.select) view.sel = {};
