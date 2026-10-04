@@ -1,5 +1,5 @@
 import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=1";
-import { initHud, renderHome as hudHome, renderLine as hudLine, openReadout as hudReadout } from "/visor/hud.js?v=2";
+import { initHud, renderHome as hudHome, renderLine as hudLine, openReadout as hudReadout } from "/visor/hud.js?v=5";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";

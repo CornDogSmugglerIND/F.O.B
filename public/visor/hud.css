@@ -313,3 +313,50 @@ body.rt-dragging .hud-nav { opacity: 0; pointer-events: none; }
 .bd-hint { letter-spacing: 0; }
 @media (prefers-reduced-motion: reduce) { #spacesNodes .space-node { animation: none !important; } .bd-sheet.open .bd-card { animation: none; } }
 .hud-app .stat .k, .hud-app .chrome, .inv-source { text-transform: none !important; letter-spacing: 0 !important; }
+
+/* ---- Home route map v2: full-bleed, items ride the route as real cards ---- */
+.rh-head { padding-top: 14px; }
+.rm {
+  position: relative; width: calc(100% + 32px); margin: 0 -16px; aspect-ratio: 360 / 800; overflow: visible;
+  --px: 0; --py: 0;
+  -webkit-mask-image: linear-gradient(transparent 0, #000 5%); mask-image: linear-gradient(transparent 0, #000 5%);
+}
+.rm > svg:first-of-type { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.rm-streets { transform: translate(calc(var(--px) * -10px), calc(var(--py) * -10px)); transition: transform 0.4s var(--ease); }
+.rm-streets path { fill: none; stroke: rgba(255, 190, 140, 0.075); stroke-width: 1.1; vector-effect: non-scaling-stroke; }
+.rm-streets path.av { stroke: rgba(255, 190, 140, 0.14); stroke-width: 2.4; }
+.rm .rh-glow { stroke-width: 9; opacity: 0.9; }
+.rm .rh-line { stroke-width: 2.6; stroke-linejoin: round; }
+.rm .rh-flow { stroke-linejoin: round; }
+.rm-arrow { fill: #fff; filter: drop-shadow(0 0 6px rgba(255, 160, 90, 0.9)); }
+.rm-end { position: absolute; width: 22px; height: 29px; transform: translate(-50%, -115%); filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 8px rgba(255, 160, 90, 0.6)); pointer-events: none; }
+.rm-stop { position: absolute; width: 0; height: 0; }
+.rm-zone { position: absolute; left: -60px; top: -60px; width: 120px; height: 120px; border-radius: 50%; transition: background 0.25s, box-shadow 0.25s; pointer-events: none; }
+.rm-stop.drop-hint .rm-zone { background: radial-gradient(circle, rgba(var(--o), 0.34), transparent 70%); box-shadow: 0 0 0 1.5px rgba(var(--o), 0.7); }
+.rm-pin { all: unset; position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); cursor: pointer; display: flex; flex-direction: column; align-items: center; -webkit-tap-highlight-color: transparent; z-index: 3; }
+.rm-pin i { width: 13px; height: 13px; border-radius: 50%; background: #0b0c10; box-shadow: 0 0 0 2px #FFB27A, 0 0 14px 2px rgba(var(--o), 0.85); transition: transform 0.3s var(--ease); }
+.rm-stop.on .rm-pin i { background: #FFB27A; }
+.rm-pin:hover i { transform: scale(1.5); }
+.rm-pin:active i { transform: scale(0.8); }
+.rm-name { position: absolute; top: 18px; white-space: nowrap; font-size: 11.5px; font-weight: 600; color: var(--ink-2); padding: 3px 9px; border-radius: 10px; background: rgba(8, 9, 12, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.rm-stop.on .rm-name { color: var(--ink); }
+.rm-name b { color: var(--hud-amber-hot); margin-left: 3px; }
+.rm-cards { position: absolute; left: 0; top: 0; width: 0; height: 0; transform: translate(calc(var(--px) * var(--side) * 6px), calc(var(--py) * 6px)); transition: transform 0.4s var(--ease); }
+.rm .rm-card { position: absolute; left: calc(var(--side) * 78px - 46px); top: -64px; width: 92px; height: 124px; z-index: calc(3 - var(--k));
+  transform: translate(calc(var(--k) * var(--side) * 13px), calc(var(--k) * 9px)) rotate(calc(var(--side) * (var(--k) * 4deg - 5deg))); animation: none; }
+.rm .rm-card .rt-face { border-radius: 16px; box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.2), 0 18px 28px -10px #000, 0 0 22px -6px rgba(var(--o), 0.55); transition: transform 0.35s var(--ease), box-shadow 0.35s; }
+.rm .rm-card.k0 .rt-face { animation: rmfloat 6s ease-in-out infinite; }
+.rm .rm-card.k1 .rt-face { animation: rmfloat 6s ease-in-out -2s infinite; }
+@keyframes rmfloat { 50% { transform: translateY(-5px) rotate(0.6deg); } }
+.rm .rm-card:active .rt-face, .rt-card.holding .rt-face { transform: scale(1.1) rotate(-2deg) !important; box-shadow: 0 0 0 1.5px #FFB27A, 0 26px 40px -10px #000, 0 0 30px -4px rgba(var(--o), 0.8); animation: none !important; }
+@media (hover: hover) { .rm .rm-card:hover .rt-face { transform: translateY(-7px) scale(1.07); animation: none; } }
+.rm-more { position: absolute; left: calc(var(--side) * 78px + var(--side) * 38px - 14px); top: 44px; font-size: 12px; font-weight: 650; color: #fff; padding: 3px 8px; border-radius: 999px; background: rgba(8, 9, 12, 0.7); z-index: 5; }
+.rh-hint { text-align: center; font-size: 12.5px; color: var(--ink-2); margin-top: -4px; }
+
+/* Route tab v2: waypoint dots instead of circles, bigger free-floating cards */
+.rt-node { width: 15px !important; height: 15px !important; margin: 13px 0 0 18px !important; font-size: 0 !important; background: #0b0c10 !important; box-shadow: 0 0 0 2px rgba(255,255,255,0.28), 0 0 0 5px #07080B !important; }
+.rt-stage:not(.empty) .rt-node { background: #FFB27A !important; box-shadow: 0 0 0 2px #FFB27A, 0 0 0 5px #07080B, 0 0 18px 3px rgba(var(--o), 0.85) !important; }
+.rt-node b { display: none; }
+.rt-strip .rt-card { width: 128px; height: 172px; }
+.rt-strip { gap: 16px; padding-bottom: 18px; }
+.rt-head { padding-top: 6px; }
