@@ -170,9 +170,9 @@
     if (connState === "live") {
       line.textContent = "Configured · token OK";
     } else if (connState === "error") {
-      line.textContent = "Configured · " + (connDetail || "auth failing — add your eBay keys in Vercel settings");
+      line.textContent = "Configured · " + (connDetail || "eBay needs to reconnect");
     } else {
-      line.textContent = "Not configured — add your eBay keys in Vercel settings";
+      line.textContent = "eBay is not connected yet";
     }
     if (meta) meta.textContent = metaText();
     if (syncBtn) {

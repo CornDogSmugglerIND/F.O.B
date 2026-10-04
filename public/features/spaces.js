@@ -314,7 +314,7 @@
       '<div class="bd-head">' +
       '<button type="button" class="bd-back" id="binDetailBack">' +
       '<span class="bd-back-arrow" aria-hidden="true">&#8249;</span>' +
-      "<span>BACK</span>" +
+      "<span>Back</span>" +
       "</button>" +
       '<div class="bd-titlewrap">' +
       '<h2 class="bd-title" id="binDetailTitle">Bin</h2>' +
