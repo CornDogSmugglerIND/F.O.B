@@ -21,6 +21,7 @@ const initial = (it) => esc(nameOf(it).charAt(0).toUpperCase());
 export function initHud(c) {
   ctx = c;
   bindDrag();
+  setTimeout(initPremium, 0);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") { if (!closeCard()) closeStage(); } });
 }
 
@@ -438,4 +439,53 @@ function bindDrag() {
   /* once a hold has started, the page must not scroll under the finger */
   document.addEventListener("touchmove", (e) => { if (st && st.on) e.preventDefault(); }, { passive: false });
   document.addEventListener("contextmenu", (e) => { if (e.target.closest && e.target.closest(".rt-card")) e.preventDefault(); });
+}
+
+
+/* ---------- premium layer: tilt on every card-like surface, bins show their items ---------- */
+const TILT = ".rt-card, .inv-tile, .channel-card, .space-node, .pkg";
+function bindTilt() {
+  if (window.__hudTilt || reduce()) return;
+  window.__hudTilt = true;
+  document.addEventListener("pointermove", (e) => {
+    if (e.pointerType === "touch" || e.buttons) return;
+    const t = e.target.closest && e.target.closest(TILT);
+    if (!t || t.closest("#rzCard")) return;
+    const r = t.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
+    t.classList.add("tiltable", "tilting");
+    t.style.setProperty("--ty", `${(px * 12).toFixed(1)}deg`);
+    t.style.setProperty("--tx", `${(-py * 12).toFixed(1)}deg`);
+  }, { passive: true });
+  document.addEventListener("pointerout", (e) => {
+    const t = e.target.closest && e.target.closest(TILT);
+    if (t && t.classList.contains("tilting") && !t.contains(e.relatedTarget)) {
+      t.classList.remove("tilting"); t.style.setProperty("--tx", "0deg"); t.style.setProperty("--ty", "0deg");
+    }
+  }, { passive: true });
+}
+
+function fanBins() {
+  const host = document.getElementById("spacesNodes");
+  if (!host || !ctx) return;
+  host.querySelectorAll(".space-node[data-space]").forEach((n) => {
+    if (n.querySelector(".bin-fan") || n.querySelector(".frame img")) return;
+    const id = n.getAttribute("data-space");
+    const pics = ctx.state.items.filter((it) => it.spaceId === id).map(photoOf).filter(Boolean).slice(0, 3);
+    if (!pics.length) return;
+    const fan = document.createElement("div");
+    fan.className = "bin-fan n" + pics.length;
+    fan.innerHTML = pics.map((u) => `<i style="background-image:url('${u}')"></i>`).join("");
+    n.appendChild(fan);
+  });
+}
+
+export function initPremium() {
+  bindTilt();
+  const host = document.getElementById("spacesNodes");
+  if (host && !host.__fan) {
+    host.__fan = new MutationObserver(() => { host.__fan.disconnect(); fanBins(); host.__fan.observe(host, { childList: true }); });
+    host.__fan.observe(host, { childList: true });
+    fanBins();
+  }
 }
