@@ -186,18 +186,27 @@ export function renderLine() {
   const moved = state.justMovedId;
   state.justMovedId = null;
 
-  root.innerHTML = `<div class="rt">${PHASES.map((p) => {
+  const total = PHASES.reduce((n, p) => n + by[p.id].length, 0) || 1;
+  root.innerHTML = `<div class="rt">${PHASES.map((p, i) => {
     const list = by[p.id];
     const val = list.reduce((s, it) => s + worth(it), 0);
+    const nx = PHASES[i + 1];
     const seg = p.id === "sold" ? `<div class="rt-seg"><span>Shipping tracker</span></div>` : "";
+    const pct = Math.round((list.length / total) * 100);
     return `${seg}<section class="rt-stage${list.length ? "" : " empty"}" data-drop="${p.id}" aria-label="${p.label}">
       <button type="button" class="rt-node" data-stage="${p.id}" aria-label="Zoom into ${p.label}"><b>${list.length}</b></button>
-      <div class="rt-body">
-        <button type="button" class="rt-head" data-stage="${p.id}"><span class="rt-name">${p.label}</span><span class="rt-val">${list.length ? ctx.money(val) : "Empty"}</span><span class="rt-zoom" aria-hidden="true">⤢</span></button>
+      <div class="rt-body rt-step">
+        <button type="button" class="rt-head" data-stage="${p.id}"><span class="rt-sq">${i + 1}</span><span class="rt-name">${p.label}</span><span class="rt-count">${list.length}</span><span class="rt-val">${list.length ? ctx.money(val) : "Empty"}</span><span class="rt-zoom" aria-hidden="true">⤢</span></button>
+        <div class="rt-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>
         ${list.length ? `<div class="rt-strip">${list.map((it) => cardHtml(it, moved === it.id ? " land" : "")).join("")}</div>` : `<div class="rt-none">Hold a card and drop it here</div>`}
+        <div class="rt-acts">
+          <button type="button" class="rt-act" data-stage="${p.id}">Zoom in</button>
+          ${list.length && nx ? `<button type="button" class="rt-act pri" data-adv="${list[0].id}" data-to="${nx.id}">${NEXT_LABEL[p.id] || "Move forward"}</button>` : ""}
+        </div>
       </div></section>`;
   }).join("")}</div>`;
 
+  root.querySelectorAll("[data-adv]").forEach((b) => b.addEventListener("click", () => ctx.moveItemToPhase(b.dataset.adv, b.dataset.to)));
   root.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => openStage(b.dataset.stage, b)));
   root.querySelectorAll(".rt-card").forEach(cardClick);
 }
