@@ -8,6 +8,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>Coalition H.U.D</title>
   <link rel="manifest" href="/manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" />
   <link rel="stylesheet" href="/coalition.css?v=29" />
   <link rel="stylesheet" href="/features/carousel.css?v=3" />
   <link rel="stylesheet" href="/features/spaces.css?v=3" />
@@ -20,6 +22,7 @@
   <link rel="stylesheet" href="/features/command.css?v=3" />
   <link rel="stylesheet" href="/features/inventory-tools.css?v=2" />
   <link rel="stylesheet" href="/theme.css?v=8" />
+  <link rel="stylesheet" href="/visor/hud.css?v=4" />
 </head>
 <body>
   <div class="hud-app" id="app">
@@ -38,6 +41,7 @@
 
     <main class="hud-main">
       <section class="view active" id="view-command">
+        <div id="hudHome"></div>
         <div class="panel sitrep">
           <div class="sitrep-head">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 4L3.5 19.5h17L12 4z"/><path d="M12 10v4M12 16.8v.2"/></svg>
@@ -329,6 +333,6 @@
   <script src="/features/ebay.js?v=3"></script>
   <script src="/features/fulfillment.js?v=4"></script>
   <script src="/features/inventory-tools.js?v=3"></script>
-  <script type="module" src="/coalition.js?v=30"></script>
+  <script type="module" src="/coalition.js?v=31"></script>
 </body>
 </html>

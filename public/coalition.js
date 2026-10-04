@@ -1,4 +1,5 @@
 import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=1";
+import { initHud, renderHome as hudHome, renderLine as hudLine, openReadout as hudReadout } from "/visor/hud.js?v=1";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";
@@ -368,6 +369,7 @@ function oldestAge(phaseId) {
 }
 
 function renderCommand() {
+  hudHome();
   const c = countsByPhase();
   const toList = state.items.filter((i) => i.listingStatus === "ready to list" || (phaseFromItem(i) === "staged" && i.listingStatus !== "listed")).length;
   const listed = c.listed || 0;
@@ -616,44 +618,7 @@ function renderConstellation() {
  * Row 1: item clusters per stage. Row 2: the glowing track (orb, chevron, orb…).
  * Row 3: full-word stage labels + counts. Click a node → half-zoom sheet. */
 function renderRoadmap() {
-  const clusters = $("roadClusters");
-  const track = $("roadTrack");
-  const labels = $("roadLabels");
-  if (!clusters || !track || !labels) return;
-  const counts = countsByPhase();
-  const byPhase = Object.fromEntries(PHASES.map((p) => [p.id, []]));
-  for (const it of state.items) {
-    const ph = phaseFromItem(it);
-    if (byPhase[ph]) byPhase[ph].push(it);
-  }
-  const justMoved = state.justMovedId;
-  state.justMovedId = null;
-
-  clusters.innerHTML = PHASES.map((p) => {
-    const list = byPhase[p.id] || [];
-    const nodes = list.map((it) => {
-      const src = it.photos?.[0]?.dataUrl || "";
-      const name = it.title || it.productName || "Untitled";
-      const thumb = src
-        ? `<img src="${src}" alt="" loading="lazy" draggable="false" />`
-        : `<span class="node-initial" aria-hidden="true">${escapeHtml(name.charAt(0).toUpperCase())}</span>`;
-      const land = justMoved === it.id ? " land" : "";
-      return `<button type="button" class="node-item${land}" data-item="${it.id}" draggable="true" aria-label="${escapeHtml(name)} \u2014 ${p.label}">` +
-        `<span class="node-thumb">${thumb}</span><span class="node-name">${escapeHtml(name)}</span></button>`;
-    }).join("");
-    const n = String(counts[p.id] || 0).padStart(2, "0");
-    return `<section class="stage${list.length ? "" : " empty"}" data-phase="${p.id}" aria-label="${p.label}">` +
-      `<header class="stage-head"><span class="stage-name">${p.label}</span><span class="stage-count">${n}</span></header>` +
-      (list.length ? `<div class="stage-items">${nodes}</div>` : "") +
-      `</section>`;
-  }).join("");
-
-  track.innerHTML = "";
-  labels.innerHTML = "";
-
-  clusters.querySelectorAll("[data-item]").forEach((btn) =>
-    btn.addEventListener("click", () => openSheet(btn.dataset.item))
-  );
+  hudLine();
   bindRoadDragDrop();
 }
 
@@ -988,6 +953,8 @@ function openSheet(id) {
   window.HUD_fulfillment?.renderSheetSection(id);
 }
 window.HUD_openSheet = openSheet;
+initHud({ state, PHASES, phaseFromItem, money, navigate, openSheet, moveItemToPhase });
+window.HUD_readout = hudReadout;
 
 /* ---------- Item details form (Base44 parity: the full Add/Edit model) ----------
  * One form, one sheet. Add flow (Inventory "+ Add item" → Scouter intake) and
