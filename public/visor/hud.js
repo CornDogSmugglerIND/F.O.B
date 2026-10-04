@@ -4,7 +4,9 @@
 const NEXT_LABEL = { intake: "Stage it", staged: "Mark listed", listed: "Mark sold", sold: "Mark packed", packed: "Mark shipped", shipped: "Mark delivered" };
 const TRACK = [["sold", "Sold"], ["packed", "Packed"], ["shipped", "In transit"], ["delivered", "Doorstep"]];
 /* the Home route: seven stops climbing from the pile to the doorstep (viewBox 360 x 270) */
-const STOPS = [[40, 226], [92, 166], [150, 202], [198, 124], [248, 158], [298, 82], [326, 36]];
+const STOPS = [[44, 96], [200, 208], [296, 320], [120, 432], [48, 544], [200, 656], [296, 748]];
+const SIDE = [1, -1, -1, 1, 1, -1, -1]; /* cards float on the open side of each stop */
+const MAP_W = 360, MAP_H = 800;
 
 let ctx = null;
 let lastValue = null;
@@ -53,8 +55,24 @@ function countUp(el, to) {
   requestAnimationFrame(tick);
 }
 
-/* smooth path through the stops */
+/* street network for the map backdrop (deterministic) */
+function streets() {
+  let seed = 7;
+  const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const out = [];
+  for (let i = 0; i < 40; i++) {
+    const x = r() * 420 - 30, y = r() * 860 - 30, a = [0, 0.5, 1.57, 1.1, -0.6][Math.floor(r() * 5)] + (r() - 0.5) * 0.2, l = 80 + r() * 260;
+    const mx = x + Math.cos(a) * l * 0.5 + (r() - 0.5) * 30, my = y + Math.sin(a) * l * 0.5 + (r() - 0.5) * 30;
+    out.push(`M${x.toFixed(0)},${y.toFixed(0)} Q${mx.toFixed(0)},${my.toFixed(0)} ${(x + Math.cos(a) * l).toFixed(0)},${(y + Math.sin(a) * l).toFixed(0)}`);
+  }
+  return out.map((d, i) => `<path d="${d}"${i % 6 === 0 ? ' class="av"' : ''}/>`).join("");
+}
+
+/* path through the stops (straight legs, round joins: reads like a driving route) */
 function routePath(pts) {
+  return pts.map((p, i) => (i ? "L" : "M") + p[0] + "," + p[1]).join(" ");
+}
+function routePathOld(pts) {
   let d = `M${pts[0][0]},${pts[0][1]}`;
   for (let i = 0; i < pts.length - 1; i++) {
     const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
@@ -86,10 +104,21 @@ export function renderHome() {
   const nodes = PHASES.map((p, i) => {
     const list = by[p.id];
     const [x, y] = STOPS[i];
-    const src = list[0] && photoOf(list[0]);
-    return `<button type="button" class="rh-node${list.length ? " on" : ""}" data-stage="${p.id}" style="left:${(x / 360 * 100).toFixed(2)}%;top:${(y / 270 * 100).toFixed(2)}%" aria-label="${p.label}, ${list.length} items">
-      <span class="rh-dot">${src ? `<img src="${src}" alt="">` : ""}<b>${list.length || ""}</b></span>
-      <span class="rh-name">${p.label}</span></button>`;
+    const side = SIDE[i];
+    const stack = list.slice(0, 3).map((it, k) => {
+      const src = photoOf(it);
+      const q = Number(it.quantity) || 1;
+      return `<button type="button" class="rt-card rm-card k${k}" data-item="${esc(it.id)}" aria-label="${esc(nameOf(it))}" style="--k:${k};--side:${side}">
+        <span class="rt-face">${src ? `<img src="${src}" alt="" draggable="false">` : `<b class="rt-ini">${initial(it)}</b>`}
+        ${q > 1 ? `<span class="rt-q">\u00d7${q}</span>` : ""}
+        <span class="rt-cap"><span>${esc(nameOf(it))}</span><b>${ctx.money(worth(it))}</b></span></span></button>`;
+    }).reverse().join("");
+    const more = list.length > 3 ? `<span class="rm-more" style="--side:${side}">+${list.length - 3}</span>` : "";
+    return `<div class="rm-stop${list.length ? " on" : ""}" data-drop="${p.id}" style="left:${(x / MAP_W * 100).toFixed(2)}%;top:${(y / MAP_H * 100).toFixed(2)}%">
+      <span class="rm-zone"></span>
+      <button type="button" class="rm-pin" data-stage="${p.id}" aria-label="${p.label}, ${list.length} items"><i></i><span class="rm-name">${p.label}${list.length ? ` <b>${list.length}</b>` : ""}</span></button>
+      <span class="rm-cards" style="--side:${side}">${stack}${more}</span>
+    </div>`;
   }).join("");
 
   const needs = [
@@ -113,16 +142,20 @@ export function renderHome() {
         </div>
         <button type="button" class="rh-scan" data-goto="scouter">Scan</button>
       </div>
-      <div class="rh-map" role="group" aria-label="Pile to doorstep">
-        <svg viewBox="0 0 360 270" preserveAspectRatio="none" aria-hidden="true">
-          <defs><filter id="rhb" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="5"/></filter></defs>
-          <g class="rh-streets"><path d="M-10,60 C80,90 140,40 240,70 S360,40 380,60"/><path d="M-10,150 C60,130 120,170 200,150 S330,170 380,140"/><path d="M-10,240 C90,220 160,260 250,236 S350,250 380,230"/><path d="M60,-10 C70,60 40,120 70,190 S60,260 70,290"/><path d="M170,-10 C150,60 190,110 160,180 S190,250 176,290"/><path d="M280,-10 C300,50 270,120 300,190 S280,250 296,290"/></g>
+      <div class="rm" id="rhMap" role="group" aria-label="Pile to doorstep">
+        <svg viewBox="0 0 ${MAP_W} ${MAP_H}" preserveAspectRatio="none" aria-hidden="true">
+          <defs><filter id="rhb" x="-20%" y="-10%" width="140%" height="120%"><feGaussianBlur stdDeviation="6"/></filter>
+            <path id="rhroute" d="${d}"/></defs>
+          <g class="rm-streets">${streets()}</g>
           <path d="${d}" class="rh-glow" filter="url(#rhb)"/>
           <path d="${d}" class="rh-line"/>
           <path d="${d}" class="rh-flow"/>
+          <polygon points="-7,-6 8,0 -7,6 -3,0" class="rm-arrow"><animateMotion dur="9s" repeatCount="indefinite" rotate="auto"><mpath href="#rhroute"/></animateMotion></polygon>
         </svg>
         ${nodes}
+        <svg class="rm-end" viewBox="0 0 24 32" style="left:${(STOPS[6][0] / MAP_W * 100).toFixed(2)}%;top:${(STOPS[6][1] / MAP_H * 100).toFixed(2)}%" aria-hidden="true"><path d="M12 1C6 1 2 5.5 2 11c0 7 10 19 10 19s10-12 10-19C22 5.5 18 1 12 1z" fill="#fff"/><circle cx="12" cy="11" r="4" fill="#0b0c10"/></svg>
       </div>
+      <div class="rh-hint">Hold a card, then drop it on a stop to move it</div>
       <div class="rh-sec">Needs you</div>
       <div class="rh-needs">${needs}</div>
       ${latest}
@@ -136,6 +169,12 @@ export function renderHome() {
     requestAnimationFrame(() => openStage(id, b));
   }));
   host.querySelectorAll(".rt-card").forEach(cardClick);
+  const rm = document.getElementById("rhMap");
+  if (rm) rm.addEventListener("pointermove", (e) => {
+    const r = rm.getBoundingClientRect();
+    rm.style.setProperty("--px", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
+    rm.style.setProperty("--py", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
+  }, { passive: true });
 }
 
 /* ---------- Route (constellation tree) ---------- */
@@ -362,7 +401,7 @@ function bindDrag() {
     cancelAnimationFrame(st.raf);
     const { on, id, zone } = st;
     if (st.ghost) st.ghost.remove();
-    if (st.el) st.el.classList.remove("dragging-src");
+    if (st.el) st.el.classList.remove("dragging-src", "holding");
     document.body.classList.remove("rt-dragging");
     if (tray) tray.classList.remove("on");
     document.querySelectorAll(".drop-hint").forEach((n) => n.classList.remove("drop-hint"));
@@ -379,6 +418,7 @@ function bindDrag() {
     const el = e.target.closest && e.target.closest(".rt-card[data-item]");
     if (!el || el.closest("#rzCard")) return;
     st = { el, id: el.dataset.item, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, on: false, pid: e.pointerId, touch: e.pointerType !== "mouse" };
+    el.classList.add("holding");
     st.timer = setTimeout(start, 300);
   });
   document.addEventListener("pointermove", (e) => {
@@ -386,7 +426,7 @@ function bindDrag() {
     st.x = e.clientX; st.y = e.clientY;
     if (!st.on) {
       if (Math.hypot(st.x - st.sx, st.y - st.sy) > 9) {
-        if (st.touch) { clearTimeout(st.timer); st = null; }   /* finger moved first: that's a scroll */
+        if (st.touch) { clearTimeout(st.timer); st.el.classList.remove("holding"); st = null; }   /* finger moved first: that's a scroll */
         else start();
       }
       return;
