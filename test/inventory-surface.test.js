@@ -96,8 +96,8 @@ test("cache busters bumped in both HTML files; files stay byte-identical", async
 
 test("Inventory toggle label replaced the Collection label in both HTML files", async () => {
   const index = await src("index.html");
-  assert.ok(/data-cmode="collection"[^>]*>Inventory</.test(index), "toggle reads Inventory");
-  assert.ok(!/>Collection</.test(index), "no visible Collection label remains");
+  assert.ok(/data-view="collection"[\s\S]*?Collection\s*<\/button>/.test(index), "Collection is its own tab");
+  assert.ok(!/data-cmode=/.test(index), "no Tree/Inventory toggle remains");
 });
 
 test("no banned words and no green styling in the touched frontend files", async () => {

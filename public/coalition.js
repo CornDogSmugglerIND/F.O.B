@@ -1,10 +1,10 @@
 import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=1";
-import { initHud, renderHome as hudHome, renderLine as hudLine, openReadout as hudReadout } from "/visor/hud.js?v=8";
+import { initHud, renderHome as hudHome, renderLine as hudLine, openReadout as hudReadout } from "/visor/hud.js?v=9";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";
 const LS_COLLECTIONS = "coalition-collections-v1";
-const VIEWS = ["command", "scouter", "constellation", "spaces", "channels", "settings"];
+const VIEWS = ["command", "scouter", "constellation", "collection", "spaces", "channels", "settings"];
 
 /* Base44 parity (stage b): the full item model. `price` stays the market /
  * listing value — every downstream flow (listing engine, eBay/Misprint
@@ -316,6 +316,7 @@ function navigate(view) {
   if (!VIEWS.includes(view)) view = "command";
   { const t = $("toast"); if (t) { clearTimeout(toast._t); t.classList.remove("show"); } }
   state.view = view;
+  state.constellationMode = view === "collection" ? "collection" : "tree";
   location.hash = `#/${view}`;
   $("app")?.classList.toggle("wide", view === "constellation");
   for (const v of VIEWS) {
@@ -466,8 +467,21 @@ function pkgCardHtml(it) {
 }
 
 function wirePkgCards(root) {
-  root.querySelectorAll("[data-item]").forEach((btn) =>
-    btn.addEventListener("click", () => openSheet(btn.dataset.item))
+  root.querySelectorAll(".pkg[data-item]").forEach((btn) =>
+    btn.addEventListener("click", () => (window.HUD_readout ? window.HUD_readout(btn.dataset.item, btn) : openSheet(btn.dataset.item)))
+  );
+  root.querySelectorAll("[data-batch-act]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const ids = (b.dataset.ids || "").split(",").filter(Boolean);
+      if (b.dataset.batchAct === "open") return openSheet(ids[0]);
+      ids.forEach((id) => {
+        const it = state.items.find((i) => i.id === id);
+        if (it && phaseFromItem(it) === "intake") { it.phase = "staged"; it.staged = true; }
+      });
+      saveItems();
+      render();
+      toast(`${ids.length} staged`);
+    })
   );
 }
 
@@ -522,6 +536,7 @@ function paintBatches(rootId, items) {
       return `<div class="batch">
         <div class="batch-head"><span class="chrome">${escapeHtml(batchLabel(key || null, list))}</span>
           <span class="batch-meta">${n} scan${n === 1 ? "" : "s"} · ${money(batchValue(list))}</span></div>
+        <div class="batch-acts"><button type="button" class="batch-act" data-batch-act="open" data-ids="${list.map((i) => i.id).join(",")}">Identify &amp; list</button><button type="button" class="batch-act pri" data-batch-act="stage" data-ids="${list.map((i) => i.id).join(",")}">Stage all ${n}</button></div>
         <div class="pkg-row batch-row">${list.slice(0, 12).map(pkgCardHtml).join("")}</div>
       </div>`;
     })
@@ -536,6 +551,7 @@ function moveItemToPhase(itemId, phaseId) {
   if (phaseFromItem(it) === phaseId) return;
   it.phase = phaseId;
   it.staged = phaseId === "staged" ? true : it.staged;
+  it.events = (Array.isArray(it.events) ? it.events : []).concat({ phase: phaseId, at: Date.now() });
   state.justMovedId = itemId;
   saveItems();
   render();
@@ -604,13 +620,9 @@ function bindRoadDragDrop() {
 function renderConstellation() {
   const tree = $("constellationTree");
   const col = $("constellationCollection");
-  const inCollection = state.constellationMode === "collection";
-  if (tree) tree.hidden = inCollection;
-  if (col) col.hidden = !inCollection;
-  if (inCollection) {
-    window.HUD_collection?.render();
-    return;
-  }
+  if (tree) tree.hidden = false;
+  if (col) col.hidden = false;
+  window.HUD_collection?.render();
   renderRoadmap();
 }
 
@@ -658,8 +670,8 @@ function renderSpaces() {
 
   if ($("unsortedPool")) {
     $("unsortedPool").innerHTML = unsorted.length
-      ? `<strong>Unsorted</strong>${unsorted.length} item${unsorted.length === 1 ? "" : "s"} — assign from the item card`
-      : `<strong>Unsorted</strong>Pool empty`;
+      ? `<strong>Unsorted</strong>${unsorted.length} to sort · drag onto a bin`
+      : `<strong>All sorted</strong>Nothing waiting`;
   }
 }
 
@@ -953,7 +965,7 @@ function openSheet(id) {
   window.HUD_fulfillment?.renderSheetSection(id);
 }
 window.HUD_openSheet = openSheet;
-initHud({ state, PHASES, phaseFromItem, money, navigate, openSheet, moveItemToPhase });
+initHud({ state, PHASES, phaseFromItem, money, navigate, openSheet, moveItemToPhase, saveItems, toast });
 window.HUD_readout = hudReadout;
 
 /* ---------- Item details form (Base44 parity: the full Add/Edit model) ----------
@@ -1752,6 +1764,9 @@ function render() {
 function bind() {
   document.querySelectorAll(".nav-tab").forEach((tab) =>
     tab.addEventListener("click", () => navigate(tab.dataset.view))
+  );
+  document.querySelectorAll("[data-nav]").forEach((b) =>
+    b.addEventListener("click", () => navigate(b.dataset.nav))
   );
   bindConstellationSwitch();
   bindRoadDragDrop();

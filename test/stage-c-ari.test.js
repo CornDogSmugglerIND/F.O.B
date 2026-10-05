@@ -20,7 +20,7 @@ test("Command tiles use Base44's full words and are tappable", async () => {
     ["To list", "channels"],
     ["Needs bin", "spaces"],
     ["Listed", "channels"],
-    ["Inventory", "constellation"],
+    ["Inventory", "collection"],
   ]) {
     const re = new RegExp(
       `<button[^>]*class="stat"[^>]*data-goto="${goto}"[^>]*>.*?${word}`,
@@ -117,7 +117,7 @@ test("Fulfilment: Out for delivery is a recorded sub-stage of shipped", async ()
 test("cache versions bumped for changed bundles", async () => {
   for (const page of ["index.html", "hud.html"]) {
     const html = await src(page);
-    assert.ok(html.includes("/coalition.js?v=38"), `${page}: coalition.js?v=38`);
+    assert.ok(html.includes("/coalition.js?v=41"), `${page}: coalition.js?v=41`);
     assert.ok(html.includes("/coalition.css?v=29"), `${page}: coalition.css?v=29`);
   }
 });
