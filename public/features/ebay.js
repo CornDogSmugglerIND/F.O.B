@@ -135,6 +135,7 @@
       '<div class="ebay-status-line" id="ebayStatusLine">Checking…</div>' +
       '<div class="ebay-meta" id="ebayMeta">' + esc(metaText()) + "</div>" +
       '<div class="ebay-actions">' +
+        '<button type="button" class="btn btn-amber" id="btnEbayConnect">Connect eBay</button>' +
         '<button type="button" class="btn btn-amber" id="btnEbayCardSync">Sync now</button>' +
         '<button type="button" class="btn btn-ghost" id="btnEbayCardProbe">Check connection</button>' +
       "</div>"
@@ -152,6 +153,8 @@
     view.insertBefore(card, view.firstChild);
     var b1 = $("btnEbayCardSync");
     var b2 = $("btnEbayCardProbe");
+    var b3 = $("btnEbayConnect");
+    if (b3) b3.addEventListener("click", function () { window.location.href = "/api/channels/ebay/connect"; });
     if (b1) b1.addEventListener("click", handleSync);
     if (b2) b2.addEventListener("click", handleCheckConnection);
   }
@@ -167,6 +170,8 @@
     badge.classList.toggle("ebay-error", connState === "error");
     badge.classList.toggle("ebay-offline", connState === "offline");
     if (badgeLabel) badgeLabel.textContent = PILL_LABEL[connState];
+    var cb = $("btnEbayConnect"); if (cb) cb.hidden = connState === "live";
+    if (syncBtn) syncBtn.hidden = connState !== "live";
     if (connState === "live") {
       line.textContent = "Configured · token OK";
     } else if (connState === "error") {

@@ -2,6 +2,7 @@
  * Pure rendering. coalition.js passes state + actions in through initHud(ctx). */
 
 const NEXT_LABEL = { intake: "Stage it", staged: "Mark listed", listed: "Mark sold", sold: "Mark packed", packed: "Mark shipped", shipped: "Mark delivered" };
+const TURL = { USPS: "https://tools.usps.com/go/TrackConfirmAction?tLabels=", UPS: "https://www.ups.com/track?tracknum=", FedEx: "https://www.fedex.com/fedextrack/?trknbr=" };
 const TRACK = [["sold", "Sold"], ["packed", "Packed"], ["shipped", "In transit"], ["delivered", "Doorstep"]];
 /* the Home route: seven stops climbing from the pile to the doorstep (viewBox 360 x 270) */
 const STOPS = [[44, 96], [200, 208], [296, 320], [120, 432], [48, 544], [200, 656], [296, 748]];
@@ -141,7 +142,6 @@ export function renderHome() {
           <div class="rh-val" id="vhValue">${ctx.money(lastValue == null ? 0 : lastValue)}</div>
           <div class="rh-sub">${items.length ? `${items.length} items on the line · ${live} live` : "Nothing on the line yet. Snap a photo in Scouter."}</div>
         </div>
-        <button type="button" class="rh-scan" data-goto="scouter">Scan</button>
       </div>
       <div class="rm" id="rhMap" role="group" aria-label="Pile to doorstep">
         <svg viewBox="0 0 ${MAP_W} ${MAP_H}" preserveAspectRatio="none" aria-hidden="true">
@@ -188,7 +188,9 @@ export function renderLine() {
   state.justMovedId = null;
 
   const total = PHASES.reduce((n, p) => n + by[p.id].length, 0) || 1;
-  root.innerHTML = `<div class="rt">${PHASES.map((p, i) => {
+  let mode = "across";
+  try { mode = localStorage.getItem("fob-tree-mode") || "across"; } catch (e) {}
+  root.innerHTML = `<div class="rt-mode" role="group" aria-label="Tree direction"><button type="button" data-tmode="across" class="${mode === "across" ? "on" : ""}">Across</button><button type="button" data-tmode="down" class="${mode === "down" ? "on" : ""}">Down</button></div><div class="rt ${mode}">${PHASES.map((p, i) => {
     const list = by[p.id];
     const val = list.reduce((s, it) => s + worth(it), 0);
     const nx = PHASES[i + 1];
@@ -207,6 +209,7 @@ export function renderLine() {
       </div></section>`;
   }).join("")}</div>`;
 
+  root.querySelectorAll("[data-tmode]").forEach((b) => b.addEventListener("click", () => { try { localStorage.setItem("fob-tree-mode", b.dataset.tmode); } catch (e) {} renderLine(); }));
   root.querySelectorAll("[data-adv]").forEach((b) => b.addEventListener("click", () => ctx.moveItemToPhase(b.dataset.adv, b.dataset.to)));
   root.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => openStage(b.dataset.stage, b)));
   root.querySelectorAll(".rt-card").forEach(cardClick);
@@ -262,9 +265,17 @@ export function openCard(id, srcEl) {
   const src = photoOf(it);
   const paid = (Number(it.purchasePrice) || 0) * (Number(it.quantity) || 1);
   const profit = worth(it) - paid;
-  const tIdx = TRACK.findIndex(([k]) => k === ph);
-  const track = tIdx >= 0
-    ? `<div class="rz-track" aria-label="Shipping tracker">${TRACK.map(([, l], i) => `<span class="${i <= tIdx ? "done" : ""}${i === tIdx ? " now" : ""}"><i></i><em>${l}</em></span>`).join("")}</div>`
+  const evAt = (pid) => {
+    const e = (Array.isArray(it.events) ? it.events : []).filter((x) => x.phase === pid).pop();
+    return e ? new Date(e.at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+  };
+  const journey = `<ol class="rz-journey" aria-label="Item journey">${PHASES.map((p, i) => `<li class="${i < idx ? "done" : ""}${i === idx ? " now" : ""}"><i></i><b>${p.label}</b><em>${evAt(p.id) || (i === idx ? "now" : "")}</em></li>`).join("")}</ol>`;
+  const tr = it.tracking || {};
+  const track = idx >= PHASES.findIndex((p) => p.id === "sold")
+    ? `<div class="rz-trk"><div class="rz-trk-row">
+        <select class="rz-carrier" aria-label="Carrier">${["USPS", "UPS", "FedEx", "Other"].map((c) => `<option${tr.carrier === c ? " selected" : ""}>${c}</option>`).join("")}</select>
+        <input class="rz-tnum" inputmode="text" autocomplete="off" placeholder="Tracking number" value="${esc(tr.number || "")}" aria-label="Tracking number"></div>
+        <div class="rz-trk-row"><button type="button" class="rz-btn" data-act="savetrk">Save tracking</button><button type="button" class="rz-btn" data-act="track"${tr.number && TURL[tr.carrier] ? "" : " disabled"}>Track package</button></div></div>`
     : "";
   const chips = PHASES.map((p) => `<button type="button" class="rz-chip${p.id === ph ? " cur" : ""}" data-to="${p.id}">${p.label}</button>`).join("");
 
@@ -280,11 +291,12 @@ export function openCard(id, srcEl) {
       <div class="rz-price">${ctx.money(worth(it))}</div>
       <div class="rz-sub">${paid ? `Paid ${ctx.money(paid)} · ${profit >= 0 ? "+" : "−"}${ctx.money(Math.abs(profit))}` : "No purchase price yet"}</div>
     </div>
+    ${journey}
     ${track}
     <div class="rz-chips" aria-label="Move to">${chips}</div>
     <div class="rz-actions">
       ${next ? `<button type="button" class="rz-btn pri" data-act="next">${NEXT_LABEL[ph] || "Move forward"}</button>` : ""}
-      <button type="button" class="rz-btn" data-act="open">Open details</button>
+      <button type="button" class="rz-btn" data-act="open">${idx <= 2 ? "Identify &amp; list" : "Details"}</button>
     </div></div></div>`;
   document.body.appendChild(el);
   const card = el.querySelector(".rz-card");
@@ -323,6 +335,20 @@ export function openCard(id, srcEl) {
   el.addEventListener("click", (e) => { if (e.target === el) closeCard(); });
   el.querySelector(".rz-x").addEventListener("click", () => closeCard());
   el.querySelector('[data-act="open"]').addEventListener("click", () => { closeCard(true); closeStage(true); ctx.openSheet(id); });
+  const sv = el.querySelector('[data-act="savetrk"]');
+  const tk = el.querySelector('[data-act="track"]');
+  const upd = () => { const c = el.querySelector(".rz-carrier").value, n = el.querySelector(".rz-tnum").value.trim(); if (tk) tk.disabled = !(n && TURL[c]); };
+  if (sv) {
+    el.querySelector(".rz-carrier").addEventListener("change", upd);
+    el.querySelector(".rz-tnum").addEventListener("input", upd);
+    sv.addEventListener("click", () => {
+      it.tracking = { carrier: el.querySelector(".rz-carrier").value, number: el.querySelector(".rz-tnum").value.trim() };
+      if (ctx.saveItems) ctx.saveItems();
+      if (ctx.toast) ctx.toast("Tracking saved");
+      upd();
+    });
+    tk.addEventListener("click", () => { const t = it.tracking || {}; if (t.number && TURL[t.carrier]) window.open(TURL[t.carrier] + encodeURIComponent(t.number), "_blank", "noopener"); });
+  }
   const nx = el.querySelector('[data-act="next"]');
   if (nx) nx.addEventListener("click", () => { closeCard(true); closeStage(true); ctx.moveItemToPhase(id, next.id); });
   el.querySelectorAll("[data-to]").forEach((b) => b.addEventListener("click", () => {
