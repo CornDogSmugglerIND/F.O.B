@@ -44,4 +44,25 @@ export function getCanonicalInventory() {
   return process.env.CANONICAL_INVENTORY || "hud";
 }
 
+/**
+ * eBay status that also honors the server-side connect flow: a stored refresh
+ * token counts as configured even when EBAY_REFRESH_TOKEN env is absent.
+ * Async because it reads the token store.
+ */
+export async function getEbayChannelStatus() {
+  const { getEbayRefreshToken, getLastEbayAuthError } = await import("./ebayConnect.js");
+  const base = getChannelStatuses().find((c) => c.id === "ebay");
+  const refreshToken = await getEbayRefreshToken();
+  const keysPresent = present("EBAY_CLIENT_ID") && present("EBAY_CLIENT_SECRET");
+  const missing = ["EBAY_CLIENT_ID", "EBAY_CLIENT_SECRET", "EBAY_SELLER_ID"].filter((k) => !present(k));
+  if (!refreshToken) missing.push("EBAY_REFRESH_TOKEN");
+  return {
+    ...base,
+    configured: keysPresent && Boolean(refreshToken),
+    tokenStored: Boolean(refreshToken) && !present("EBAY_REFRESH_TOKEN"),
+    missing,
+    lastError: getLastEbayAuthError(),
+  };
+}
+
 export { CHANNELS };

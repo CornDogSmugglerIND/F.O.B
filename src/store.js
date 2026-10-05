@@ -46,6 +46,11 @@ export function getUploadsDir() {
   return join(dataRoot, "uploads");
 }
 
+/** Server-side data dir (ebay tokens, etc.). */
+export function getDataRoot() {
+  return dataRoot;
+}
+
 /** @param {string} root */
 export function setDataRoot(root) {
   dataRoot = root;

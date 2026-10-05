@@ -4,6 +4,8 @@
  * Docs: developer.ebay.com — Sell Inventory + Sell Fulfillment.
  */
 
+import { refreshEbayAccessToken } from "./ebayConnect.js";
+
 function env(key, fallback = "") {
   const v = process.env[key];
   return typeof v === "string" && v.trim() ? v.trim() : fallback;
@@ -31,61 +33,19 @@ export function clearEbayTokenCache() {
 }
 
 /**
- * Exchange refresh token for a user access token.
+ * Exchange refresh token for a user access token (2h cache).
+ * Refresh token source: server-side connect store first, EBAY_REFRESH_TOKEN
+ * env fallback. Rotated refresh tokens are persisted by the connect module.
  * @param {{ fetchImpl?: typeof fetch }} [opts]
  */
 export async function getEbayAccessToken(opts = {}) {
-  const fetchImpl = opts.fetchImpl || fetch;
   const now = Date.now();
   if (cachedToken && now < cachedTokenExpiresAt - 60_000) {
     return cachedToken;
   }
-
-  const clientId = env("EBAY_CLIENT_ID");
-  const clientSecret = env("EBAY_CLIENT_SECRET");
-  const refreshToken = env("EBAY_REFRESH_TOKEN");
-  if (!clientId || !clientSecret || !refreshToken) {
-    const err = new Error(
-      "eBay not configured — set EBAY_CLIENT_ID, EBAY_CLIENT_SECRET, EBAY_REFRESH_TOKEN",
-    );
-    err.code = "CHANNEL_NOT_CONFIGURED";
-    throw err;
-  }
-
-  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    refresh_token: refreshToken,
-    scope: [
-      "https://api.ebay.com/oauth/api_scope",
-      "https://api.ebay.com/oauth/api_scope/sell.inventory",
-      "https://api.ebay.com/oauth/api_scope/sell.fulfillment",
-      "https://api.ebay.com/oauth/api_scope/sell.account",
-    ].join(" "),
-  });
-
-  const res = await fetchImpl(`${ebayApiBase()}/identity/v1/oauth2/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${basic}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body,
-  });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.access_token) {
-    const err = new Error(
-      `eBay token refresh failed (${res.status}): ${data.error_description || data.error || res.statusText}`,
-    );
-    err.code = "EBAY_AUTH_FAILED";
-    err.status = res.status;
-    err.details = data;
-    throw err;
-  }
-
-  cachedToken = data.access_token;
-  cachedTokenExpiresAt = now + (Number(data.expires_in) || 7200) * 1000;
+  const { accessToken, expiresIn } = await refreshEbayAccessToken(opts);
+  cachedToken = accessToken;
+  cachedTokenExpiresAt = now + expiresIn * 1000;
   return cachedToken;
 }
 
@@ -393,4 +353,114 @@ export async function syncEbayInventory(opts = {}) {
     inventoryTotal: itemsPage.total,
     records,
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Per-item tracking — Sell Fulfillment API: orders + shipments.       */
+/* Normalized tracking card shape:                                     */
+/* { orderId, items: [{sku,title,qty}], carrier, trackingNumber,       */
+/*   status, createdAt, shippedAt, deliveredAt }                        */
+/* status: label_created | picked_up | in_transit | out_for_delivery |  */
+/*         delivered — best-effort mapping from fulfillment state.      */
+/* ------------------------------------------------------------------ */
+
+function isoDaysAgo(days) {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+/**
+ * List recent eBay orders (paginated).
+ * @param {{ days?: number, limit?: number, fetchImpl?: typeof fetch }} [opts]
+ */
+export async function listEbayOrders(opts = {}) {
+  const fetchImpl = opts.fetchImpl || fetch;
+  const days = Math.max(1, Math.min(90, Number(opts.days) || 30));
+  const perPage = Math.max(1, Math.min(200, Number(opts.limit) || 100));
+  const filter = `creationdate:[${isoDaysAgo(days)}..]`;
+  const orders = [];
+  let offset = 0;
+  for (;;) {
+    const q = new URLSearchParams({ filter, limit: String(perPage), offset: String(offset) });
+    const { data } = await ebayRequest(`/sell/fulfillment/v1/order?${q.toString()}`, { fetchImpl });
+    const batch = data?.orders || [];
+    orders.push(...batch);
+    const total = Number(data?.total) || 0;
+    offset += batch.length;
+    if (!batch.length || offset >= total) break;
+  }
+  return orders;
+}
+
+/**
+ * Shipments for a set of order IDs.
+ * @param {string[]} orderIds
+ * @param {{ fetchImpl?: typeof fetch }} [opts]
+ * @returns {Promise<Map<string, object>>} orderId -> shipment
+ */
+export async function getEbayShipments(orderIds, opts = {}) {
+  const fetchImpl = opts.fetchImpl || fetch;
+  const byOrder = new Map();
+  if (!orderIds.length) return byOrder;
+  // API accepts a pipe-joined orderids filter; chunk to stay under URL limits.
+  for (let i = 0; i < orderIds.length; i += 25) {
+    const chunk = orderIds.slice(i, i + 25);
+    const q = new URLSearchParams({ filter: `orderids:{${chunk.join("|")}}`, limit: "200" });
+    const { data } = await ebayRequest(`/sell/fulfillment/v1/shipment?${q.toString()}`, { fetchImpl });
+    for (const s of data?.shipments || []) {
+      for (const oid of s.orderIds || []) {
+        if (!byOrder.has(oid)) byOrder.set(oid, s);
+      }
+    }
+  }
+  return byOrder;
+}
+
+function pickShipmentField(shipment, ...names) {
+  for (const n of names) {
+    const v = shipment?.[n];
+    if (v != null && String(v).trim() !== "") return String(v).trim();
+  }
+  return "";
+}
+
+/** eBay fulfillment status -> tracking card status. */
+export function mapFulfillmentStatus(order, shipment) {
+  const tracking = pickShipmentField(shipment, "shipmentTrackingNumber", "trackingNumber");
+  const fs = (order?.orderFulfillmentStatus || "").toUpperCase();
+  if (fs === "FULFILLED") return "delivered";
+  if (fs === "IN_PROGRESS" || tracking) return "in_transit";
+  return "label_created";
+}
+
+/**
+ * Tracking cards for recent orders: line items + carrier/tracking + status.
+ * @param {{ days?: number, fetchImpl?: typeof fetch }} [opts]
+ */
+export async function getEbayTracking(opts = {}) {
+  const fetchImpl = opts.fetchImpl || fetch;
+  const orders = await listEbayOrders({ ...opts, fetchImpl });
+  const shipments = await getEbayShipments(
+    orders.map((o) => o.orderId).filter(Boolean),
+    { fetchImpl },
+  );
+  return orders.map((o) => {
+    const shipment = shipments.get(o.orderId) || null;
+    const status = mapFulfillmentStatus(o, shipment);
+    return {
+      orderId: o.orderId,
+      items: (o.lineItems || []).map((li) => ({
+        sku: li.sku || "",
+        title: li.title || "",
+        qty: Number(li.quantity) || 1,
+      })),
+      carrier: pickShipmentField(shipment, "shippingCarrierCode", "carrierCode"),
+      trackingNumber: pickShipmentField(shipment, "shipmentTrackingNumber", "trackingNumber"),
+      shippingService: pickShipmentField(shipment, "shippingServiceCode", "serviceCode"),
+      status,
+      createdAt: o.creationDate || null,
+      shippedAt: status === "label_created" ? null : o.lastModifiedDate || null,
+      deliveredAt: status === "delivered" ? o.lastModifiedDate || null : null,
+      buyer: o.buyer?.username || "",
+    };
+  });
 }

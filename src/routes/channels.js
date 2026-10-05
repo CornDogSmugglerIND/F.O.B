@@ -1,11 +1,43 @@
 import { Router } from "express";
-import { getCanonicalInventory, getChannelStatuses } from "../channels/config.js";
+import { randomUUID } from "node:crypto";
+import { getCanonicalInventory, getChannelStatuses, getEbayChannelStatus } from "../channels/config.js";
 import { applySale } from "../channels/sync.js";
 import { publishListing } from "../channels/adapters.js";
-import { probeEbay, syncEbayInventory } from "../channels/ebay.js";
+import { probeEbay, syncEbayInventory, clearEbayTokenCache, getEbayTracking } from "../channels/ebay.js";
+import {
+  buildEbayAuthorizeUrl,
+  exchangeEbayAuthCode,
+  saveEbayTokenStore,
+} from "../channels/ebayConnect.js";
 import { probeMisprint } from "../channels/misprint.js";
 import { combineVariationBatch } from "../listing/variation.js";
 import { getScoutItem, updateScoutItem, listScoutItems, createScoutItem } from "../store.js";
+
+/** Minimal cookie helpers (no extra dependency). */
+function readCookie(req, name) {
+  const header = req.headers?.cookie || "";
+  const m = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function writeStateCookie(res, state) {
+  const parts = [
+    `ebay_oauth_state=${encodeURIComponent(state)}`,
+    "Path=/api/channels/ebay/callback",
+    "HttpOnly",
+    "SameSite=Lax",
+    `Max-Age=${10 * 60}`,
+  ];
+  if (process.env.VERCEL) parts.push("Secure");
+  res.setHeader("Set-Cookie", parts.join("; "));
+}
+
+function clearStateCookie(res) {
+  res.setHeader(
+    "Set-Cookie",
+    "ebay_oauth_state=; Path=/api/channels/ebay/callback; HttpOnly; SameSite=Lax; Max-Age=0",
+  );
+}
 
 export function channelsRouter() {
   const router = Router();
@@ -261,6 +293,102 @@ export function channelsRouter() {
       res.json(result);
     } catch (err) {
       if (err.code === "NOT_FOUND") return res.status(404).json({ error: err.message });
+      next(err);
+    }
+  });
+
+  /**
+   * eBay OAuth connect flow.
+   * GET /api/channels/ebay/connect -> 302 to eBay consent (?json=1 returns { authorizeUrl })
+   */
+  router.get("/ebay/connect", (req, res, next) => {
+    try {
+      const state = randomUUID();
+      const authorizeUrl = buildEbayAuthorizeUrl({ state });
+      writeStateCookie(res, state);
+      if (req.query.json === "1") {
+        return res.json({ ok: true, authorizeUrl, state });
+      }
+      res.redirect(302, authorizeUrl);
+    } catch (err) {
+      if (err.code === "CHANNEL_NOT_CONFIGURED") {
+        return res.status(503).json({ ok: false, error: err.message, code: err.code });
+      }
+      next(err);
+    }
+  });
+
+  /**
+   * GET /api/channels/ebay/callback?code=...&state=...
+   * Validates state, exchanges the code, persists tokens server-side.
+   */
+  router.get("/ebay/callback", async (req, res, next) => {
+    try {
+      const { code, state } = req.query ?? {};
+      const expected = readCookie(req, "ebay_oauth_state");
+      // State check: when the browser kept the cookie it must match.
+      if (!code || typeof code !== "string") {
+        return res.status(400).json({ ok: false, error: "Missing code", code: "VALIDATION" });
+      }
+      if (expected && state !== expected) {
+        return res.status(400).json({ ok: false, error: "State mismatch — restart the connect flow", code: "VALIDATION" });
+      }
+      const tokens = await exchangeEbayAuthCode(code);
+      await saveEbayTokenStore({
+        refresh_token: tokens.refresh_token,
+        refresh_token_expires_in: tokens.refresh_token_expires_in,
+      });
+      clearEbayTokenCache();
+      clearStateCookie(res);
+      if (req.query.json === "1") {
+        return res.json({ ok: true, connected: true });
+      }
+      res.redirect(302, "/settings?ebay=connected");
+    } catch (err) {
+      if (err.code === "CHANNEL_NOT_CONFIGURED" || err.code === "VALIDATION") {
+        return res.status(err.code === "VALIDATION" ? 400 : 503).json({ ok: false, error: err.message, code: err.code });
+      }
+      if (err.code === "EBAY_AUTH_FAILED") {
+        return res.status(502).json({ ok: false, error: err.message, code: err.code });
+      }
+      next(err);
+    }
+  });
+
+  /**
+   * GET /api/channels/ebay/status -> { connected, missing[], lastError }
+   * The contract Claude's settings UI wires "Check connection" to.
+   */
+  router.get("/ebay/status", async (_req, res, next) => {
+    try {
+      const s = await getEbayChannelStatus();
+      res.json({
+        connected: s.configured,
+        missing: s.missing,
+        tokenStored: s.tokenStored,
+        lastError: s.lastError,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  /**
+   * GET /api/channels/ebay/orders?days=30
+   * Per-item tracking cards: line items + carrier/tracking + status.
+   */
+  router.get("/ebay/orders", async (req, res, next) => {
+    try {
+      const days = Math.max(1, Math.min(90, Number(req.query.days) || 30));
+      const orders = await getEbayTracking({ days });
+      res.json({ ok: true, days, count: orders.length, orders });
+    } catch (err) {
+      if (err.code === "CHANNEL_NOT_CONFIGURED") {
+        return res.status(503).json({ ok: false, error: err.message, code: err.code });
+      }
+      if (err.code === "EBAY_AUTH_FAILED" || err.code === "EBAY_API_ERROR") {
+        return res.status(502).json({ ok: false, error: err.message, code: err.code });
+      }
       next(err);
     }
   });
