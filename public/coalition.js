@@ -318,7 +318,7 @@ function navigate(view) {
   state.view = view;
   state.constellationMode = view === "collection" ? "collection" : "tree";
   location.hash = `#/${view}`;
-  $("app")?.classList.toggle("wide", view === "constellation");
+  $("app")?.classList.remove("wide");
   for (const v of VIEWS) {
     $(`view-${v}`)?.classList.toggle("active", v === view);
     document.querySelector(`.nav-tab[data-view="${v}"]`)?.classList.toggle("active", v === view);
@@ -1759,6 +1759,7 @@ function render() {
   window.HUD_collection?.refresh();
   window.HUD_settings?.render();
   window.HUD_invtools?.refresh();
+  window.AX?.render();
 }
 
 function bind() {
@@ -1887,6 +1888,10 @@ function bind() {
     assignSpace,
     syncEbay,
     seedDemoItems,
+    moveItemToPhase,
+    openCard: hudReadout,
+    PHASES,
+    phaseFromItem,
   };
 }
 
