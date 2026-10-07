@@ -1231,32 +1231,37 @@ async function addPhotos(fileList, opts) {
     toast("No images in that drop");
     return;
   }
+  // One pick / drop = ONE item. Every photo in it goes on that item, first
+  // photo is the cover. (Four angles of one card must not become four items.)
   let added = 0;
   let firstNewId = null;
-  // One batch per drop: every photo in this picker/drop shares a batch id so
-  // Scouter can show "what came in together".
   const batchId = uid();
   const skuPrefix = readSkuPrefix();
+  const photos = [];
+  let firstName = "";
   for (const file of files) {
-    let dataUrl = null;
     try {
       // Compress on intake so phone photos fit local storage. The compressor
       // returns a copy — on any failure we keep the original, never lose it.
       const shrunk = window.ScouterImage
         ? await window.ScouterImage.compressPhoto(file).catch(() => file)
         : file;
-      dataUrl = await fileToDataUrl(shrunk);
+      const dataUrl = await fileToDataUrl(shrunk);
+      photos.push({ id: uid(), dataUrl, createdAt: new Date().toISOString() });
+      if (!firstName) firstName = file.name.replace(/\.[^.]+$/, "");
     } catch {
       continue; // unreadable photo: skip it, keep the rest
     }
+  }
+  if (photos.length) {
     const now = new Date().toISOString();
     const itemId = uid();
-    if (!firstNewId) firstNewId = itemId;
+    firstNewId = itemId;
     state.items.unshift(normalizeItem({
       id: itemId,
       createdAt: now,
       updatedAt: now,
-      title: file.name.replace(/\.[^.]+$/, "") || "Scan",
+      title: firstName || "Scan",
       productName: null,
       quantity: 1,
       price: null,
@@ -1267,9 +1272,9 @@ async function addPhotos(fileList, opts) {
       batchId,
       sku: skuPrefix ? nextSku(skuPrefix) : "",
       channels: {},
-      photos: [{ id: uid(), dataUrl, createdAt: now }],
+      photos,
     }));
-    added++;
+    added = 1;
   }
   if (!added) {
     toast("No photos could be read — nothing added");
@@ -1284,7 +1289,7 @@ async function addPhotos(fileList, opts) {
     if (firstNewId) openSheet(firstNewId);
     return;
   }
-  toast(`${added} on Scouter`);
+  toast(photos.length > 1 ? `1 item, ${photos.length} photos` : "1 on Scouter");
   navigate("scouter");
 }
 
@@ -1485,7 +1490,12 @@ function identifyCandidateLabel(c) {
 
 function identifyShowMessage(html) {
   const host = $("identifyResults");
-  if (host) host.innerHTML = html;
+  if (host) {
+    host.innerHTML = html;
+    try { host.scrollIntoView({ block: "center", behavior: "smooth" }); } catch {}
+  }
+  const t = String(html).replace(/<button[\s\S]*?<\/button>/g, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  if (t && !/^Identifying from/i.test(t)) toast(t.length > 90 ? t.slice(0, 88) + "…" : t);
 }
 
 function identifyShowCandidates(id, candidates, intro) {
@@ -1845,6 +1855,50 @@ function bind() {
       addPhotos(e.dataTransfer.files);
     });
   }
+
+  // Back-button safety: never fall out of the app by accident.
+  try {
+    if (!(history.state && (history.state.base || history.state.sheet))) {
+      history.replaceState({ base: 1 }, "", location.href);
+      history.pushState({ app: 1 }, "", location.href);
+    }
+  } catch {}
+  // Overlays (item sheet, bin sheet, stage view, card zoom) each take one
+  // history step, so Back closes the overlay and never leaves the app.
+  const OV = "#rzCard, #rzStage, .sheet.open";
+  let ovPushed = false;
+  const closeOverlays = () => {
+    document.querySelectorAll(OV).forEach((el) => {
+      if (el.id === "itemSheet") {
+        state.sheetItemId = null;
+        el.classList.remove("open"); el.setAttribute("aria-hidden", "true");
+      } else if (el.id === "rzCard" || el.id === "rzStage") {
+        const x = el.querySelector(".rz-x, .rz-back"); if (x) x.click(); else el.remove();
+      } else {
+        const x = el.querySelector("[data-close], .sheet-close, .bd-close, button[aria-label*='lose' i], button[aria-label*='ack' i]");
+        if (x) x.click(); else { el.classList.remove("open"); el.setAttribute("aria-hidden", "true"); }
+      }
+    });
+  };
+  new MutationObserver(() => {
+    const has = !!document.querySelector(OV);
+    try {
+      if (has && !ovPushed) { history.pushState({ ov: 1 }, "", location.href); ovPushed = true; }
+      else if (!has && ovPushed) { ovPushed = false; if (history.state && history.state.ov) history.back(); }
+    } catch {}
+  }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+  window.addEventListener("popstate", (e) => {
+    if (document.querySelector(OV) && !(e.state && e.state.ov)) {
+      ovPushed = false;
+      closeOverlays();
+      return;
+    }
+    if (e.state && e.state.base) {
+      // Hit the bottom of the stack: stay in the app, go to Command.
+      try { history.pushState({ app: 1 }, "", location.href); } catch {}
+      if (state.view !== "command") navigate("command");
+    }
+  });
 
   window.addEventListener("hashchange", () => {
     const view = location.hash.replace(/^#\/?/, "") || "command";

@@ -60,7 +60,7 @@ test("both HTML files load coalition.js?v=23 and stay byte-identical", async () 
   const hud = await src("hud.html");
   assert.equal(index, hud, "index.html and hud.html are byte-identical");
   assert.ok(
-    index.includes('<script type="module" src="/coalition.js?v=46"></script>'),
+    index.includes('<script type="module" src="/coalition.js?v=50"></script>'),
     "coalition v20 present in both",
   );
 });
