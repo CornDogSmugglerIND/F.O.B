@@ -274,3 +274,22 @@ body { background: radial-gradient(900px 600px at 105% 0%, rgba(255,122,46,.16),
 #view-collection .inv-stat.hot .v { font-size: 40px !important; }
 #view-collection .inv-stats { padding-bottom: 8px !important; }
 .cx-stage { height: 190px; } .cx-stage img { height: 160px; }
+
+/* ===== v9: Scouter fits one phone screen: compact readout, lens sized to the space left ===== */
+#view-scouter .ax-v { padding-bottom: 0; }
+body[data-view="scouter"] .hud-app .hud-edge { padding-bottom: 0 !important; }
+#view-scouter .ax-hero { align-items: center; padding: 0 2px 8px; }
+#view-scouter .ax-hero > div:first-child { display: flex; align-items: baseline; gap: 10px; }
+#view-scouter .ax-big { font-size: 34px; line-height: 1; letter-spacing: -.03em; }
+#view-scouter .ax-cap { margin: 0; font-size: 14px; }
+#view-scouter .ax-val { font-size: 22px; padding: 0; text-shadow: none; }
+#view-scouter .ax-seg { margin: 0 0 8px; }
+#view-scouter .ax-seg button { padding: 8px 6px; font-size: 14px; }
+#view-scouter .ax-rail { --lens: clamp(190px, calc(100dvh - 410px), 460px); height: calc(var(--lens) + 16px); box-sizing: border-box; align-items: center; padding: 8px calc(50% - var(--lens) * .375) 8px; margin: 0 -16px; }
+#view-scouter .ax-card { flex: 0 0 auto; height: var(--lens); width: auto; aspect-ratio: 3 / 4; }
+#view-scouter .ax-meta b { font-size: 14px; }
+#view-scouter .ax-next { padding-top: 4px; }
+#view-scouter .ax-btn { padding: 13px 10px; font-size: 16px; }
+#view-scouter .ax-empty { padding: 36px 20px; margin: 6px 2px; }
+.ax-dock { bottom: calc(92px + env(safe-area-inset-bottom)); }
+@media (min-width: 900px) { #view-scouter .ax-rail { padding-left: calc(50% - var(--lens) * .375); padding-right: calc(50% - var(--lens) * .375); } }
