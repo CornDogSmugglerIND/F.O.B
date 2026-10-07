@@ -350,3 +350,13 @@ body .hud-app #view-channels .channel-grid { grid-template-columns: repeat(auto-
 body .hud-app #view-channels .channel-grid > .channel-card img { max-height: 260px; }
 body .hud-app #view-scouter .ax-rail { margin: 0 !important; }
 .build-tag { position: fixed; top: 4px; left: 50%; transform: translateX(-50%); z-index: 9999; font: 600 10px/1 Inter, sans-serif; letter-spacing: .14em; color: rgb(var(--hx)); opacity: .8; pointer-events: none; }
+
+/* empty states: same HUD frame, never a plain rounded box */
+.hud-app .ax-empty, .hud-app .ax-quiet, .hud-app .inv-empty, .hud-app .pool, .hud-app .empty-quiet {
+  border-radius: 8px !important; border: 0 !important; background: linear-gradient(180deg, rgba(var(--hx), .06), rgba(5,8,10,.7)) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--hx), .28), inset 0 0 40px -18px rgba(var(--hx), .35) !important; color: var(--ink-2) !important;
+}
+.hud-app .ax-empty { padding: 40px 20px; position: relative; overflow: hidden; }
+.hud-app .ax-empty::after { content: ""; position: absolute; left: 12%; right: 12%; height: 2px; top: 20%; background: linear-gradient(90deg, transparent, rgba(var(--hx), .8), transparent); box-shadow: 0 0 14px rgba(var(--hx), .8); animation: cxscan 3.4s linear infinite; pointer-events: none; }
+.hud-app .inv-empty { border-style: solid !important; padding: 36px 20px; text-align: center; }
+.hud-app .spaces-nodes .space-node, .hud-app .space-node { border-radius: 8px !important; }
