@@ -318,7 +318,7 @@ function navigate(view) {
   state.view = view;
   state.constellationMode = view === "collection" ? "collection" : "tree";
   location.hash = `#/${view}`;
-  $("app")?.classList.toggle("wide", view === "constellation");
+  $("app")?.classList.toggle("wide", view === "constellation" || view === "collection");
   for (const v of VIEWS) {
     $(`view-${v}`)?.classList.toggle("active", v === view);
     document.querySelector(`.nav-tab[data-view="${v}"]`)?.classList.toggle("active", v === view);

@@ -97,7 +97,7 @@
   }
 
   var STATUSES = ["draft", "sorted", "photographed", "ready to list", "listed", "sold", "error"];
-  var view = { q: "", status: "all", sort: "newest", select: false, sel: {}, mode: "grid" };
+  var view = { q: "", status: "all", sort: "newest", select: false, sel: {}, mode: "hud", focus: null };
 
   function statusOf(item) {
     return STATUSES.indexOf(item.listingStatus) >= 0 ? item.listingStatus : "draft";
@@ -152,6 +152,42 @@
     );
   }
 
+
+  function phaseIdx(item) { var ids = Object.keys(PHASE_LABELS); return Math.max(0, ids.indexOf(phaseOf(item))); }
+
+  function rowHtml(item, on) {
+    var picked = view.select && view.sel[item.id];
+    var st = statusOf(item), profit = profitOf(item);
+    var q = item.quantity === undefined ? 1 : item.quantity;
+    return '<button type="button" class="cx-row' + (on ? " on" : "") + (picked ? " picked" : "") + '" data-item="' + esc(item.id) + '">' +
+      '<span class="cx-th">' + thumbHtml(item) + "</span>" +
+      '<span class="cx-mid"><b>' + esc(itemName(item)) + "</b>" +
+      '<i>' + esc(st) + (q > 1 ? " \u00b7 \u00d7" + q : "") + "</i></span>" +
+      '<span class="cx-r"><b>' + money(item.price || 0) + "</b>" +
+      '<i class="' + (profit < 0 ? "neg" : "") + '">' + (profit < 0 ? "\u2212" : "+") + money(Math.abs(profit)) + "</i></span></button>";
+  }
+
+  function projHtml(item) {
+    if (!item) return "";
+    var st = statusOf(item), profit = profitOf(item), ids = Object.keys(PHASE_LABELS), at = phaseIdx(item);
+    var src = (item.photos && item.photos[0] && item.photos[0].dataUrl) || "";
+    var q = item.quantity === undefined ? 1 : item.quantity;
+    var pips = ids.map(function (id, i) { return '<u class="' + (i < at ? "done" : i === at ? "now" : "") + '"></u>'; }).join("");
+    return '<div class="cx-holo" data-item="' + esc(item.id) + '">' +
+      '<div class="cx-stage"><span class="cx-beam"></span>' +
+      (src ? '<img src="' + src + '" alt="">' : '<b class="cx-noimg"></b>') +
+      '<span class="cx-base"></span></div>' +
+      '<div class="cx-read"><h3>' + esc(itemName(item)) + "</h3>" +
+      '<div class="cx-pips" title="' + esc(PHASE_LABELS[phaseOf(item)]) + '">' + pips + "</div>" +
+      '<dl><div><dt>Stage</dt><dd>' + esc(PHASE_LABELS[phaseOf(item)]) + "</dd></div>" +
+      '<div><dt>Qty</dt><dd>' + q + "</dd></div>" +
+      '<div><dt>Paid</dt><dd>' + money(item.purchasePrice || 0) + "</dd></div>" +
+      '<div><dt>Market</dt><dd class="hot">' + money(item.price || 0) + "</dd></div>" +
+      '<div><dt>Profit</dt><dd class="' + (profit < 0 ? "neg" : "pos") + '">' + (profit < 0 ? "\u2212" : "+") + money(Math.abs(profit)) + "</dd></div>" +
+      '<div><dt>Bin</dt><dd>' + esc(binName(item)) + "</dd></div></dl>" +
+      '<button type="button" class="cx-open" data-open="' + esc(item.id) + '">Open</button></div></div>';
+  }
+
   function visibleItems() {
     var q = view.q.trim().toLowerCase();
     var list = items().filter(function (i) {
@@ -183,7 +219,12 @@
     } else if (!list.length) {
       host.innerHTML = '<div class="inv-empty"><p>Nothing matches. Clear the search or pick All.</p></div>';
     } else {
-      host.innerHTML = view.mode === "grid"
+      if (view.mode === "hud") {
+        if (!list.some(function (i) { return i.id === view.focus; })) view.focus = list[0].id;
+        var fi = list.filter(function (i) { return i.id === view.focus; })[0];
+        host.innerHTML = '<div class="cx"><div class="cx-proj" id="cxProj">' + projHtml(fi) + '</div><div class="cx-list">' +
+          list.map(function (i) { return rowHtml(i, i.id === view.focus); }).join("") + "</div></div>";
+      } else host.innerHTML = view.mode === "grid"
         ? '<div class="inv-grid">' + list.map(tileHtml).join("") + "</div>"
         : '<div class="inv-list">' + list.map(cardHtml).join("") + "</div>";
     }
@@ -197,10 +238,24 @@
           paintBulk();
           return;
         }
+        if (view.mode === "hud" && view.focus !== id) {
+          view.focus = id;
+          host.querySelectorAll(".cx-row").forEach(function (r) { r.classList.toggle("on", r.getAttribute("data-item") === id); });
+          var fit = items().filter(function (i) { return i.id === id; })[0];
+          var pj = document.getElementById("cxProj");
+          if (pj) { pj.innerHTML = projHtml(fit); wireOpen(pj); }
+          return;
+        }
         if (c && c.openSheet) c.openSheet(id);
         else if (window.HUD_openSheet) window.HUD_openSheet(id);
       });
     });
+    function wireOpen(root) {
+      var ob = root.querySelector("[data-open]");
+      if (ob) ob.addEventListener("click", function () { var cc = core(); if (cc && cc.openSheet) cc.openSheet(ob.getAttribute("data-open")); });
+    }
+    var pj0 = document.getElementById("cxProj");
+    if (pj0) wireOpen(pj0);
   }
 
   function paintBulk() {
@@ -280,7 +335,7 @@
       [["newest", "Newest"], ["profit", "Most profit"], ["value", "Highest value"], ["name", "Name A\u2013Z"]].map(function (o) {
         return '<option value="' + o[0] + '"' + (view.sort === o[0] ? " selected" : "") + ">" + o[1] + "</option>";
       }).join("") + "</select>" +
-      '<button type="button" class="inv-selbtn" id="invModeBtn" aria-label="Switch grid or list">' + (view.mode === "grid" ? "List" : "Grid") + "</button>" +
+      '<button type="button" class="inv-selbtn" id="invModeBtn" aria-label="Switch grid or list">' + (view.mode === "hud" ? "List" : "HUD") + "</button>" +
       '<button type="button" class="inv-selbtn' + (view.select ? " on" : "") + '" id="invSelBtn">' + (view.select ? "Done" : "Select") + "</button>" +
       "</div>" +
       '<div class="inv-chips" id="invChips">' + chips + "</div>" +
@@ -300,7 +355,7 @@
     section.querySelector("#invSearch").addEventListener("input", function (e) { view.q = e.target.value; paintList(); });
     section.querySelector("#invSort").addEventListener("change", function (e) { view.sort = e.target.value; paintList(); });
     section.querySelector("#invModeBtn").addEventListener("click", function () {
-      view.mode = view.mode === "grid" ? "list" : "grid";
+      view.mode = view.mode === "hud" ? "list" : "hud";
       render();
     });
     section.querySelector("#invSelBtn").addEventListener("click", function () {
