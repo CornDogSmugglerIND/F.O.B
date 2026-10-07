@@ -133,31 +133,12 @@
     }
   }
 
-  /* ---------------- Tree ---------------- */
+  /* ---------------- Tree: the floaty route map (drawn by hud.js) ---------------- */
   function renderTree() {
     var host = ensure("view-constellation", "axTree");
-    if (!host || !C()) return;
-    var items = C().state.items, P = phases();
-    var by = {}; P.forEach(function (p) { by[p.id] = []; });
-    items.forEach(function (i) { (by[phaseOf(i)] || by.intake).push(i); });
-    if (!treeStage || !by[treeStage]) { var f = P.filter(function (p) { return by[p.id].length; })[0]; treeStage = (f || P[0]).id; }
-    var nodes = P.map(function (p, i) {
-      var n = by[p.id].length;
-      return '<button type="button" class="ax-node' + (p.id === treeStage ? " sel" : "") + (n ? " has" : "") + '" data-s="' + p.id + '"><i>' + n + "</i><span>" + p.label + "</span></button>";
-    }).join("");
-    var list = by[treeStage];
-    var val = list.reduce(function (s, i) { return s + worth(i); }, 0);
-    var body = list.length
-      ? '<div class="ax-rail">' + list.map(card).join("") + "</div>" + '<div id="axTreeNext">' + nextBar(list, "tree") + "</div>"
-      : '<div class="ax-quiet">Nothing at ' + esc(phaseLabel(treeStage)) + " yet</div>";
-    host.innerHTML =
-      '<div class="ax-line"><div class="ax-track"></div>' + nodes + "</div>" +
-      '<div class="ax-stagehead"><b>' + esc(phaseLabel(treeStage)) + "</b><span>" + list.length + (list.length === 1 ? " item" : " items") + " · " + money(val) + "</span></div>" + body;
-    host.querySelectorAll(".ax-node").forEach(function (b) { b.addEventListener("click", function () { treeStage = b.dataset.s; focus.tree = null; renderTree(); }); });
-    wireRail(host, "tree", function () { var n = $("axTreeNext"); if (n) { n.innerHTML = nextBar(list, "tree"); wireNext(n); } });
-    wireNext(host);
-    var sel = host.querySelector(".ax-node.sel");
-    if (sel && sel.scrollIntoView) { var ln = host.querySelector(".ax-line"); ln.scrollLeft = sel.offsetLeft - ln.clientWidth / 2 + sel.offsetWidth / 2; }
+    if (!host || !C() || !C().renderTreeMap) return;
+    if (D.body.getAttribute("data-view") !== "constellation" && host.firstChild) return;
+    C().renderTreeMap(host);
   }
 
   function title() {

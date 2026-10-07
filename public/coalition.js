@@ -1,5 +1,5 @@
 import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=1";
-import { initHud, renderHome as hudHome, renderLine as hudLine, openReadout as hudReadout } from "/visor/hud.js?v=9";
+import { initHud, renderHome as hudHome, renderLine as hudLine, openReadout as hudReadout, renderTreeMap as hudTreeMap } from "/visor/hud.js?v=10";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";
@@ -318,7 +318,7 @@ function navigate(view) {
   state.view = view;
   state.constellationMode = view === "collection" ? "collection" : "tree";
   location.hash = `#/${view}`;
-  $("app")?.classList.remove("wide");
+  $("app")?.classList.toggle("wide", view === "constellation");
   for (const v of VIEWS) {
     $(`view-${v}`)?.classList.toggle("active", v === view);
     document.querySelector(`.nav-tab[data-view="${v}"]`)?.classList.toggle("active", v === view);
@@ -1890,6 +1890,7 @@ function bind() {
     seedDemoItems,
     moveItemToPhase,
     openCard: hudReadout,
+    renderTreeMap: hudTreeMap,
     PHASES,
     phaseFromItem,
   };

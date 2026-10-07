@@ -88,6 +88,50 @@ function routePathOld(pts) {
 const cardClick = (b) => b.addEventListener("click", (e) => { if (!dragged) openCard(b.dataset.item, b); else e.preventDefault(); });
 
 /* ---------- Home ---------- */
+const STOPS_H = [[70, 190], [190, 252], [310, 190], [430, 252], [550, 190], [670, 252], [790, 190]];
+const SIDE_H = [-1, 1, -1, 1, -1, 1, -1];
+const H_W = 860, H_H = 440;
+function mapMarkup(orient, sfx) {
+  const { PHASES } = ctx;
+  const by = byPhase();
+  const h = orient === "h";
+  const S = h ? STOPS_H : STOPS, SD = h ? SIDE_H : SIDE, W = h ? H_W : MAP_W, H = h ? H_H : MAP_H;
+  const d = routePath(S);
+
+  const nodes = PHASES.map((p, i) => {
+    const list = by[p.id];
+    const [x, y] = S[i];
+    const side = SD[i];
+    const stack = list.slice(0, 3).map((it, k) => {
+      const src = photoOf(it);
+      const q = Number(it.quantity) || 1;
+      return `<button type="button" class="rt-card rm-card k${k}" data-item="${esc(it.id)}" aria-label="${esc(nameOf(it))}" style="--k:${k};--side:${side}">
+        <span class="rt-face">${src ? `<img src="${src}" alt="" draggable="false">` : `<b class="rt-ini">${initial(it)}</b>`}
+        ${q > 1 ? `<span class="rt-q">\u00d7${q}</span>` : ""}
+        <span class="rt-cap"><span>${esc(nameOf(it))}</span><b>${ctx.money(worth(it))}</b></span></span></button>`;
+    }).reverse().join("");
+    const more = list.length > 3 ? `<span class="rm-more" style="--side:${side}">+${list.length - 3}</span>` : "";
+    return `<div class="rm-stop${list.length ? " on" : ""}" data-drop="${p.id}" style="left:${(x / W * 100).toFixed(2)}%;top:${(y / H * 100).toFixed(2)}%">
+      <span class="rm-zone"></span>
+      <button type="button" class="rm-pin" data-stage="${p.id}" aria-label="${p.label}, ${list.length} items"><i></i><span class="rm-name">${p.label}${list.length ? ` <b>${list.length}</b>` : ""}</span></button>
+      <span class="rm-cards" style="--side:${side}">${stack}${more}</span>
+    </div>`;
+  }).join("");
+  return `      <div class="rm${orient === 'h' ? ' rm-h' : ''}" id="rhMap${sfx}" role="group" aria-label="Pile to doorstep">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+          <defs><filter id="rhb${sfx}" x="-20%" y="-10%" width="140%" height="120%"><feGaussianBlur stdDeviation="6"/></filter>
+            <path id="rhroute${sfx}" d="${d}"/></defs>
+          <g class="rm-streets">${streets()}</g>
+          <path d="${d}" class="rh-glow" filter="url(#rhb${sfx})"/>
+          <path d="${d}" class="rh-line"/>
+          <path d="${d}" class="rh-flow"/>
+          <polygon points="-7,-6 8,0 -7,6 -3,0" class="rm-arrow"><animateMotion dur="9s" repeatCount="indefinite" rotate="auto"><mpath href="#rhroute${sfx}"/></animateMotion></polygon>
+        </svg>
+        ${nodes}
+        <svg class="rm-end" viewBox="0 0 24 32" style="left:${(S[6][0] / W * 100).toFixed(2)}%;top:${(S[6][1] / H * 100).toFixed(2)}%" aria-hidden="true"><path d="M12 1C6 1 2 5.5 2 11c0 7 10 19 10 19s10-12 10-19C22 5.5 18 1 12 1z" fill="#fff"/><circle cx="12" cy="11" r="4" fill="#0b0c10"/></svg>
+      </div>`;
+}
+
 export function renderHome() {
   const host = document.getElementById("hudHome");
   if (!host || !ctx) return;
@@ -101,27 +145,7 @@ export function renderHome() {
   const needsBin = items.filter((i) => !i.spaceId && phaseFromItem(i) !== "listed").length;
   const toShip = by.sold.length + by.packed.length;
   const review = by.intake.length;
-  const d = routePath(STOPS);
-
-  const nodes = PHASES.map((p, i) => {
-    const list = by[p.id];
-    const [x, y] = STOPS[i];
-    const side = SIDE[i];
-    const stack = list.slice(0, 3).map((it, k) => {
-      const src = photoOf(it);
-      const q = Number(it.quantity) || 1;
-      return `<button type="button" class="rt-card rm-card k${k}" data-item="${esc(it.id)}" aria-label="${esc(nameOf(it))}" style="--k:${k};--side:${side}">
-        <span class="rt-face">${src ? `<img src="${src}" alt="" draggable="false">` : `<b class="rt-ini">${initial(it)}</b>`}
-        ${q > 1 ? `<span class="rt-q">\u00d7${q}</span>` : ""}
-        <span class="rt-cap"><span>${esc(nameOf(it))}</span><b>${ctx.money(worth(it))}</b></span></span></button>`;
-    }).reverse().join("");
-    const more = list.length > 3 ? `<span class="rm-more" style="--side:${side}">+${list.length - 3}</span>` : "";
-    return `<div class="rm-stop${list.length ? " on" : ""}" data-drop="${p.id}" style="left:${(x / MAP_W * 100).toFixed(2)}%;top:${(y / MAP_H * 100).toFixed(2)}%">
-      <span class="rm-zone"></span>
-      <button type="button" class="rm-pin" data-stage="${p.id}" aria-label="${p.label}, ${list.length} items"><i></i><span class="rm-name">${p.label}${list.length ? ` <b>${list.length}</b>` : ""}</span></button>
-      <span class="rm-cards" style="--side:${side}">${stack}${more}</span>
-    </div>`;
-  }).join("");
+  const mapHtml = mapMarkup("v", "");
 
   const needs = [
     { n: review, t: "Scans to review", go: "scouter" },
@@ -143,19 +167,7 @@ export function renderHome() {
           <div class="rh-sub">${items.length ? `${items.length} items on the line · ${live} live` : "Nothing on the line yet. Snap a photo in Scouter."}</div>
         </div>
       </div>
-      <div class="rm" id="rhMap" role="group" aria-label="Pile to doorstep">
-        <svg viewBox="0 0 ${MAP_W} ${MAP_H}" preserveAspectRatio="none" aria-hidden="true">
-          <defs><filter id="rhb" x="-20%" y="-10%" width="140%" height="120%"><feGaussianBlur stdDeviation="6"/></filter>
-            <path id="rhroute" d="${d}"/></defs>
-          <g class="rm-streets">${streets()}</g>
-          <path d="${d}" class="rh-glow" filter="url(#rhb)"/>
-          <path d="${d}" class="rh-line"/>
-          <path d="${d}" class="rh-flow"/>
-          <polygon points="-7,-6 8,0 -7,6 -3,0" class="rm-arrow"><animateMotion dur="9s" repeatCount="indefinite" rotate="auto"><mpath href="#rhroute"/></animateMotion></polygon>
-        </svg>
-        ${nodes}
-        <svg class="rm-end" viewBox="0 0 24 32" style="left:${(STOPS[6][0] / MAP_W * 100).toFixed(2)}%;top:${(STOPS[6][1] / MAP_H * 100).toFixed(2)}%" aria-hidden="true"><path d="M12 1C6 1 2 5.5 2 11c0 7 10 19 10 19s10-12 10-19C22 5.5 18 1 12 1z" fill="#fff"/><circle cx="12" cy="11" r="4" fill="#0b0c10"/></svg>
-      </div>
+      ${mapHtml}
       <div class="rh-hint">Hold a card, then drop it on a stop to move it</div>
       <div class="rh-sec">Needs you</div>
       <div class="rh-needs">${needs}</div>
@@ -176,6 +188,35 @@ export function renderHome() {
     rm.style.setProperty("--px", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
     rm.style.setProperty("--py", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
   }, { passive: true });
+}
+
+/* ---------- Tree tab: the same floaty route, bigger, across or down, items draggable ---------- */
+export function renderTreeMap(host) {
+  if (!host || !ctx) return;
+  let mode = "h";
+  try { if (localStorage.getItem("fob-tree-mode") === "down") mode = "v"; } catch (_) { /* ignore */ }
+  const sc = host.querySelector(".tm-scroll");
+  const keep = sc ? sc.scrollLeft : null;
+  host.innerHTML = `<div class="ax-seg tm-seg" role="tablist"><button type="button" data-tm="h" class="${mode === "h" ? "on" : ""}">Across</button><button type="button" data-tm="v" class="${mode === "v" ? "on" : ""}">Down</button></div>
+    <div class="tm-scroll${mode === "v" ? " down" : ""}">${mapMarkup(mode, "t")}</div>
+    <div class="rh-hint">Hold a card, drop it on a stop. Tap a stop to open it.</div>`;
+  host.querySelectorAll("[data-tm]").forEach((b) => b.addEventListener("click", () => {
+    try { localStorage.setItem("fob-tree-mode", b.dataset.tm === "v" ? "down" : "across"); } catch (_) { /* ignore */ }
+    renderTreeMap(host);
+  }));
+  host.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => openStage(b.dataset.stage, b)));
+  host.querySelectorAll(".rt-card").forEach(cardClick);
+  const rm = host.querySelector(".rm");
+  if (rm) rm.addEventListener("pointermove", (e) => {
+    const r = rm.getBoundingClientRect();
+    rm.style.setProperty("--px", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
+    rm.style.setProperty("--py", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
+  }, { passive: true });
+  const scr = host.querySelector(".tm-scroll");
+  if (scr && mode === "h") {
+    if (keep != null) scr.scrollLeft = keep;
+    else { const on = scr.querySelector(".rm-stop.on"); if (on) scr.scrollLeft = Math.max(0, on.offsetLeft - 60); }
+  }
 }
 
 /* ---------- Route (constellation tree) ---------- */
@@ -491,6 +532,8 @@ function bindTilt() {
     t.classList.add("tiltable", "tilting");
     t.style.setProperty("--ty", `${(px * 12).toFixed(1)}deg`);
     t.style.setProperty("--tx", `${(-py * 12).toFixed(1)}deg`);
+    t.style.setProperty("--fx", `${(px * 100 + 50).toFixed(0)}%`);
+    t.style.setProperty("--fy", `${(py * 100 + 50).toFixed(0)}%`);
   }, { passive: true });
   document.addEventListener("pointerout", (e) => {
     const t = e.target.closest && e.target.closest(TILT);
