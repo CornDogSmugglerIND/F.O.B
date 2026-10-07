@@ -349,3 +349,4 @@ body .hud-app #view-channels .ebay-actions .btn, body .hud-app .btn-sm, body .hu
 body .hud-app #view-channels .channel-grid { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)) !important; }
 body .hud-app #view-channels .channel-grid > .channel-card img { max-height: 260px; }
 body .hud-app #view-scouter .ax-rail { margin: 0 !important; }
+.build-tag { position: fixed; top: 4px; left: 50%; transform: translateX(-50%); z-index: 9999; font: 600 10px/1 Inter, sans-serif; letter-spacing: .14em; color: rgb(var(--hx)); opacity: .8; pointer-events: none; }
