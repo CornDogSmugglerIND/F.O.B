@@ -293,3 +293,59 @@ body[data-view="scouter"] .hud-app .hud-edge { padding-bottom: 0 !important; }
 #view-scouter .ax-empty { padding: 36px 20px; margin: 6px 2px; }
 .ax-dock { bottom: calc(92px + env(safe-area-inset-bottom)); }
 @media (min-width: 900px) { #view-scouter .ax-rail { padding-left: calc(50% - var(--lens) * .375); padding-right: calc(50% - var(--lens) * .375); } }
+
+/* ===== v10: one HUD language for every tab: thin glass panels, bracket ticks, readout titles, square controls ===== */
+.hud-app .panel, .hud-app .settings-block, .hud-app .ebay-card, #view-channels .ebay-card, .hud-app .ff-stages, .hud-app .fh-card, .hud-app .sheet-card {
+  border-radius: 8px !important; background: linear-gradient(180deg, rgba(var(--hx), .06), rgba(5,8,10,.7)) !important; border: 0 !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--hx), .26), 0 18px 36px -24px #000 !important; position: relative;
+  --b: rgba(var(--hs), .5); --l: 10px; --w: 1.5px;
+  background-image: linear-gradient(var(--b), var(--b)), linear-gradient(var(--b), var(--b)), linear-gradient(var(--b), var(--b)), linear-gradient(var(--b), var(--b)), linear-gradient(var(--b), var(--b)), linear-gradient(var(--b), var(--b)), linear-gradient(var(--b), var(--b)), linear-gradient(var(--b), var(--b)), linear-gradient(180deg, rgba(var(--hx), .06), rgba(5,8,10,.7)) !important;
+  background-size: var(--l) var(--w), var(--w) var(--l), var(--l) var(--w), var(--w) var(--l), var(--l) var(--w), var(--w) var(--l), var(--l) var(--w), var(--w) var(--l), 100% 100% !important;
+  background-position: 5px 5px, 5px 5px, calc(100% - 5px) 5px, calc(100% - 5px) 5px, 5px calc(100% - 5px), 5px calc(100% - 5px), calc(100% - 5px) calc(100% - 5px), calc(100% - 5px) calc(100% - 5px), 0 0 !important;
+  background-repeat: no-repeat !important;
+}
+.hud-app .panel::before, .hud-app .settings-block::before, #view-channels .ebay-card::before { display: none !important; }
+.hud-app .chrome { font-size: 12px !important; font-weight: 600 !important; letter-spacing: .12em !important; text-transform: uppercase !important; color: rgb(var(--hx)) !important; display: flex; align-items: center; gap: 8px; }
+.hud-app .chrome::before { content: ""; width: 14px; height: 1.5px; background: rgb(var(--hx)); box-shadow: 0 0 8px rgba(var(--hx), .8); }
+.hud-app .btn, .hud-app .btn-ghost, .hud-app .btn-amber, .hud-app .fh-btn, .hud-app .stg-select, .hud-app .btn-sm { border-radius: 6px !important; }
+.hud-app .btn:not(.btn-amber):not(.btn-ghost) { background: rgba(var(--hx), .08) !important; color: var(--ink) !important; box-shadow: inset 0 0 0 1px rgba(var(--hx), .35) !important; }
+.hud-app .btn-amber { background: rgba(var(--ax-acc), .14) !important; color: rgb(var(--ax-acc)) !important; box-shadow: inset 0 0 0 1px rgba(var(--ax-acc), .85), 0 0 24px -8px rgba(var(--ax-acc), .6) !important; }
+.hud-app .btn-ghost { background: transparent !important; color: var(--ink-2) !important; box-shadow: inset 0 0 0 1px rgba(var(--hs), .22) !important; }
+.hud-app .fh-btn { background: rgba(var(--hx), .07) !important; box-shadow: inset 0 0 0 1px rgba(var(--hx), .3) !important; }
+.hud-app .fh-chip { border-radius: 4px !important; background: rgba(var(--hs), .06) !important; color: var(--ink-2) !important; box-shadow: inset 0 0 0 1px rgba(var(--hs), .14) !important; }
+.hud-app .fh-chip.on { color: rgb(var(--hx)) !important; background: rgba(var(--hx), .12) !important; box-shadow: inset 0 0 0 1px rgba(var(--hx), .6) !important; }
+.hud-app .ebay-badge { border-radius: 3px !important; letter-spacing: .08em !important; text-transform: uppercase; background: rgba(4,8,10,.6) !important; box-shadow: inset 0 0 0 1px rgba(var(--hx), .4); }
+.hud-app .stg-toggle { border-radius: 4px !important; }
+.hud-app .stg-knob { border-radius: 2px !important; }
+.hud-app .stg-row { border-color: rgba(var(--hx), .16) !important; }
+/* fulfilment as square readout cells */
+#view-channels .ff-stage .n, #view-channels .ff-stage .orb { border-radius: 6px !important; }
+.hud-app .channel-card { border-radius: 8px !important; box-shadow: inset 0 0 0 1px rgba(var(--hx), .26) !important; }
+.hud-app .channel-card img { filter: saturate(.7) contrast(1.05) brightness(.88); }
+/* desktop: channels + settings use the width */
+@media (min-width: 900px) {
+  #view-channels.active, #view-channels[style*="block"], body[data-view="channels"] #view-channels { display: grid !important; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  body[data-view="channels"] #view-channels > .ch-head, body[data-view="channels"] #view-channels > .channel-grid, body[data-view="channels"] #view-channels > .channel-toolbar, body[data-view="channels"] #view-channels > #combinePool, body[data-view="channels"] #view-channels > #combineHint { grid-column: 1 / -1; }
+  body[data-view="settings"] #view-settings { columns: 2; column-gap: 14px; }
+  body[data-view="settings"] #view-settings > * { break-inside: avoid; margin-bottom: 14px; }
+}
+/* Scouter lens: reticle ring + edge ticks on the focused item, lighter scan */
+.ax-card.on::after { background:
+  radial-gradient(circle at 50% 46%, transparent 0 31%, rgba(var(--hx), .55) 31.4%, transparent 32.4%, transparent 36%, rgba(var(--hx), .22) 36.3%, transparent 37%),
+  linear-gradient(90deg, rgba(var(--hx), .5), rgba(var(--hx), .5)) 0 46% / 12px 1px no-repeat,
+  linear-gradient(90deg, rgba(var(--hx), .5), rgba(var(--hx), .5)) 100% 46% / 12px 1px no-repeat,
+  repeating-linear-gradient(180deg, rgba(0,0,0,0) 0 3px, rgba(0,0,0,.08) 3px 4px),
+  linear-gradient(180deg, rgba(var(--hx), .04), transparent 30%, transparent 50%, rgba(3,6,8,.88) 100%); }
+.ax-card.on .ax-meta { border-top-color: rgba(var(--ax-acc), .6); }
+.hud-app .chrome[hidden], .hud-app [hidden] { display: none !important; }
+.hud-app .files-hub { border-radius: 8px !important; background: linear-gradient(180deg, rgba(var(--hx), .06), rgba(5,8,10,.7)) !important; box-shadow: inset 0 0 0 1px rgba(var(--hx), .26), 0 18px 36px -24px #000 !important; border: 0 !important; }
+.hud-app #btnCombineMode, .hud-app .channel-toolbar .btn { border-radius: 6px !important; }
+.hud-app .ch-head { font-size: 12px !important; margin: 14px 0 8px; }
+.hud-app .ch-count { color: rgb(var(--ax-acc)); font-variant-numeric: tabular-nums; }
+.hud-app .channel-card { overflow: hidden; }
+.hud-app .channel-card img { aspect-ratio: 3 / 4; object-fit: cover; width: 100%; max-height: 360px; }
+body .hud-app .settings-block .chrome, body .hud-app .panel > .chrome { font-size: 12px !important; letter-spacing: .12em !important; }
+body .hud-app #view-channels .ebay-actions .btn, body .hud-app .btn-sm, body .hud-app .stg-select, body .hud-app .stg-actions .btn, body .hud-app .stg-actions button, body .hud-app .settings-block .btn { border-radius: 6px !important; }
+body .hud-app #view-channels .channel-grid { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)) !important; }
+body .hud-app #view-channels .channel-grid > .channel-card img { max-height: 260px; }
+body .hud-app #view-scouter .ax-rail { margin: 0 !important; }
