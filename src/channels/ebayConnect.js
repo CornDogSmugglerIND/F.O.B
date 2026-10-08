@@ -95,10 +95,23 @@ function tokenFile() {
   return join(getDataRoot(), "ebay-tokens.json");
 }
 
-/** Stored tokens, or null. Never throws. */
+const BLOB_PATH = "coalition/ebay-tokens.json";
+function blobOn() {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
+/** Stored tokens, or null. Never throws. Durable (Vercel Blob) when a store is attached. */
 export async function loadEbayTokenStore() {
   try {
-    const raw = await readFile(tokenFile(), "utf8");
+    let raw;
+    if (blobOn()) {
+      const { get } = await import("@vercel/blob");
+      const r = await get(BLOB_PATH, { access: "private", useCache: false });
+      if (!r || r.statusCode !== 200) return null;
+      raw = await new Response(r.stream).text();
+    } else {
+      raw = await readFile(tokenFile(), "utf8");
+    }
     const t = JSON.parse(raw);
     if (t && typeof t.refresh_token === "string" && t.refresh_token) return t;
     return null;
@@ -115,6 +128,26 @@ export async function saveEbayTokenStore(tokens) {
     ...tokens,
     obtained_at: new Date().toISOString(),
   };
+  if (blobOn()) {
+    const { put } = await import("@vercel/blob");
+    await put(BLOB_PATH, JSON.stringify(next), {
+      access: "private",
+      allowOverwrite: true,
+      addRandomSuffix: false,
+      contentType: "application/json",
+    });
+    return next;
+  }
+  if (blobOn()) {
+    const { put } = await import("@vercel/blob");
+    await put(BLOB_PATH, JSON.stringify(next), {
+      access: "private",
+      allowOverwrite: true,
+      addRandomSuffix: false,
+      contentType: "application/json",
+    });
+    return next;
+  }
   const file = tokenFile();
   await mkdir(join(file, ".."), { recursive: true });
   await writeFile(file, JSON.stringify(next, null, 2), { mode: 0o600, encoding: "utf8" });
