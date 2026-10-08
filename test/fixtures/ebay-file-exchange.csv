@@ -1,0 +1,4 @@
+Info,Version=1.0.0,Template=eBay-Live-Beta
+"Action","SKU","Title","Description","StartPrice","Quantity","ConditionID","Format","Duration"
+"Add","PKM-JTG-NORMAL-1-001","Dudunsparce 121/159 Journey Together NM Single","Near mint single","4.99","1","3000","FixedPrice","GTC"
+"Add","PKM-SFA-HOLO-2-014","Charizard ex Holo 014 Supercharged Breaker","Light play, see photos","89.99","2","3000","FixedPrice","GTC"
