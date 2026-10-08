@@ -202,7 +202,22 @@ test("GET /api/channels/ebay/status shape", async () => {
   }
 });
 
-test("callback rejects state mismatch", async () => {
+test("callback rejects state mismatch (json)", async () => {
+  const { baseUrl, close } = await startServer();
+  try {
+    const res = await fetch(
+      `${baseUrl}/api/channels/ebay/callback?code=abc&state=wrong&json=1`,
+      { headers: { cookie: "ebay_oauth_state=right" }, redirect: "manual" },
+    );
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.match(body.error, /State mismatch/);
+  } finally {
+    await close();
+  }
+});
+
+test("callback state mismatch renders visible error page with link back", async () => {
   const { baseUrl, close } = await startServer();
   try {
     const res = await fetch(
@@ -210,8 +225,9 @@ test("callback rejects state mismatch", async () => {
       { headers: { cookie: "ebay_oauth_state=right" }, redirect: "manual" },
     );
     assert.equal(res.status, 400);
-    const body = await res.json();
-    assert.match(body.error, /State mismatch/);
+    const html = await res.text();
+    assert.match(html, /State mismatch/);
+    assert.match(html, /href="\/hud\.html#\/channels"/);
   } finally {
     await close();
   }

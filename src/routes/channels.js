@@ -39,6 +39,54 @@ function clearStateCookie(res) {
   );
 }
 
+/**
+ * Visible HTML failure page for the browser eBay OAuth flow.
+ * Every connect failure Sawyer can hit in a browser must land here:
+ * a plain-words error plus a link back to the Channels tab.
+ * `?json=1` callers keep the JSON contract.
+ */
+function ebayConnectErrorHtml(message) {
+  const safe = String(message ?? "Something went wrong connecting eBay.")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>eBay connection failed</title>
+<style>
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0e14;color:#e8ecf3;font-family:-apple-system,system-ui,sans-serif;padding:24px;box-sizing:border-box}
+main{max-width:420px;text-align:center}
+h1{font-size:22px;margin:0 0 12px}
+.err{font-size:15px;line-height:1.5;color:#f0a3a3;background:#2a1215;border:1px solid #5c2226;border-radius:10px;padding:12px 14px;margin:0 0 20px;word-break:break-word}
+.btn{display:inline-block;background:#2f7cf6;color:#fff;text-decoration:none;font-size:16px;font-weight:600;padding:12px 28px;border-radius:10px;margin-bottom:14px}
+.link{display:block;color:#8ab4f8;font-size:14px;margin-top:4px}
+</style>
+</head>
+<body>
+<main>
+<h1>eBay connection failed</h1>
+<p class="err">${safe}</p>
+<a class="btn" href="/hud.html#/channels">Back to Channels</a>
+<a class="link" href="/api/channels/ebay/connect">Try connecting again</a>
+</main>
+</body>
+</html>`;
+}
+
+/**
+ * eBay connect failure responder.
+ * Browser flow -> visible error page with a link back to Channels.
+ * ?json=1 -> JSON contract ({ ok:false, error, code }).
+ */
+function ebayConnectFailure(res, status, message, opts = {}) {
+  const { asJson = false, code = "EBAY_CONNECT_FAILED" } = opts;
+  if (asJson) return res.status(status).json({ ok: false, error: message, code });
+  return res.status(status).type("html").send(ebayConnectErrorHtml(message));
+}
+
 export function channelsRouter() {
   const router = Router();
 
@@ -312,7 +360,10 @@ export function channelsRouter() {
       res.redirect(302, authorizeUrl);
     } catch (err) {
       if (err.code === "CHANNEL_NOT_CONFIGURED") {
-        return res.status(503).json({ ok: false, error: err.message, code: err.code });
+        return ebayConnectFailure(res, 503, err.message, {
+          asJson: req.query.json === "1",
+          code: err.code,
+        });
       }
       next(err);
     }
@@ -328,10 +379,16 @@ export function channelsRouter() {
       const expected = readCookie(req, "ebay_oauth_state");
       // State check: when the browser kept the cookie it must match.
       if (!code || typeof code !== "string") {
-        return res.status(400).json({ ok: false, error: "Missing code", code: "VALIDATION" });
+        return ebayConnectFailure(res, 400, "Missing code — restart the connect flow from Channels.", {
+          asJson: req.query.json === "1",
+          code: "VALIDATION",
+        });
       }
       if (expected && state !== expected) {
-        return res.status(400).json({ ok: false, error: "State mismatch — restart the connect flow", code: "VALIDATION" });
+        return ebayConnectFailure(res, 400, "State mismatch — restart the connect flow from Channels.", {
+          asJson: req.query.json === "1",
+          code: "VALIDATION",
+        });
       }
       const tokens = await exchangeEbayAuthCode(code);
       await saveEbayTokenStore({
@@ -343,13 +400,13 @@ export function channelsRouter() {
       if (req.query.json === "1") {
         return res.json({ ok: true, connected: true });
       }
-      res.redirect(302, "/settings?ebay=connected");
+      res.redirect(302, "/hud.html#/channels");
     } catch (err) {
-      if (err.code === "CHANNEL_NOT_CONFIGURED" || err.code === "VALIDATION") {
-        return res.status(err.code === "VALIDATION" ? 400 : 503).json({ ok: false, error: err.message, code: err.code });
+      if (err.code === "CHANNEL_NOT_CONFIGURED") {
+        return ebayConnectFailure(res, 503, err.message, { asJson: req.query.json === "1", code: err.code });
       }
       if (err.code === "EBAY_AUTH_FAILED") {
-        return res.status(502).json({ ok: false, error: err.message, code: err.code });
+        return ebayConnectFailure(res, 502, err.message, { asJson: req.query.json === "1", code: err.code });
       }
       next(err);
     }
