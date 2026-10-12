@@ -98,8 +98,12 @@ function tokenFile() {
 
 const BLOB_PATH = "coalition/ebay-tokens.json";
 export const blobDiag = { enabled: false, lastError: null };
+function blobToken() {
+  const k = Object.keys(process.env).find((n) => /READ_WRITE_TOKEN$/.test(n) && process.env[n]);
+  return k ? process.env[k] : "";
+}
 function blobOn() {
-  blobDiag.enabled = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  blobDiag.enabled = Boolean(blobToken());
   return blobDiag.enabled;
 }
 
@@ -109,7 +113,7 @@ export async function loadEbayTokenStore() {
     let raw;
     if (blobOn()) {
       const { get } = await import("@vercel/blob");
-      const r = await get(BLOB_PATH, { access: "private", useCache: false });
+      const r = await get(BLOB_PATH, { access: "private", useCache: false, token: blobToken() });
       if (!r || r.statusCode !== 200) return null;
       raw = await new Response(r.stream).text();
     } else {
@@ -136,6 +140,7 @@ export async function saveEbayTokenStore(tokens) {
     const { put } = await import("@vercel/blob");
     await put(BLOB_PATH, JSON.stringify(next), {
       access: "private",
+      token: blobToken(),
       allowOverwrite: true,
       addRandomSuffix: false,
       contentType: "application/json",
@@ -146,6 +151,7 @@ export async function saveEbayTokenStore(tokens) {
     const { put } = await import("@vercel/blob");
     await put(BLOB_PATH, JSON.stringify(next), {
       access: "private",
+      token: blobToken(),
       allowOverwrite: true,
       addRandomSuffix: false,
       contentType: "application/json",
