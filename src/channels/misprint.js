@@ -176,7 +176,15 @@ async function misprintRequest(path, opts = {}) {
  * @param {import('../store.js').ScoutItem} item
  * @param {{ fetchImpl?: typeof fetch }} [opts]
  */
+function writeUnconfirmed() {
+  const err = new Error("Misprint listing writes aren't enabled yet: the create/update/delist API contract isn't confirmed, and guesses could touch your live account.");
+  err.code = "MISPRINT_WRITE_UNCONFIRMED";
+  err.status = 501;
+  return err;
+}
+
 export async function publishMisprintListing(item, opts = {}) {
+  if (!process.env.MISPRINT_WRITES_CONFIRMED) throw writeUnconfirmed();
   if (!item?.title) {
     const err = new Error("Misprint publish requires item.title");
     err.code = "VALIDATION";
@@ -220,6 +228,7 @@ export async function publishMisprintListing(item, opts = {}) {
  * @param {{ fetchImpl?: typeof fetch }} [opts]
  */
 export async function updateMisprintAsk(payload, opts = {}) {
+  if (!process.env.MISPRINT_WRITES_CONFIRMED) throw writeUnconfirmed();
   const body = {};
   if (payload.price != null) body.price = Number(payload.price);
   if (payload.quantity != null) body.quantity = Math.max(0, Number(payload.quantity));
@@ -236,6 +245,7 @@ export async function updateMisprintAsk(payload, opts = {}) {
  * @param {{ fetchImpl?: typeof fetch }} [opts]
  */
 export async function endMisprintAsk(payload, opts = {}) {
+  if (!process.env.MISPRINT_WRITES_CONFIRMED) throw writeUnconfirmed();
   const { data } = await misprintRequest(`/v1/asks/${encodeURIComponent(payload.listingId)}`, {
     method: "DELETE",
     fetchImpl: opts.fetchImpl,
