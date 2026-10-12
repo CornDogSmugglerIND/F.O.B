@@ -102,6 +102,33 @@ function skuForItem(item) {
 }
 
 /**
+ * Sawyer's shipping rule (Oct 12, verbatim logic):
+ * cards priced at or under the threshold ship on the envelope policy
+ * (eBay Standard Envelope — the envelope policies cannot take cards
+ * over the threshold); cards over it, and every non-card item, ship
+ * on the general (FedEx) policy. Policy IDs + threshold come from env
+ * so the in-app settings surface can override them without a redeploy
+ * of code. Returns "" when nothing is configured.
+ *
+ * @param {{ price?: number|string, game?: string|null, category?: string|null, categoryId?: string|null }} item
+ * @returns {string}
+ */
+export function resolveFulfillmentPolicyId(item = {}) {
+  const general = env("EBAY_FULFILLMENT_POLICY_ID");
+  const envelope = env("EBAY_CARD_ENVELOPE_POLICY_ID");
+  if (!envelope) return general;
+  const parsed = Number(env("EBAY_CARD_THRESHOLD_USD"));
+  const threshold = Number.isFinite(parsed) && parsed > 0 ? parsed : 20;
+  const price = Number(item.price);
+  const isCard =
+    item.game != null ||
+    item.categoryId === "183454" ||
+    /card|tcg|trading/i.test(String(item.category || ""));
+  if (isCard && Number.isFinite(price) && price <= threshold) return envelope;
+  return general;
+}
+
+/**
  * Probe auth — used by /api/channels/ebay/probe.
  * @param {{ fetchImpl?: typeof fetch }} [opts]
  */
@@ -158,7 +185,7 @@ export async function publishEbayListing(item, opts = {}) {
 
   /** @type {Record<string, string>} */
   const listingPolicies = {};
-  const fulfillmentPolicyId = env("EBAY_FULFILLMENT_POLICY_ID");
+  const fulfillmentPolicyId = resolveFulfillmentPolicyId(item);
   const paymentPolicyId = env("EBAY_PAYMENT_POLICY_ID");
   const returnPolicyId = env("EBAY_RETURN_POLICY_ID");
   if (fulfillmentPolicyId) listingPolicies.fulfillmentPolicyId = fulfillmentPolicyId;
@@ -297,7 +324,15 @@ export async function publishEbayVariationListing(batch, opts = {}) {
       listingDescription: batch.description || batch.title,
       pricingSummary: { price: { currency: "USD", value: Number(c.price).toFixed(2) } },
     };
-    if (Object.keys(policies).length) body.listingPolicies = policies;
+    // Per-child routing: a Pick-Your-Card batch can straddle the threshold,
+    // so each card's offer gets its own fulfillment policy.
+    const childPolicies = { ...policies };
+    const childFulfillment = resolveFulfillmentPolicyId({
+      price: c.price,
+      categoryId: "183454",
+    });
+    if (childFulfillment) childPolicies.fulfillmentPolicyId = childFulfillment;
+    if (Object.keys(childPolicies).length) body.listingPolicies = childPolicies;
     if (locationKey) body.merchantLocationKey = locationKey;
     const r = await ebayRequest("/sell/inventory/v1/offer", { method: "POST", fetchImpl: opts.fetchImpl, body });
     if (!r.data?.offerId) {

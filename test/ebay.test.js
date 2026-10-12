@@ -4,6 +4,7 @@ import {
   clearEbayTokenCache,
   getEbayAccessToken,
   publishEbayListing,
+  resolveFulfillmentPolicyId,
   updateEbayPriceQuantity,
   endEbayListing,
   syncEbayInventory,
@@ -145,6 +146,55 @@ test("GET /api/channels/ebay/probe returns 503 without secrets", async () => {
     assert.equal(body.code, "CHANNEL_NOT_CONFIGURED");
   } finally {
     await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("resolveFulfillmentPolicyId: Sawyer's $20 shipping rule", () => {
+  const saved = {
+    f: process.env.EBAY_FULFILLMENT_POLICY_ID,
+    e: process.env.EBAY_CARD_ENVELOPE_POLICY_ID,
+    t: process.env.EBAY_CARD_THRESHOLD_USD,
+  };
+  try {
+    process.env.EBAY_FULFILLMENT_POLICY_ID = "FEDEX";
+    process.env.EBAY_CARD_ENVELOPE_POLICY_ID = "ENVELOPE";
+    delete process.env.EBAY_CARD_THRESHOLD_USD;
+
+    // Card at/under $20 -> envelope
+    assert.equal(
+      resolveFulfillmentPolicyId({ price: 20, game: "Pokemon" }),
+      "ENVELOPE",
+    );
+    assert.equal(
+      resolveFulfillmentPolicyId({ price: 4.99, categoryId: "183454" }),
+      "ENVELOPE",
+    );
+    // Card over $20 -> FedEx
+    assert.equal(
+      resolveFulfillmentPolicyId({ price: 20.01, game: "Pokemon" }),
+      "FEDEX",
+    );
+    // Non-card at any price -> FedEx
+    assert.equal(resolveFulfillmentPolicyId({ price: 5, category: "other" }), "FEDEX");
+    // Threshold is adjustable
+    process.env.EBAY_CARD_THRESHOLD_USD = "10";
+    assert.equal(
+      resolveFulfillmentPolicyId({ price: 15, game: "Pokemon" }),
+      "FEDEX",
+    );
+    // No envelope policy configured -> always the general policy
+    delete process.env.EBAY_CARD_ENVELOPE_POLICY_ID;
+    assert.equal(
+      resolveFulfillmentPolicyId({ price: 5, game: "Pokemon" }),
+      "FEDEX",
+    );
+  } finally {
+    if (saved.f === undefined) delete process.env.EBAY_FULFILLMENT_POLICY_ID;
+    else process.env.EBAY_FULFILLMENT_POLICY_ID = saved.f;
+    if (saved.e === undefined) delete process.env.EBAY_CARD_ENVELOPE_POLICY_ID;
+    else process.env.EBAY_CARD_ENVELOPE_POLICY_ID = saved.e;
+    if (saved.t === undefined) delete process.env.EBAY_CARD_THRESHOLD_USD;
+    else process.env.EBAY_CARD_THRESHOLD_USD = saved.t;
   }
 });
 
