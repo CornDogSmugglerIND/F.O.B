@@ -161,6 +161,7 @@ export function channelsRouter() {
         offerTotal: sync.offerTotal,
         inventoryTotal: sync.inventoryTotal,
         truncated: Boolean(sync.truncated),
+        records: sync.records,
         created,
         updated,
       });

@@ -1736,41 +1736,49 @@ async function syncEbay() {
       toast(body.error || "eBay isn't connected yet. Add your eBay keys to turn this on.");
       return;
     }
-    // Merge server-side sync into phone store for Channels tab
+    // Merge the sync result straight into the phone store (server store is ephemeral on Vercel)
     try {
-      const listRes = await fetch("/api/scouter/items");
-      if (listRes.ok) {
-        const remote = await listRes.json();
-        const rows = Array.isArray(remote) ? remote : remote.items || [];
-        for (const r of rows) {
-          if (!r.channels?.ebay) continue;
-          const sku = r.channels.ebay.sku;
-          const idx = state.items.findIndex(
-            (i) => i.channels?.ebay?.sku === sku || i.id === r.id
-          );
-          const mapped = normalizeItem({
-            id: r.id,
-            title: r.title || r.productName,
-            productName: r.productName || r.title,
-            quantity: r.quantity || 1,
-            price: r.price,
-            phase: r.phase || "listed",
-            staged: false,
-            spaceId: r.spaceId || null,
-            channels: r.channels,
-            photos: (r.photos || [])
-              .filter((p) => p.dataUrl || p.url)
-              .map((p) => ({ id: p.id, dataUrl: p.dataUrl || p.url })),
-          });
-          // Downscale oversized server photos before they hit local storage.
-          for (const p of mapped.photos) {
-            p.dataUrl = await shrinkDataUrl(p.dataUrl);
-          }
-          if (idx >= 0) state.items[idx] = { ...state.items[idx], ...mapped };
-          else state.items.unshift(mapped);
+      let rows = Array.isArray(body.records) ? body.records : null;
+      if (!rows) {
+        const listRes = await fetch("/api/scouter/items");
+        if (listRes.ok) {
+          const remote = await listRes.json();
+          rows = (Array.isArray(remote) ? remote : remote.items || []).filter((r) => r.channels?.ebay);
         }
-        saveItems();
       }
+      for (const r of rows || []) {
+        const sku = r.channels?.ebay?.sku || r.sku;
+        if (!sku) continue;
+        const idx = state.items.findIndex((i) => i.channels?.ebay?.sku === sku || (r.id && i.id === r.id));
+        const live = r.channels.ebay.listingId ? "listed" : "draft";
+        const photos = (r.photos || [])
+          .filter((p) => p.dataUrl || p.url)
+          .map((p) => ({ id: p.id, dataUrl: p.dataUrl || p.url }));
+        if (!photos.length && r.imageUrl) photos.push({ id: `img-${sku}`, dataUrl: r.imageUrl });
+        const mapped = normalizeItem({
+          id: r.id || `ebay-${sku}`,
+          title: r.title || r.productName,
+          productName: r.productName || r.title,
+          sku,
+          quantity: r.quantity || 1,
+          price: r.price,
+          phase: r.phase || (live === "listed" ? "listed" : "staged"),
+          listingStatus: live,
+          staged: false,
+          spaceId: r.spaceId || null,
+          channels: r.channels,
+          photos,
+        });
+        // Downscale oversized server photos (data URLs) before they hit local storage.
+        for (const p of mapped.photos) {
+          if (String(p.dataUrl).startsWith("data:")) p.dataUrl = await shrinkDataUrl(p.dataUrl);
+        }
+        if (idx >= 0) {
+          const keep = state.items[idx];
+          state.items[idx] = { ...keep, ...mapped, spaceId: keep.spaceId || mapped.spaceId, photos: keep.photos?.length ? keep.photos : mapped.photos };
+        } else state.items.unshift(mapped);
+      }
+      saveItems();
     } catch { /* local-only ok */ }
     toast(`eBay sync · ${body.pulled || 0} pulled`);
     probeEbay();
