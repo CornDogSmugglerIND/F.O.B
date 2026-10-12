@@ -43,9 +43,9 @@ export function ebayAuthBase() {
     : "https://auth.ebay.com/oauth2/authorize";
 }
 
-/** Redirect URI for the authorize step: explicit URI wins, RuName otherwise. */
+/** eBay's authorize + token steps take the RuName as redirect_uri; plain URL only as fallback. */
 export function ebayRedirectUri() {
-  return env("EBAY_REDIRECT_URI") || env("EBAY_RU_NAME");
+  return env("EBAY_RU_NAME") || env("EBAY_REDIRECT_URI");
 }
 
 /** Redirect-URI candidates for the token exchange (RuName quirk). */
@@ -53,6 +53,7 @@ export function ebayRedirectUriCandidates() {
   const configured = ebayRedirectUri();
   const cands = [];
   if (configured) cands.push(configured);
+  if (env("EBAY_REDIRECT_URI") && !cands.includes(env("EBAY_REDIRECT_URI"))) cands.push(env("EBAY_REDIRECT_URI"));
   for (const fb of ["https://www.ebay.com/", "https://www.ebay.com"]) {
     if (!cands.includes(fb)) cands.push(fb);
   }
