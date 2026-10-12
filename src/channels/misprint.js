@@ -14,6 +14,59 @@ function env(key, fallback = "") {
   return typeof v === "string" && v.trim() ? v.trim() : fallback;
 }
 
+const MP_BLOB_PATH = "coalition/misprint-keys.json";
+let mpHydratedAt = 0;
+function mpBlobToken() {
+  const k = Object.keys(process.env).find((n) => /READ_WRITE_TOKEN$/.test(n) && process.env[n]);
+  return k ? process.env[k] : "";
+}
+
+/** Keys entered in the app live in a private Blob; copy them into process.env (env wins if set). */
+export async function hydrateMisprintKeys(force = false) {
+  if (!force && Date.now() - mpHydratedAt < 30000) return;
+  mpHydratedAt = Date.now();
+  const token = mpBlobToken();
+  if (!token) return;
+  try {
+    const { get } = await import("@vercel/blob");
+    const r = await get(MP_BLOB_PATH, { access: "private", useCache: false, token });
+    if (!r || r.statusCode !== 200) return;
+    const d = JSON.parse(await new Response(r.stream).text());
+    if (d.apiKey && !process.env.MISPRINT_API_KEY) process.env.MISPRINT_API_KEY = d.apiKey;
+    if (d.sellerId && !process.env.MISPRINT_SELLER_ID) process.env.MISPRINT_SELLER_ID = d.sellerId;
+    if (d.apiBase && !process.env.MISPRINT_API_BASE) process.env.MISPRINT_API_BASE = d.apiBase;
+  } catch { /* not stored yet */ }
+}
+
+/** Save keys from the app. First save is open; replacing needs the current key. */
+export async function saveMisprintKeys({ apiKey, sellerId, apiBase, currentKey }) {
+  await hydrateMisprintKeys(true);
+  const existing = env("MISPRINT_API_KEY");
+  if (existing && currentKey !== existing) {
+    const err = new Error("A Misprint key is already saved. Send currentKey to replace it.");
+    err.code = "CONFLICT";
+    throw err;
+  }
+  const token = mpBlobToken();
+  if (!token) {
+    const err = new Error("Durable storage isn't attached, so a key can't be saved from the app.");
+    err.code = "NO_STORAGE";
+    throw err;
+  }
+  const rec = { apiKey: String(apiKey || "").trim(), sellerId: String(sellerId || env("MISPRINT_SELLER_ID")).trim(), apiBase: String(apiBase || env("MISPRINT_API_BASE")).trim() };
+  if (!rec.apiKey) {
+    const err = new Error("apiKey required");
+    err.code = "VALIDATION";
+    throw err;
+  }
+  const { put } = await import("@vercel/blob");
+  await put(MP_BLOB_PATH, JSON.stringify(rec), { access: "private", token, allowOverwrite: true, addRandomSuffix: false, contentType: "application/json" });
+  process.env.MISPRINT_API_KEY = rec.apiKey;
+  if (rec.sellerId) process.env.MISPRINT_SELLER_ID = rec.sellerId;
+  if (rec.apiBase) process.env.MISPRINT_API_BASE = rec.apiBase;
+  return { saved: true, hasBase: Boolean(rec.apiBase), hasSeller: Boolean(rec.sellerId) };
+}
+
 export function misprintKeysPresent() {
   return Boolean(env("MISPRINT_API_KEY") && env("MISPRINT_SELLER_ID"));
 }

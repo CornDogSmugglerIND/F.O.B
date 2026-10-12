@@ -11,7 +11,7 @@ import {
   saveEbayTokenStore,
   blobDiag,
 } from "../channels/ebayConnect.js";
-import { probeMisprint } from "../channels/misprint.js";
+import { probeMisprint, hydrateMisprintKeys, saveMisprintKeys, misprintKeysPresent, misprintBaseUrl } from "../channels/misprint.js";
 import { combineVariationBatch } from "../listing/variation.js";
 import { getScoutItem, updateScoutItem, listScoutItems, createScoutItem } from "../store.js";
 
@@ -91,6 +91,19 @@ function ebayConnectFailure(res, status, message, opts = {}) {
 
 export function channelsRouter() {
   const router = Router();
+  router.use(async (_req, _res, next) => { try { await hydrateMisprintKeys(); } catch { /* ignore */ } next(); });
+  /** Misprint key state for the in-app field (never returns the key). */
+  router.get("/misprint/key", (_req, res) => {
+    res.json({ keySaved: misprintKeysPresent(), baseSet: Boolean(misprintBaseUrl()) });
+  });
+  router.post("/misprint/key", async (req, res) => {
+    try {
+      res.json({ ok: true, ...(await saveMisprintKeys(req.body || {})) });
+    } catch (err) {
+      const code = err.code === "CONFLICT" ? 409 : err.code === "VALIDATION" ? 400 : 500;
+      res.status(code).json({ ok: false, error: err.message, code: err.code || "ERROR" });
+    }
+  });
 
   router.get("/status", (_req, res) => {
     res.json({
