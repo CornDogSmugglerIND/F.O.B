@@ -963,6 +963,7 @@ function openSheet(id) {
   const idBtn = $("btnIdentify");
   if (idBtn) idBtn.disabled = false;
   window.HUD_fulfillment?.renderSheetSection(id);
+  window.HUD_where?.paintSheet(it);
 }
 window.HUD_openSheet = openSheet;
 initHud({ state, PHASES, phaseFromItem, money, navigate, openSheet, moveItemToPhase, saveItems, toast });

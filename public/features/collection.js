@@ -162,7 +162,7 @@
     return '<button type="button" class="cx-row' + (on ? " on" : "") + (picked ? " picked" : "") + '" data-item="' + esc(item.id) + '">' +
       '<span class="cx-th">' + thumbHtml(item) + "</span>" +
       '<span class="cx-mid"><b>' + esc(itemName(item)) + "</b>" +
-      '<i>' + esc(st) + (q > 1 ? " \u00b7 \u00d7" + q : "") + "</i></span>" +
+      '<i>' + esc(st) + (q > 1 ? " \u00b7 \u00d7" + q : "") + "</i>" + (window.HUD_where ? '<em class="wh-row">' + window.HUD_where.rowChips(item) + "</em>" : "") + "</span>" +
       '<span class="cx-r"><b>' + money(item.price || 0) + "</b>" +
       '<i class="' + (profit < 0 ? "neg" : "") + '">' + (profit < 0 ? "\u2212" : "+") + money(Math.abs(profit)) + "</i></span></button>";
   }
@@ -178,7 +178,7 @@
       (src ? '<img src="' + src + '" alt="">' : '<b class="cx-noimg"></b>') +
       '<span class="cx-base"></span></div>' +
       '<div class="cx-read"><h3>' + esc(itemName(item)) + "</h3>" +
-      '<div class="cx-pips" title="' + esc(PHASE_LABELS[phaseOf(item)]) + '">' + pips + "</div>" +
+      '<div class="cx-pips" title="' + esc(PHASE_LABELS[phaseOf(item)]) + '">' + pips + "</div>" + (window.HUD_where ? window.HUD_where.panel(item) : "") +
       '<dl><div><dt>Stage</dt><dd>' + esc(PHASE_LABELS[phaseOf(item)]) + "</dd></div>" +
       '<div><dt>Qty</dt><dd>' + q + "</dd></div>" +
       '<div><dt>Paid</dt><dd>' + money(item.purchasePrice || 0) + "</dd></div>" +

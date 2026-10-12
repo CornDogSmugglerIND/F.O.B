@@ -382,3 +382,18 @@ body .ax-card.on { box-shadow: inset 0 0 0 1px rgba(var(--hx), .6), 0 0 30px -16
 body .ax-btn.pri, body .hud-app .btn-amber { box-shadow: inset 0 0 0 1px rgba(var(--ax-acc), .8) !important; }
 body .ax-d.pri { box-shadow: inset 0 0 0 1.5px rgba(var(--ax-acc), .8) !important; }
 body #view-collection .inv-add { box-shadow: inset 0 0 0 1px rgba(var(--ax-acc), .8) !important; }
+
+/* v12 where-listed chips */
+.wh-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;font-style:normal}
+.wh{font:600 10px/1 system-ui,sans-serif;letter-spacing:.04em;padding:3px 6px;border-radius:4px;color:#C3CCD0;border:1px solid rgba(94,170,170,.55);background:rgba(94,170,170,.10)}
+.wh-queued{border-style:dashed;color:#9AA7AC;background:transparent}
+.wh-none{border-color:rgba(195,204,208,.18);color:#6F7A7E;background:transparent;font-weight:500}
+.wh-panel{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
+.wh-h{grid-column:1/-1;font:600 11px/1 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#8E9A9E}
+.wh-c{display:flex;flex-direction:column;gap:2px;padding:7px 9px;border-radius:6px;border:1px solid rgba(195,204,208,.16);color:#6F7A7E}
+.wh-c b{font:600 12px/1.1 system-ui,sans-serif}
+.wh-c i{font:400 11px/1.2 system-ui,sans-serif;font-style:normal}
+.wh-c.wh-live{border-color:rgba(94,170,170,.6);background:rgba(94,170,170,.08);color:#C3CCD0}
+.wh-c.wh-queued{border-style:dashed;color:#9AA7AC}
+.wh-c.wh-ended{text-decoration:line-through;opacity:.7}
+#whSheet{margin:2px 0 6px}
