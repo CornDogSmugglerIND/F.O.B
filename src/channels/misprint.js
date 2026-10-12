@@ -72,25 +72,27 @@ export function misprintKeysPresent() {
 }
 
 export function misprintBaseUrl() {
-  return env("MISPRINT_API_BASE").replace(/\/$/, "");
+  const raw = env("MISPRINT_API_BASE", "https://www.misprint.com").replace(/\/$/, "");
+  const origin = /^https?:\/\//.test(raw) ? raw : `https://${raw}`;
+  return origin.replace(/\/api\/v1$/, "") + "/api/v1";
 }
 
 export function misprintReady() {
-  return misprintKeysPresent() && Boolean(misprintBaseUrl());
+  return misprintKeysPresent();
 }
 
 function authHeaders() {
   const key = env("MISPRINT_API_KEY");
   const secret = env("MISPRINT_API_SECRET");
   /** @type {Record<string, string>} */
+  // Confirmed live (Oct 12): Bearer key + X-User-Id (seller id). Nothing else.
   const headers = {
     Accept: "application/json",
     "Content-Type": "application/json",
     Authorization: `Bearer ${key}`,
-    "X-API-Key": key,
-    "X-Seller-Id": env("MISPRINT_SELLER_ID"),
+    "X-User-Id": env("MISPRINT_SELLER_ID"),
   };
-  if (secret) headers["X-API-Secret"] = secret;
+  void secret;
   return headers;
 }
 
@@ -99,97 +101,45 @@ function authHeaders() {
  * @param {{ fetchImpl?: typeof fetch }} [opts]
  */
 export async function probeMisprint(opts = {}) {
-  const fetchImpl = opts.fetchImpl || fetch;
   if (!misprintKeysPresent()) {
-    const err = new Error(
-      "Misprint keys missing — need MISPRINT_API_KEY and MISPRINT_SELLER_ID",
-    );
+    const err = new Error("Misprint keys missing — need MISPRINT_API_KEY and MISPRINT_SELLER_ID");
     err.code = "CHANNEL_NOT_CONFIGURED";
     throw err;
   }
-
-  const base = misprintBaseUrl();
   const sellerId = env("MISPRINT_SELLER_ID");
-  const key = env("MISPRINT_API_KEY");
-
-  if (!base) {
-    return {
-      ok: false,
-      keysPresent: true,
-      baseConfigured: false,
-      sellerIdPreview: `${sellerId.slice(0, 8)}…`,
-      keyPreview: `${key.slice(0, 10)}…`,
-      code: "MISPRINT_BASE_REQUIRED",
-      error:
-        "Keys are saved. Still need MISPRINT_API_BASE (the API host from Misprint’s key screen / docs). Paste just that URL in Cursor chat.",
-    };
+  try {
+    const { status } = await misprintRequest("/seller/inventory?page=1&limit=1", opts);
+    return { ok: true, keysPresent: true, baseHost: new URL(misprintBaseUrl()).host, sellerIdPreview: `${sellerId.slice(0, 8)}…`, status };
+  } catch (err) {
+    return { ok: false, keysPresent: true, baseHost: new URL(misprintBaseUrl()).host, code: err.code || "MISPRINT_PROBE_FAILED", status: err.status || null, error: String(err.message || err).slice(0, 200) };
   }
+}
 
-  const candidates = [
-    `${base}/health`,
-    `${base}/v1/health`,
-    `${base}/v1/me`,
-    `${base}/v1/sellers/me`,
-    `${base}/v1/sellers/${encodeURIComponent(sellerId)}`,
-    `${base}/sellers/me`,
-    `${base}/me`,
-  ];
-
-  const attempts = [];
-  for (const url of candidates) {
-    try {
-      const res = await fetchImpl(url, {
-        method: "GET",
-        headers: authHeaders(),
-      });
-      const text = await res.text();
-      attempts.push({
-        url: url.replace(base, "{base}"),
-        status: res.status,
-        ok: res.ok,
-        bodyPreview: text.slice(0, 120).replace(/\s+/g, " "),
-      });
-      if (res.ok) {
-        return {
-          ok: true,
-          keysPresent: true,
-          baseConfigured: true,
-          baseHost: new URL(base).host,
-          sellerIdPreview: `${sellerId.slice(0, 8)}…`,
-          probedPath: url.replace(base, ""),
-          status: res.status,
-        };
-      }
-    } catch (err) {
-      attempts.push({
-        url: url.replace(base, "{base}"),
-        status: "ERR",
-        ok: false,
-        bodyPreview: String(err.message || err).slice(0, 120),
-      });
-    }
+/** Page through /seller/<what> (inventory | orders). Results live in the "data" array. */
+async function misprintPaged(what, opts = {}) {
+  const limit = 100;
+  const max = Math.min(Number(opts.maxPages) || 20, 50);
+  const rows = [];
+  for (let page = 1; page <= max; page++) {
+    const { data } = await misprintRequest(`/seller/${what}?page=${page}&limit=${limit}`, opts);
+    const batch = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+    rows.push(...batch);
+    if (batch.length < limit) break;
   }
+  return rows;
+}
 
-  return {
-    ok: false,
-    keysPresent: true,
-    baseConfigured: true,
-    baseHost: new URL(base).host,
-    sellerIdPreview: `${sellerId.slice(0, 8)}…`,
-    code: "MISPRINT_PROBE_FAILED",
-    error: "Base URL set but no health/me endpoint accepted the key yet",
-    attempts,
-  };
+export async function listMisprintInventory(opts = {}) {
+  return misprintPaged("inventory", opts);
+}
+export async function listMisprintOrders(opts = {}) {
+  return misprintPaged("orders", opts);
 }
 
 async function misprintRequest(path, opts = {}) {
-  if (!misprintReady()) {
-    const err = new Error(
-      misprintKeysPresent()
-        ? "Misprint base URL missing — set MISPRINT_API_BASE"
-        : "Misprint not configured — set MISPRINT_API_KEY and MISPRINT_SELLER_ID",
-    );
-    err.code = misprintKeysPresent() ? "MISPRINT_BASE_REQUIRED" : "CHANNEL_NOT_CONFIGURED";
+  if (!misprintKeysPresent()) {
+    const err = new Error("Misprint not configured — set MISPRINT_API_KEY and MISPRINT_SELLER_ID");
+    err.code = "CHANNEL_NOT_CONFIGURED";
     throw err;
   }
 

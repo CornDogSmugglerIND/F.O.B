@@ -11,7 +11,7 @@ import {
   saveEbayTokenStore,
   blobDiag,
 } from "../channels/ebayConnect.js";
-import { probeMisprint, hydrateMisprintKeys, saveMisprintKeys, misprintKeysPresent, misprintBaseUrl } from "../channels/misprint.js";
+import { probeMisprint, listMisprintInventory, listMisprintOrders, hydrateMisprintKeys, saveMisprintKeys, misprintKeysPresent, misprintBaseUrl } from "../channels/misprint.js";
 import { combineVariationBatch } from "../listing/variation.js";
 import { getScoutItem, updateScoutItem, listScoutItems, createScoutItem } from "../store.js";
 
@@ -320,10 +320,28 @@ export function channelsRouter() {
   });
 
   /** Misprint probe — never returns secret values. */
+  /** Misprint listings + orders (read). First record's field names are echoed so the mapping can be checked. */
+  router.get("/misprint/inventory", async (_req, res) => {
+    try {
+      const rows = await listMisprintInventory();
+      res.json({ ok: true, count: rows.length, sampleKeys: rows[0] ? Object.keys(rows[0]) : [], rows });
+    } catch (err) {
+      res.status(err.status || 502).json({ ok: false, error: err.message, code: err.code || "ERROR" });
+    }
+  });
+  router.get("/misprint/orders", async (_req, res) => {
+    try {
+      const rows = await listMisprintOrders();
+      res.json({ ok: true, count: rows.length, sampleKeys: rows[0] ? Object.keys(rows[0]) : [], rows });
+    } catch (err) {
+      res.status(err.status || 502).json({ ok: false, error: err.message, code: err.code || "ERROR" });
+    }
+  });
+
   router.get("/misprint/probe", async (_req, res, next) => {
     try {
       const result = await probeMisprint();
-      const status = result.ok ? 200 : result.code === "MISPRINT_BASE_REQUIRED" ? 503 : 502;
+      const status = result.ok ? 200 : 502;
       res.status(status).json(result);
     } catch (err) {
       if (err.code === "CHANNEL_NOT_CONFIGURED") {
