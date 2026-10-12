@@ -66,8 +66,9 @@ function mockFetch() {
     if (u.includes("/identity/v1/oauth2/token")) {
       return jsonResponse(200, { access_token: "tok", expires_in: 7200 });
     }
-    if (u.includes("/sell/fulfillment/v1/shipment")) {
-      return jsonResponse(200, { shipments: [SHIP_1], total: 1 });
+    if (u.includes("/shipping_fulfillment")) {
+      if (!u.includes("12-34567-89012")) return jsonResponse(200, { fulfillments: [], total: 0 });
+      return jsonResponse(200, { fulfillments: [SHIP_1], total: 1 });
     }
     if (u.includes("/sell/fulfillment/v1/order")) {
       const offset = Number(new URL(u).searchParams.get("offset") || 0);

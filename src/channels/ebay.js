@@ -401,17 +401,24 @@ export async function getEbayShipments(orderIds, opts = {}) {
   const fetchImpl = opts.fetchImpl || fetch;
   const byOrder = new Map();
   if (!orderIds.length) return byOrder;
-  // API accepts a pipe-joined orderids filter; chunk to stay under URL limits.
-  for (let i = 0; i < orderIds.length; i += 25) {
-    const chunk = orderIds.slice(i, i + 25);
-    const q = new URLSearchParams({ filter: `orderids:{${chunk.join("|")}}`, limit: "200" });
-    const { data } = await ebayRequest(`/sell/fulfillment/v1/shipment?${q.toString()}`, { fetchImpl });
-    for (const s of data?.shipments || []) {
-      for (const oid of s.orderIds || []) {
-        if (!byOrder.has(oid)) byOrder.set(oid, s);
+  // eBay has no bulk shipment lookup: tracking lives on each order's shipping_fulfillment.
+  const queue = [...orderIds];
+  async function worker() {
+    while (queue.length) {
+      const oid = queue.shift();
+      try {
+        const { data } = await ebayRequest(
+          `/sell/fulfillment/v1/order/${encodeURIComponent(oid)}/shipping_fulfillment`,
+          { fetchImpl },
+        );
+        const f = (data?.fulfillments || [])[0];
+        if (f && !byOrder.has(oid)) byOrder.set(oid, f);
+      } catch {
+        /* order without fulfillment yet (or transient) — leave unshipped */
       }
     }
   }
+  await Promise.all(Array.from({ length: 5 }, worker));
   return byOrder;
 }
 
