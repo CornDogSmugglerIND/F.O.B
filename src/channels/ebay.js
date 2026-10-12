@@ -451,8 +451,11 @@ export async function syncEbayInventory(opts = {}) {
 
   /** @type {Map<string, Record<string, any>>} */
   const offersBySku = new Map();
-  const CHUNK = 20;
+  const CHUNK = 40;
+  const deadline = Date.now() + (Number(opts.budgetMs) || 20000); // Vercel kills at 30s
+  let partial = false;
   for (let i = 0; i < slice.length; i += CHUNK) {
+    if (Date.now() > deadline) { partial = true; break; }
     const part = slice.slice(i, i + CHUNK);
     await Promise.all(
       part.map(async (it) => {
@@ -509,6 +512,7 @@ export async function syncEbayInventory(opts = {}) {
     offerTotal: offersBySku.size,
     inventoryTotal,
     truncated: inventoryTotal > slice.length,
+    partial,
     records,
   };
 }
