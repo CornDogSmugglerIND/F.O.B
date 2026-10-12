@@ -329,6 +329,29 @@ export function channelsRouter() {
       res.status(err.status || 502).json({ ok: false, error: err.message, code: err.code || "ERROR" });
     }
   });
+  /** Misprint listings mapped to HUD records (channels.misprint). */
+  router.post("/misprint/sync", async (_req, res) => {
+    try {
+      const rows = await listMisprintInventory();
+      const records = rows.map((r) => {
+        const st = String(r.status || "").toLowerCase();
+        const live = st === "active" || st === "listed" || st === "live";
+        return {
+          id: `mp-${r.listing_id}`,
+          title: r.title,
+          price: r.price != null ? Number(r.price) : null,
+          quantity: Math.max(0, Number(r.quantity_remaining ?? r.quantity) || 0),
+          imageUrl: (r.image_urls && r.image_urls[0]) || r.card_image_url || null,
+          setName: r.set_name || null,
+          number: r.cardnumber || null,
+          channels: { misprint: { listingId: r.listing_id, status: live ? "active" : st === "completed" ? "ended" : st || "queued", price: r.price != null ? Number(r.price) : null } },
+        };
+      });
+      res.json({ ok: true, pulled: records.length, records });
+    } catch (err) {
+      res.status(err.status || 502).json({ ok: false, error: err.message, code: err.code || "ERROR" });
+    }
+  });
   router.get("/misprint/orders", async (_req, res) => {
     try {
       const rows = await listMisprintOrders();

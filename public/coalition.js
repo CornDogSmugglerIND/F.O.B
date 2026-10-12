@@ -1727,6 +1727,34 @@ async function probeEbay() {
   renderChannels();
 }
 
+/** Pull Misprint listings into local items (merges by listing id, then by exact title). */
+async function syncMisprint() {
+  const res = await fetch("/api/channels/misprint/sync", { method: "POST" });
+  if (!res.ok) return 0;
+  const body = await res.json().catch(() => ({}));
+  const rows = Array.isArray(body.records) ? body.records : [];
+  const norm = (t) => String(t || "").trim().toLowerCase();
+  for (const r of rows) {
+    const mp = r.channels?.misprint;
+    if (!mp?.listingId) continue;
+    let idx = state.items.findIndex((i) => i.channels?.misprint?.listingId === mp.listingId);
+    if (idx < 0 && r.title) idx = state.items.findIndex((i) => !i.channels?.misprint && norm(i.title) === norm(r.title));
+    if (idx >= 0) {
+      const it = state.items[idx];
+      it.channels = { ...(it.channels || {}), misprint: mp };
+    } else {
+      const photos = r.imageUrl ? [{ id: `img-${r.id}`, dataUrl: r.imageUrl }] : [];
+      state.items.unshift(normalizeItem({
+        id: r.id, title: r.title, productName: r.title, quantity: r.quantity || 1, price: r.price,
+        phase: mp.status === "active" ? "listed" : "staged", listingStatus: mp.status === "active" ? "listed" : "draft",
+        staged: false, spaceId: null, channels: { misprint: mp }, photos,
+      }));
+    }
+  }
+  saveItems();
+  return rows.length;
+}
+
 async function syncEbay() {
   toast("Pulling eBay…");
   try {
@@ -1780,7 +1808,9 @@ async function syncEbay() {
       }
       saveItems();
     } catch { /* local-only ok */ }
-    toast(`eBay sync · ${body.pulled || 0} pulled`);
+    let mpPulled = 0;
+    try { mpPulled = await syncMisprint(); } catch { /* misprint optional */ }
+    toast(`Synced · eBay ${body.pulled || 0}${mpPulled ? ` · Misprint ${mpPulled}` : ""}`);
     probeEbay();
     render();
   } catch {
