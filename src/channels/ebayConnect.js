@@ -253,10 +253,13 @@ export async function refreshEbayAccessToken(opts = {}) {
     throw err;
   }
   const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  // Refresh must not re-request the base api_scope: grants issued without it
+  // (e.g. the Sep 25 seller grant) fail with invalid_scope when it is included.
+  // The sell.* scopes alone refresh fine (verified live Oct 12).
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
-    scope: EBAY_SCOPES.join(" "),
+    scope: EBAY_SCOPES.slice(1).join(" "),
   });
   const res = await fetchImpl(`${tokenBase()}/identity/v1/oauth2/token`, {
     method: "POST",
