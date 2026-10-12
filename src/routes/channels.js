@@ -116,7 +116,7 @@ export function channelsRouter() {
         });
       }
 
-      const sync = await syncEbayInventory({ limit: 50 });
+      const sync = await syncEbayInventory({ maxItems: 1000 });
       const existing = await listScoutItems();
       const byEbaySku = new Map();
       for (const it of existing) {
@@ -160,6 +160,7 @@ export function channelsRouter() {
         pulled: sync.pulled,
         offerTotal: sync.offerTotal,
         inventoryTotal: sync.inventoryTotal,
+        truncated: Boolean(sync.truncated),
         created,
         updated,
       });

@@ -413,21 +413,67 @@ export async function listEbayOffers(opts = {}) {
 }
 
 /**
- * Sync first page of eBay offers into HUD-shaped records (no secrets returned).
- * @param {{ limit?: number, fetchImpl?: typeof fetch }} [opts]
+ * Sync the seller's eBay inventory into HUD-shaped records.
+ *
+ * The /offer LIST endpoint 400s on this account (errorId 25707: legacy offer
+ * SKUs contain hyphens, which the list call's SKU validation rejects).
+ * Verified live Oct 12: GET /inventory_item pages fine (563 items) and
+ * GET /offer?sku=<sku> works per SKU. So: page ALL inventory items, then
+ * look up each item's offer individually (chunked, failure-tolerant).
+ *
+ * @param {{ maxItems?: number, limit?: number, fetchImpl?: typeof fetch }} [opts]
+ *   maxItems caps how many inventory items are processed (default 1000);
+ *   `limit` is accepted as a legacy alias for maxItems.
  */
 export async function syncEbayInventory(opts = {}) {
-  const [offersPage, itemsPage] = await Promise.all([
-    listEbayOffers({ limit: opts.limit || 50, fetchImpl: opts.fetchImpl }),
-    listEbayInventoryItems({ limit: opts.limit || 50, fetchImpl: opts.fetchImpl }),
-  ]);
-
-  const bySku = Object.fromEntries(
-    (itemsPage.items || []).map((it) => [it.sku, it]),
+  const fetchImpl = opts.fetchImpl;
+  const maxItems = Math.max(
+    1,
+    Math.min(2000, Number(opts.maxItems || opts.limit) || 1000),
   );
+  const pageSize = 200;
 
-  const records = (offersPage.offers || []).map((offer) => {
-    const inv = bySku[offer.sku] || {};
+  const items = [];
+  let inventoryTotal = 0;
+  for (let offset = 0; items.length < maxItems; offset += pageSize) {
+    const page = await listEbayInventoryItems({
+      limit: pageSize,
+      offset,
+      fetchImpl,
+    });
+    inventoryTotal = page.total ?? inventoryTotal;
+    const batch = page.items || [];
+    if (!batch.length) break;
+    items.push(...batch);
+    if (items.length >= (page.total ?? items.length)) break;
+  }
+  const slice = items.slice(0, maxItems);
+
+  /** @type {Map<string, Record<string, any>>} */
+  const offersBySku = new Map();
+  const CHUNK = 20;
+  for (let i = 0; i < slice.length; i += CHUNK) {
+    const part = slice.slice(i, i + CHUNK);
+    await Promise.all(
+      part.map(async (it) => {
+        try {
+          const { data } = await ebayRequest(
+            `/sell/inventory/v1/offer?sku=${encodeURIComponent(it.sku)}`,
+            { fetchImpl },
+          );
+          const offers = data?.offers || [];
+          const offer = offers.find((o) => o.sku === it.sku) || offers[0];
+          if (offer) offersBySku.set(it.sku, offer);
+        } catch {
+          // No readable offer for this SKU — the record still syncs
+          // from the inventory item itself.
+        }
+      }),
+    );
+  }
+
+  const records = slice.map((inv) => {
+    const offer = offersBySku.get(inv.sku) || {};
     const product = inv.product || {};
     const price = offer.pricingSummary?.price?.value ?? offer.price?.value ?? null;
     const qty =
@@ -435,11 +481,11 @@ export async function syncEbayInventory(opts = {}) {
       inv.availability?.shipToLocationAvailability?.quantity ??
       1;
     return {
-      sku: offer.sku,
-      title: product.title || offer.sku,
+      sku: inv.sku,
+      title: product.title || inv.sku,
       price: price != null ? Number(price) : null,
       quantity: Math.max(0, Number(qty) || 0),
-      offerId: offer.offerId,
+      offerId: offer.offerId || null,
       listingId: offer.listing?.listingId || offer.listingId || null,
       status: offer.status || offer.listing?.listingStatus || "active",
       imageUrl: product.imageUrls?.[0] || null,
@@ -447,9 +493,9 @@ export async function syncEbayInventory(opts = {}) {
       staged: false,
       channels: {
         ebay: {
-          listingId: offer.listing?.listingId || offer.offerId,
-          offerId: offer.offerId,
-          sku: offer.sku,
+          listingId: offer.listing?.listingId || offer.offerId || null,
+          offerId: offer.offerId || null,
+          sku: inv.sku,
           price: price != null ? Number(price) : null,
           status: offer.status || "active",
         },
@@ -460,8 +506,9 @@ export async function syncEbayInventory(opts = {}) {
   return {
     ok: true,
     pulled: records.length,
-    offerTotal: offersPage.total,
-    inventoryTotal: itemsPage.total,
+    offerTotal: offersBySku.size,
+    inventoryTotal,
+    truncated: inventoryTotal > slice.length,
     records,
   };
 }
