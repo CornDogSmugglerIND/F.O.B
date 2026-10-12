@@ -194,3 +194,28 @@ test("syncEbayInventory maps offers + inventory items", async () => {
   assert.equal(sync.records[0].price, 12.5);
   assert.equal(sync.records[0].channels.ebay.sku, "SKU-1");
 });
+
+test("publishEbayVariationListing: items -> group -> offers -> publish_by_inventory_item_group", async () => {
+  const { publishEbayVariationListing } = await import("../src/channels/ebay.js");
+  const { combineVariationBatch } = await import("../src/listing/variation.js");
+  const batch = combineVariationBatch([
+    { id: "1", sku: "A1", title: "Pikachu 25", productName: "Pikachu", collectorNumber: "25", price: 5, quantity: 1, setName: "Base" },
+    { id: "2", sku: "B2", title: "Charizard 4", productName: "Charizard", collectorNumber: "4", price: 9, quantity: 2, setName: "Base" },
+  ]);
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => {
+    const u = String(url);
+    calls.push(`${init.method || "GET"} ${u.replace(/^https:\/\/[^/]+/, "")}`);
+    if (u.includes("oauth2/token")) return jsonResponse(200, { access_token: "t", expires_in: 7200 });
+    if (u.endsWith("/offer") && init.method === "POST") return jsonResponse(201, { offerId: "O" + calls.length });
+    if (u.includes("publish_by_inventory_item_group")) return jsonResponse(200, { listingId: "L1" });
+    return jsonResponse(204, {});
+  };
+  const r = await publishEbayVariationListing(batch, { fetchImpl });
+  assert.equal(r.listingId, "L1");
+  assert.equal(r.offerIds.length, 2);
+  const order = calls.filter((c) => !c.includes("oauth2"));
+  assert.match(order[0], /PUT .*inventory_item\/A1/);
+  assert.match(order[2], /PUT .*inventory_item_group/);
+  assert.match(order[order.length - 1], /POST .*publish_by_inventory_item_group/);
+});

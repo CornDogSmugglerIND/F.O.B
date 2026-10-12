@@ -2,7 +2,8 @@ import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { getCanonicalInventory, getChannelStatuses, getEbayChannelStatus } from "../channels/config.js";
 import { applySale } from "../channels/sync.js";
-import { publishListing } from "../channels/adapters.js";
+import { publishListing, assertChannelConfigured } from "../channels/adapters.js";
+import { publishEbayVariationListing } from "../channels/ebay.js";
 import { probeEbay, syncEbayInventory, clearEbayTokenCache, getEbayTracking } from "../channels/ebay.js";
 import {
   buildEbayAuthorizeUrl,
@@ -176,6 +177,27 @@ export function channelsRouter() {
    * Returns parent+children payload + eBay FE CSV (parent has no StartPrice).
    * Does not publish — listing push still needs eBay creds.
    */
+  /**
+   * Combine + PUBLISH a Pick-Your-Card variation listing to eBay.
+   * Body: same as /ebay/combine. Needs eBay connected + policy IDs.
+   */
+  router.post("/ebay/publish-variation", async (req, res, next) => {
+    try {
+      const children = Array.isArray(req.body?.items) ? req.body.items : [];
+      if (children.length < 2) {
+        return res.status(400).json({ error: "items (2+) required", code: "VALIDATION" });
+      }
+      const batch = combineVariationBatch(children, {
+        setName: req.body?.setName, rarity: req.body?.rarity, game: req.body?.game,
+      });
+      assertChannelConfigured("ebay");
+      const published = await publishEbayVariationListing(batch);
+      res.json({ ok: true, groupId: batch.groupId, title: batch.title, published });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.post("/ebay/combine", async (req, res, next) => {
     try {
       let children = Array.isArray(req.body?.items) ? req.body.items : null;

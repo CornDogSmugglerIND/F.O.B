@@ -215,6 +215,117 @@ export async function publishEbayListing(item, opts = {}) {
 }
 
 /**
+ * Publish a Pick-Your-Card variation listing (one multi-variation listing).
+ * Flow: inventory_item per child -> inventory_item_group -> offer per child
+ *       -> publish_by_inventory_item_group.
+ * @param {{ groupId: string, title: string, description?: string, children: Array<Record<string, any>> }} batch
+ *   shape of combineVariationBatch() output
+ * @param {{ fetchImpl?: typeof fetch }} [opts]
+ */
+export async function publishEbayVariationListing(batch, opts = {}) {
+  const children = Array.isArray(batch?.children) ? batch.children : [];
+  if (children.length < 2 || !batch?.title || !batch?.groupId) {
+    const err = new Error("Variation publish needs a title, groupId and at least 2 cards");
+    err.code = "VALIDATION";
+    throw err;
+  }
+  for (const c of children) {
+    const p = Number(c.price);
+    if (!Number.isFinite(p) || p <= 0) {
+      const err = new Error(`Variation card ${c.sku || c.title} needs a price > 0`);
+      err.code = "VALIDATION";
+      throw err;
+    }
+  }
+  const marketplaceId = ebayMarketplaceId();
+  const groupKey = String(batch.groupId).slice(0, 50);
+  const policies = {};
+  if (env("EBAY_FULFILLMENT_POLICY_ID")) policies.fulfillmentPolicyId = env("EBAY_FULFILLMENT_POLICY_ID");
+  if (env("EBAY_PAYMENT_POLICY_ID")) policies.paymentPolicyId = env("EBAY_PAYMENT_POLICY_ID");
+  if (env("EBAY_RETURN_POLICY_ID")) policies.returnPolicyId = env("EBAY_RETURN_POLICY_ID");
+  const locationKey = env("EBAY_MERCHANT_LOCATION_KEY");
+
+  // Each card is one value of the "Card" variation axis; eBay needs unique values.
+  const seen = new Set();
+  const named = children.map((c) => {
+    let label = String(c.title || c.productName || c.sku).slice(0, 65);
+    let n = 2;
+    while (seen.has(label)) label = `${String(c.title || c.productName).slice(0, 60)} #${n++}`;
+    seen.add(label);
+    return { c, label };
+  });
+
+  for (const { c, label } of named) {
+    await ebayRequest(`/sell/inventory/v1/inventory_item/${encodeURIComponent(c.sku)}`, {
+      method: "PUT",
+      fetchImpl: opts.fetchImpl,
+      body: {
+        availability: { shipToLocationAvailability: { quantity: Math.max(1, Number(c.quantity) || 1) } },
+        condition: "USED_EXCELLENT",
+        product: {
+          title: String(label).slice(0, 80),
+          description: batch.description || batch.title,
+          aspects: { Card: [label] },
+        },
+      },
+    });
+  }
+
+  await ebayRequest(`/sell/inventory/v1/inventory_item_group/${encodeURIComponent(groupKey)}`, {
+    method: "PUT",
+    fetchImpl: opts.fetchImpl,
+    body: {
+      inventoryItemGroupKey: groupKey,
+      title: String(batch.title).slice(0, 80),
+      description: batch.description || batch.title,
+      variantSKUs: named.map(({ c }) => c.sku),
+      variesBy: {
+        aspectsImageVariesBy: [],
+        specifications: [{ name: "Card", values: named.map(({ label }) => label) }],
+      },
+    },
+  });
+
+  const offerIds = [];
+  for (const { c } of named) {
+    const body = {
+      sku: c.sku,
+      marketplaceId,
+      format: "FIXED_PRICE",
+      availableQuantity: Math.max(1, Number(c.quantity) || 1),
+      categoryId: "183454",
+      listingDescription: batch.description || batch.title,
+      pricingSummary: { price: { currency: "USD", value: Number(c.price).toFixed(2) } },
+    };
+    if (Object.keys(policies).length) body.listingPolicies = policies;
+    if (locationKey) body.merchantLocationKey = locationKey;
+    const r = await ebayRequest("/sell/inventory/v1/offer", { method: "POST", fetchImpl: opts.fetchImpl, body });
+    if (!r.data?.offerId) {
+      const err = new Error(`eBay createOffer returned no offerId for ${c.sku}`);
+      err.code = "EBAY_API_ERROR";
+      err.details = r.data;
+      throw err;
+    }
+    offerIds.push(r.data.offerId);
+  }
+
+  const pub = await ebayRequest("/sell/inventory/v1/offer/publish_by_inventory_item_group", {
+    method: "POST",
+    fetchImpl: opts.fetchImpl,
+    body: { inventoryItemGroupKey: groupKey, marketplaceId },
+  });
+
+  return {
+    channelId: "ebay",
+    groupKey,
+    offerIds,
+    listingId: pub.data?.listingId || null,
+    status: "active",
+    childCount: children.length,
+  };
+}
+
+/**
  * Update price + qty on an existing offer via bulkUpdatePriceQuantity.
  * @param {{ listingId: string, price?: number, quantity?: number, sku?: string }} payload
  * @param {{ fetchImpl?: typeof fetch }} [opts]
