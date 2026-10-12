@@ -225,6 +225,13 @@ export async function publishEbayListing(item, opts = {}) {
     throw err;
   }
 
+  if (opts.dryRun) {
+    // Offer created OK (SKU, category, policies, location accepted). Clean up; never go live.
+    await ebayRequest(`/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, { method: "DELETE", fetchImpl: opts.fetchImpl }).catch(() => {});
+    await ebayRequest(`/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, { method: "DELETE", fetchImpl: opts.fetchImpl }).catch(() => {});
+    return { channelId: "ebay", dryRun: true, sku, offerCreated: true, price, status: "not_published" };
+  }
+
   const pub = await ebayRequest(`/sell/inventory/v1/offer/${encodeURIComponent(offerId)}/publish`, {
     method: "POST",
     fetchImpl: opts.fetchImpl,

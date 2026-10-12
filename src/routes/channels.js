@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { getCanonicalInventory, getChannelStatuses, getEbayChannelStatus } from "../channels/config.js";
 import { applySale } from "../channels/sync.js";
 import { publishListing, assertChannelConfigured } from "../channels/adapters.js";
-import { publishEbayVariationListing } from "../channels/ebay.js";
+import { publishEbayVariationListing, publishEbayListing } from "../channels/ebay.js";
 import { probeEbay, syncEbayInventory, clearEbayTokenCache, getEbayTracking } from "../channels/ebay.js";
 import {
   buildEbayAuthorizeUrl,
@@ -211,6 +211,20 @@ export function channelsRouter() {
       res.json({ ok: true, groupId: batch.groupId, title: batch.title, published });
     } catch (err) {
       next(err);
+    }
+  });
+
+  /** Safe check: builds the item + offer on eBay, then deletes both. Never publishes. */
+  router.post("/ebay/publish-check", async (_req, res) => {
+    try {
+      assertChannelConfigured("ebay");
+      const out = await publishEbayListing(
+        { id: `check${Date.now().toString(36)}`, sku: `hud-check-${Date.now().toString(36)}`, title: "HUD publish check (never listed)", price: 1.99, quantity: 1, category: "card" },
+        { dryRun: true },
+      );
+      res.json({ ok: true, ...out });
+    } catch (err) {
+      res.status(err.status || 500).json({ ok: false, error: err.message, code: err.code || "ERROR", details: err.details || null });
     }
   });
 
