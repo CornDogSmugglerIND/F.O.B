@@ -67,18 +67,18 @@ test("item sheet has a Delete button with a two-tap confirm", async () => {
     assert.ok(/btnDeleteItem">Delete</.test(html), `${f} button uses the full word Delete`);
   }
   const js = await src("coalition.js");
-  const body = fnBody(js, "function deleteItem(id)", "async function addPhotos(");
+  const body = fnBody(js, "function removeItems(ids)", "/* ---------- SKU prefix");
   assert.ok(/deleteArmedId !== id/.test(body), "first tap arms instead of deleting");
   assert.ok(/Tap again to delete/.test(body), "armed state says what the second tap does");
   assert.ok(/setTimeout\(disarmDelete, 3000\)/.test(body), "arm auto-expires after 3s");
-  assert.ok(/state\.items\.splice\(idx, 1\)/.test(body), "second tap removes the item from state");
+  assert.ok(/state\.items\.splice\(0, state\.items\.length, \.\.\.kept\)/.test(body), "second tap removes the item from state");
   assert.ok(/sp\.itemIds\.filter/.test(body) || /itemIds = sp\.itemIds\.filter/.test(body),
     "deleted item is pruned from every space's itemIds");
   assert.ok(/if\s*\(!saveItems\(\)\)/.test(body), "honors a refused save");
-  assert.ok(/state\.items\.splice\(idx, 0, it\)/.test(body), "restores the item when storage refuses");
+  assert.ok(/state\.items\.splice\(0, state\.items\.length, \.\.\.itemsBefore\)/.test(body), "restores the item when storage refuses");
   assert.ok(/closeSheet\(\)/.test(body), "sheet closes after a successful delete");
   assert.ok(/render\(\)/.test(body), "view re-renders after a successful delete");
-  assert.ok(/toast\("Deleted"\)/.test(body), "honest one-word confirmation toast");
+  assert.ok(/"Deleted"/.test(body), "honest one-word confirmation toast");
   assert.ok(!/photos\s*=\s*\[\]/.test(body), "delete never touches other items' photos");
   assert.ok(/\$\("btnDeleteItem"\)\?\.addEventListener\("click"/.test(js), "Delete button is bound");
   assert.ok(/disarmDelete\(\)/.test(fnBody(js, "function openSheet(id)", "window.HUD_openSheet")),
@@ -89,7 +89,7 @@ test("delete works for demo-seeded items too", async () => {
   const js = await src("coalition.js");
   // deleteItem matches by id only — no notes/demo filter, so demo rows delete
   // through the same path as real rows.
-  const body = fnBody(js, "function deleteItem(id)", "async function addPhotos(");
+  const body = fnBody(js, "function removeItems(ids)", "/* ---------- SKU prefix");
   assert.ok(/findIndex\(\(x\) => x\.id === id\)/.test(body), "delete targets by id, no demo exclusion");
   assert.ok(!/demo-seed/.test(body), "no special-casing that would spare demo items");
 });
@@ -100,7 +100,7 @@ test("index.html and hud.html stay byte-identical with bumped versions", async (
   const a = await src("index.html");
   const b = await src("hud.html");
   assert.equal(a, b, "index.html and hud.html are byte-identical");
-  for (const v of ["coalition.js?v=51", "coalition.css?v=29", "features/settings.js?v=6"]) {
+  for (const v of ["coalition.js?v=53", "coalition.css?v=29", "features/settings.js?v=6"]) {
     assert.ok(a.includes(v), `${v} referenced`);
     const file = v.split("?")[0].replace(/^\//, "");
     assert.ok(existsSync(join(pub, file)), `${file} exists on disk`);

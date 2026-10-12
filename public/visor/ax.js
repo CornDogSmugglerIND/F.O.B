@@ -82,6 +82,7 @@
     return '<div class="ax-next" data-id="' + esc(it.id) + '">' +
       (early ? '<button type="button" class="ax-btn" data-a="identify">Identify</button>' : '<button type="button" class="ax-btn" data-a="open">Details</button>') +
       (nx ? '<button type="button" class="ax-btn pri" data-a="next" data-to="' + nx.id + '">' + (NEXT[ph] || "Next") + "</button>" : "") +
+      '<button type="button" class="ax-btn ax-del" data-a="del" aria-label="Delete item">Delete</button>' +
       "</div>";
   }
 
@@ -89,7 +90,14 @@
     host.querySelectorAll(".ax-next [data-a]").forEach(function (b) {
       b.addEventListener("click", function () {
         var id = b.closest(".ax-next").dataset.id, a = b.dataset.a;
-        if (a === "next") C().moveItemToPhase(id, b.dataset.to);
+        if (a === "del") {
+          if (!b.classList.contains("armed")) {
+            b.classList.add("armed"); b.textContent = "Tap again";
+            setTimeout(function () { if (b.isConnected) { b.classList.remove("armed"); b.textContent = "Delete"; } }, 3000);
+            return;
+          }
+          C().removeItems([id]);
+        } else if (a === "next") C().moveItemToPhase(id, b.dataset.to);
         else if (a === "open") C().openSheet(id);
         else if (a === "identify") { C().openSheet(id); setTimeout(function () { var x = $("btnIdentify"); if (x) x.click(); }, 80); }
       });

@@ -66,5 +66,25 @@ export function csvRouter() {
     }
   });
 
+  /**
+   * Export the app's own items (they live in the browser, not on the server).
+   * Body: { source, items: [...] }  -> text/csv
+   */
+  router.post("/export", async (req, res, next) => {
+    try {
+      const source = String((req.body && req.body.source) || "generic");
+      if (!EXPORT_SOURCES.includes(source)) {
+        return res.status(400).json({ ok: false, error: `source must be one of ${EXPORT_SOURCES.join(", ")}`, code: "VALIDATION" });
+      }
+      const items = Array.isArray(req.body && req.body.items) ? req.body.items : [];
+      if (!items.length) return res.status(400).json({ ok: false, error: "No items to export", code: "VALIDATION" });
+      const csv = exportCsv(source === "generic" ? "tcgplayer" : source, items);
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.send(csv);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   return router;
 }

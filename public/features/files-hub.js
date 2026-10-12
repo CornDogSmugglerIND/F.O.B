@@ -35,8 +35,11 @@
 
   async function doExport() {
     try {
-      var res = await fetch("/api/csv/export?source=" + encodeURIComponent(pick));
-      if (!res.ok) throw new Error("export failed");
+      var c = core();
+      var items = (c && c.state && c.state.items) || [];
+      if (!items.length) throw new Error("no items yet");
+      var res = await fetch("/api/csv/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: pick, items: items.map(function (i) { var o = Object.assign({}, i); delete o.photos; return o; }) }) });
+      if (!res.ok) { var eb = await res.json().catch(function () { return {}; }); throw new Error(eb.error || "export failed"); }
       var blob = await res.blob();
       var a = document.createElement("a");
       a.href = URL.createObjectURL(blob);

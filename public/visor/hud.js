@@ -145,7 +145,13 @@ export function renderHome() {
   const needsBin = items.filter((i) => !i.spaceId && phaseFromItem(i) !== "listed").length;
   const toShip = by.sold.length + by.packed.length;
   const review = by.intake.length;
-  const mapHtml = mapMarkup("v", "");
+  const W = window.HUD_where;
+  const chanTiles = W ? [["ebay"], ["double_holo"], ["misprint"], ["facebook"]].map(([id]) => {
+    let nLive = 0, nQ = 0, full = id;
+    items.forEach((it) => { const x = W.all(it).find((y) => y.ch.id === id); if (!x) return; full = x.ch.full; if (x.st === "live") nLive++; else if (x.st === "queued") nQ++; });
+    return `<button type="button" class="ch-tile${nLive ? " live" : ""}" data-goto="channels" data-ch="${id}"><b>${nLive}</b><span>${full}</span><i>${nLive ? "live" : "none live"}${nQ ? ` \u00b7 ${nQ} queued` : ""}</i></button>`;
+  }).join("") : "";
+  const stageStrip = PHASES.map((p) => `<button type="button" class="stg${by[p.id].length ? " on" : ""}" data-stagego="${p.id}"><b>${by[p.id].length}</b><span>${p.label}</span></button>`).join("");
 
   const needs = [
     { n: review, t: "Scans to review", go: "scouter" },
@@ -167,27 +173,23 @@ export function renderHome() {
           <div class="rh-sub">${items.length ? `${items.length} items on the line · ${live} live` : "Nothing on the line yet. Snap a photo in Scouter."}</div>
         </div>
       </div>
-      ${mapHtml}
-      <div class="rh-hint">Hold a card, then drop it on a stop to move it</div>
+      <div class="rh-sec">Where it's listed</div>
+      <div class="ch-grid">${chanTiles}</div>
       <div class="rh-sec">Needs you</div>
       <div class="rh-needs">${needs}</div>
+      <div class="rh-sec">The route <button type="button" class="rh-link" data-goto="constellation">Open Tree</button></div>
+      <div class="stg-row">${stageStrip}</div>
       ${latest}
     </section>`;
   countUp(document.getElementById("vhValue"), value);
 
   host.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => ctx.navigate(b.dataset.goto)));
-  host.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => {
-    const id = b.dataset.stage;
+  host.querySelectorAll("[data-stagego]").forEach((b) => b.addEventListener("click", () => {
+    const id = b.dataset.stagego;
     ctx.navigate("constellation");
     requestAnimationFrame(() => openStage(id, b));
   }));
   host.querySelectorAll(".rt-card").forEach(cardClick);
-  const rm = document.getElementById("rhMap");
-  if (rm) rm.addEventListener("pointermove", (e) => {
-    const r = rm.getBoundingClientRect();
-    rm.style.setProperty("--px", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
-    rm.style.setProperty("--py", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
-  }, { passive: true });
 }
 
 /* ---------- Tree tab: the same floaty route, bigger, across or down, items draggable ---------- */
@@ -338,6 +340,7 @@ export function openCard(id, srcEl) {
     <div class="rz-actions">
       ${next ? `<button type="button" class="rz-btn pri" data-act="next">${NEXT_LABEL[ph] || "Move forward"}</button>` : ""}
       <button type="button" class="rz-btn" data-act="open">${idx <= 2 ? "Identify &amp; list" : "Details"}</button>
+      <button type="button" class="rz-btn rz-del" data-act="del">Delete</button>
     </div></div></div>`;
   document.body.appendChild(el);
   const card = el.querySelector(".rz-card");
@@ -376,6 +379,19 @@ export function openCard(id, srcEl) {
   el.addEventListener("click", (e) => { if (e.target === el) closeCard(); });
   el.querySelector(".rz-x").addEventListener("click", () => closeCard());
   el.querySelector('[data-act="open"]').addEventListener("click", () => { closeCard(true); closeStage(true); ctx.openSheet(id); });
+  const dl = el.querySelector('[data-act="del"]');
+  let dlT = null;
+  dl.addEventListener("click", () => {
+    if (!dl.classList.contains("armed")) {
+      dl.classList.add("armed");
+      dl.textContent = "Tap again to delete";
+      dlT = setTimeout(() => { dl.classList.remove("armed"); dl.textContent = "Delete"; }, 3000);
+      return;
+    }
+    clearTimeout(dlT);
+    closeCard(true); closeStage(true);
+    ctx.removeItems([id]);
+  });
   const sv = el.querySelector('[data-act="savetrk"]');
   const tk = el.querySelector('[data-act="track"]');
   const upd = () => { const c = el.querySelector(".rz-carrier").value, n = el.querySelector(".rz-tnum").value.trim(); if (tk) tk.disabled = !(n && TURL[c]); };

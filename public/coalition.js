@@ -100,6 +100,24 @@ function toast(msg) {
   toast._t = setTimeout(() => el.classList.remove("show"), 2200);
 }
 
+function toastAction(msg, label, fn, ms = 7000) {
+  const el = $("toast");
+  if (!el) return;
+  el.textContent = "";
+  const sp = document.createElement("span");
+  sp.textContent = msg + " ";
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "toast-act";
+  b.textContent = label;
+  b.addEventListener("click", () => { el.classList.remove("show"); clearTimeout(toast._t); fn(); });
+  el.append(sp, b);
+  el.classList.toggle("top", !!document.querySelector(".sheet.open"));
+  el.classList.add("show", "has-act");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove("show", "has-act"), ms);
+}
+
 function money(n) {
   return `$${(Number(n) || 0).toFixed(2)}`;
 }
@@ -966,7 +984,7 @@ function openSheet(id) {
   window.HUD_where?.paintSheet(it);
 }
 window.HUD_openSheet = openSheet;
-initHud({ state, PHASES, phaseFromItem, money, navigate, openSheet, moveItemToPhase, saveItems, toast });
+initHud({ state, PHASES, phaseFromItem, money, navigate, openSheet, moveItemToPhase, saveItems, toast, removeItems });
 window.HUD_readout = hudReadout;
 
 /* ---------- Item details form (Base44 parity: the full Add/Edit model) ----------
@@ -1155,6 +1173,39 @@ function disarmDelete() {
   }
 }
 
+/* Remove one or more items (with Undo). Used by every surface. */
+function removeItems(ids) {
+  const want = new Set(ids);
+  const itemsBefore = state.items.slice();
+  const kept = itemsBefore.filter((it) => !want.has(it.id));
+  const gone = itemsBefore.filter((it) => want.has(it.id));
+  if (!gone.length) return false;
+  const spacesBefore = JSON.stringify(state.spaces);
+  state.items.splice(0, state.items.length, ...kept);
+  for (const sp of state.spaces) {
+    if (sp && Array.isArray(sp.itemIds)) sp.itemIds = sp.itemIds.filter((x) => !want.has(x));
+  }
+  if (!saveItems()) {
+    state.items.splice(0, state.items.length, ...itemsBefore);
+    try { state.spaces = JSON.parse(spacesBefore); } catch { /* keep running */ }
+    return false;
+  }
+  saveSpaces();
+  disarmDelete();
+  closeSheet();
+  render();
+  const n = gone.length;
+  toastAction(n === 1 ? "Deleted" : `Deleted ${n} items`, "Undo", () => {
+    state.items.splice(0, state.items.length, ...itemsBefore);
+    try { state.spaces = JSON.parse(spacesBefore); } catch { /* keep running */ }
+    saveItems();
+    saveSpaces();
+    render();
+    toast("Restored");
+  });
+  return true;
+}
+
 function deleteItem(id) {
   const idx = state.items.findIndex((x) => x.id === id);
   if (idx < 0) return;
@@ -1172,25 +1223,7 @@ function deleteItem(id) {
     return;
   }
   clearTimeout(deleteTimer);
-  // Snapshot for rollback if storage refuses the write.
-  const [it] = state.items.splice(idx, 1);
-  const spacesBefore = JSON.stringify(state.spaces);
-  for (const sp of state.spaces) {
-    if (sp && Array.isArray(sp.itemIds)) sp.itemIds = sp.itemIds.filter((x) => x !== id);
-  }
-  if (!saveItems()) {
-    // Storage refused — restore so memory matches disk. saveItems() already
-    // showed the honest "storage full" toast. Nothing is lost.
-    state.items.splice(idx, 0, it);
-    try { state.spaces = JSON.parse(spacesBefore); } catch { /* keep running */ }
-    disarmDelete();
-    return;
-  }
-  saveSpaces();
-  disarmDelete();
-  closeSheet();
-  render();
-  toast("Deleted");
+  removeItems([id]);
 }
 
 /* ---------- SKU prefix (Scouter intake auto-numbering) ---------- */
@@ -1812,6 +1845,9 @@ function bind() {
   }
 
   $("btnCloseSheet")?.addEventListener("click", closeSheet);
+  // Escape + tapping the dim backdrop close the item sheet (desktop + phone)
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("itemSheet")?.classList.contains("open")) closeSheet(); });
+  $("itemSheet")?.addEventListener("click", (e) => { if (e.target === $("itemSheet")) closeSheet(); });
   $("btnSaveItem")?.addEventListener("click", () => saveItemForm(state.sheetItemId));
   $("fPurchasePrice")?.addEventListener("input", repaintProfit);
   $("fMarketValue")?.addEventListener("input", repaintProfit);
@@ -1837,7 +1873,6 @@ function bind() {
   });
 
   $("btnEbaySync")?.addEventListener("click", syncEbay);
-  $("btnOpenMap")?.addEventListener("click", () => navigate("constellation"));
   $("btnCombineMode")?.addEventListener("click", () => {
     navigate("channels");
     setCombineMode(true);
@@ -1944,6 +1979,7 @@ function bind() {
     syncEbay,
     seedDemoItems,
     moveItemToPhase,
+    removeItems,
     openCard: hudReadout,
     renderTreeMap: hudTreeMap,
     PHASES,

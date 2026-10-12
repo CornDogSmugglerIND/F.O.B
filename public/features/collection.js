@@ -185,7 +185,8 @@
       '<div><dt>Market</dt><dd class="hot">' + money(item.price || 0) + "</dd></div>" +
       '<div><dt>Profit</dt><dd class="' + (profit < 0 ? "neg" : "pos") + '">' + (profit < 0 ? "\u2212" : "+") + money(Math.abs(profit)) + "</dd></div>" +
       '<div><dt>Bin</dt><dd>' + esc(binName(item)) + "</dd></div></dl>" +
-      '<button type="button" class="cx-open" data-open="' + esc(item.id) + '">Open</button></div></div>';
+      '<div class="cx-acts"><button type="button" class="cx-open" data-open="' + esc(item.id) + '">Open</button>' +
+      '<button type="button" class="cx-del" data-del="' + esc(item.id) + '">Delete</button></div></div></div>';
   }
 
   function visibleItems() {
@@ -253,6 +254,15 @@
     function wireOpen(root) {
       var ob = root.querySelector("[data-open]");
       if (ob) ob.addEventListener("click", function () { var cc = core(); if (cc && cc.openSheet) cc.openSheet(ob.getAttribute("data-open")); });
+      var db = root.querySelector("[data-del]");
+      if (db) db.addEventListener("click", function () {
+        if (!db.classList.contains("armed")) {
+          db.classList.add("armed"); db.textContent = "Tap again";
+          setTimeout(function () { if (db.isConnected) { db.classList.remove("armed"); db.textContent = "Delete"; } }, 3000);
+          return;
+        }
+        var cc = core(); if (cc && cc.removeItems) { view.focus = null; cc.removeItems([db.getAttribute("data-del")]); }
+      });
     }
     var pj0 = document.getElementById("cxProj");
     if (pj0) wireOpen(pj0);
@@ -270,10 +280,23 @@
       '<span class="inv-bulk-n">' + n + " selected</span>" +
       '<select id="invBulkStatus" aria-label="Set listing status"><option value="">Set status\u2026</option>' +
       STATUSES.map(function (s) { return '<option value="' + s + '">' + s + "</option>"; }).join("") + "</select>" +
+      '<button type="button" id="invBulkDel" class="inv-bulk-del">Delete</button>' +
       '<select id="invBulkBin" aria-label="Move to bin"><option value="">Move to bin\u2026</option>' +
       spaces.map(function (sp) { return '<option value="' + esc(sp.id) + '">' + esc(sp.name) + "</option>"; }).join("") + "</select>";
     bar.querySelector("#invBulkStatus").addEventListener("change", function (e) { bulkApply({ status: e.target.value }); });
     bar.querySelector("#invBulkBin").addEventListener("change", function (e) { bulkApply({ bin: e.target.value }); });
+    var bd = bar.querySelector("#invBulkDel");
+    bd.addEventListener("click", function () {
+      var ids = selectedIds();
+      if (!ids.length) { if (c && c.toast) c.toast("Tap items first"); return; }
+      if (!bd.classList.contains("armed")) {
+        bd.classList.add("armed"); bd.textContent = "Tap again: delete " + ids.length;
+        setTimeout(function () { if (bd.isConnected) { bd.classList.remove("armed"); bd.textContent = "Delete"; } }, 3000);
+        return;
+      }
+      view.sel = {}; view.select = false; view.focus = null;
+      if (c && c.removeItems) c.removeItems(ids);
+    });
   }
 
   function bulkApply(change) {
