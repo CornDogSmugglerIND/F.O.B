@@ -173,17 +173,29 @@ export function renderHome() {
           <div class="rh-sub">${items.length ? `${items.length} items on the line · ${live} live` : "Nothing on the line yet. Snap a photo in Scouter."}</div>
         </div>
       </div>
+      ${mapMarkup("v", "")}
+      <div class="rh-hint">Hold a card, then drop it on a stop to move it</div>
       <div class="rh-sec">Where it's listed</div>
       <div class="ch-grid">${chanTiles}</div>
       <div class="rh-sec">Needs you</div>
       <div class="rh-needs">${needs}</div>
-      <div class="rh-sec">The route <button type="button" class="rh-link" data-goto="constellation">Open Tree</button></div>
-      <div class="stg-row">${stageStrip}</div>
       ${latest}
     </section>`;
   countUp(document.getElementById("vhValue"), value);
 
   host.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => ctx.navigate(b.dataset.goto)));
+  host.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => {
+    const id = b.dataset.stage;
+    ctx.navigate("constellation");
+    requestAnimationFrame(() => openStage(id, b));
+  }));
+  host.querySelectorAll(".rt-card").forEach(cardClick);
+  const rmap = document.getElementById("rhMap");
+  if (rmap) rmap.addEventListener("pointermove", (e) => {
+    const r = rmap.getBoundingClientRect();
+    rmap.style.setProperty("--px", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
+    rmap.style.setProperty("--py", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
+  }, { passive: true });
   host.querySelectorAll("[data-stagego]").forEach((b) => b.addEventListener("click", () => {
     const id = b.dataset.stagego;
     ctx.navigate("constellation");
@@ -195,30 +207,12 @@ export function renderHome() {
 /* ---------- Tree tab: the same floaty route, bigger, across or down, items draggable ---------- */
 export function renderTreeMap(host) {
   if (!host || !ctx) return;
-  let mode = "h";
-  try { if (localStorage.getItem("fob-tree-mode") === "down") mode = "v"; } catch (_) { /* ignore */ }
-  const sc = host.querySelector(".tm-scroll");
-  const keep = sc ? sc.scrollLeft : null;
-  host.innerHTML = `<div class="ax-seg tm-seg" role="tablist"><button type="button" data-tm="h" class="${mode === "h" ? "on" : ""}">Across</button><button type="button" data-tm="v" class="${mode === "v" ? "on" : ""}">Down</button></div>
-    <div class="tm-scroll${mode === "v" ? " down" : ""}">${mapMarkup(mode, "t")}</div>
-    <div class="rh-hint">Hold a card, drop it on a stop. Tap a stop to open it.</div>`;
-  host.querySelectorAll("[data-tm]").forEach((b) => b.addEventListener("click", () => {
-    try { localStorage.setItem("fob-tree-mode", b.dataset.tm === "v" ? "down" : "across"); } catch (_) { /* ignore */ }
-    renderTreeMap(host);
-  }));
-  host.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => openStage(b.dataset.stage, b)));
-  host.querySelectorAll(".rt-card").forEach(cardClick);
-  const rm = host.querySelector(".rm");
-  if (rm) rm.addEventListener("pointermove", (e) => {
-    const r = rm.getBoundingClientRect();
-    rm.style.setProperty("--px", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
-    rm.style.setProperty("--py", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
-  }, { passive: true });
-  const scr = host.querySelector(".tm-scroll");
-  if (scr && mode === "h") {
-    if (keep != null) scr.scrollLeft = keep;
-    else { const on = scr.querySelector(".rm-stop.on"); if (on) scr.scrollLeft = Math.max(0, on.offsetLeft - 60); }
-  }
+  const { PHASES } = ctx;
+  const by = byPhase();
+  host.innerHTML = `<div class="rh-sec">Every stop, with what's in it</div>
+    <div class="stg-row">${PHASES.map((p) => `<button type="button" class="stg${by[p.id].length ? " on" : ""}" data-stagego="${p.id}"><b>${by[p.id].length}</b><span>${p.label}</span></button>`).join("")}</div>
+    <div class="rh-hint">Tap a stop to see its items. Open, move or delete them there.</div>`;
+  host.querySelectorAll("[data-stagego]").forEach((b) => b.addEventListener("click", () => openStage(b.dataset.stagego, b)));
 }
 
 /* ---------- Route (constellation tree) ---------- */
