@@ -8,6 +8,7 @@ import {
   buildEbayAuthorizeUrl,
   exchangeEbayAuthCode,
   saveEbayTokenStore,
+  blobDiag,
 } from "../channels/ebayConnect.js";
 import { probeMisprint } from "../channels/misprint.js";
 import { combineVariationBatch } from "../listing/variation.js";
@@ -424,6 +425,7 @@ export function channelsRouter() {
         missing: s.missing,
         tokenStored: s.tokenStored,
         lastError: s.lastError,
+        storage: { durable: blobDiag.enabled, error: blobDiag.lastError },
       });
     } catch (err) {
       next(err);

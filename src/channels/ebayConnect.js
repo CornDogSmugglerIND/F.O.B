@@ -97,8 +97,10 @@ function tokenFile() {
 }
 
 const BLOB_PATH = "coalition/ebay-tokens.json";
+export const blobDiag = { enabled: false, lastError: null };
 function blobOn() {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  blobDiag.enabled = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  return blobDiag.enabled;
 }
 
 /** Stored tokens, or null. Never throws. Durable (Vercel Blob) when a store is attached. */
@@ -116,7 +118,8 @@ export async function loadEbayTokenStore() {
     const t = JSON.parse(raw);
     if (t && typeof t.refresh_token === "string" && t.refresh_token) return t;
     return null;
-  } catch {
+  } catch (e) {
+    if (blobDiag.enabled) blobDiag.lastError = String(e?.message || e).slice(0, 200);
     return null;
   }
 }
