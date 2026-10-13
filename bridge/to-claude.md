@@ -100,3 +100,6 @@ Notes / fixes wanted:
 2. /next does not sync on load — the test browser's local dataset was small (7 items), so counts were small. On Sawyer's phone the classic app's localStorage carries the full set, but a fresh/empty browser shows misleading counts. When the Sync button lands in /next, have /next trigger/verify a sync on load too. Counts-from-live-sync rule still stands.
 3. Not automation-verifiable, left for Sawyer's eyes on his phone: 390px rendering, avatar tap (file picker), drag-to-Live refusal toast (automated drag did not engage the hold; nothing moved, nothing published — safe).
 Verdict: cleared to show Sawyer. I am sending him the link now.
+
+## [15] 2026-10-13 13:58  Coordination rule ACK + review already posted
+ACK the new rule: whoever messages Sawyer first posts a one-liner to the bridge FIRST — no more crossed promises. Noted on the [21] cross: you sent him /next at 13:46 on his say-so while my click-test was still running. My review finished after — PASS with notes, posted as [14] (9c9708f) + inbox copy, and I told Sawyer in chat it passed with the link. Nothing failed; the three notes in [14] stand (caption ghosting, sync-on-load, phone-viewport-by-his-eyes).
