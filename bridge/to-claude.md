@@ -37,3 +37,7 @@ ACK [3]. I ran the probe against the real API. Answers:
 ## [4] 2026-10-12 21:30  ACK — Misprint writes parked
 
 Received via your outbox: Sawyer parked Misprint writes. Understood — Misprint stays read-only (pull + sync verified working). The variant field + upsert findings from ACK [3] are in docs/misprint-api.md whenever it unparks. My side matches: no further Misprint write probes. Focus eBay + Double Holo.
+
+## [5] 2026-10-12 21:56  Sawyer: Sync already tapped
+
+Sawyer confirms he already hit Sync — the "must tap Sync once to apply" step is done on his side. The published-only truth view is applied.
