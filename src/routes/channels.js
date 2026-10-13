@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { getCanonicalInventory, getChannelStatuses, getEbayChannelStatus } from "../channels/config.js";
 import { applySale } from "../channels/sync.js";
 import { publishListing, assertChannelConfigured } from "../channels/adapters.js";
-import { publishEbayVariationListing, publishEbayListing, endEbayListing } from "../channels/ebay.js";
+import { publishEbayVariationListing, publishEbayListing, endEbayListing, endEbayVariationListing } from "../channels/ebay.js";
 import { probeEbay, syncEbayInventory, clearEbayTokenCache, getEbayTracking } from "../channels/ebay.js";
 import {
   buildEbayAuthorizeUrl,
@@ -94,6 +94,22 @@ function ebayConnectFailure(res, status, message, opts = {}) {
 export function channelsRouter() {
   const router = Router();
   router.use(async (_req, _res, next) => { try { await hydrateMisprintKeys(); await hydrateEbaySettings(); } catch { /* ignore */ } next(); });
+  /** One-shot live proof of a Pick-Your-Card listing: publish 2 cheap cards as one listing, then end it. */
+  router.post("/ebay/variation-test", async (req, res) => {
+    const stamp = Date.now();
+    const img = "https://tcgplayer-cdn.tcgplayer.com/product/714386_in_1000x1000.jpg";
+    const mk = (n, price) => ({ sku: `hud-vartest-${stamp}-${n}`, title: `Pokemon Holo Rare Card Option ${n} Near Mint`, price, quantity: 1, condition: "NM", game: "pokemon", photos: [img] });
+    const batch = { groupId: `hud-vartest-${stamp}`, title: "Pokemon Holo Rare Pick Your Card Near Mint", description: "Pick your card. Near mint Pokemon trading cards, ships in a toploader and bubble mailer.", game: "pokemon", setName: "Misc", children: [mk(1, 4.99), mk(2, 5.99)] };
+    let pub = null;
+    try {
+      pub = await publishEbayVariationListing(batch);
+      let ended = false, endError = null;
+      try { await endEbayVariationListing(batch.groupId); ended = true; } catch (e) { endError = e.message; }
+      res.json({ ok: true, listingId: pub.listingId, groupKey: pub.groupKey, offerIds: pub.offerIds, childCount: pub.childCount, ended, endError });
+    } catch (e) {
+      res.status(502).json({ ok: false, error: e.message, details: e.details });
+    }
+  });
   /** One-shot live proof: publish a card under $20, confirm policy, withdraw immediately. */
   router.post("/ebay/publish-test", async (req, res) => {
     const item = req.body?.item || {};

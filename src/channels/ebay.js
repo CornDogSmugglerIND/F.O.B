@@ -116,6 +116,10 @@ export function cardAspects(item = {}) {
   return Object.keys(a).length ? a : undefined;
 }
 
+function imgsOf(item = {}) {
+  return (item.photos || item.imageUrls || []).map((x) => (typeof x === "string" ? x : x?.url)).filter((u) => /^https:\/\//.test(u || "")).slice(0, 12);
+}
+
 function skuForItem(item) {
   return `hud-${item.id}`.slice(0, 50);
 }
@@ -322,7 +326,8 @@ export async function publishEbayVariationListing(batch, opts = {}) {
         product: {
           title: String(label).slice(0, 80),
           description: batch.description || batch.title,
-          aspects: { Card: [label] },
+          aspects: { ...(cardAspects({ ...c, game: c.game || batch.game, set: c.set || batch.setName }) || {}), Card: [label] },
+          imageUrls: imgsOf(c),
         },
       },
     });
@@ -335,6 +340,8 @@ export async function publishEbayVariationListing(batch, opts = {}) {
       inventoryItemGroupKey: groupKey,
       title: String(batch.title).slice(0, 80),
       description: batch.description || batch.title,
+      imageUrls: imgsOf(named[0].c),
+      aspects: cardAspects({ game: batch.game, set: batch.setName }) || undefined,
       variantSKUs: named.map(({ c }) => c.sku),
       variesBy: {
         aspectsImageVariesBy: [],
@@ -699,4 +706,14 @@ export async function getEbayTracking(opts = {}) {
       buyer: o.buyer?.username || "",
     };
   });
+}
+
+/** End a whole variation listing by group key. */
+export async function endEbayVariationListing(groupKey, opts = {}) {
+  await ebayRequest("/sell/inventory/v1/offer/withdraw_by_inventory_item_group", {
+    method: "POST",
+    fetchImpl: opts.fetchImpl,
+    body: { inventoryItemGroupKey: groupKey, marketplaceId: ebayMarketplaceId() },
+  });
+  return { groupKey, status: "ended" };
 }
