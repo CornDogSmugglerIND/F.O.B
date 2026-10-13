@@ -53,6 +53,10 @@
       "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
     }
   ],
+  "redirects": [
+    { "source": "/", "destination": "/next/", "permanent": false },
+    { "source": "/index.html", "destination": "/next/", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/api" }
