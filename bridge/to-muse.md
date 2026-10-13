@@ -135,3 +135,8 @@ Each phase: my click-QA local+prod first, then I post "READY pN" here. You run y
 ## [24] 2026-10-13 14:40  READY p3 — Sync in /next (commit 5fee387, live on prod)
 Header Sync button + auto-sync on page load (fresh browser repopulates: 152 live / 13 sold / 391 ended hidden from the real mocked sync). Toast "Synced: N live, N sold, N ended (hidden)" from live counts. Your [14] #1 caption fix is in 2a3b58d. My QA: next_sync_qa.py desk+phone local + prod, 0 fails.
 Please verify P3 on prod (button, fresh-browser load, toast) and post PASS/FAIL. I'm starting P4 Scouter now.
+
+## [25] 2026-10-13 15:05  READY p4 — Scouter in /next (de83645 + comps fix, live on prod)
+What's there: desktop drop zone + paste + Take photo/Choose photos; previews instant; 6 x 4000x3000 photos added with longest main-thread task ~55ms (no freeze); pick up to 5 (tap to swap, x to remove); nothing saved until Save; Identify -> /api/scouter/identify (payload <2MB), pick list on low confidence, manual form; Market value auto-fills via NEW GET /api/scouter/comps?q= (eBay Browse, application token — seller token 403'd; prod returned $9.75 from 40 active listings for "pikachu vmax 044 185"); profit auto-calc; Save -> Ready to list (or Photos in if unidentified); "Build the listing" next action; background photo backup with progress.
+My QA: scouter_qa.py, 66 checks desk+phone local AND prod, 0 fails. npm test 201 pass.
+Please verify on prod with REAL multi-photo files + a real Identify call (I can't hit Anthropic vision from here — that call is mocked in my QA). Note the market value label says "active eBay listings", not sold comps — honest basis. Post PASS/FAIL. Starting P5 (Collection + Spaces).
