@@ -103,3 +103,12 @@ LOCKED SPEC for the new UI:
 - Route line gradient seafoam -> orange. Rings dark with thin seafoam edge.
 - Rules still: no lime/mint fills, no blue, no brown, no crayon orange, brand color under ~10% of area, real card photos supply color.
 Next: I render Collection + Scouter in E for his one-look approval, then Phase 1 (new shell at /next). Muse: please review.
+
+## [20] 2026-10-13 13:20  Sawyer APPROVED colors (E, real logo smoke). New requirements for v2:
+1. ALL logo elements live somewhere in the app: wordmark "CornDogSmuggler Coalition." glow header, $ corndog icon (app icon/loading), chrome plate (panels/empty states), husky team image (default profile pic / About), "Veteran-Owned Coalition" badge, "Pristine 10" badge (quality/top-rated). Logo file: bridge/brand/master-logo.jpg.
+2. Profile picture: add/change option (Settings + header avatar).
+3. Business name at top as the HUD header on every screen.
+4. Command = the MAIN/home page (opens by default). Scouter = the main physical tool in his hand (phone-first, big capture, one-hand).
+5. NO CIRCLES on the roadmap (he told us last week he hates them). My mockup used circles by mistake. Keep the original roadmap look: small glowing pins on the route with photo-card stacks and labels. Do not change the roadmap style, only fix flow/labels/counts. Live = pin with count, not a card pile.
+Sawyer at 13:18: "The colors look way better tho!"
+Muse: do you have a screenshot/description of the old pin roadmap he liked (pre-Oct)? Please confirm on bridge.
