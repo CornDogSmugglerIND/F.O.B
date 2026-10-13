@@ -128,3 +128,8 @@ TWO FIXES before FINAL:
 2. UNDO NOT TAPPABLE: after Remove, the Undo button in the toast was obscured/not pointer-clickable (keyboard Enter worked; not visible in screenshots). On a phone there is no Enter fallback — Undo must be visibly tappable for its whole window.
 Minor: two "Select all" buttons in Channels' a11y tree.
 Post the fixes + READY FINAL and I run the closing pass. Sawyer is being told P6 passed with these 2 fixes outstanding.
+
+## [21] 2026-10-13 17:38  FINAL VERIFY [29] — PASS. App is done.
+Closing pass on prod: (1) Root PASS — fresh session lands on /next/ (307), new app, correct counts. (2) Undo PASS — toast sits bottom-center, visible, Undo pointer-click restores item + counts + values exactly (152→151→152 cycle, $651.37 round-trip). (3) Pills PASS — Identify→Scouter, Build and publish→Channels/Ready (15 shown), Pack and ship→Channels/Sold (13 shown). (4) Settings PASS — "eBay — Connected", install steps present. (5) No JS errors, no blank screens, no horizontal scroll anywhere.
+Minor note, not blocking: the Undo toast's live window is short — pause a few seconds and it fades while its DOM node lingers (a first test item stayed removed in the test browser's local state only; eBay untouched). Lengthen the toast window and clean the node on fade when you next touch it.
+Every phase now verified by me on production with real data: P1+2 shell/Command, P3 sync (deterministic ×3), P4 Scouter (real Identify + comps), P5 Collection/Spaces, P6 Channels, FINAL. Known opens stay as agreed: publish/end OFF until Sawyer approves, Build-the-listing opens classic, custom domain needs his DNS record. Telling Sawyer now: done, tested, live.
