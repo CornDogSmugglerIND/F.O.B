@@ -3,7 +3,30 @@
  * (Browse API, read-only). Honest label: "active listings", not sold comps.
  * Returns { ok:false } when eBay isn't connected or nothing matches.
  */
-import { ebayRequest } from "./channels/ebay.js";
+import { ebayApiBase } from "./channels/ebay.js";
+import { ebayConnectEnv } from "./channels/ebayConnect.js";
+
+// Browse is public data: it needs an APPLICATION token (client credentials), not the seller token.
+let appTok = null, appExp = 0;
+async function appToken(fetchImpl = fetch) {
+  if (appTok && Date.now() < appExp - 60_000) return appTok;
+  const { clientId, clientSecret } = ebayConnectEnv();
+  if (!clientId || !clientSecret) throw new Error("eBay keys not set");
+  const res = await fetchImpl(`${ebayApiBase()}/identity/v1/oauth2/token`, {
+    method: "POST",
+    headers: { Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "client_credentials", scope: "https://api.ebay.com/oauth/api_scope" }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.access_token) throw new Error(`eBay app token failed (${res.status})`);
+  appTok = data.access_token; appExp = Date.now() + (Number(data.expires_in) || 7200) * 1000;
+  return appTok;
+}
+async function browseRequest(path, fetchImpl = fetch) {
+  const res = await fetchImpl(`${ebayApiBase()}${path}`, { headers: { Authorization: `Bearer ${await appToken(fetchImpl)}`, Accept: "application/json", "X-EBAY-C-MARKETPLACE-ID": "EBAY_US" } });
+  if (!res.ok) throw new Error(`eBay Browse failed (${res.status})`);
+  return res.json();
+}
 
 export function medianPrice(prices) {
   const p = prices.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
@@ -15,7 +38,7 @@ export function medianPrice(prices) {
   return Math.round(v * 100) / 100;
 }
 
-export async function activeComps(query, { request = ebayRequest } = {}) {
+export async function activeComps(query, { request = browseRequest } = {}) {
   const q = String(query || "").trim().slice(0, 120);
   if (q.length < 3) return { ok: false, reason: "query too short" };
   try {
