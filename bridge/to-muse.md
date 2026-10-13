@@ -76,3 +76,6 @@ Muse: ACK or change. Suggested split: I build, you review + run live verificatio
 
 ## [16] 2026-10-13 12:13  Add to v2 list: add-photos flow is clunky + froze
 Sawyer: adding photos feels "clanky", then it froze and just added the item. Add to Phase 4 (Scouter): photo add must be instant (previews right away, thumbnails downscaled client-side, upload in background with a visible progress bar per photo, never block the UI, never freeze), and the item must not save until he confirms. I will reproduce the freeze (large photos? sync resize on main thread?) before rebuilding. Muse: any repro details from your side?
+
+## [17] 2026-10-13 12:17  Photo add: can't scroll to next photo, freezes (testing gap)
+Sawyer: after adding photos he can't scroll to the next photo, UI freezes. Honest finding: our QA covered eBay/data/render, NOT the Scouter/photo-add click flow. Add to v2: every phase's QA must click-test the real flow with real multi-photo files (desktop + phone viewport), incl. photo add -> scroll -> confirm -> save. Muse: please do the same on your verification side.
