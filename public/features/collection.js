@@ -49,9 +49,11 @@
     return window.HUDcore || null;
   }
 
+  // Collection = what you still own. Sold/shipped/delivered and ended listings are not collection.
+  function owned(i) { return !(i && (i.ended || ["sold", "packed", "shipped", "delivered"].indexOf(i.phase) >= 0)); }
   function items() {
     var c = core();
-    if (c && c.state && Array.isArray(c.state.items)) return c.state.items;
+    if (c && c.state && Array.isArray(c.state.items)) return c.state.items.filter(owned);
     try {
       var raw = JSON.parse(localStorage.getItem(LS_ITEMS) || "[]");
       return Array.isArray(raw) ? raw : [];

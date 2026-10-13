@@ -393,7 +393,7 @@ function renderCommand() {
   const toList = state.items.filter((i) => i.listingStatus === "ready to list" || (phaseFromItem(i) === "staged" && i.listingStatus !== "listed")).length;
   const listed = c.listed || 0;
   const inventory = state.items.length;
-  const needsBin = state.items.filter((i) => !i.spaceId && phaseFromItem(i) !== "listed").length;
+  const needsBin = state.items.filter((i) => !i.spaceId && ["intake", "staged"].includes(phaseFromItem(i))).length;
   const intakeN = c.intake || 0;
   const reviewN = state.items.filter((i) => phaseFromItem(i) === "intake" && !i.productName).length;
   const builtN = toList;
@@ -658,8 +658,9 @@ function spaceName(id) {
 
 function renderSpaces() {
   const nodes = $("spacesNodes");
-  const unsorted = state.items.filter((i) => !i.spaceId);
-  const filed = state.items.filter((i) => i.spaceId);
+  const owned = (i) => !(i.ended || ["sold", "packed", "shipped", "delivered"].includes(i.phase));
+  const unsorted = state.items.filter((i) => !i.spaceId && owned(i));
+  const filed = state.items.filter((i) => i.spaceId && owned(i));
   setStat("statSubLoc", state.spaces.length, { cyan: true });
   setStat("statItemsHere", filed.length, { cyan: true });
   const unsortedEl = $("statUnsorted");
@@ -1755,6 +1756,29 @@ async function syncMisprint() {
   return rows.length;
 }
 
+/** Sold truth: eBay orders move matching items to Sold/Packed/Shipped/Delivered and out of Collection/Scouter. */
+async function applyEbayOrders() {
+  const res = await fetch("/api/channels/ebay/orders?days=90");
+  if (!res.ok) return 0;
+  const body = await res.json().catch(() => ({}));
+  const rank = { delivered: 6, shipped: 5, label_created: 4, packed: 4, awaiting_shipment: 3, paid: 3 };
+  const bySku = new Map();
+  for (const o of body.orders || []) for (const li of o.items || []) {
+    if (!li.sku) continue;
+    const phase = o.status === "delivered" ? "delivered" : /ship|transit|out_for/.test(o.status || "") ? "shipped" : "sold";
+    const prev = bySku.get(li.sku);
+    if (!prev || (rank[o.status] || 3) > prev.r) bySku.set(li.sku, { phase, r: rank[o.status] || 3, orderId: o.orderId });
+  }
+  let n = 0;
+  for (const it of state.items) {
+    const hit = bySku.get(it.sku || it.channels?.ebay?.sku);
+    if (!hit) continue;
+    if (it.ended || (it.phase !== hit.phase && ["listed", "staged", "intake", "sold", "packed", "shipped"].includes(it.phase))) { it.phase = hit.phase; it.ended = false; it.listingStatus = "listed"; n++; }
+  }
+  if (n) saveItems();
+  return n;
+}
+
 async function syncEbay() {
   toast("Pulling eBay…");
   try {
@@ -1791,7 +1815,8 @@ async function syncEbay() {
           quantity: r.quantity || 1,
           price: r.price,
           phase: r.phase || (live === "listed" ? "listed" : "staged"),
-          listingStatus: live,
+          ended: Boolean(r.ended),
+          listingStatus: r.ended ? "draft" : live,
           staged: false,
           spaceId: r.spaceId || null,
           channels: r.channels,
@@ -1808,6 +1833,7 @@ async function syncEbay() {
       }
       saveItems();
     } catch { /* local-only ok */ }
+    try { await applyEbayOrders(); } catch { /* orders optional */ }
     let mpPulled = 0;
     try { mpPulled = await syncMisprint(); } catch { /* misprint optional */ }
     toast(`Synced · eBay ${body.pulled || 0}${mpPulled ? ` · Misprint ${mpPulled}` : ""}`);

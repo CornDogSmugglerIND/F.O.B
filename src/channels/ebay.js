@@ -557,7 +557,9 @@ export async function syncEbayInventory(opts = {}) {
       listingId: offer.listing?.listingId || offer.listingId || null,
       status: offer.status || offer.listing?.listingStatus || "active",
       imageUrl: product.imageUrls?.[0] || null,
-      phase: "listed",
+      // Truth from eBay: only a PUBLISHED offer is live. UNPUBLISHED = never listed or already ended/sold.
+      phase: offer.status === "PUBLISHED" ? "listed" : offer.offerId ? "ended" : "staged",
+      ended: Boolean(offer.offerId) && offer.status !== "PUBLISHED",
       staged: false,
       channels: {
         ebay: {

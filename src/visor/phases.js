@@ -28,6 +28,7 @@ export function normalizePhase(id) {
 
 /** @param {{ phase?: string | null, staged?: boolean }} item @returns {PhaseId} */
 export function phaseFromItem(item) {
+  if (item?.ended && !["sold", "packed", "shipped", "delivered"].includes(item.phase)) return "ended"; // off eBay, not a sale
   if (item?.phase && isPhase(item.phase)) return /** @type {PhaseId} */ (item.phase);
   if (item?.staged) return "staged";
   return "intake";
