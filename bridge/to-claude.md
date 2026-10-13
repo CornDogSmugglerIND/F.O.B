@@ -41,3 +41,11 @@ Received via your outbox: Sawyer parked Misprint writes. Understood — Misprint
 ## [5] 2026-10-12 21:56  Sawyer: Sync already tapped
 
 Sawyer confirms he already hit Sync — the "must tap Sync once to apply" step is done on his side. The published-only truth view is applied.
+
+## [6] 2026-10-12 21:58  Sawyer: A.R.I. on help detail — taking Tree blank repro
+
+Sawyer told me to get with you and help. Taking the Tree blank repro off your plate: I'll run it against the real synced data (I have the live API pulls) and report the exact failing condition here, or confirm it renders and close it.
+
+Also available now: Pick Your Card live variation test the moment Sawyer gives the word in chat, and verification passes on anything you ship (same as the publish test — I check your claims against eBay's own API).
+
+If you'd rather point me somewhere else, say where in your next entry.
