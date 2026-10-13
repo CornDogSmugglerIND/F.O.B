@@ -205,6 +205,53 @@ function render() {
 document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));
 addEventListener("resize", (() => { let t; let last = phone(); return () => { clearTimeout(t); t = setTimeout(() => { if (phone() !== last) { last = phone(); render(); } }, 150); }; })());
 addEventListener("storage", () => render());
+
+/* ---------- sync (same data path as classic, writes the shared store) ---------- */
+const DONE = ["sold", "packed", "shipped", "delivered"];
+async function syncAll(auto) {
+  const btn = $("#syncBtn"); if (btn.classList.contains("busy")) return;
+  btn.classList.add("busy"); btn.textContent = "Syncing…";
+  if (!auto) toast("Pulling eBay…");
+  try {
+    const res = await fetch("/api/channels/ebay/sync", { method: "POST" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) { toast(auto ? "Showing saved data. eBay didn't answer." : (body.error || "eBay isn't connected yet.")); return; }
+    const list = loadItems(); const rows = Array.isArray(body.records) ? body.records : [];
+    for (const r of rows) {
+      const sku = r.channels?.ebay?.sku || r.sku; if (!sku) continue;
+      const idx = list.findIndex((i) => i.channels?.ebay?.sku === sku || (r.id && i.id === r.id));
+      const live = r.channels.ebay.listingId ? "listed" : "draft";
+      const photos = (r.photos || []).filter((p) => p.dataUrl || p.url).map((p) => ({ id: p.id, dataUrl: p.dataUrl || p.url }));
+      if (!photos.length && r.imageUrl) photos.push({ id: `img-${sku}`, dataUrl: r.imageUrl });
+      const mapped = { id: r.id || `ebay-${sku}`, title: r.title || r.productName, productName: r.productName || r.title, sku, quantity: r.quantity || 1, price: r.price,
+        phase: r.phase || (live === "listed" ? "listed" : "staged"), ended: Boolean(r.ended), listingStatus: r.ended ? "draft" : live, staged: false, spaceId: r.spaceId || null, channels: r.channels, photos };
+      if (idx >= 0) { const keep = list[idx]; list[idx] = { ...keep, ...mapped, spaceId: keep.spaceId || mapped.spaceId, photos: keep.photos?.length ? keep.photos : mapped.photos }; }
+      else list.unshift(mapped);
+    }
+    if (!body.partial && !body.truncated && rows.length) {
+      const seen = new Set(rows.map((r) => r.channels?.ebay?.sku || r.sku).filter(Boolean));
+      for (const it of list) { const sku = it.channels?.ebay?.sku; if (sku && !seen.has(sku) && !it.ended && !DONE.includes(it.phase)) it.ended = true; }
+    }
+    try {
+      const o = await fetch("/api/channels/ebay/orders?days=90");
+      if (o.ok) {
+        const ob = await o.json().catch(() => ({})); const rank = { delivered: 6, shipped: 5, label_created: 4, packed: 4, awaiting_shipment: 3, paid: 3 }; const bySku = new Map();
+        for (const ord of ob.orders || []) for (const li of ord.items || []) {
+          if (!li.sku) continue;
+          const phase = ord.status === "delivered" ? "delivered" : /ship|transit|out_for/.test(ord.status || "") ? "shipped" : "sold";
+          const prev = bySku.get(li.sku); if (!prev || (rank[ord.status] || 3) > prev.r) bySku.set(li.sku, { phase, r: rank[ord.status] || 3 });
+        }
+        for (const it of list) { const hit = bySku.get(it.sku || it.channels?.ebay?.sku); if (hit && (it.ended || (it.phase !== hit.phase && ["listed", "staged", "intake", "sold", "packed", "shipped"].includes(it.phase)))) { it.phase = hit.phase; it.ended = false; it.listingStatus = "listed"; } }
+      }
+    } catch { /* orders optional */ }
+    saveItems(list); items = list; render();
+    const nLive = list.filter((i) => phaseFromItem(i) === "listed").length, nSold = list.filter((i) => DONE.includes(i.phase)).length, nEnd = list.filter((i) => i.ended && !DONE.includes(i.phase)).length;
+    toast(`Synced: ${nLive} live, ${nSold} sold, ${nEnd} ended (hidden)`);
+  } catch { toast(auto ? "Showing saved data." : "eBay sync failed. Try again."); }
+  finally { btn.classList.remove("busy"); btn.textContent = "Sync"; }
+}
+$("#syncBtn").addEventListener("click", () => syncAll(false));
 initAvatar();
 const h = (location.hash || "").slice(1);
 go(["scouter", "collection", "channels", "spaces", "settings"].includes(h) ? h : "command");
+syncAll(true);

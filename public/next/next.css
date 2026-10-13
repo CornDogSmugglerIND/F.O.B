@@ -86,3 +86,6 @@ main{position:fixed;z-index:5;left:106px;right:20px;top:108px;bottom:20px;overfl
 }
 .hint{background:rgba(10,12,11,.7);padding:4px 10px;border-radius:10px}
 .road.v .tag{display:inline-block}
+
+.syncbtn{margin-left:auto;height:38px;padding:0 16px;border-radius:12px;border:1px solid var(--chrome);background:#1d1d1bcc;color:var(--sea);font-weight:700;font-size:14px;cursor:pointer}.syncbtn.busy{opacity:.6;pointer-events:none}.syncbtn:hover{box-shadow:0 0 14px rgba(144,255,204,.35)}
+@media (max-width:820px){.syncbtn{margin-left:auto;height:36px;padding:0 12px}.avatar{margin-left:0!important}}
