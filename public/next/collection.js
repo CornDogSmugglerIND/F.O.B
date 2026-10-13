@@ -31,7 +31,7 @@ function paint() {
       <button class="btn${S.selecting ? " go" : ""}" id="coSel" type="button">${S.selecting ? "Done selecting" : "Select"}</button></div></div>
     <div class="co-chips" role="group" aria-label="Stage filter">${[["all", "All"], ["new", "Photos in"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<button class="chip${S.stage === k ? " on" : ""}" data-stage="${k}" type="button">${l}</button>`).join("")}</div>
     ${phoneNow() ? `<div class="co-tabs"><button class="chip${S.tab === "sealed" ? " on" : ""}" data-tab="sealed" type="button">Sealed ${sealed.length}</button><button class="chip${S.tab === "singles" ? " on" : ""}" data-tab="singles" type="button">Singles ${singles.length}</button></div>` : ""}
-    <div class="co-lanes">${lane("sealed", "Sealed", "Boxes, packs, decks, tins. Drag a card to Singles to move it.", sealed)}${lane("singles", "Singles", "Individual cards and slabs. Drag a card to Sealed to move it.", singles)}</div>
+    <div class="co-lanes">${lane("sealed", "Sealed", "Boxes, packs, decks, tins. " + (phoneNow() ? "Tap a card, then Move to Singles." : "Drag a card to Singles to move it."), sealed)}${lane("singles", "Singles", "Individual cards and slabs. " + (phoneNow() ? "Tap a card, then Move to Sealed." : "Drag a card to Sealed to move it."), singles)}</div>
     ${S.selecting ? bar() : ""}</div>`;
   wire();
 }

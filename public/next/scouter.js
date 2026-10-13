@@ -2,7 +2,7 @@
  * hot path, nothing is saved until Save is pressed. */
 const MAX_PICK = 5;
 const SHRINK = 1000;      // longest side for working copy (also what Identify sends)
-const STORE_SHRINK = 800; // longest side for what is stored on the item
+const STORE_SHRINK = 720; // longest side for what is stored on the item
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const money = (n) => "$" + (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -107,6 +107,7 @@ async function save() {
     listingStatus: "draft", phase: identified ? "staged" : "intake", staged: identified, spaceId: null, channels: {}, photos: stored, notes: "", collections: [],
   };
   try { ctx.setItems([item, ...ctx.getItems()]); } catch { ctx.toast("Couldn't save. Storage is full."); if (btn) { btn.disabled = false; btn.textContent = "Save item"; } return; }
+  try { let u = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); u += (k.length + (localStorage.getItem(k) || "").length) * 2; } if (u > 4.2 * 1048576) ctx.toast("Device storage is about " + Math.round(u / 52428.8) + "% full. List or remove items soon."); } catch { /* ignore */ }
   d.saved = { item, backup: { done: 0, total: stored.length, state: "run" } };
   paintAll(); backup(item);
 }
