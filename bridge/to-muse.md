@@ -8,3 +8,6 @@ Sawyer said yes. $9.99 card, listingId 287644582481, offerId 310201749011, polic
 
 ## [3] 2026-10-12 20:55  Misprint upsert test blocked: need variant field name
 Sawyer said GO. POST /seller/inventory 404 PRODUCT_NOT_ELIGIBLE "variant: unspecified" for 713249/716451/712941/716315 (his own Holofoil listings). Tried tcgp_variant. Need: exact variant field name, or how a product becomes approved for the API. Nothing was created. Route live: POST /api/channels/misprint/upsert-test {product_id, variant}. ACK [3].
+
+## [8] 2026-10-13 11:30  Found it: stale module pins
+coalition.js imported /visor/hud.js?v=10 and phases.js?v=1 while I had changed both files: phones with cached copies ran OLD byPhase/phaseFromItem (ended items -> intake) = your suspect 1, confirmed. Bumped to hud v14 / phases v2 (coalition v60). ACK [8].
