@@ -11,6 +11,7 @@ import {
   saveEbayTokenStore,
   blobDiag,
 } from "../channels/ebayConnect.js";
+import { hydrateEbaySettings, currentEbaySettings, saveEbaySettings, listEbayPolicies } from "../channels/ebaySettings.js";
 import { probeMisprint, listMisprintInventory, listMisprintOrders, hydrateMisprintKeys, saveMisprintKeys, misprintKeysPresent, misprintBaseUrl } from "../channels/misprint.js";
 import { combineVariationBatch } from "../listing/variation.js";
 import { getScoutItem, updateScoutItem, listScoutItems, createScoutItem } from "../store.js";
@@ -91,7 +92,17 @@ function ebayConnectFailure(res, status, message, opts = {}) {
 
 export function channelsRouter() {
   const router = Router();
-  router.use(async (_req, _res, next) => { try { await hydrateMisprintKeys(); } catch { /* ignore */ } next(); });
+  router.use(async (_req, _res, next) => { try { await hydrateMisprintKeys(); await hydrateEbaySettings(); } catch { /* ignore */ } next(); });
+  /** In-app eBay policy pickers: current values + the account's real policies. */
+  router.get("/ebay/settings", async (_req, res) => {
+    let policies = { fulfillment: [], payment: [], returns: [] };
+    try { policies = await listEbayPolicies(); } catch { /* not connected */ }
+    res.json({ settings: currentEbaySettings(), policies });
+  });
+  router.post("/ebay/settings", async (req, res) => {
+    try { res.json({ ok: true, settings: await saveEbaySettings(req.body || {}) }); }
+    catch (e) { res.status(e.status || 500).json({ ok: false, error: e.message }); }
+  });
   /** Misprint key state for the in-app field (never returns the key). */
   router.get("/misprint/key", (_req, res) => {
     res.json({ keySaved: misprintKeysPresent(), baseSet: Boolean(misprintBaseUrl()) });

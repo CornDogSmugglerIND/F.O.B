@@ -269,3 +269,10 @@ test("publishEbayVariationListing: items -> group -> offers -> publish_by_invent
   assert.match(order[2], /PUT .*inventory_item_group/);
   assert.match(order[order.length - 1], /POST .*publish_by_inventory_item_group/);
 });
+
+import { saveEbaySettings, currentEbaySettings } from "../src/channels/ebaySettings.js";
+test("ebay settings reject bad threshold and need storage", async () => {
+  for (const k of Object.keys(process.env)) if (/READ_WRITE_TOKEN$/.test(k)) delete process.env[k];
+  await assert.rejects(() => saveEbaySettings({ cardThresholdUsd: "20" }), /storage/i);
+  assert.equal(typeof currentEbaySettings().fulfillmentPolicyId, "string");
+});
