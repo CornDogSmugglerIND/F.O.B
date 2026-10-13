@@ -99,6 +99,23 @@ export async function ebayRequest(path, opts = {}) {
 
 const CARD_COND = { NM: "400010", "NEAR MINT": "400010", LP: "400011", "LIGHTLY PLAYED": "400011", MP: "400012", "MODERATELY PLAYED": "400012", HP: "400013", "HEAVILY PLAYED": "400013", DMG: "400014", DAMAGED: "400014" };
 
+const GAME_NAMES = { pokemon: "Pokémon TCG", "pokémon": "Pokémon TCG", onepiece: "One Piece Card Game", "one piece": "One Piece Card Game", dbs: "Dragon Ball Super Card Game", dragonball: "Dragon Ball Super Card Game", magic: "Magic: The Gathering", mtg: "Magic: The Gathering", digimon: "Digimon Card Game" };
+/** Item specifics eBay requires for Trading Cards; item.aspects wins when given. */
+export function cardAspects(item = {}) {
+  const a = {};
+  const g = String(item.game || "").toLowerCase();
+  const game = GAME_NAMES[g] || item.game;
+  if (game) a.Game = [String(game)];
+  const name = item.cardName || item.name || item.title;
+  if (name) a["Card Name"] = [String(name).slice(0, 65)];
+  if (item.set || item.setName) a.Set = [String(item.set || item.setName)];
+  if (item.number || item.cardNumber) a["Card Number"] = [String(item.number || item.cardNumber)];
+  if (item.language) a.Language = [String(item.language)];
+  if (item.brand) a.Brand = [String(item.brand)];
+  for (const [k, v] of Object.entries(item.aspects || {})) a[k] = Array.isArray(v) ? v.map(String) : [String(v)];
+  return Object.keys(a).length ? a : undefined;
+}
+
 function skuForItem(item) {
   return `hud-${item.id}`.slice(0, 50);
 }
@@ -181,7 +198,7 @@ export async function publishEbayListing(item, opts = {}) {
       product: {
         title: String(item.title).slice(0, 80),
         description: item.description || item.title,
-        aspects: item.brand ? { Brand: [item.brand] } : undefined,
+        aspects: cardAspects(item),
         imageUrls: (item.photos || item.imageUrls || []).map((x) => (typeof x === "string" ? x : x?.url)).filter((u) => /^https:\/\//.test(u || "")).slice(0, 12),
       },
     },
