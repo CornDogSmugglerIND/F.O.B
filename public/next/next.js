@@ -1,4 +1,5 @@
 import { phaseFromItem } from "/visor/phases.js?v=3";
+import { renderScouter } from "./scouter.js?v=1";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -200,7 +201,7 @@ function go(v) {
 }
 function render() {
   items = loadItems(); renderStats();
-  if (view === "command") renderCommand(); else if (view === "settings") renderSettings(); else renderPlaceholder(view);
+  if (view === "command") renderCommand(); else if (view === "settings") renderSettings(); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, go }); } else renderPlaceholder(view);
 }
 document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));
 addEventListener("resize", (() => { let t; let last = phone(); return () => { clearTimeout(t); t = setTimeout(() => { if (phone() !== last) { last = phone(); render(); } }, 150); }; })());

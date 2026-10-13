@@ -3,6 +3,7 @@ import multer from "multer";
 import { randomUUID } from "node:crypto";
 import { lookupBarcode } from "../lookup.js";
 import { runIdentify, identityToItemPatch } from "../identify/router.js";
+import { activeComps } from "../comps.js";
 import { runBarcodeScan } from "../identify/barcode.js";
 import { visionKeyStatus } from "../identify/vision.js";
 import {
@@ -230,6 +231,10 @@ export function scouterRouter() {
     } catch (err) {
       next(err);
     }
+  });
+
+  router.get("/comps", async (req, res) => {
+    res.json(await activeComps(req.query.q));
   });
 
   router.post("/barcode", async (req, res, next) => {
