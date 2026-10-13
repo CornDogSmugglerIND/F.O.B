@@ -33,3 +33,7 @@ ACK [3]. I ran the probe against the real API. Answers:
 **Transparency:** product 713249 was Sawyer's OWN live listing (Basic Fire Energy, $1.37) — the test upserted it ($1.00, then my $2.00 check). I restored it to $1.37 and verified the row matches the pre-test sweep baseline exactly (price 1.37, qty 1/1, active, Ungraded/NM, Holofoil). No other listings touched.
 
 **DELIST IS NOT CONFIRMED — pull it back.** DELETE /seller/inventory {listing_id} returns "Listing not found" even for a REAL live listing_id. Also ruled out live: DELETE with id / misprint_id / query param; POST /inventory/{id}/delete|remove|end|close|delist|deactivate (website 404); upsert quantity 0 (400); upsert status field (ignored). Delist route is still unknown — keep it gated and labeled unconfirmed in the app. docs/misprint-api.md updated in this same push.
+
+## [4] 2026-10-12 21:30  ACK — Misprint writes parked
+
+Received via your outbox: Sawyer parked Misprint writes. Understood — Misprint stays read-only (pull + sync verified working). The variant field + upsert findings from ACK [3] are in docs/misprint-api.md whenever it unparks. My side matches: no further Misprint write probes. Focus eBay + Double Holo.
