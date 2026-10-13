@@ -156,3 +156,6 @@ main{position:fixed;z-index:5;left:106px;right:20px;top:108px;bottom:20px;overfl
 .ch-price{color:var(--sea);font-weight:700;font-size:13px;text-align:center;padding-top:3px}.co-pick.on{background:#26352e}.ch-tile .co-pick{opacity:.0}.ch-tile.sel .co-pick,.ch-tile:hover .co-pick{opacity:1}
 .ch-row em{font-style:normal;color:var(--mute);font-size:12px;white-space:nowrap}.ch-row small{color:var(--mute)}
 @media (max-width:820px){.ch-tile .co-pick{opacity:1}.ch-grid.cards{grid-template-columns:repeat(auto-fill,minmax(104px,1fr))}.ch-group header .chip{margin-left:0}.ch-row em{display:none}}
+
+.set-wrap{display:flex;flex-direction:column;gap:14px;max-width:640px;padding-bottom:110px}.set-wrap .card-panel{position:static}.set h3{font-size:19px;margin-bottom:8px}.conn .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--edge)}.okk{color:var(--sea);font-weight:700}.bad{color:var(--org);font-weight:700}
+.how{padding-left:20px;color:var(--ink);display:flex;flex-direction:column;gap:6px}.meter{height:12px;border-radius:8px;background:#121413;border:1px solid var(--edge);overflow:hidden;margin:6px 0}.meter i{display:block;height:100%;background:linear-gradient(90deg,#50B97E,#B3FBD5)}

@@ -27,6 +27,8 @@ export function createApp() {
   app.use("/api/scouter", scouterRouter());
   app.use("/api/channels", channelsRouter());
   app.use("/api/csv", csvRouter());
+  // The new app is the app. Classic stays reachable at /hud.html.
+  app.get("/", (_req, res) => res.redirect(302, "/next/"));
   app.use("/uploads", express.static(getUploadsDir()));
   app.use(express.static(join(__dirname, "..", "public")));
 

@@ -2,7 +2,7 @@ import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=2";
 import { renderCollection } from "./collection.js?v=2";
 import { renderSpaces } from "./spaces.js?v=2";
-import { renderChannels } from "./channels.js?v=1";
+import { renderChannels } from "./channels.js?v=2";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -57,6 +57,13 @@ function openSheet(html) {
 $("#sheetBack").addEventListener("click", closeSheet);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
 
+function nextAction(ph) {
+  if (ph === "intake") return `<p class="sub" style="margin-top:12px">Next: identify it from its photos.</p><button class="btn go" data-act="scouter" type="button">Identify it in Scouter</button>`;
+  if (ph === "staged") return `<p class="sub" style="margin-top:12px">Next: build the eBay listing.</p><a class="btn go" href="${CLASSIC}">Build the listing</a>`;
+  if (ph === "listed") return `<p class="sub" style="margin-top:12px">Selling on eBay now.</p><button class="btn" data-act="channels" type="button">See all live listings</button>`;
+  if (["sold", "packed"].includes(ph)) return `<p class="sub" style="margin-top:12px">Next: pack it and print the label in eBay.</p><a class="btn go" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener">Open eBay orders</a>`;
+  return "";
+}
 function itemSheet(id) {
   const it = items.find((i) => String(i.id) === String(id)); if (!it) return;
   const src = photoOf(it); const ph = phaseFromItem(it); const st = STOPS.find((s) => s.phases.includes(ph));
@@ -68,8 +75,9 @@ function itemSheet(id) {
     <div class="row"><span>Price</span><span>${money(it.price)}</span></div>
     <div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>
     ${it.purchasePrice ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div>` : ""}
-    <a class="btn" href="${CLASSIC}">Open in the classic app</a>`);
+    ${nextAction(ph)}`);
   s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
+  s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "channels") { window.__chStage = "listed"; go("channels"); } });
 }
 function stageSheet(sid) {
   const stop = STOPS.find((x) => x.id === sid); const list = groups()[sid];
@@ -77,9 +85,10 @@ function stageSheet(sid) {
   const s = openSheet(`
     <a class="back" href="#" data-close>‹ Back</a>
     <h2>${esc(stop.label)}</h2><div class="sub">${list.length} ${list.length === 1 ? "item" : "items"} · ${esc(stop.note)}</div>
-    ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : ""}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}. Search and filters arrive with Collection.</p>` : ""}` : `<p class="sub">Nothing here yet.</p>`}`);
+    ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : ""}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}.</p>` : ""}<button class="btn go" id="seeAll" type="button" style="margin-top:12px">See all ${list.length} in Channels</button>` : `<p class="sub">Nothing here yet.</p>`}`);
   s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
   s.querySelectorAll("[data-item]").forEach((b) => b.addEventListener("click", () => itemSheet(b.dataset.item)));
+  s.querySelector("#seeAll")?.addEventListener("click", () => { window.__chStage = ({ intake: "intake", staged: "staged", listed: "listed", sold: "sold", shipped: "sold" })[sid] || "all"; go("channels"); });
 }
 
 /* ---------- header ---------- */
@@ -120,9 +129,9 @@ function renderCommand() {
   const g = groups(); const main = $("#main");
   const pills = [
     [g.intake.length, "Identify new photos", "scouter"],
-    [g.staged.length, "Build and publish", "channels"],
-    [g.sold.length, "Pack and ship", "spaces"],
-  ].map(([n, t, v]) => `<button class="pill" data-goto="${v}"><b>${n}</b>${t}</button>`).join("");
+    [g.staged.length, "Build and publish", "channels", "staged"],
+    [g.sold.length, "Pack and ship", "channels", "sold"],
+  ].map(([n, t, v, st]) => `<button class="pill" data-goto="${v}" ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto";
     main.innerHTML = `<div class="road v" style="position:relative;padding:4px 0 24px 34px"><div class="dock">${pills}</div>
@@ -149,7 +158,7 @@ function renderCommand() {
   // wire up
   main.querySelectorAll(".more").forEach((m) => { const st = m.closest(".stop"); m.dataset.stage = st.dataset.drop; });
   main.querySelectorAll("[data-stage]").forEach((el) => el.addEventListener("click", () => stageSheet(el.dataset.stage)));
-  main.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => go(b.dataset.goto)));
+  main.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.pst) window.__chStage = b.dataset.pst; go(b.dataset.goto); }));
   main.querySelectorAll(".stop .dot").forEach((d) => d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); stageSheet(d.dataset.stage); } }));
   main.querySelectorAll(".pc[data-item]").forEach(bindDrag);
 }
@@ -186,13 +195,24 @@ const NEXT_UP = {
 };
 function renderSettings() {
   $("#main").style.overflowY = "auto";
-  $("#main").innerHTML = `<div class="card-panel"><h2>Settings</h2><p>Your profile picture is the round picture at the top right. Tap it any time to change it.</p>
-    <button class="btn" id="chg">Change profile picture</button>
-    <div class="badges"><img src="img/veteran.jpg" alt="Veteran-Owned Coalition"><img src="img/pristine.jpg" alt="Pristine 10"><img src="img/husky.jpg" alt="The Coalition team"></div>
-    <img src="img/plate.jpg" alt="" style="width:100%;max-width:420px;border-radius:16px;margin-top:18px;border:1px solid var(--edge)">
-    <img src="img/wordmark.jpg" alt="CornDogSmuggler Coalition" style="width:100%;max-width:560px;border-radius:16px;margin-top:14px;border:1px solid var(--edge)">
-    <p style="margin-top:14px">Classic settings (eBay, Misprint, Double Holo) are still in the <a class="btn" href="${CLASSIC}">classic app</a></p></div>`;
+  let used = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); used += (k.length + (localStorage.getItem(k) || "").length) * 2; } } catch { /* ignore */ }
+  const mb = (used / 1048576).toFixed(1), pct = Math.min(100, Math.round(used / 5242880 * 100));
+  $("#main").innerHTML = `<div class="set-wrap">
+    <section class="card-panel set"><h2>Settings</h2><p>Your profile picture is the round picture at the top right. Tap it any time to change it.</p>
+      <button class="btn" id="chg" type="button">Change profile picture</button>
+      <div class="badges"><img src="img/veteran.jpg" alt="Veteran-Owned Coalition"><img src="img/pristine.jpg" alt="Pristine 10"><img src="img/husky.jpg" alt="The Coalition team"></div></section>
+    <section class="card-panel set"><h3>Connections</h3><div id="conn" class="conn"><span class="sub">Checking…</span></div>
+      <p class="sub">Keys and sign-in for eBay, Misprint and Double Holo are managed in the <a href="${CLASSIC}">classic app</a>.</p></section>
+    <section class="card-panel set"><h3>Put it on your phone</h3>
+      <ol class="how"><li>Open this page in <b>Safari</b> (iPhone) or <b>Chrome</b> (Android).</li><li>iPhone: tap Share, then <b>Add to Home Screen</b>. Android: tap the menu, then <b>Install app</b>.</li><li>Open it from the new icon. It fills the whole screen.</li></ol></section>
+    <section class="card-panel set"><h3>Space on this device</h3><div class="meter"><i style="width:${pct}%"></i></div><p class="sub">${mb} MB of about 5 MB used. Photos you scout are shrunk to save room. eBay photos are links and take none.</p></section>
+    <section class="card-panel set"><img src="img/plate.jpg" alt="" style="width:100%;max-width:420px;border-radius:16px;border:1px solid var(--edge)"><img src="img/wordmark.jpg" alt="CornDogSmuggler Coalition" style="width:100%;max-width:560px;border-radius:16px;margin-top:14px;border:1px solid var(--edge)"></section></div>`;
   $("#chg").addEventListener("click", () => $("#avatarBtn").click());
+  const names = { ebay: "eBay", misprint: "Misprint", double_holo: "Double Holo" };
+  fetch("/api/channels/status").then((r) => r.json()).then((d) => {
+    const host = $("#conn"); if (!host) return;
+    host.innerHTML = (d.channels || []).map((c) => `<div class="row"><span>${esc(names[c.id] || c.id)}</span><span class="${c.configured ? "okk" : "bad"}">${c.configured ? "Connected" : "Not connected"}</span></div>`).join("") || `<span class="sub">No channels reported.</span>`;
+  }).catch(() => { const host = $("#conn"); if (host) host.innerHTML = `<span class="sub">Couldn't check right now.</span>`; });
 }
 function renderPlaceholder(v) {
   const [t, d] = NEXT_UP[v]; $("#main").style.overflowY = "auto";

@@ -1,0 +1,14 @@
+{
+  "name": "CornDogSmuggler Coalition",
+  "short_name": "Coalition",
+  "description": "Heads-up display for the CornDogSmuggler Coalition reselling business",
+  "start_url": "/next/",
+  "scope": "/next/",
+  "display": "standalone",
+  "background_color": "#1D1D1B",
+  "theme_color": "#1D1D1B",
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

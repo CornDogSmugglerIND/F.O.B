@@ -83,4 +83,4 @@ function bulk(kind) {
     s.querySelector(".co-znav .btn").addEventListener("click", ctx.closeSheet);
   }
 }
-export function renderChannels(host, api) { ctx = { host, ...api }; if (!host.querySelector(".ch-wrap")) S.sel.clear(); paint(); }
+export function renderChannels(host, api) { ctx = { host, ...api }; if (window.__chStage) { S.stage = window.__chStage; S.more = {}; window.__chStage = null; } if (!host.querySelector(".ch-wrap")) S.sel.clear(); paint(); }

@@ -41,10 +41,16 @@ test("GET /api/health reports scouter", async () => {
   }
 });
 
-test("GET / serves Coalition H.U.D live beta", async () => {
+test("GET / sends you to the new app; classic H.U.D still serves at /hud.html", async () => {
   const { baseUrl, close } = await startServer();
   try {
-    const res = await fetch(`${baseUrl}/`);
+    const root = await fetch(`${baseUrl}/`, { redirect: "manual" });
+    assert.equal(root.status, 302);
+    assert.equal(root.headers.get("location"), "/next/");
+    const next = await fetch(`${baseUrl}/next/`);
+    assert.equal(next.status, 200);
+    assert.match(await next.text(), /CornDogSmuggler/);
+    const res = await fetch(`${baseUrl}/hud.html`);
     const html = await res.text();
     assert.match(html, /Coalition H\.U\.D|Coalition <span>H\.U\.D/);
     assert.match(html, /coalition\.css/);
