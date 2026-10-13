@@ -333,6 +333,7 @@ async function fileToDataUrl(file) {
 function navigate(view) {
   if (!VIEWS.includes(view)) view = "command";
   { const t = $("toast"); if (t) { clearTimeout(toast._t); t.classList.remove("show"); } }
+  document.getElementById("rzStage")?.remove(); // an open stage list must never trap the nav
   state.view = view;
   state.constellationMode = view === "collection" ? "collection" : "tree";
   location.hash = `#/${view}`;
@@ -1830,6 +1831,14 @@ async function syncEbay() {
           const keep = state.items[idx];
           state.items[idx] = { ...keep, ...mapped, spaceId: keep.spaceId || mapped.spaceId, photos: keep.photos?.length ? keep.photos : mapped.photos };
         } else state.items.unshift(mapped);
+      }
+      // Items that were on eBay before but are gone from a complete sync are no longer live.
+      if (!body.partial && !body.truncated && (rows || []).length) {
+        const seen = new Set((rows || []).map((r) => r.channels?.ebay?.sku || r.sku).filter(Boolean));
+        for (const it of state.items) {
+          const sku = it.channels?.ebay?.sku;
+          if (sku && !seen.has(sku) && !it.ended && !["sold", "packed", "shipped", "delivered"].includes(it.phase)) it.ended = true;
+        }
       }
       saveItems();
     } catch { /* local-only ok */ }

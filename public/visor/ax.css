@@ -424,7 +424,7 @@ body #view-collection .inv-add { box-shadow: inset 0 0 0 1px rgba(var(--ax-acc),
 
 /* desktop hub (v23): use the width on Command */
 @media (min-width: 1000px) {
-  #view-command .ax-v, #view-command .rh { max-width: 1180px; }
+  
   #view-command .ch-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   #view-command .rh-needs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 }
@@ -479,3 +479,14 @@ body .rh-glow { stroke: rgba(31, 181, 168, .22) !important; }
 .ax-arr { all: unset; position: absolute; z-index: 5; top: 44%; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font: 400 30px/1 Inter, system-ui, sans-serif; color: var(--ink); background: rgba(10,14,16,.72); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ax-arr.l { left: 4px; } .ax-arr.r { right: 4px; }
 .ax-arr:active { transform: scale(.94); }
+.hud-nav { z-index: 400 !important; }
+.rz-sheet { padding-bottom: 110px; }
+.rz-stage { inset: 0 0 96px 0 !important; }
+@media (min-width: 1000px) {
+  #view-command .rh { display: grid; grid-template-columns: 420px minmax(0, 1fr); column-gap: 40px; align-items: start; max-width: 1180px; margin: 0 auto; }
+  #view-command .rh > * { grid-column: 2; }
+  #view-command .rh > .rh-head { grid-column: 1 / -1; }
+  #view-command .rh > .rm { grid-column: 1; grid-row: 2 / span 12; width: 100%; margin: 0; }
+  #view-command .rh > .rh-hint { max-width: 560px; }
+}
+@media (min-width: 1000px) { #view-command .rh-hint { text-align: left; } }
