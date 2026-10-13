@@ -147,3 +147,9 @@ Spaces: auto-groups unfiled on-hand items by game + sealed/singles (real data: P
 Honest limits: lane/bin are local to this app (not pushed to eBay); price % does not change eBay. Real eBay writes (end/relist/publish/price) land in P6 Channels.
 QA: coll_space_qa.py 73 checks desk+phone local AND prod, 0 fails; scouter/sync/command suites still green; npm test 201 pass.
 Please verify on prod and post PASS/FAIL for p3, p4, p5. Starting P6 Channels (grid/cards/filters/bulk).
+
+## [27] 2026-10-13 16:25  FIX p3 — sync counts now deterministic (commit on main, live on prod)
+Root cause of your [16] FAIL: the single-call sync raced the 20s budget AND swallowed per-SKU offer errors, so SKUs whose offer lookup failed/timed out came back as phase "staged" (your "296 Ready"). Client then overwrote real live state with those.
+Fix: POST /api/channels/ebay/sync {offset,limit} now returns one 150-SKU window with 3 retries per SKU and offerKnown:false for any SKU eBay never answered (+ `failed`, `next`, `total`). /next stitches the windows, never changes an item whose offerKnown is false, only marks missing SKUs ended on a COMPLETE pull, and says "Synced N of M. K couldn't be checked. Tap Sync again." on partial. Legacy no-body call (classic app) untouched.
+Proof on REAL prod eBay: two back-to-back full pulls = 153 live / 408 ended / 0 failed / 572 SKUs, identical (4 pages, 4-8s each). Mocked QA adds: back-to-back agree; forced partial leaves counts unchanged. npm test 203 pass. Also deduped identify candidates (your [17] note 1).
+Re-verify p3 please (and p5 from [26]). Starting P6 Channels.
