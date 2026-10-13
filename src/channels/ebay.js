@@ -203,7 +203,7 @@ export async function publishEbayListing(item, opts = {}) {
         title: String(item.title).slice(0, 80),
         description: item.description || item.title,
         aspects: cardAspects(item),
-        imageUrls: (item.photos || item.imageUrls || []).map((x) => (typeof x === "string" ? x : x?.url)).filter((u) => /^https:\/\//.test(u || "")).slice(0, 12),
+        imageUrls: await resolveEbayImages(item, opts),
       },
     },
   });
@@ -716,4 +716,51 @@ export async function endEbayVariationListing(groupKey, opts = {}) {
     body: { inventoryItemGroupKey: groupKey, marketplaceId: ebayMarketplaceId() },
   });
   return { groupKey, status: "ended" };
+}
+
+/** Host a photo on eBay (EPS) so a listing can use it. Accepts a data: URL; returns an https URL. */
+export async function uploadEbayImage(dataUrl, opts = {}) {
+  const m = /^data:(image\/[a-z+.-]+);base64,(.+)$/i.exec(String(dataUrl || ""));
+  if (!m) {
+    const err = new Error("Photo must be a base64 image");
+    err.code = "VALIDATION";
+    throw err;
+  }
+  const fetchImpl = opts.fetchImpl || fetch;
+  const token = await getEbayAccessToken({ fetchImpl });
+  const ext = m[1].includes("png") ? "png" : "jpg";
+  const form = new FormData();
+  form.append("image", new Blob([Buffer.from(m[2], "base64")], { type: m[1] }), `card.${ext}`);
+  const host = ebayApiBase().replace("api.", "apim.");
+  const res = await fetchImpl(`${host}/commerce/media/v1_beta/image/create_image_from_file`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  const text = await res.text();
+  let data = {};
+  try { data = JSON.parse(text); } catch { /* empty body on 201 */ }
+  let url = data.imageUrl;
+  if (!url && res.ok) {
+    const loc = res.headers.get("location");
+    if (loc) {
+      const g = await fetchImpl(loc, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
+      url = (await g.json().catch(() => ({}))).imageUrl;
+    }
+  }
+  if (!res.ok || !url) {
+    const err = new Error(`eBay photo upload failed (${res.status}): ${data?.errors?.[0]?.message || text.slice(0, 160)}`);
+    err.code = "EBAY_API_ERROR";
+    err.status = res.status;
+    throw err;
+  }
+  return url;
+}
+
+/** https URLs pass through; data: photos are uploaded to eBay. */
+export async function resolveEbayImages(item, opts = {}) {
+  const raw = (item.photos || item.imageUrls || []).map((x) => (typeof x === "string" ? x : x?.dataUrl || x?.url)).filter(Boolean).slice(0, 6);
+  const out = [];
+  for (const u of raw) out.push(/^https:\/\//.test(u) ? u : await uploadEbayImage(u, opts));
+  return out;
 }

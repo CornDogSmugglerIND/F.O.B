@@ -94,6 +94,20 @@ function ebayConnectFailure(res, status, message, opts = {}) {
 export function channelsRouter() {
   const router = Router();
   router.use(async (_req, _res, next) => { try { await hydrateMisprintKeys(); await hydrateEbaySettings(); } catch { /* ignore */ } next(); });
+  /** The real button: list one item from the app on eBay (photos are hosted on eBay first). */
+  router.post("/ebay/publish-item", async (req, res) => {
+    const item = req.body?.item || {};
+    try {
+      assertChannelConfigured("ebay");
+      if (!item.title) return res.status(400).json({ ok: false, error: "Add a title first." });
+      if (!(Number(item.price) > 0)) return res.status(400).json({ ok: false, error: "Add a price first." });
+      if (!(item.photos || []).length) return res.status(400).json({ ok: false, error: "eBay needs at least one photo." });
+      const out = await publishEbayListing(item, { dryRun: Boolean(req.body?.dryRun) });
+      res.json({ ok: true, ...out });
+    } catch (e) {
+      res.status(e.code === "VALIDATION" ? 400 : 502).json({ ok: false, error: e.message, details: e.details });
+    }
+  });
   /** One-shot live proof of a Pick-Your-Card listing: publish 2 cheap cards as one listing, then end it. */
   router.post("/ebay/variation-test", async (req, res) => {
     const stamp = Date.now();

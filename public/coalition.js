@@ -1403,6 +1403,35 @@ async function addBarcode(code) {
  * server-side items; HUD item ids are client-generated and never exist in
  * the server store, so that call can never resolve — it is not attempted.
  * No silent 404 fallback: one engine, one path. */
+async function listOnEbay(id) {
+  const it = state.items.find((x) => x.id === id);
+  if (!it) return;
+  const btn = $("btnListEbay");
+  if (btn) { btn.disabled = true; btn.textContent = "Listing…"; }
+  toast("Listing on eBay…");
+  try {
+    const photos = [];
+    for (const p of (it.photos || []).slice(0, 4)) {
+      const u = p.dataUrl || p.url;
+      if (u) photos.push(String(u).startsWith("data:") ? await shrinkDataUrl(u) : u);
+    }
+    const item = { id: it.id, title: it.title || it.productName, description: it.description, price: it.price, quantity: it.quantity || 1, condition: it.condition || "NM", game: it.game, set: it.setName || it.set, number: it.number || it.cardNumber, language: it.language, photos };
+    const res = await fetch("/api/channels/ebay/publish-item", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item }) });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.ok) { toast(body.error || "eBay said no. Check title, price and photo."); return; }
+    it.channels = { ...(it.channels || {}), ebay: { listingId: body.listingId, offerId: body.offerId, sku: body.sku, price: body.price, status: "PUBLISHED" } };
+    it.sku = body.sku; it.phase = "listed"; it.ended = false; it.listingStatus = "listed"; it.staged = false;
+    saveItems();
+    toast("Live on eBay");
+    openSheet(id);
+    render();
+  } catch (e) {
+    toast("Couldn't reach eBay. Try again.");
+  } finally {
+    const b = $("btnListEbay"); if (b) { b.disabled = false; b.textContent = "List on eBay"; }
+  }
+}
+
 async function runEngine(id) {
   const it = state.items.find((x) => x.id === id);
   if (!it) return;
@@ -1931,6 +1960,7 @@ function bind() {
     renderCollectionChecks(checkedCollectionIds().concat(col.id));
     toast(`Collection "${col.name}" added`);
   });
+  $("btnListEbay")?.addEventListener("click", () => listOnEbay(state.sheetItemId));
   $("btnStage")?.addEventListener("click", () => stageItem(state.sheetItemId));
   $("btnIdentify")?.addEventListener("click", () => identifyFromSheet(state.sheetItemId));
   $("btnRunEngine")?.addEventListener("click", () => runEngine(state.sheetItemId));
