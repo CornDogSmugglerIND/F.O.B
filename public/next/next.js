@@ -2,7 +2,7 @@ import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=3";
 import { renderCollection } from "./collection.js?v=3";
 import { renderSpaces } from "./spaces.js?v=2";
-import { renderChannels } from "./channels.js?v=2";
+import { renderChannels } from "./channels.js?v=3";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -40,12 +40,15 @@ function groups() {
 
 /* ---------- toast / sheet ---------- */
 let toastT;
-function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600); }
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.remove("act"); t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600); }
 function toastUndo(msg, fn) {
   const t = $("#toast"); t.innerHTML = ""; t.append(document.createTextNode(msg + " "));
-  const b = document.createElement("button"); b.type = "button"; b.className = "undo"; b.textContent = "Undo"; t.append(b);
-  t.classList.add("show", "act"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show", "act"), 9000);
-  b.addEventListener("click", () => { clearTimeout(toastT); t.classList.remove("show", "act"); fn(); });
+  const b = document.createElement("button"); b.type = "button"; b.className = "undo"; b.textContent = "Undo";
+  const x = document.createElement("button"); x.type = "button"; x.className = "undo-x"; x.setAttribute("aria-label", "Dismiss"); x.textContent = "×";
+  t.append(b, x); t.classList.add("show", "act");
+  const hide = () => { clearTimeout(toastT); t.classList.remove("show", "act"); };
+  clearTimeout(toastT); toastT = setTimeout(hide, 30000); // long window: tappable until you move on
+  b.addEventListener("click", () => { hide(); fn(); }); x.addEventListener("click", hide);
 }
 function closeSheet() { $("#sheet").hidden = true; $("#sheetBack").hidden = true; }
 function openSheet(html) {

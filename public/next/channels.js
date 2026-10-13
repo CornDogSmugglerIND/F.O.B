@@ -25,7 +25,7 @@ function paint() {
   const counts = Object.fromEntries(STAGES.map(([k]) => [k, loadItems().filter((i) => k === "all" || stageOf(i) === k).length]));
   const sections = [...groups.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, list]) => {
     const shown = list.slice(0, S.more[k] || 120), closed = S.closed.has(k);
-    return `<section class="ch-group"><header><button class="ch-fold" data-fold="${esc(k)}" type="button" aria-expanded="${!closed}">${closed ? "▸" : "▾"} ${esc(k)} <em>${list.length}</em></button><span>${money(list.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0))}</span><button class="chip" data-selgrp="${esc(k)}" type="button">Select all ${list.length}</button></header>
+    return `<section class="ch-group"><header><button class="ch-fold" data-fold="${esc(k)}" type="button" aria-expanded="${!closed}">${closed ? "▸" : "▾"} ${esc(k)} <em>${list.length}</em></button><span>${money(list.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0))}</span><button class="chip" data-selgrp="${esc(k)}" type="button">Select this group (${list.length})</button></header>
       ${closed ? "" : `<div class="${S.view === "list" ? "sp-list" : "co-grid ch-grid " + S.view}">${shown.map(tile).join("")}</div>${list.length > shown.length ? `<button class="btn" data-more="${esc(k)}" type="button">Show ${Math.min(120, list.length - shown.length)} more of ${list.length - shown.length}</button>` : ""}`}</section>`;
   }).join("");
   const n = S.sel.size;
@@ -35,7 +35,7 @@ function paint() {
     <div class="co-chips" role="group" aria-label="Stage">${STAGES.map(([k, l]) => `<button class="chip${S.stage === k ? " on" : ""}" data-stage="${k}" type="button">${l} <em>${counts[k]}</em></button>`).join("")}</div>
     <div class="ch-bar"><div class="seg" role="group" aria-label="View">${[["cards", "Cards"], ["grid", "Grid"], ["list", "List"]].map(([k, l]) => `<button class="${S.view === k ? "on" : ""}" data-view="${k}" type="button">${l}</button>`).join("")}</div>
       <label class="ch-g">Group by <select id="chGroup">${[["game", "Game"], ["stage", "Stage"], ["type", "Sealed / Singles"], ["bin", "Bin"], ["none", "Nothing"]].map(([k, l]) => `<option value="${k}"${S.group === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
-      <button class="btn" id="chAll" type="button">Select all ${all.length}</button></div>
+      <button class="btn" id="chAll" type="button">Select everything (${all.length})</button></div>
     ${sections || `<div class="co-empty">${counts.all ? "Nothing matches. Try another stage or clear the search." : "Nothing here yet. Tap Sync to pull your eBay listings."}</div>`}
     ${n ? bar(n) : ""}</div>`;
   wire(all);
