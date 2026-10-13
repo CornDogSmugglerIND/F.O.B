@@ -177,78 +177,54 @@ async function misprintRequest(path, opts = {}) {
  * @param {{ fetchImpl?: typeof fetch }} [opts]
  */
 function writeUnconfirmed() {
-  const err = new Error("Misprint listing writes aren't enabled yet: the create/update/delist API contract isn't confirmed, and guesses could touch your live account.");
+  const err = new Error("Misprint listing writes aren't enabled yet: real writes need the go-ahead (MISPRINT_WRITES_CONFIRMED).");
   err.code = "MISPRINT_WRITE_UNCONFIRMED";
   err.status = 501;
   return err;
 }
 
-export async function publishMisprintListing(item, opts = {}) {
-  if (!process.env.MISPRINT_WRITES_CONFIRMED) throw writeUnconfirmed();
-  if (!item?.title) {
-    const err = new Error("Misprint publish requires item.title");
-    err.code = "VALIDATION";
-    throw err;
-  }
+function vErr(msg){const e=new Error(msg);e.code="VALIDATION";e.status=400;return e;}
+
+const COND = { "near mint":"NM", nm:"NM", "lightly played":"LP", lp:"LP", "moderately played":"MP", mp:"MP", "heavily played":"HP", hp:"HP", damaged:"DMG", dmg:"DMG" };
+
+/** Build the confirmed POST /seller/inventory body (docs/misprint-api.md). */
+export function buildMisprintCreateBody(item) {
+  const productId = Number(item?.tcgplayerId || item?.tcgProductId || item?.productId || item?.channels?.misprint?.productId);
+  if (!Number.isInteger(productId) || productId <= 0) throw vErr("Misprint needs the TCGplayer product ID for this card");
   const price = Number(item.price);
-  if (!Number.isFinite(price) || price <= 0) {
-    const err = new Error("Misprint publish requires item.price > 0");
-    err.code = "VALIDATION";
-    throw err;
-  }
-
-  const body = {
-    sellerId: env("MISPRINT_SELLER_ID"),
-    externalId: item.id,
-    title: item.title,
-    description: item.description || item.title,
-    price,
-    quantity: Math.max(1, Number(item.quantity) || 1),
-    sku: `hud-${item.id}`.slice(0, 50),
-  };
-
-  const { data } = await misprintRequest("/v1/asks", {
-    method: "POST",
-    body,
-    fetchImpl: opts.fetchImpl,
-  });
-
-  const listingId = data?.id || data?.askId || data?.listingId || null;
-  return {
-    channelId: "misprint",
-    listingId,
-    price,
-    status: "active",
-    raw: data,
-  };
+  if (!Number.isFinite(price) || price <= 0) throw vErr("Misprint publish requires item.price > 0");
+  const grader = String(item.grader || item.gradingAuthority || "Ungraded").trim() || "Ungraded";
+  const raw = String(item.grade || item.condition || "NM").trim();
+  const grade = grader === "Ungraded" ? (COND[raw.toLowerCase()] || raw.toUpperCase()) : raw;
+  const body = { product_id: productId, grading_authority: grader, grading_scale_value: grade, price, quantity: Math.max(1, Number(item.quantity) || 1) };
+  const imgs = (item.photos || []).map((p) => (typeof p === "string" ? p : p?.url)).filter((u) => /^https:\/\//.test(u || ""));
+  if (imgs.length) body.image_urls = imgs;
+  return body;
 }
 
-/**
- * @param {{ listingId: string, price?: number, quantity?: number }} payload
- * @param {{ fetchImpl?: typeof fetch }} [opts]
- */
-export async function updateMisprintAsk(payload, opts = {}) {
+/** Create a listing. Real write: gated by MISPRINT_WRITES_CONFIRMED; opts.dryRun returns the body only. */
+export async function publishMisprintListing(item, opts = {}) {
+  const body = buildMisprintCreateBody(item);
+  if (opts.dryRun) return { channelId: "misprint", dryRun: true, body };
   if (!process.env.MISPRINT_WRITES_CONFIRMED) throw writeUnconfirmed();
-  const body = {};
-  if (payload.price != null) body.price = Number(payload.price);
-  if (payload.quantity != null) body.quantity = Math.max(0, Number(payload.quantity));
-  const { data } = await misprintRequest(`/v1/asks/${encodeURIComponent(payload.listingId)}`, {
-    method: "PATCH",
-    body,
-    fetchImpl: opts.fetchImpl,
-  });
-  return { channelId: "misprint", listingId: payload.listingId, ok: true, raw: data };
+  const { data } = await misprintRequest("/seller/inventory", { method: "POST", body, fetchImpl: opts.fetchImpl });
+  const row = data?.data || data || {};
+  return { channelId: "misprint", listingId: row.listing_id || row.id || null, price: body.price, status: "active", raw: data };
 }
 
-/**
- * @param {{ listingId: string }} payload
- * @param {{ fetchImpl?: typeof fetch }} [opts]
- */
+/** Price/qty update: no confirmed endpoint yet (PATCH/PUT are 404/405). */
+export async function updateMisprintAsk() {
+  const err = new Error("Misprint has no confirmed price/quantity update endpoint yet; delist and relist instead.");
+  err.code = "MISPRINT_UPDATE_UNSUPPORTED";
+  err.status = 501;
+  throw err;
+}
+
+/** Delist: DELETE /seller/inventory {listing_id}. Gated like other real writes. */
 export async function endMisprintAsk(payload, opts = {}) {
+  if (!payload?.listingId) throw vErr("listingId required");
+  if (opts.dryRun) return { channelId: "misprint", dryRun: true, body: { listing_id: payload.listingId } };
   if (!process.env.MISPRINT_WRITES_CONFIRMED) throw writeUnconfirmed();
-  const { data } = await misprintRequest(`/v1/asks/${encodeURIComponent(payload.listingId)}`, {
-    method: "DELETE",
-    fetchImpl: opts.fetchImpl,
-  });
+  const { data } = await misprintRequest("/seller/inventory", { method: "DELETE", body: { listing_id: payload.listingId }, fetchImpl: opts.fetchImpl });
   return { channelId: "misprint", listingId: payload.listingId, status: "ended", raw: data };
 }

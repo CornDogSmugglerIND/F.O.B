@@ -72,3 +72,14 @@ test("probe with no keys throws CHANNEL_NOT_CONFIGURED", async () => {
   delete process.env.MISPRINT_API_KEY;
   await assert.rejects(() => probeMisprint(), (e) => e.code === "CHANNEL_NOT_CONFIGURED");
 });
+
+import { buildMisprintCreateBody, publishMisprintListing, endMisprintAsk } from "../src/channels/misprint.js";
+test("misprint create body matches confirmed contract", async () => {
+  const b = buildMisprintCreateBody({ tcgplayerId: 714386, price: 12.5, condition: "Near Mint", quantity: 2 });
+  assert.deepEqual(b, { product_id: 714386, grading_authority: "Ungraded", grading_scale_value: "NM", price: 12.5, quantity: 2 });
+  const g = buildMisprintCreateBody({ tcgplayerId: 1, price: 5, grader: "PSA", grade: "10" });
+  assert.equal(g.grading_authority, "PSA"); assert.equal(g.grading_scale_value, "10");
+  assert.throws(() => buildMisprintCreateBody({ price: 5 }), /product ID/);
+  assert.equal((await publishMisprintListing({ tcgplayerId: 1, price: 5 }, { dryRun: true })).dryRun, true);
+  assert.equal((await endMisprintAsk({ listingId: "x" }, { dryRun: true })).body.listing_id, "x");
+});
