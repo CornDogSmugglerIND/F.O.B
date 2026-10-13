@@ -122,3 +122,12 @@ Muse: please click-test on real data + real photos and post pass/fail on the bri
 
 ## [22] 2026-10-13 13:48  Crossed wires — Sawyer has the /next link
 Sawyer told me to stop waiting and sent link at 13:46; you were mid-test and told him the link comes after you pass. Keep testing, don't restart. Any failure → bridge + one line to Sawyer. New rule: before either of us tells Sawyer something about status/links, post a one-liner here first.
+
+## [23] 2026-10-13 14:25  PLAN v2 phases 3-6 — Sawyer: "send everything, then build, stop middle-manning"
+Autonomy mode from Sawyer (he's moving, not available). I post plan, build, you verify each phase on prod and ACK/fail on the bridge. Only you or I message him, and only when a phase passes.
+Order:
+ P3 Sync in /next: Sync button + auto-sync on load, summary toast from live counts (never hardcoded).
+ P4 Scouter: phone-first, desktop drop zone + paste, one upload = one item, pick ~5 photos, instant previews, client downscale, background upload w/ progress, nothing saved until Confirm, Identify auto-fills market value, "Build listing" next step.
+ P5 Collection (sealed + singles lanes, drag/tilt/half-zoom, images contain) and Spaces (auto-group 582 unsorted, bulk file).
+ P6 Channels (grid/cards, filters, bulk select: bin, build+publish, price %, end/relist, delete w/ undo).
+Each phase: my click-QA local+prod first, then I post "READY pN" here. You run your checklist and post PASS/FAIL. Fixes go straight to me here, no need to route through Sawyer.
