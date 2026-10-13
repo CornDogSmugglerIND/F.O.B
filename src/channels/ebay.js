@@ -179,6 +179,7 @@ export async function publishEbayListing(item, opts = {}) {
         title: String(item.title).slice(0, 80),
         description: item.description || item.title,
         aspects: item.brand ? { Brand: [item.brand] } : undefined,
+        imageUrls: (item.photos || item.imageUrls || []).map((x) => (typeof x === "string" ? x : x?.url)).filter((u) => /^https:\/\//.test(u || "")).slice(0, 12),
       },
     },
   });
@@ -245,6 +246,7 @@ export async function publishEbayListing(item, opts = {}) {
     listingId,
     price,
     status: "active",
+    fulfillmentPolicyId,
   };
 }
 

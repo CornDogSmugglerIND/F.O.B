@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { getCanonicalInventory, getChannelStatuses, getEbayChannelStatus } from "../channels/config.js";
 import { applySale } from "../channels/sync.js";
 import { publishListing, assertChannelConfigured } from "../channels/adapters.js";
-import { publishEbayVariationListing, publishEbayListing } from "../channels/ebay.js";
+import { publishEbayVariationListing, publishEbayListing, endEbayListing } from "../channels/ebay.js";
 import { probeEbay, syncEbayInventory, clearEbayTokenCache, getEbayTracking } from "../channels/ebay.js";
 import {
   buildEbayAuthorizeUrl,
@@ -93,6 +93,20 @@ function ebayConnectFailure(res, status, message, opts = {}) {
 export function channelsRouter() {
   const router = Router();
   router.use(async (_req, _res, next) => { try { await hydrateMisprintKeys(); await hydrateEbaySettings(); } catch { /* ignore */ } next(); });
+  /** One-shot live proof: publish a card under $20, confirm policy, withdraw immediately. */
+  router.post("/ebay/publish-test", async (req, res) => {
+    const item = req.body?.item || {};
+    if (!(Number(item.price) > 0 && Number(item.price) < 20)) return res.status(400).json({ ok: false, error: "Test card must be priced under $20" });
+    let pub = null;
+    try {
+      pub = await publishEbayListing({ ...item, id: item.id || `livetest-${Date.now()}`, game: item.game || "pokemon" });
+      let ended = false, endError = null;
+      try { await endEbayListing({ listingId: pub.offerId }); ended = true; } catch (e) { endError = e.message; }
+      res.json({ ok: true, listingId: pub.listingId, offerId: pub.offerId, sku: pub.sku, price: pub.price, fulfillmentPolicyId: pub.fulfillmentPolicyId, ended, endError });
+    } catch (e) {
+      res.status(502).json({ ok: false, error: e.message, details: e.details, published: pub });
+    }
+  });
   /** In-app eBay policy pickers: current values + the account's real policies. */
   router.get("/ebay/settings", async (_req, res) => {
     let policies = { fulfillment: [], payment: [], returns: [] };
