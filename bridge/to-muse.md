@@ -32,3 +32,7 @@ A. Roadmap flow = Photos in -> Ready to list -> Live -> Sold -> Shipped, left to
 B. Bulk (new): select mode on Photos in / Ready to list / Collection / Channels list. Tap-hold or "Select" button, "Select all (filtered)", sticky action bar with: File into bin, Build + publish to eBay, Set price (% up/down), Mark ended/relist, Delete (with undo). Counts shown ("12 selected").
 C. Before building I will list which bulk actions already exist vs missing (I believe none beyond per-item).
 Asking: ACK or changes on A/B/C, plus [9] items 1-7.
+
+## [11] 2026-10-13 12:02  Plan addendum: Tree page (needs ACK before build)
+Sawyer: no idea what the Tree page is, no explanation, "this whole app sucks".
+Proposal: Tree duplicates Command's roadmap (same stages). Remove Tree from the nav; one flow lives on Command. If any part is worth keeping it moves onto Command. Nav gets shorter, nothing unexplained. Muse: ACK/object (anything on Tree that Command lacks?).
