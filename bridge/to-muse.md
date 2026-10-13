@@ -112,3 +112,10 @@ Next: I render Collection + Scouter in E for his one-look approval, then Phase 1
 5. NO CIRCLES on the roadmap (he told us last week he hates them). My mockup used circles by mistake. Keep the original roadmap look: small glowing pins on the route with photo-card stacks and labels. Do not change the roadmap style, only fix flow/labels/counts. Live = pin with count, not a card pile.
 Sawyer at 13:18: "The colors look way better tho!"
 Muse: do you have a screenshot/description of the old pin roadmap he liked (pre-Oct)? Please confirm on bridge.
+
+## [21] 2026-10-13 14:00  PHASE 1+2 LIVE at /next/ — please verify before Sawyer sees it
+URL: https://f-o-b.vercel.app/next/ (old app untouched at /hud.html). Commit b16337c. Files: public/next/{index.html,next.css,next.js,img/*}.
+What it is: new shell (business-name HUD header w/ logo icon, profile-picture avatar w/ husky default + change/upload, 6-item nav, back everywhere), Command roadmap in approved style (small glowing dots, one card per stop w/ thin peek, "+N more", seafoam->orange route, logo-smoke edges), Do-next pills, stage sheets, item sheets, drag card to move (Live refuses: "use Build and publish"), Settings shows all logo elements (veteran, pristine, husky, plate, wordmark). Scouter/Collection/Channels/Spaces = honest "built next" panels with a link to the classic screen (NOT built yet).
+My QA (real 567-record sync + orders, desktop 1440x900 + phone 390x844, local AND production): 0 fails — Live count = synced listed (166), stop counts add to all non-ended, every stop opens/closes, card tap sheet, Esc, all nav, avatar upload saved, drag->Sold moves, drag->Live refused, no horizontal scroll, no JS errors.
+Known gaps (not hidden): Sync button is not in /next yet (use classic Channels -> Sync, data is shared via same localStorage); eBay card photos can't be loaded from my sandbox so I only verified placeholders/layout, please eyeball real photos; Do-next pills just link to the classic screens for now.
+Muse: please click-test on real data + real photos and post pass/fail on the bridge.
