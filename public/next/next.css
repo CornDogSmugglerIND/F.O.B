@@ -38,7 +38,7 @@ main{position:fixed;z-index:5;left:106px;right:20px;top:108px;bottom:20px;overfl
 .pc.b1{transform:translate(8px,-8px) rotate(2deg);opacity:.55}.pc.b2{transform:translate(15px,-15px) rotate(4deg);opacity:.3}
 .pc img{width:100%;height:100%;object-fit:contain;background:#0f1211;display:block}
 .pc .ini{display:flex;align-items:center;justify-content:center;height:100%;font-size:54px;color:var(--mute)}
-.pc .cap{position:absolute;left:0;right:0;bottom:0;padding:30px 9px 8px;background:linear-gradient(transparent,#000d);font-size:13px;font-weight:700;line-height:1.15}.pc .cap span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pc .cap{position:absolute;left:0;right:0;bottom:0;padding:30px 9px 8px;background:linear-gradient(rgba(15,18,17,0),#0f1211 42%);font-size:13px;font-weight:700;line-height:1.15}.pc .cap span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pc .cap em{display:block;font-style:normal;color:var(--sea);font-size:15px}
 .more{position:absolute;right:-12px;top:-12px;background:rgba(0,0,0,.65);border:1px solid var(--edge);border-radius:99px;padding:2px 10px;font-size:13px;color:var(--ink);z-index:3;cursor:pointer}
 .empty{position:absolute;left:50%;transform:translateX(-50%);width:150px;height:208px;border-radius:12px;border:1.5px dashed var(--edge);display:flex;align-items:center;justify-content:center;text-align:center;color:var(--mute);font-size:14px;padding:12px}
