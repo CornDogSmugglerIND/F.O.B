@@ -206,7 +206,7 @@ export function buildMisprintCreateBody(item) {
 export async function publishMisprintListing(item, opts = {}) {
   const body = buildMisprintCreateBody(item);
   if (opts.dryRun) return { channelId: "misprint", dryRun: true, body };
-  if (!process.env.MISPRINT_WRITES_CONFIRMED) throw writeUnconfirmed();
+  if (!process.env.MISPRINT_WRITES_CONFIRMED && !opts.confirmed) throw writeUnconfirmed();
   const { data } = await misprintRequest("/seller/inventory", { method: "POST", body, fetchImpl: opts.fetchImpl });
   const row = data?.data || data || {};
   return { channelId: "misprint", listingId: row.listing_id || row.id || null, price: body.price, status: "active", raw: data };
@@ -224,7 +224,7 @@ export async function updateMisprintAsk() {
 export async function endMisprintAsk(payload, opts = {}) {
   if (!payload?.listingId) throw vErr("listingId required");
   if (opts.dryRun) return { channelId: "misprint", dryRun: true, body: { listing_id: payload.listingId } };
-  if (!process.env.MISPRINT_WRITES_CONFIRMED) throw writeUnconfirmed();
+  if (!process.env.MISPRINT_WRITES_CONFIRMED && !opts.confirmed) throw writeUnconfirmed();
   const { data } = await misprintRequest("/seller/inventory", { method: "DELETE", body: { listing_id: payload.listingId }, fetchImpl: opts.fetchImpl });
   return { channelId: "misprint", listingId: payload.listingId, status: "ended", raw: data };
 }

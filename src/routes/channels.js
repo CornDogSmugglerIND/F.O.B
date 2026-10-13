@@ -12,6 +12,7 @@ import {
   blobDiag,
 } from "../channels/ebayConnect.js";
 import { hydrateEbaySettings, currentEbaySettings, saveEbaySettings, listEbayPolicies } from "../channels/ebaySettings.js";
+import { publishMisprintListing, endMisprintAsk } from "../channels/misprint.js";
 import { probeMisprint, listMisprintInventory, listMisprintOrders, hydrateMisprintKeys, saveMisprintKeys, misprintKeysPresent, misprintBaseUrl } from "../channels/misprint.js";
 import { combineVariationBatch } from "../listing/variation.js";
 import { getScoutItem, updateScoutItem, listScoutItems, createScoutItem } from "../store.js";
@@ -105,6 +106,29 @@ export function channelsRouter() {
       res.json({ ok: true, listingId: pub.listingId, offerId: pub.offerId, sku: pub.sku, price: pub.price, fulfillmentPolicyId: pub.fulfillmentPolicyId, ended, endError });
     } catch (e) {
       res.status(502).json({ ok: false, error: e.message, details: e.details, published: pub });
+    }
+  });
+  /** Sawyer-approved (Oct 12) throwaway test: does re-posting the same product update price or duplicate? Cleans up after itself. */
+  router.post("/misprint/upsert-test", async (req, res) => {
+    const pid = Number(req.body?.product_id);
+    const before = await listMisprintInventory();
+    const known = new Set(before.map((r) => r.listing_id));
+    const log = [];
+    try {
+      for (const price of [9.91, 9.93]) {
+        const r = await publishMisprintListing({ tcgplayerId: pid, price, condition: "NM", quantity: 1 }, { confirmed: true });
+        log.push({ price, listingId: r.listingId, raw: r.raw });
+      }
+      const after = (await listMisprintInventory()).filter((r) => r.product_id === pid);
+      const created = after.filter((r) => !known.has(r.listing_id));
+      const cleanup = [];
+      for (const r of created) {
+        try { await endMisprintAsk({ listingId: r.listing_id }, { confirmed: true }); cleanup.push({ id: r.listing_id, ended: true }); }
+        catch (e) { cleanup.push({ id: r.listing_id, ended: false, error: e.message }); }
+      }
+      res.json({ ok: true, log, newRows: created.map((r) => ({ id: r.listing_id, price: r.price, status: r.status })), cleanup });
+    } catch (e) {
+      res.status(502).json({ ok: false, error: e.message, details: e.details, log });
     }
   });
   /** In-app eBay policy pickers: current values + the account's real policies. */
