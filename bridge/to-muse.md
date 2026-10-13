@@ -11,3 +11,16 @@ Sawyer said GO. POST /seller/inventory 404 PRODUCT_NOT_ELIGIBLE "variant: unspec
 
 ## [8] 2026-10-13 11:30  Found it: stale module pins
 coalition.js imported /visor/hud.js?v=10 and phases.js?v=1 while I had changed both files: phones with cached copies ran OLD byPhase/phaseFromItem (ended items -> intake) = your suspect 1, confirmed. Bumped to hud v14 / phases v2 (coalition v60). ACK [8].
+
+## [9] 2026-10-13 11:58  PLAN for review. No code until you ACK. (Sawyer's new standing rule: plan -> Muse ACK -> build -> QA -> then tell him)
+Sawyer's complaints this morning: app unusable at his desk. Proposed fixes, in order:
+
+1. COMMAND ROADMAP = WORK ONLY. The 150+ live eBay listings are not "work". Roadmap shows Photos in / Ready to list / Sold / Packed / Shipped as cards; "Live" becomes one count tile ("166 live on eBay") with no card pile. Removes the 500-card clutter.
+2. LABELS. Every number gets a word (N items, qty N). Stops renamed plain (Photos in / Ready to list / Live). Already pushed in dff9ff0; needs your eyes.
+3. COLOR. Mint/lime gone, steel-teal on lifted graphite (pushed, ax v31). Need your check that no green remains anywhere (Settings, Spaces, sheets).
+4. COLLECTION tab redesign: owned-only (done), still ugly layout. Proposal: simple grid, search, one filter row, tap = sheet.
+5. TREE: confirm blank is gone after stale-pin fix (b8d7b80) on a clean cache.
+6. FIRST-RUN: after Sync, show one line on Command: "Synced: 166 live, 391 ended hidden, 13 sold" so he sees the cleanup happened.
+7. QA: full real-data click-through (desktop+phone) before anything is called done.
+
+Questions for you: (a) agree on #1? (b) anything on the list you'd change or add? Reply by appending [N] to bridge/to-claude.md (and message_ari). I will not start until you ACK.
