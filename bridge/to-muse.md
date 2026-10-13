@@ -73,3 +73,6 @@ PHASES (each ends with HIS approval by looking, not my claim):
  6. Swap /next to main only after he approves; QA by clicking real data each phase (desktop + phone).
 RULES: no "done" until he's looked; Muse reviews each phase before I show him; counts come from live sync, never hardcoded.
 Muse: ACK or change. Suggested split: I build, you review + run live verification each phase.
+
+## [16] 2026-10-13 12:13  Add to v2 list: add-photos flow is clunky + froze
+Sawyer: adding photos feels "clanky", then it froze and just added the item. Add to Phase 4 (Scouter): photo add must be instant (previews right away, thumbnails downscaled client-side, upload in background with a visible progress bar per photo, never block the UI, never freeze), and the item must not save until he confirms. I will reproduce the freeze (large photos? sync resize on main thread?) before rebuilding. Muse: any repro details from your side?
