@@ -115,7 +115,7 @@ body[data-view="scouter"] .ax-dock { display: flex; }
 .ax-rail { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%); }
 
 /* ===== v5: brand mix. Ember smoke leads, green is a thin edge-light, teal marks "selected". No lime fills. ===== */
-:root { --ax-acc: 255, 122, 46; --ax-green: 70, 235, 120; --ax-teal: 31, 181, 168; }
+:root { --ax-acc: 255, 122, 46; --ax-green: 74, 148, 158; --ax-teal: 74, 148, 158; }
 body { background: radial-gradient(900px 600px at 105% 0%, rgba(255,122,46,.16), transparent 60%), radial-gradient(800px 640px at -10% 100%, rgba(var(--ax-green), .10), transparent 62%), radial-gradient(700px 500px at 50% 120%, rgba(255,122,46,.10), transparent 70%), #050607 !important; }
 .ax-big, .ax-stagehead b { color: var(--ink); }
 .ax-val { color: rgb(var(--ax-acc)); text-shadow: 0 0 28px rgba(var(--ax-acc), .45); }
@@ -158,7 +158,7 @@ body { background: radial-gradient(900px 600px at 105% 0%, rgba(255,122,46,.16),
 @keyframes axbob { 50% { translate: 0 -6px; } }
 #view-collection .inv-art { position: relative; overflow: hidden; border-radius: 26px !important; box-shadow: 0 0 0 1px rgba(255,255,255,.16), 0 26px 40px -18px #000, 0 0 40px -14px rgba(var(--ax-acc), .55), 0 0 12px -4px rgba(var(--ax-green), .35) !important; }
 #view-collection .inv-art::after { content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color-dodge; opacity: .55;
-  background: linear-gradient(112deg, transparent 18%, rgba(255,122,46,.55) 34%, rgba(70,235,160,.5) 48%, rgba(150,110,255,.4) 60%, transparent 76%); background-size: 260% 100%; background-position: var(--fx, 20%) 0; animation: axfoil 5.5s ease-in-out infinite alternate; }
+  background: linear-gradient(112deg, transparent 18%, rgba(255,122,46,.55) 34%, rgba(74, 148, 158,.5) 48%, rgba(150,110,255,.4) 60%, transparent 76%); background-size: 260% 100%; background-position: var(--fx, 20%) 0; animation: axfoil 5.5s ease-in-out infinite alternate; }
 .inv-tile.tilting .inv-art::after { animation: none; opacity: .75; }
 @keyframes axfoil { from { background-position: 8% 0; } to { background-position: 92% 0; } }
 #view-collection .inv-art::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 0 0 1px rgba(255,255,255,.06); }
@@ -169,7 +169,7 @@ body { background: radial-gradient(900px 600px at 105% 0%, rgba(255,122,46,.16),
 #view-constellation .ax-v { max-width: 1300px; }
 
 /* ===== v7: tactical hologram HUD. Thin frames, corner brackets, glass, scan projection. No foil, no bob. ===== */
-:root { --hx: 31, 181, 168; --hs: 195, 204, 208; }
+:root { --hx: 74, 148, 158; --hs: 195, 204, 208; }
 /* shared bracket frame: apply to a positioned box via ::before */
 .ax-card::before, #view-collection .inv-art::before, .rm .rm-card .rt-face::before {
   content: ""; position: absolute; inset: 5px; z-index: 4; pointer-events: none; border-radius: 0; box-shadow: none;
@@ -362,7 +362,7 @@ body .hud-app #view-scouter .ax-rail { margin: 0 !important; }
 .hud-app .spaces-nodes .space-node, .hud-app .space-node { border-radius: 8px !important; }
 
 /* ===== v11: calm palette. No crayon colors: steel + one ember accent. ===== */
-:root { --ax-green: 124, 176, 150; --ax-acc: 232, 112, 52; }
+:root { --ax-green: 74, 148, 158; --ax-acc: 232, 112, 52; }
 /* Command / Tree route: every stop steel, lit stops ember, no rainbow dots */
 body .rm-stop { --c: 150, 168, 176 !important; }
 body .rm-stop.on { --c: 232, 112, 52 !important; }
@@ -463,15 +463,15 @@ body #view-collection .inv-add { box-shadow: inset 0 0 0 1px rgba(var(--ax-acc),
 .ax-card img { object-fit: contain !important; background: #0b0e10; filter: none !important; }
 
 /* ===== v24b calm palette: graphite + one teal accent. No orange wash, no reticle, no scan lines ===== */
-:root { --ax-acc: 31, 181, 168; --ax-green: 31, 181, 168; }
-body { background: radial-gradient(1000px 640px at 100% 0%, rgba(31,181,168,.08), transparent 60%), radial-gradient(900px 600px at 0% 100%, rgba(150,172,180,.06), transparent 60%), #07090a !important; }
+:root { --ax-acc: 74, 148, 158; --ax-green: 74, 148, 158; }
+body { background: radial-gradient(1000px 640px at 100% 0%, rgba(74, 148, 158,.08), transparent 60%), radial-gradient(900px 600px at 0% 100%, rgba(150,172,180,.06), transparent 60%), #07090a !important; }
 .ax-card.on::after { background: linear-gradient(180deg, transparent 55%, rgba(3,6,8,.9) 100%) !important; }
 .ax-card.on .ax-meta { border-top-color: rgba(255,255,255,.12) !important; }
 .ax-card .ax-meta, .ax-card b, .ax-card strong { text-shadow: none; }
 .ax-card [class*="price"], .ax-card .ax-price { color: rgb(var(--ax-acc)) !important; }
 .ax-d.pri { background: rgba(var(--ax-acc), .16) !important; }
-body .rm-stop.on { --c: 31, 181, 168 !important; }
-body .rh-glow { stroke: rgba(31, 181, 168, .22) !important; }
+body .rm-stop.on { --c: 74, 148, 158 !important; }
+body .rh-glow { stroke: rgba(74, 148, 158, .22) !important; }
 .rm-stop:nth-child(n) { --c: 150, 172, 180; }
 .rm-end { filter: none !important; }
 @media (min-width: 900px) { #view-channels.active, body[data-view="channels"] #view-channels { display: block !important; } }
@@ -490,3 +490,23 @@ body .rh-glow { stroke: rgba(31, 181, 168, .22) !important; }
   #view-command .rh > .rh-hint { max-width: 560px; }
 }
 @media (min-width: 1000px) { #view-command .rh-hint { text-align: left; } }
+
+/* ===== v31 visibility + brand: steel-teal on graphite, brighter text, lifted surfaces. No mint, no lime. ===== */
+:root {
+  --hx: 74, 148, 158; --hs: 205, 214, 219; --ax-acc: 74, 148, 158; --ax-green: 74, 148, 158; --t: 74, 148, 158; --g: 74, 148, 158;
+  --ink: #EDF1F3; --ink-2: #B7C2C8; --hud-text: #EDF1F3; --hud-text-dim: #B7C2C8; --hud-text-mute: #8C9AA1;
+  --glass: rgba(44, 53, 60, .72); --glass-hi: rgba(58, 69, 77, .78); --hair: rgba(255,255,255,.16);
+  --hud-panel: #1A2126; --hud-panel-2: #212A30; --hud-line: rgba(190,205,212,.2); --hud-line-strong: rgba(190,205,212,.38);
+}
+body { background: radial-gradient(1000px 640px at 100% 0%, rgba(74,148,158,.16), transparent 62%), radial-gradient(900px 600px at 0% 100%, rgba(150,172,180,.10), transparent 62%), #12171B !important; }
+.ax-seg { background: rgba(255,255,255,.09); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+.ax-seg button.on { background: rgba(255,255,255,.2); }
+.chr { background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.chr:hover { background: rgba(255,255,255,.14); }
+.ch-q { background: rgba(255,255,255,.1); box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+.ch-sync { background: #4A949E; color: #fff; }
+.chx { background: rgba(255,255,255,.12); color: #D5DEE2; }
+.chx.on { color: #fff; background: rgba(74,148,158,.55); }
+.hud-app .panel, .hud-app .settings-block, .hud-app .files-hub, .hud-app .ff-stages { background: linear-gradient(180deg, rgba(74,148,158,.10), rgba(33,42,48,.9)) !important; }
+.ax-card { background: linear-gradient(160deg, #2A343A, #171D21); }
+.ch-sub, .rh-sub, .ax-cap { color: #C4CED3; }

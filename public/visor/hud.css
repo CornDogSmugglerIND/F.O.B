@@ -3,12 +3,12 @@
 :root {
   --hud-text: #C3CCD0; --hud-text-dim: #8A969C; --hud-text-mute: #566066;
   --hud-panel: #0D1013; --hud-panel-2: #13181C; --hud-line: rgba(160,180,186, 0.12); --hud-line-strong: rgba(160,180,186, 0.26);
-  --hud-amber-rgb: 31, 181, 168; --hud-amber-hairline: rgba(160,180,186, 0.35);
-  --hud-amber: #1FB5A8;
-  --hud-amber-hot: #55D9CB;
-  --hud-amber-soft: rgba(31,181,168,0.15);
+  --hud-amber-rgb: 74, 148, 158; --hud-amber-hairline: rgba(160,180,186, 0.35);
+  --hud-amber: #4A949E;
+  --hud-amber-hot: #4A949E;
+  --hud-amber-soft: rgba(74, 148, 158,0.15);
   --o: 150, 172, 180;
-  --o2: 255, 138, 61; --g: 61, 220, 90; --t: 31, 181, 168;
+  --o2: 255, 138, 61; --g: 74, 148, 158; --t: 74, 148, 158;
   --glass: rgba(26, 28, 34, 0.64);
   --glass-hi: rgba(40, 43, 52, 0.72);
   --hair: rgba(255, 255, 255, 0.085);
@@ -663,38 +663,38 @@ button.hud-pill { all: unset; box-sizing: border-box; cursor: pointer; display: 
 #view-spaces #unsortedPool > strong { display: block; font-size: 18px; letter-spacing: -.02em; color: var(--ink); }
 
 /* ===== v24 palette: graphite + shard silver base; ember / teal / green used in small, varied doses ===== */
-body, .hud-root { background: radial-gradient(1200px 700px at 85% -10%, rgba(242,106,42,.10), transparent 60%), radial-gradient(900px 600px at -10% 110%, rgba(31,181,168,.08), transparent 60%), #050607; }
+body, .hud-root { background: radial-gradient(1200px 700px at 85% -10%, rgba(242,106,42,.10), transparent 60%), radial-gradient(900px 600px at -10% 110%, rgba(74, 148, 158,.08), transparent 60%), #050607; }
 /* stage nodes cycle through the logo/photo colors instead of one accent */
 .rt-stage:nth-child(7n+1):not(.empty) .rt-node { background: #FF7A2E !important; box-shadow: 0 0 0 2px #FF7A2E, 0 0 0 5px #050607, 0 0 18px 3px rgba(255,122,46,.7) !important; }
-.rt-stage:nth-child(7n+2):not(.empty) .rt-node { background: #1FB5A8 !important; box-shadow: 0 0 0 2px #1FB5A8, 0 0 0 5px #050607, 0 0 18px 3px rgba(31,181,168,.7) !important; }
-.rt-stage:nth-child(7n+3):not(.empty) .rt-node { background: #3DDC5A !important; box-shadow: 0 0 0 2px #3DDC5A, 0 0 0 5px #050607, 0 0 18px 3px rgba(61,220,90,.65) !important; }
+.rt-stage:nth-child(7n+2):not(.empty) .rt-node { background: #4A949E !important; box-shadow: 0 0 0 2px #4A949E, 0 0 0 5px #050607, 0 0 18px 3px rgba(74, 148, 158,.7) !important; }
+.rt-stage:nth-child(7n+3):not(.empty) .rt-node { background: #4A949E !important; box-shadow: 0 0 0 2px #4A949E, 0 0 0 5px #050607, 0 0 18px 3px rgba(74, 148, 158,.65) !important; }
 .rt-stage:nth-child(7n+4):not(.empty) .rt-node { background: #AEBBC0 !important; box-shadow: 0 0 0 2px #AEBBC0, 0 0 0 5px #050607, 0 0 18px 3px rgba(174,187,192,.55) !important; }
 .rt-stage:nth-child(7n+5):not(.empty) .rt-node { background: #E8552A !important; box-shadow: 0 0 0 2px #E8552A, 0 0 0 5px #050607, 0 0 18px 3px rgba(232,85,42,.7) !important; }
-.rt-stage:nth-child(7n+6):not(.empty) .rt-node { background: #17A38F !important; box-shadow: 0 0 0 2px #17A38F, 0 0 0 5px #050607, 0 0 18px 3px rgba(23,163,143,.7) !important; }
-.rt-stage:nth-child(7n+7):not(.empty) .rt-node { background: #6FD66A !important; box-shadow: 0 0 0 2px #6FD66A, 0 0 0 5px #050607, 0 0 18px 3px rgba(111,214,106,.6) !important; }
+.rt-stage:nth-child(7n+6):not(.empty) .rt-node { background: #4A949E !important; box-shadow: 0 0 0 2px #4A949E, 0 0 0 5px #050607, 0 0 18px 3px rgba(74, 148, 158,.7) !important; }
+.rt-stage:nth-child(7n+7):not(.empty) .rt-node { background: #4A949E !important; box-shadow: 0 0 0 2px #4A949E, 0 0 0 5px #050607, 0 0 18px 3px rgba(74, 148, 158,.6) !important; }
 .rt-stage:not(.empty) .rt-node { color: #060708 !important; }
 /* glass panels: shard-grey body, hairline green edge-light on top only */
-.glass, .hud-panel, .rt-step, .pkg-card, .batch-card { background: linear-gradient(160deg, rgba(34,39,44,.72), rgba(14,17,20,.78)) !important; box-shadow: inset 0 1px 0 rgba(61,220,90,.22), inset 0 0 0 1px rgba(174,187,192,.07), 0 18px 40px -22px #000 !important; }
+.glass, .hud-panel, .rt-step, .pkg-card, .batch-card { background: linear-gradient(160deg, rgba(34,39,44,.72), rgba(14,17,20,.78)) !important; box-shadow: inset 0 1px 0 rgba(74, 148, 158,.22), inset 0 0 0 1px rgba(174,187,192,.07), 0 18px 40px -22px #000 !important; }
 /* roles, not one accent: teal = selected/nav, green = money, ember = primary action + heat, silver = neutral */
 .rm-streets path { stroke: rgba(160,180,186,.07); } .rm-streets path.av { stroke: rgba(160,180,186,.13); }
-.rm-arrow { filter: drop-shadow(0 0 6px rgba(31,181,168,.8)); }
+.rm-arrow { filter: drop-shadow(0 0 6px rgba(74, 148, 158,.8)); }
 .rm-end { filter: drop-shadow(0 4px 8px rgba(0,0,0,.7)) drop-shadow(0 0 8px rgba(255,122,46,.6)); }
-.rm-stop:nth-child(7n+1) { --c: 255,122,46; } .rm-stop:nth-child(7n+2) { --c: 31,181,168; } .rm-stop:nth-child(7n+3) { --c: 61,220,90; }
-.rm-stop:nth-child(7n+4) { --c: 174,187,192; } .rm-stop:nth-child(7n+5) { --c: 232,85,42; } .rm-stop:nth-child(7n+6) { --c: 23,163,143; } .rm-stop:nth-child(7n+7) { --c: 111,214,106; }
+.rm-stop:nth-child(7n+1) { --c: 255,122,46; } .rm-stop:nth-child(7n+2) { --c: 74, 148, 158; } .rm-stop:nth-child(7n+3) { --c: 74, 148, 158; }
+.rm-stop:nth-child(7n+4) { --c: 174,187,192; } .rm-stop:nth-child(7n+5) { --c: 232,85,42; } .rm-stop:nth-child(7n+6) { --c: 74, 148, 158; } .rm-stop:nth-child(7n+7) { --c: 74, 148, 158; }
 .rm-pin i { box-shadow: 0 0 0 2px rgb(var(--c, 174,187,192)), 0 0 14px 2px rgba(var(--c, 174,187,192), .8) !important; }
 .rm-stop.on .rm-pin i { background: rgb(var(--c, 174,187,192)) !important; }
 .rm-stop.drop-hint .rm-zone { background: radial-gradient(circle, rgba(var(--c,174,187,192), .34), transparent 70%) !important; box-shadow: 0 0 0 1.5px rgba(var(--c,174,187,192), .7) !important; }
-.rz-journey li.done i, .rz-journey li.done::before { background: #1FB5A8; } .rz-journey li.done i { box-shadow: 0 0 0 2px #1FB5A8; }
+.rz-journey li.done i, .rz-journey li.done::before { background: #4A949E; } .rz-journey li.done i { box-shadow: 0 0 0 2px #4A949E; }
 .rz-journey li.now i { background: #FF7A2E; box-shadow: 0 0 0 2px #FF7A2E, 0 0 0 6px rgba(255,122,46,.22), 0 0 14px 2px rgba(255,122,46,.8); }
-.fh-chip.on, .chip.on, .inv-chip.on, .inv-filter.on, [class*="chip"].on, [class*="chip"].active, [class*="chip"][aria-pressed="true"] { color: #04110F !important; background: linear-gradient(145deg, #AEBBC0, #1FB5A8) !important; box-shadow: 0 8px 18px -8px rgba(31,181,168,.7) !important; }
-.hud-app .nav-tab.active svg { filter: drop-shadow(0 0 7px rgba(31,181,168,.8)); }
-#constellationCollection .inv-stat .v.profit, .inv-stat.profit .v, .inv-profit, .rh-profit { color: #3DDC5A; text-shadow: 0 0 18px rgba(61,220,90,.45); }
-.rt-bar i, .rt-bar > span { background: linear-gradient(90deg, #1FB5A8, #3DDC5A) !important; }
-.rt-mode button.on, #constellationCollection .inv-chip.on, .constellation-mode.active, .fh-chip.on { color: #04110F !important; background: linear-gradient(145deg, #AEBBC0, #1FB5A8) !important; box-shadow: 0 8px 18px -8px rgba(31,181,168,.7) !important; }
-#constellationCollection .inv-add, .batch-act.pri { color: #04120A !important; background: linear-gradient(145deg, #9FE8A8, #2FC95A) !important; box-shadow: 0 8px 18px -8px rgba(61,220,90,.7) !important; }
-#constellationCollection .inv-stat.hot .v { color: #3DDC5A; text-shadow: 0 0 20px rgba(61,220,90,.45); }
-.rt.across::before, .rh-line { background: linear-gradient(90deg, #FF7A2E, #1FB5A8 45%, #3DDC5A 75%, #AEBBC0) !important; stroke: #1FB5A8; }
-.rz-track span.done::before, .rz-track .done i { background: #1FB5A8; }
-.fh-btn svg { color: #1FB5A8; }
-.fh-btn:nth-child(2n) svg { color: #3DDC5A; } .fh-btn:nth-child(3n) svg { color: #FF7A2E; }
-#view-channels .ff-stage[aria-pressed="true"] .n { background: #1FB5A8; box-shadow: 0 0 0 2px #1FB5A8, 0 0 0 6px #0a0b0f, 0 0 24px 4px rgba(31,181,168,.7); }
+.fh-chip.on, .chip.on, .inv-chip.on, .inv-filter.on, [class*="chip"].on, [class*="chip"].active, [class*="chip"][aria-pressed="true"] { color: #04110F !important; background: linear-gradient(145deg, #AEBBC0, #4A949E) !important; box-shadow: 0 8px 18px -8px rgba(74, 148, 158,.7) !important; }
+.hud-app .nav-tab.active svg { filter: drop-shadow(0 0 7px rgba(74, 148, 158,.8)); }
+#constellationCollection .inv-stat .v.profit, .inv-stat.profit .v, .inv-profit, .rh-profit { color: #4A949E; text-shadow: 0 0 18px rgba(74, 148, 158,.45); }
+.rt-bar i, .rt-bar > span { background: linear-gradient(90deg, #4A949E, #4A949E) !important; }
+.rt-mode button.on, #constellationCollection .inv-chip.on, .constellation-mode.active, .fh-chip.on { color: #04110F !important; background: linear-gradient(145deg, #AEBBC0, #4A949E) !important; box-shadow: 0 8px 18px -8px rgba(74, 148, 158,.7) !important; }
+#constellationCollection .inv-add, .batch-act.pri { color: #04120A !important; background: linear-gradient(145deg, #9FE8A8, #2FC95A) !important; box-shadow: 0 8px 18px -8px rgba(74, 148, 158,.7) !important; }
+#constellationCollection .inv-stat.hot .v { color: #4A949E; text-shadow: 0 0 20px rgba(74, 148, 158,.45); }
+.rt.across::before, .rh-line { background: linear-gradient(90deg, #FF7A2E, #4A949E 45%, #4A949E 75%, #AEBBC0) !important; stroke: #4A949E; }
+.rz-track span.done::before, .rz-track .done i { background: #4A949E; }
+.fh-btn svg { color: #4A949E; }
+.fh-btn:nth-child(2n) svg { color: #4A949E; } .fh-btn:nth-child(3n) svg { color: #FF7A2E; }
+#view-channels .ff-stage[aria-pressed="true"] .n { background: #4A949E; box-shadow: 0 0 0 2px #4A949E, 0 0 0 6px #0a0b0f, 0 0 24px 4px rgba(74, 148, 158,.7); }
