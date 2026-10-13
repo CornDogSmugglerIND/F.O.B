@@ -5,9 +5,9 @@
 /** @typedef {'intake'|'staged'|'listed'|'sold'|'packed'|'shipped'|'delivered'} PhaseId */
 
 export const PHASES = Object.freeze([
-  { id: "intake", label: "Intake", short: "IN", order: 0 },
-  { id: "staged", label: "Staged", short: "ST", order: 1 },
-  { id: "listed", label: "Listed", short: "LI", order: 2 },
+  { id: "intake", label: "Photos in", short: "IN", order: 0 },
+  { id: "staged", label: "Ready to list", short: "ST", order: 1 },
+  { id: "listed", label: "Live", short: "LI", order: 2 },
   { id: "sold", label: "Sold", short: "SO", order: 3 },
   { id: "packed", label: "Packed", short: "PK", order: 4 },
   { id: "shipped", label: "Shipped", short: "SH", order: 5 },

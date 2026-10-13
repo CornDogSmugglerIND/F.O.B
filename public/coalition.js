@@ -1,5 +1,5 @@
-import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=2";
-import { initHud, renderHome as hudHome, renderLine as hudLine, openReadout as hudReadout, renderTreeMap as hudTreeMap } from "/visor/hud.js?v=14";
+import { PHASES, phaseFromItem, normalizePhase } from "/visor/phases.js?v=3";
+import { initHud, renderHome as hudHome, renderLine as hudLine, openReadout as hudReadout, renderTreeMap as hudTreeMap } from "/visor/hud.js?v=16";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";
@@ -660,7 +660,9 @@ function spaceName(id) {
 function renderSpaces() {
   const nodes = $("spacesNodes");
   const owned = (i) => !(i.ended || ["sold", "packed", "shipped", "delivered"].includes(i.phase));
-  const unsorted = state.items.filter((i) => !i.spaceId && owned(i));
+  // Only things in hand and still being worked need a bin. Live eBay listings you already had are not "unsorted work".
+  const inHand = (i) => ["intake", "staged"].includes(phaseFromItem(i));
+  const unsorted = state.items.filter((i) => !i.spaceId && owned(i) && inHand(i));
   const filed = state.items.filter((i) => i.spaceId && owned(i));
   setStat("statSubLoc", state.spaces.length, { cyan: true });
   setStat("statItemsHere", filed.length, { cyan: true });

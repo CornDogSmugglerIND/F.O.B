@@ -510,3 +510,6 @@ body { background: radial-gradient(1000px 640px at 100% 0%, rgba(74,148,158,.16)
 .hud-app .panel, .hud-app .settings-block, .hud-app .files-hub, .hud-app .ff-stages { background: linear-gradient(180deg, rgba(74,148,158,.10), rgba(33,42,48,.9)) !important; }
 .ax-card { background: linear-gradient(160deg, #2A343A, #171D21); }
 .ch-sub, .rh-sub, .ax-cap { color: #C4CED3; }
+.rm-name { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; line-height: 1.15; }
+.rm-name b { font-weight: 700; font-size: 13px; color: var(--ink); }
+.rm-name em { font-style: normal; font-size: 12px; font-weight: 500; color: var(--ink-2); }

@@ -26,6 +26,8 @@ export function initHud(c) {
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") { if (!closeCard()) closeStage(); } });
 }
 
+const STOP_MEANING = { intake: "photos in, not identified yet", staged: "identified, listing not live yet", listed: "live on eBay", sold: "sold, needs packing", packed: "boxed, needs a label", shipped: "on its way to the buyer", delivered: "arrived" };
+
 function byPhase() {
   const { state, PHASES, phaseFromItem } = ctx;
   const by = Object.fromEntries(PHASES.map((p) => [p.id, []]));
@@ -107,13 +109,13 @@ function mapMarkup(orient, sfx) {
       const q = Number(it.quantity) || 1;
       return `<button type="button" class="rt-card rm-card k${k}" data-item="${esc(it.id)}" aria-label="${esc(nameOf(it))}" style="--k:${k};--side:${side}">
         <span class="rt-face">${src ? `<img src="${src}" alt="" draggable="false">` : `<b class="rt-ini">${initial(it)}</b>`}
-        ${q > 1 ? `<span class="rt-q">\u00d7${q}</span>` : ""}
+        ${q > 1 ? `<span class="rt-q">qty ${q}</span>` : ""}
         <span class="rt-cap"><span>${esc(nameOf(it))}</span><b>${ctx.money(worth(it))}</b></span></span></button>`;
     }).reverse().join("");
-    const more = list.length > 3 ? `<span class="rm-more" style="--side:${side}">+${list.length - 3}</span>` : "";
+    const more = list.length > 3 ? `<span class="rm-more" style="--side:${side}">${list.length - 3} more</span>` : "";
     return `<div class="rm-stop${list.length ? " on" : ""}" data-drop="${p.id}" style="left:${(x / W * 100).toFixed(2)}%;top:${(y / H * 100).toFixed(2)}%">
       <span class="rm-zone"></span>
-      <button type="button" class="rm-pin" data-stage="${p.id}" aria-label="${p.label}, ${list.length} items"><i></i><span class="rm-name">${p.label}${list.length ? ` <b>${list.length}</b>` : ""}</span></button>
+      <button type="button" class="rm-pin" data-stage="${p.id}" aria-label="${p.label}, ${list.length} items"><i></i><span class="rm-name">${p.label}<b>${list.length} ${list.length === 1 ? "item" : "items"}</b><em>${STOP_MEANING[p.id] || ""}</em></span></button>
       <span class="rm-cards" style="--side:${side}">${stack}${more}</span>
     </div>`;
   }).join("");
@@ -154,10 +156,10 @@ export function renderHome() {
   const stageStrip = PHASES.map((p) => `<button type="button" class="stg${by[p.id].length ? " on" : ""}" data-stagego="${p.id}"><b>${by[p.id].length}</b><span>${p.label}</span></button>`).join("");
 
   const needs = [
-    { n: review, t: "Scans to review", go: "scouter" },
-    { n: toList, t: "Ready to list", go: "channels" },
-    { n: needsBin, t: "Needs a bin", go: "spaces" },
-    { n: toShip, t: "Ready to ship", go: "constellation" },
+    { n: review, t: "Identify new photos", go: "scouter" },
+    { n: toList, t: "Build and publish listings", go: "channels" },
+    { n: needsBin, t: "File items into a bin", go: "spaces" },
+    { n: toShip, t: "Pack and ship sold items", go: "constellation" },
   ].map((r) => `<button type="button" class="rh-need${r.n ? " hot" : ""}" data-goto="${r.go}"><span class="rh-n">${r.n}</span><span class="rh-t">${r.t}</span><span class="rh-go" aria-hidden="true">›</span></button>`).join("");
 
   const recent = [...items].sort((a, b) => (Date.parse(b.createdAt || 0) || 0) - (Date.parse(a.createdAt || 0) || 0)).slice(0, 8);
@@ -170,16 +172,13 @@ export function renderHome() {
       <div class="rh-head">
         <div>
           <div class="rh-val" id="vhValue">${ctx.money(lastValue == null ? 0 : lastValue)}</div>
-          <div class="rh-sub">${items.length ? `${items.length} items on the line · ${live} live` : "Nothing on the line yet. Snap a photo in Scouter."}</div>
+          <div class="rh-sub">${items.length ? `${items.length - live > 0 ? `${items.length - live} to work · ` : ""}${live} live on eBay` : "Nothing on the line yet. Snap a photo in Scouter."}</div>
         </div>
       </div>
       ${mapMarkup("v", "")}
-      <div class="rh-hint">Intake = just snapped · Staged = ready to list · Listed = live on eBay · Sold = pack it · Shipped = on its way. Hold a card and drop it on a stop to move it.</div>
-      <div class="rh-sec">Where it's listed</div>
-      <div class="ch-grid">${chanTiles}</div>
-      <div class="rh-sec">Needs you</div>
+      <div class="rh-hint">Hold a card and drop it on a stop to move it.</div>
+      <div class="rh-sec">Do next</div>
       <div class="rh-needs">${needs}</div>
-      ${latest}
     </section>`;
   countUp(document.getElementById("vhValue"), value);
 
