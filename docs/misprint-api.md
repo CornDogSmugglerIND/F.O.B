@@ -65,20 +65,32 @@ Required body fields: `product_id`, `grading_authority`,
 `grading_scale_value`, `price`. Optional (from the read shape):
 `quantity`, `image_urls`, `language`.
 
+**Variant (confirmed 2026-10-12):** graded/variant products also need
+`variant` (string, e.g. `"Holofoil"`). Without it the API returns
+PRODUCT_NOT_ELIGIBLE with "variant: unspecified" even for products the
+seller already lists.
+
+**UPSERT (confirmed 2026-10-12):** POSTing the same `product_id` +
+`variant` again UPDATES the existing listing in place (same
+`listing_id`, new price/quantity applied). This is the update path —
+there is no separate update endpoint.
+
 - `product_id` is the TCGplayer product ID (integer, e.g. 714386).
 - `grading_authority`: e.g. `"Ungraded"`, `"PSA"`, `"CGC"`.
 - `grading_scale_value`: condition for ungraded (`"NM"`, ...) or the grade.
 - Products are eligibility-checked. Ineligible product returns HTTP 404:
   `{"success": false, "code": "PRODUCT_NOT_ELIGIBLE", "error": "Product (tcgp_product_id: 999999999, variant: unspecified) is not approved for listing via this API"}`
 
-## Delist (confirmed endpoint)
+## Delist (NOT confirmed — do not rely on the DELETE route)
 
-`DELETE /seller/inventory` with JSON body `{"listing_id": "<uuid>"}`.
-
-Fake ID returns HTTP 404 JSON (a real API response, not the website 404):
-`{"success": false, "error": "Listing not found", "code": "NOT_FOUND"}`
-
-Only a delete of a real listing is untested.
+`DELETE /seller/inventory` with JSON body `{"listing_id": "<uuid>"}`
+returns HTTP 404 JSON `{"success": false, "error": "Listing not found",
+"code": "NOT_FOUND"}` — **including for a real, live listing_id**
+(verified 2026-10-12). Also ruled out live: DELETE with `id` /
+`misprint_id` / query param; POST `/inventory/{id}/delete|remove|end|
+close|delist|deactivate` (website 404 HTML); upsert with quantity 0
+(HTTP 400); upsert with a `status` field (ignored). The real delist
+route is still unknown.
 
 ## Update price / quantity (NOT confirmed)
 
@@ -88,8 +100,8 @@ Probed and ruled out (all fake IDs / empty bodies):
 - `PATCH` / `PUT` on `/seller/inventory` (collection) → HTTP 405
 - `POST /seller/inventory/{id}/delist`, `/deactivate`, `POST /seller/inventory/{id}`, `POST /seller/inventory/delete`, `POST /seller/listings` → website 404 HTML
 
-Open hypothesis, untested: the POST create route upserts by `product_id`
-(+ variant). Test only on a throwaway listing with Sawyer's go.
+Resolved: the POST create route DOES upsert (see Create above).
+Update price/quantity = re-POST with the same product_id + variant.
 
 ## Product ID resolution
 
