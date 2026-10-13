@@ -1,5 +1,5 @@
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=1";
+import { renderScouter } from "./scouter.js?v=2";
 import { renderCollection } from "./collection.js?v=2";
 import { renderSpaces } from "./spaces.js?v=2";
 
@@ -217,15 +217,33 @@ addEventListener("storage", () => render());
 
 /* ---------- sync (same data path as classic, writes the shared store) ---------- */
 const DONE = ["sold", "packed", "shipped", "delivered"];
+async function pullEbay(onProgress) {
+  const rows = []; let offset = 0, failed = 0, total = 0, guard = 0;
+  while (offset !== null && guard++ < 30) {
+    let page = null, err = "";
+    for (let t = 0; t < 3 && !page; t++) {
+      try {
+        const res = await fetch("/api/channels/ebay/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offset, limit: 150 }) });
+        const b = await res.json().catch(() => ({}));
+        if (res.ok && Array.isArray(b.records)) page = b; else { err = b.error || "eBay isn't connected yet."; if (res.status === 503) break; }
+      } catch { err = "Couldn't reach eBay."; }
+      if (!page) await new Promise((r) => setTimeout(r, 400 * (t + 1)));
+    }
+    if (!page) { if (!rows.length) return { error: err || "eBay sync failed. Try again.", rows, complete: false, total }; return { rows, complete: false, failed, total: total || rows.length }; }
+    rows.push(...page.records); failed += page.failed || 0; total = page.total || total; onProgress(rows.length, total);
+    offset = page.next ?? null;
+  }
+  return { rows, complete: offset === null && failed === 0, failed, total };
+}
 async function syncAll(auto) {
   const btn = $("#syncBtn"); if (btn.classList.contains("busy")) return;
   btn.classList.add("busy"); btn.textContent = "Syncing…";
   if (!auto) toast("Pulling eBay…");
   try {
-    const res = await fetch("/api/channels/ebay/sync", { method: "POST" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) { toast(auto ? "Showing saved data. eBay didn't answer." : (body.error || "eBay isn't connected yet.")); return; }
-    const list = loadItems(); const rows = Array.isArray(body.records) ? body.records : [];
+    const pulled = await pullEbay((n, t) => { btn.textContent = `Syncing ${n}/${t}`; });
+    if (pulled.error) { toast(auto ? "Showing saved data. eBay didn't answer." : pulled.error); return; }
+    const body = { partial: !pulled.complete };
+    const list = loadItems(); const all = pulled.rows; const rows = all.filter((r) => r.offerKnown !== false);
     for (const r of rows) {
       const sku = r.channels?.ebay?.sku || r.sku; if (!sku) continue;
       const idx = list.findIndex((i) => i.channels?.ebay?.sku === sku || (r.id && i.id === r.id));
@@ -255,7 +273,7 @@ async function syncAll(auto) {
     } catch { /* orders optional */ }
     saveItems(list); items = list; render();
     const nLive = list.filter((i) => phaseFromItem(i) === "listed").length, nSold = list.filter((i) => DONE.includes(i.phase)).length, nEnd = list.filter((i) => i.ended && !DONE.includes(i.phase)).length;
-    toast(`Synced: ${nLive} live, ${nSold} sold, ${nEnd} ended (hidden)`);
+    toast(pulled.complete ? `Synced: ${nLive} live, ${nSold} sold, ${nEnd} ended (hidden)` : `Synced ${rows.length} of ${pulled.total}. ${pulled.total - rows.length} couldn't be checked. Tap Sync again.`);
   } catch { toast(auto ? "Showing saved data." : "eBay sync failed. Try again."); }
   finally { btn.classList.remove("busy"); btn.textContent = "Sync"; }
 }

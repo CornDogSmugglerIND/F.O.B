@@ -497,6 +497,84 @@ export async function listEbayOffers(opts = {}) {
  *   maxItems caps how many inventory items are processed (default 1000);
  *   `limit` is accepted as a legacy alias for maxItems.
  */
+function toRecord(inv, offer, offerKnown) {
+  const product = inv.product || {};
+  const price = offer.pricingSummary?.price?.value ?? offer.price?.value ?? null;
+  const qty =
+    offer.availableQuantity ??
+    inv.availability?.shipToLocationAvailability?.quantity ??
+    1;
+  return {
+    sku: inv.sku,
+    title: product.title || inv.sku,
+    price: price != null ? Number(price) : null,
+    quantity: Math.max(0, Number(qty) || 0),
+    offerId: offer.offerId || null,
+    listingId: offer.listing?.listingId || offer.listingId || null,
+    status: offer.status || offer.listing?.listingStatus || "active",
+    imageUrl: product.imageUrls?.[0] || null,
+    // false = eBay never answered for this SKU's offer; callers must NOT change its state.
+    offerKnown,
+    // Truth from eBay: only a PUBLISHED offer is live. UNPUBLISHED = never listed or already ended/sold.
+    phase: offer.status === "PUBLISHED" ? "listed" : offer.offerId ? "ended" : "staged",
+    ended: Boolean(offer.offerId) && offer.status !== "PUBLISHED",
+    staged: false,
+    channels: {
+      ebay: {
+        listingId: offer.listing?.listingId || offer.offerId || null,
+        offerId: offer.offerId || null,
+        sku: inv.sku,
+        price: price != null ? Number(price) : null,
+        status: offer.status || "active",
+      },
+    },
+  };
+}
+
+/**
+ * One window of the inventory (default 150 SKUs) with a retried offer lookup per SKU,
+ * so a full sync is a loop of small, deterministic calls instead of one call that
+ * races the 30s serverless limit. Records whose offer never answered carry
+ * offerKnown:false and are counted in `failed`.
+ */
+export async function syncEbayWindow(opts = {}) {
+  const fetchImpl = opts.fetchImpl;
+  const request = opts.request || ebayRequest;
+  const limit = Math.min(200, Math.max(1, Number(opts.limit) || 150));
+  const offset = Math.max(0, Number(opts.offset) || 0);
+  const page = await (opts.list || listEbayInventoryItems)({ limit, offset, fetchImpl });
+  const inv = page.items || [];
+  const records = new Array(inv.length);
+  let failed = 0;
+  const LANES = 12;
+  let cursor = 0;
+  async function worker() {
+    while (cursor < inv.length) {
+      const i = cursor++;
+      const it = inv[i];
+      let offer = null, known = false;
+      for (let attempt = 0; attempt < 3 && !known; attempt++) {
+        try {
+          const { data } = await request(`/sell/inventory/v1/offer?sku=${encodeURIComponent(it.sku)}`, { fetchImpl });
+          const offers = data?.offers || [];
+          offer = offers.find((o) => o.sku === it.sku) || offers[0] || null;
+          known = true;
+        } catch (err) {
+          // 404 "no offer for this SKU" is a real answer; anything else is retried.
+          if (err?.status === 404) { known = true; break; }
+          await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+        }
+      }
+      if (!known) failed += 1;
+      records[i] = toRecord(it, offer || {}, known);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(LANES, inv.length) }, worker));
+  const total = page.total ?? offset + inv.length;
+  const end = offset + inv.length;
+  return { ok: true, offset, total, pulled: inv.length, failed, next: inv.length && end < total ? end : null, records };
+}
+
 export async function syncEbayInventory(opts = {}) {
   const fetchImpl = opts.fetchImpl;
   const maxItems = Math.max(
@@ -547,38 +625,7 @@ export async function syncEbayInventory(opts = {}) {
     );
   }
 
-  const records = slice.map((inv) => {
-    const offer = offersBySku.get(inv.sku) || {};
-    const product = inv.product || {};
-    const price = offer.pricingSummary?.price?.value ?? offer.price?.value ?? null;
-    const qty =
-      offer.availableQuantity ??
-      inv.availability?.shipToLocationAvailability?.quantity ??
-      1;
-    return {
-      sku: inv.sku,
-      title: product.title || inv.sku,
-      price: price != null ? Number(price) : null,
-      quantity: Math.max(0, Number(qty) || 0),
-      offerId: offer.offerId || null,
-      listingId: offer.listing?.listingId || offer.listingId || null,
-      status: offer.status || offer.listing?.listingStatus || "active",
-      imageUrl: product.imageUrls?.[0] || null,
-      // Truth from eBay: only a PUBLISHED offer is live. UNPUBLISHED = never listed or already ended/sold.
-      phase: offer.status === "PUBLISHED" ? "listed" : offer.offerId ? "ended" : "staged",
-      ended: Boolean(offer.offerId) && offer.status !== "PUBLISHED",
-      staged: false,
-      channels: {
-        ebay: {
-          listingId: offer.listing?.listingId || offer.offerId || null,
-          offerId: offer.offerId || null,
-          sku: inv.sku,
-          price: price != null ? Number(price) : null,
-          status: offer.status || "active",
-        },
-      },
-    };
-  });
+  const records = slice.map((inv) => toRecord(inv, offersBySku.get(inv.sku) || {}, true));
 
   return {
     ok: true,

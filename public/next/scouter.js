@@ -66,7 +66,7 @@ async function identify(manualBody) {
     clearTimeout(to);
     const out = await res.json().catch(() => ({}));
     if (out.ok && out.identity) return applyIdentity(out.identity);
-    d.candidates = out.candidates || []; d.idState = d.candidates.length ? "pick" : "fail";
+    { const seen = new Set(); d.candidates = (out.candidates || []).filter((c) => { const k = [c.product_name, c.collector_number, c.set_name, c.finish].join("|").toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }); } d.idState = d.candidates.length ? "pick" : "fail";
     d.idMsg = out.setupTask || out.message || "Couldn't tell what this is.";
   } catch (e) { d.idState = "fail"; d.idMsg = e.name === "AbortError" ? "That took too long. Try again or type it." : "Couldn't reach Identify. Try again or type it."; }
   paintFlow();

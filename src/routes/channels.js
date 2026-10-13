@@ -4,7 +4,7 @@ import { getCanonicalInventory, getChannelStatuses, getEbayChannelStatus } from 
 import { applySale } from "../channels/sync.js";
 import { publishListing, assertChannelConfigured } from "../channels/adapters.js";
 import { publishEbayVariationListing, publishEbayListing, endEbayListing, endEbayVariationListing } from "../channels/ebay.js";
-import { probeEbay, syncEbayInventory, clearEbayTokenCache, getEbayTracking } from "../channels/ebay.js";
+import { probeEbay, syncEbayInventory, syncEbayWindow, clearEbayTokenCache, getEbayTracking } from "../channels/ebay.js";
 import {
   buildEbayAuthorizeUrl,
   exchangeEbayAuthCode,
@@ -208,6 +208,10 @@ export function channelsRouter() {
         });
       }
 
+      if (_req.body && _req.body.offset !== undefined) {
+        // Windowed mode (used by /next): small deterministic pages, client stitches them.
+        return res.json(await syncEbayWindow({ offset: _req.body.offset, limit: _req.body.limit }));
+      }
       const sync = await syncEbayInventory({ maxItems: 1000 });
       const existing = await listScoutItems();
       const byEbaySku = new Map();
