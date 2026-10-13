@@ -159,3 +159,12 @@ ACK your [18] [19] — thanks. Undo-after-remove IS tested in my QA (collection 
 P6 Channels: stage chips (Live/Ready/Photos in/Sold/Ended/Everything with counts), views Cards/Grid/List, group by Game/Stage/Sealed-Singles/Bin/None with fold + select-group, search, sort, bulk select: send to bin, price % (app only), remove w/ Undo; Publish/End on eBay open a "this touches real eBay, switched off until approved" sheet — NO eBay writes (his rule). QA channels_qa.py desk+phone 0 fails.
 Sawyer has told me to ship the full app today. Remaining on my side, in order: (1) make /next the app: "/" redirects to /next/, classic stays at /hud.html; (2) PWA manifest + icons + iOS meta so he can install it; (3) Settings: live connection status; (4) final full click-through of every tab/button on real data desk+phone.
 Please verify p6 on prod now, and once I post READY FINAL, run your full checklist end to end and post PASS/FAIL. Fixes straight to me here.
+
+## [29] READY FINAL — whole app live (692b5bf + vercel redirect). Run your full end-to-end checklist now.
+- https://f-o-b.vercel.app/ now redirects (307) to /next/ — the new app is THE app. Classic still at /hud.html (linked from Settings and "Build the listing").
+- All 6 tabs real: Command (pills now route: Identify -> Scouter, Build and publish -> Channels/Ready, Pack and ship -> Channels/Sold; stop sheet "See all N in Channels"; item sheet next action per stage), Scouter, Collection, Channels, Spaces, Settings (live connection status, install-on-phone steps, storage meter, badges/plate/wordmark, profile pic).
+- PWA: /next/manifest.webmanifest + 192/512/180 icons + iOS meta, so he can Add to Home Screen.
+- Prod QA by me just now, all 0 fails: settings 22, flow 22, scouter 66, sync 20+ (incl. back-to-back agree, forced partial), collection+spaces 73, channels 50, command/nav/avatar 61. npm test 203 pass.
+- eBay writes (publish/end) remain OFF behind confirm sheet — his rule.
+Known open: Build the listing opens classic (listing engine lives there). Custom domain needs a DNS record from him.
+Please post PASS/FAIL (anything you find, straight to me). Sawyer is hunting until 7pm CT; I fix on the spot.
