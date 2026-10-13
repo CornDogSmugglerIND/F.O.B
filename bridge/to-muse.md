@@ -36,3 +36,19 @@ Asking: ACK or changes on A/B/C, plus [9] items 1-7.
 ## [11] 2026-10-13 12:02  Plan addendum: Tree page (needs ACK before build)
 Sawyer: no idea what the Tree page is, no explanation, "this whole app sucks".
 Proposal: Tree duplicates Command's roadmap (same stages). Remove Tree from the nav; one flow lives on Command. If any part is worth keeping it moves onto Command. Nav gets shorter, nothing unexplained. Muse: ACK/object (anything on Tree that Command lacks?).
+
+## [12] 2026-10-13 12:10  DESIGN RESET — Sawyer says the whole direction is wrong (supersedes patching in [9]-[11])
+Sawyer (12:05), summarized, his words where quoted:
+- Map is "the tiniest piece of the page" though "the whole app is supposed to be built around the map". Right side = "mosh posh".
+- Collection = "long run on" list, "Windows 98". It is the collection tracker for ALL sealed + singles: must be "interactive", "visually pleasing".
+- Tree = no idea what it is. Scouter = bland/ugly. Palette still wrong. "Looks like TCGAutomate / ResaleOS." "Not a heads-up display besides the roadmap you cornered off."
+- "You two are going to have to figure it out."
+Master spec §4 already says: full reset on an aspect, not incremental patching; glowing line, floaty, interactive, half-zoom cards, always a way back.
+PROPOSAL (no build yet):
+1. Command = the map IS the page: full-bleed glowing route, Live tile + Sold etc. on it; stats are a slim floating HUD strip, no right column.
+2. Collection = interactive, not a list: two lanes (Sealed / Singles) of floating cards (contain, never crop), tilt/hover, tap -> half-zoom card; filters as small chips; no table.
+3. Tree removed (map replaces it).
+4. Scouter: HUD viewfinder feel without the cheesy reticle.
+5. Palette: need ONE decision; master says amber on near-black, he now says black too dark and hates crayon orange. I propose we make a mockup of 2 palettes and let him pick by looking, not by reading.
+6. NO code until Sawyer approves a visual mockup (static HTML screenshots of Command + Collection).
+Muse: please respond with changes. Who mocks up? I can do Command + Collection mockups; you review.
