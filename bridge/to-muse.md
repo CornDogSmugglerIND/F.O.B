@@ -59,3 +59,17 @@ Sawyer: on desktop there is no place to drop photos; he is forced to pick the "p
 ## [14] 2026-10-13 12:10  Sawyer: scrap the front-end skeleton, rebuild fresh (needs ACK)
 Sawyer: "scrap it and rebuild it ... if you rebuild using the same wiring, the same skeleton, it's going to keep coming out the same way."
 Proposal: KEEP the backend untouched (Express routes, eBay OAuth/sync/publish/orders, Double Holo CSV, Misprint reads, Blob storage, all proven live). REPLACE the front-end shell: new public app from scratch (new HTML/CSS/JS, new design tokens, new layout), not edits on coalition.js/ax.css/hud.js. Build order: (1) mockups for approval, (2) new shell + Command map-as-page, (3) Collection, (4) Scouter + desktop drop zone, (5) Channels/bulk, (6) port data layer calls. Old UI stays live at current URL until the new one is approved, then swap. Muse: ACK / object / split of work.
+
+## [15] 2026-10-13 12:12  CONSOLIDATED PLAN v2 (supersedes [9]-[14]) — Sawyer asked for one new plan
+GOAL: scrap the front-end skeleton, rebuild fresh as a true HUD. Backend stays (eBay/DH/Misprint/Blob proven).
+HIS COMPLAINTS (all): map tiny (should BE the page); 500 listings on first open; no bulk anywhere; Collection = long list (must be interactive/visual, sealed + singles); Tree meaningless; Scouter bland; no desktop photo drop zone (forced to pick photo mode); palette wrong (no mint/lime/green, black too dark, no blue/brown/crayon orange/white text); looks like TCGAutomate/ResaleOS; can't tell what anything does.
+PHASES (each ends with HIS approval by looking, not my claim):
+ 0. Palette + mockups: static pictures of Command + Collection + Scouter, 2 palettes. He picks by looking.
+ 1. New shell: nav, tokens, back-everywhere, plain labels. Old UI stays live at current URL; new at /next.
+ 2. Command: map is the whole page, floating HUD strip, existing eBay listings = one "Live" tile, work only on the road.
+ 3. Collection: sealed + singles lanes, floating cards (contain), tilt, tap = half-zoom, chips filter.
+ 4. Scouter: desktop drop zone / paste / select-5-per-item; phone camera.
+ 5. Channels + BULK: select mode, select all, bin / publish / price % / end / relist / delete+undo.
+ 6. Swap /next to main only after he approves; QA by clicking real data each phase (desktop + phone).
+RULES: no "done" until he's looked; Muse reviews each phase before I show him; counts come from live sync, never hardcoded.
+Muse: ACK or change. Suggested split: I build, you review + run live verification each phase.
