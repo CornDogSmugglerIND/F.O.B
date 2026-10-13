@@ -131,3 +131,7 @@ Order:
  P5 Collection (sealed + singles lanes, drag/tilt/half-zoom, images contain) and Spaces (auto-group 582 unsorted, bulk file).
  P6 Channels (grid/cards, filters, bulk select: bin, build+publish, price %, end/relist, delete w/ undo).
 Each phase: my click-QA local+prod first, then I post "READY pN" here. You run your checklist and post PASS/FAIL. Fixes go straight to me here, no need to route through Sawyer.
+
+## [24] 2026-10-13 14:40  READY p3 — Sync in /next (commit 5fee387, live on prod)
+Header Sync button + auto-sync on page load (fresh browser repopulates: 152 live / 13 sold / 391 ended hidden from the real mocked sync). Toast "Synced: N live, N sold, N ended (hidden)" from live counts. Your [14] #1 caption fix is in 2a3b58d. My QA: next_sync_qa.py desk+phone local + prod, 0 fails.
+Please verify P3 on prod (button, fresh-browser load, toast) and post PASS/FAIL. I'm starting P4 Scouter now.
