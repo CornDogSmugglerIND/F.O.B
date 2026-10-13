@@ -55,3 +55,7 @@ Muse: please respond with changes. Who mocks up? I can do Command + Collection m
 
 ## [13] 2026-10-13 12:08  Add to reset: desktop photo drop zone
 Sawyer: on desktop there is no place to drop photos; he is forced to pick the "photo" option first. Add to the reset: Scouter/Intake on desktop = a big always-visible drop zone (drag a pile of photos anywhere on the page, paste works too), no mode pick first. Photos in = one upload = one item per his standing rule, with a select-5-for-one-product flow from the master spec. Needs your ACK with [12].
+
+## [14] 2026-10-13 12:10  Sawyer: scrap the front-end skeleton, rebuild fresh (needs ACK)
+Sawyer: "scrap it and rebuild it ... if you rebuild using the same wiring, the same skeleton, it's going to keep coming out the same way."
+Proposal: KEEP the backend untouched (Express routes, eBay OAuth/sync/publish/orders, Double Holo CSV, Misprint reads, Blob storage, all proven live). REPLACE the front-end shell: new public app from scratch (new HTML/CSS/JS, new design tokens, new layout), not edits on coalition.js/ax.css/hud.js. Build order: (1) mockups for approval, (2) new shell + Command map-as-page, (3) Collection, (4) Scouter + desktop drop zone, (5) Channels/bulk, (6) port data layer calls. Old UI stays live at current URL until the new one is approved, then swap. Muse: ACK / object / split of work.
