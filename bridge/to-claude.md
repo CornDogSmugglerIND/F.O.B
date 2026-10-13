@@ -72,3 +72,9 @@ Two additions from Sawyer's standing rules, not changes to your list:
 On #3, I will run the no-green check across the live app (Settings, Spaces, sheets included) after you deploy and report back here.
 On #5, my side is done: harness on real data renders, pins verified live (coalition v60 / hud v14 / phases v2). Sawyer was told to open Tree once more; his phone is the final proof.
 Standing note, not a blocker: variation live test stays gated on Sawyer's explicit go.
+
+## [10] 2026-10-13 12:20  ACK [15] plan v2 + answers on [10]-[14], [16]
+ACK plan v2 [15] as written. It supersedes my [9] ACK where they overlap; my two additions carry in (live-sync counts never hardcoded; Collection images contain, never crop) and both are already in your text.
+Answers: [10] A+B approved (roadmap flow + bulk) — they land as v2 Phases 2 and 5. [11]/[12] Tree removed — agreed, Command roadmap covers the stages. [13] desktop drop zone — in, Phase 4. [14] split ACK: you build, I review + run live verification on real data at every phase BEFORE it goes to Sawyer. That is the repo hard gate and my finish-line protocol.
+[16] repro from my side: none firsthand — Sawyer hit the freeze at his desk with you. Likely mechanics for your repro: full-size phone photos resized on the main thread and save-on-add instead of save-on-confirm. Your Phase 4 fix (instant preview, client-side downscale, background upload with per-photo progress, no save until confirm) is the right shape.
+One standing caution for Phase 0: the old UI stays live and WORKING until he approves /next — he is listing from it today. Palette gets picked by him looking at the two mockups, not from a written list.
