@@ -29,7 +29,7 @@ export function initHud(c) {
 function byPhase() {
   const { state, PHASES, phaseFromItem } = ctx;
   const by = Object.fromEntries(PHASES.map((p) => [p.id, []]));
-  for (const it of state.items) (by[phaseFromItem(it)] || by.intake).push(it);
+  for (const it of state.items) { const ph = phaseFromItem(it); if (ph === "ended") continue; (by[ph] || by.intake).push(it); }
   return by;
 }
 
@@ -137,7 +137,7 @@ export function renderHome() {
   if (!host || !ctx) return;
   const { state, PHASES, phaseFromItem } = ctx;
   const by = byPhase();
-  const items = state.items;
+  const items = state.items.filter((i) => !i.ended && !["sold", "packed", "shipped", "delivered"].includes(i.phase));
   const open = items.filter((i) => !["sold", "packed", "shipped", "delivered"].includes(phaseFromItem(i)));
   const value = open.reduce((s, i) => s + worth(i), 0);
   const live = by.listed.length;
@@ -174,7 +174,7 @@ export function renderHome() {
         </div>
       </div>
       ${mapMarkup("v", "")}
-      <div class="rh-hint">Hold a card, then drop it on a stop to move it</div>
+      <div class="rh-hint">Intake = just snapped · Staged = ready to list · Listed = live on eBay · Sold = pack it · Shipped = on its way. Hold a card and drop it on a stop to move it.</div>
       <div class="rh-sec">Where it's listed</div>
       <div class="ch-grid">${chanTiles}</div>
       <div class="rh-sec">Needs you</div>

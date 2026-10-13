@@ -33,7 +33,7 @@
     var card = document.createElement("div");
     card.id = "mpKeyCard"; card.className = "files-hub mk";
     var hub = document.getElementById("filesHub");
-    view.insertBefore(card, hub ? hub.nextSibling : view.firstChild);
+    if (hub && hub.parentNode) hub.parentNode.insertBefore(card, hub.nextSibling); else view.insertBefore(card, view.firstChild);
     paint(card);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { setTimeout(mount, 120); });

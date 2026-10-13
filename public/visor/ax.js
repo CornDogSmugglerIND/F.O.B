@@ -129,6 +129,15 @@
     if (pr) pr.addEventListener("click", function () { var x = $(pr.dataset.proxy); if (x) x.click(); });
     wireRail(host, "scout", function () { var n = $("axScoutNext"); if (n) { n.innerHTML = nextBar(list, "scout"); wireNext(n); } });
     wireNext(host);
+    var rl = host.querySelector(".ax-rail");
+    if (rl && !host.querySelector(".ax-arr")) {
+      ["-1", "1"].forEach(function (d) {
+        var a = D.createElement("button");
+        a.type = "button"; a.className = "ax-arr " + (d === "-1" ? "l" : "r"); a.setAttribute("aria-label", d === "-1" ? "Previous item" : "Next item"); a.textContent = d === "-1" ? "\u2039" : "\u203a";
+        a.addEventListener("click", function () { var c = rl.querySelector(".ax-card"); rl.scrollBy({ left: (c ? c.offsetWidth + 14 : 260) * Number(d), behavior: "smooth" }); });
+        host.insertBefore(a, rl);
+      });
+    }
 
     var dock = $("axDock");
     if (!dock) {

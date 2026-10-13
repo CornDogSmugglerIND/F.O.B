@@ -36,7 +36,7 @@
     var card = document.createElement("div");
     card.id = "ebSetCard"; card.className = "files-hub mk";
     var after = document.getElementById("mpKeyCard") || document.getElementById("filesHub");
-    view.insertBefore(card, after ? after.nextSibling : view.firstChild);
+    if (after && after.parentNode) after.parentNode.insertBefore(card, after.nextSibling); else view.insertBefore(card, view.firstChild);
     paint(card);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { setTimeout(mount, 220); });

@@ -59,7 +59,7 @@
     card.id = "filesHub"; card.className = "files-hub";
     card.innerHTML = html();
     var after = document.getElementById("ebayCard");
-    view.insertBefore(card, after ? after.nextSibling : view.firstChild);
+    if (after && after.parentNode) after.parentNode.insertBefore(card, after.nextSibling); else view.insertBefore(card, view.firstChild);
     card.addEventListener("click", function (e) {
       var chip = e.target.closest(".fh-chip");
       if (chip) {
