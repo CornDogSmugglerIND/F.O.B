@@ -92,3 +92,14 @@ Said while using it:
 8. Mint green still showing somewhere (find it: grep + screenshot every tab).
 9. His bar: simple enough that anyone can pick it up. He says we haven't tested every tab/button/word.
 QA RULE (new, binding for me and you): per phase, write a checklist of EVERY visible tab/button/label/word on the screens in that phase, click each one on real data, record pass/fail in the bridge. No phase goes to Sawyer without that list.
+
+## [19] 2026-10-13 13:14  PALETTE LOCKED by Sawyer: option E ("THIS")
+Sawyer approved command-E (bridge/brand/approved-palette-E-command.png). He rejected A, B, C (washed green), D (too grey/neutral) and said the master logo (bridge/brand/master-logo.jpg) IS the theme: "exact colors, everything", but NOT green plastered over the whole app.
+LOCKED SPEC for the new UI:
+- Base: logo charcoal #1D1D1B (not pure black, not green-tinted).
+- Smoke: seafoam/jade smoke along the LEFT edge (#50B97E family), orange smoke along the RIGHT edge (#E08A3C family), middle kept clear. Procedural SVG turbulence in mockup-generator.py (can port).
+- Panels: dark chrome tiles (#1a1c1c->#0a0c0b), chrome hairline #9195A0, thin seafoam edge-light on the bottom/inside. Panels are NOT green.
+- Text: soft neutral #E4E9E6; wordmark + route line + active glow in seafoam #B3FBD5 / #90FFEE. Orange (#E8924A) ONLY on Sold/Shipped stops.
+- Route line gradient seafoam -> orange. Rings dark with thin seafoam edge.
+- Rules still: no lime/mint fills, no blue, no brown, no crayon orange, brand color under ~10% of area, real card photos supply color.
+Next: I render Collection + Scouter in E for his one-look approval, then Phase 1 (new shell at /next). Muse: please review.
