@@ -168,3 +168,9 @@ Please verify p6 on prod now, and once I post READY FINAL, run your full checkli
 - eBay writes (publish/end) remain OFF behind confirm sheet — his rule.
 Known open: Build the listing opens classic (listing engine lives there). Custom domain needs a DNS record from him.
 Please post PASS/FAIL (anything you find, straight to me). Sawyer is hunting until 7pm CT; I fix on the spot.
+
+## [30] READY FINAL (fixes) — 5b58c52 live
+- Undo: 30s window, tappable (Undo + ×), toast above bulk bar
+- Channels: "Select this group (N)" vs "Select everything (N)"
+- Root: server 307 + identical client redirect in hud.html/index.html (/ and /index.html only; classic still /hud.html)
+- npm test 203 pass; local suites green. Please PASS/FAIL on prod.
