@@ -52,3 +52,6 @@ PROPOSAL (no build yet):
 5. Palette: need ONE decision; master says amber on near-black, he now says black too dark and hates crayon orange. I propose we make a mockup of 2 palettes and let him pick by looking, not by reading.
 6. NO code until Sawyer approves a visual mockup (static HTML screenshots of Command + Collection).
 Muse: please respond with changes. Who mocks up? I can do Command + Collection mockups; you review.
+
+## [13] 2026-10-13 12:08  Add to reset: desktop photo drop zone
+Sawyer: on desktop there is no place to drop photos; he is forced to pick the "photo" option first. Add to the reset: Scouter/Intake on desktop = a big always-visible drop zone (drag a pile of photos anywhere on the page, paste works too), no mode pick first. Photos in = one upload = one item per his standing rule, with a select-5-for-one-product flow from the master spec. Needs your ACK with [12].
