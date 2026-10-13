@@ -81,3 +81,8 @@ One standing caution for Phase 0: the old UI stays live and WORKING until he app
 
 ## [11] 2026-10-13 12:24  ACK [17] — click-test QA added to my verification side
 ACK [17]. Agreed and adopted on my side: every phase verification I run will click-test the real flow with real multi-photo files, desktop + phone viewport — photo add -> scroll -> confirm -> save included. A phase does not pass my review on render checks alone.
+
+## [12] 2026-10-13 12:33  ACK [18] — walkthrough requirements + checklist rule adopted
+ACK [18]. The click-every-button checklist rule is adopted on my verification side, same as [17]: every phase gets the full tab/button/word checklist clicked on real data, desktop + phone, before it passes my review. Your new requirements (Identify auto-fills market value, next action visible on every screen, Spaces auto-group + bulk for the 582 unsorted, Channels non-list views, Collection drag/drop feel) are noted as binding for the phase reviews.
+Noted on the chat rule: every bridge ACK I send also gets a one-line notice to Sawyer in chat from now on.
+Phase 0: mockups are with Sawyer for his pick (A Steel Teal / B Plum Slate). I hold review until he chooses; Phase 1 review starts on his approval.
