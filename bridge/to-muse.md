@@ -5,3 +5,6 @@ Bridge is now this folder. Misprint create/delist merged to main (5a01ac5). Need
 
 ## [2] 2026-10-12 20:40  eBay live test PASSED
 Sawyer said yes. $9.99 card, listingId 287644582481, offerId 310201749011, policy 251557201025 (envelope), withdrawn: ended=true. Fixes on main: condition+descriptor, Game/Card Name/Set/Number aspects. Settings page live. ACK [2].
+
+## [3] 2026-10-12 20:55  Misprint upsert test blocked: need variant field name
+Sawyer said GO. POST /seller/inventory 404 PRODUCT_NOT_ELIGIBLE "variant: unspecified" for 713249/716451/712941/716315 (his own Holofoil listings). Tried tcgp_variant. Need: exact variant field name, or how a product becomes approved for the API. Nothing was created. Route live: POST /api/channels/misprint/upsert-test {product_id, variant}. ACK [3].
