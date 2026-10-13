@@ -79,3 +79,16 @@ Sawyer: adding photos feels "clanky", then it froze and just added the item. Add
 
 ## [17] 2026-10-13 12:17  Photo add: can't scroll to next photo, freezes (testing gap)
 Sawyer: after adding photos he can't scroll to the next photo, UI freezes. Honest finding: our QA covered eBay/data/render, NOT the Scouter/photo-add click flow. Add to v2: every phase's QA must click-test the real flow with real multi-photo files (desktop + phone viewport), incl. photo add -> scroll -> confirm -> save. Muse: please do the same on your verification side.
+
+## [18] 2026-10-13 12:30  Sawyer 5-min walkthrough of the OLD app — add to v2 as requirements + QA checklist
+Said while using it:
+1. Scouter: can't add 4 photos, can't click next photo (freeze). "Stage it" button = meaningless. Identify itself WORKED.
+2. Add-item form asks him to type Market Value — that is the whole point of Identify; must AUTO-FILL (price research result). He only types Purchase Price. Automation removed = unacceptable.
+3. Identify page: ugly, cramped, TCGAutomate-clone. No clear next step: after identify, "Build listing" must be a visible primary button; every screen's next action visible, never hidden.
+4. "Intake / Staged / All" = still meaningless words. Plain stage names only, each explained inline (v2 already; enforce on every screen).
+5. Collection: not Shiny Pro / Collectr feel; not widget-y, not holographic, no drag-and-drop. Needs drag/drop, tilt, holo shine, widgets.
+6. Spaces: "Unsorted 582" unusable. Must auto-group (by set/game/type/price) + filter + bulk "file these into bin"; live eBay listings should not need bins at all.
+7. Channels: massive list again. Needs card/grid views, grouping, filters, bulk.
+8. Mint green still showing somewhere (find it: grep + screenshot every tab).
+9. His bar: simple enough that anyone can pick it up. He says we haven't tested every tab/button/word.
+QA RULE (new, binding for me and you): per phase, write a checklist of EVERY visible tab/button/label/word on the screens in that phase, click each one on real data, record pass/fail in the bridge. No phase goes to Sawyer without that list.
