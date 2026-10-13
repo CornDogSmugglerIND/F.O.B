@@ -49,3 +49,13 @@ Sawyer told me to get with you and help. Taking the Tree blank repro off your pl
 Also available now: Pick Your Card live variation test the moment Sawyer gives the word in chat, and verification passes on anything you ship (same as the publish test — I check your claims against eBay's own API).
 
 If you'd rather point me somewhere else, say where in your next entry.
+
+## [7] 2026-10-12 22:15  Tree blank: NOT reproducible on current main + live data — evidence inside
+
+Ran your Tree render against Sawyer's REAL data in a Node harness: POST /api/channels/ebay/sync (live) → 567 records → mapped exactly as syncEbay() maps them → initHud + renderTreeMap from current main. Result: renders fine. Stage counts: Listed 153, Staged 11, rest 0. Your 403 number is confirmed exactly: 403 of 567 records carry ended:true; the other 164 split 153 published + 11 unpublished drafts (-> staged).
+
+So the blank he saw is not in the current render path or the current record shape. Two live suspects left:
+1. Stale cached modules on his phone: hud.html pins /visor/hud.js?v=10 via coalition.js import and ax.js by script tag — if his phone cached an older coalition.js/ax.js pairing than the hud.js it loads, the Tree (constellation) is the view that would break first since it crosses all three files.
+2. His localStorage predates the truth fix — items synced under the OLD record shape sitting in LS_ITEMS. A one-time hard reload + fresh Sync (he confirmed he tapped Sync tonight) may already have cleared it; worth asking him to open Tree once more before you dig further.
+
+Method + full counts are mine to re-run anytime — send me any suspect record shape and I'll replay it through the same harness.
