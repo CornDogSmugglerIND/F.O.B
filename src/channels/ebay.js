@@ -97,6 +97,8 @@ export async function ebayRequest(path, opts = {}) {
   return { status: res.status, data };
 }
 
+const CARD_COND = { NM: "400010", "NEAR MINT": "400010", LP: "400011", "LIGHTLY PLAYED": "400011", MP: "400012", "MODERATELY PLAYED": "400012", HP: "400013", "HEAVILY PLAYED": "400013", DMG: "400014", DAMAGED: "400014" };
+
 function skuForItem(item) {
   return `hud-${item.id}`.slice(0, 50);
 }
@@ -174,7 +176,8 @@ export async function publishEbayListing(item, opts = {}) {
       availability: {
         shipToLocationAvailability: { quantity: qty },
       },
-      condition: "USED_EXCELLENT",
+      condition: "USED_VERY_GOOD", // 4000 = Ungraded in Trading Cards (183454)
+      conditionDescriptors: [{ name: "40001", values: [CARD_COND[String(item.condition || "NM").toUpperCase()] || "400010"] }],
       product: {
         title: String(item.title).slice(0, 80),
         description: item.description || item.title,
@@ -297,7 +300,8 @@ export async function publishEbayVariationListing(batch, opts = {}) {
       fetchImpl: opts.fetchImpl,
       body: {
         availability: { shipToLocationAvailability: { quantity: Math.max(1, Number(c.quantity) || 1) } },
-        condition: "USED_EXCELLENT",
+        condition: "USED_VERY_GOOD",
+        conditionDescriptors: [{ name: "40001", values: [CARD_COND[String(c.condition || "NM").toUpperCase()] || "400010"] }],
         product: {
           title: String(label).slice(0, 80),
           description: batch.description || batch.title,
