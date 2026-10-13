@@ -1,5 +1,7 @@
 import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=1";
+import { renderCollection } from "./collection.js?v=2";
+import { renderSpaces } from "./spaces.js?v=2";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -38,6 +40,12 @@ function groups() {
 /* ---------- toast / sheet ---------- */
 let toastT;
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600); }
+function toastUndo(msg, fn) {
+  const t = $("#toast"); t.innerHTML = ""; t.append(document.createTextNode(msg + " "));
+  const b = document.createElement("button"); b.type = "button"; b.className = "undo"; b.textContent = "Undo"; t.append(b);
+  t.classList.add("show", "act"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show", "act"), 9000);
+  b.addEventListener("click", () => { clearTimeout(toastT); t.classList.remove("show", "act"); fn(); });
+}
 function closeSheet() { $("#sheet").hidden = true; $("#sheetBack").hidden = true; }
 function openSheet(html) {
   const s = $("#sheet"); s.innerHTML = `<button class="x" aria-label="Close" data-close>×</button>${html}`; s.hidden = false; $("#sheetBack").hidden = false;
@@ -201,7 +209,7 @@ function go(v) {
 }
 function render() {
   items = loadItems(); renderStats();
-  if (view === "command") renderCommand(); else if (view === "settings") renderSettings(); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, go }); } else renderPlaceholder(view);
+  if (view === "command") renderCommand(); else if (view === "settings") renderSettings(); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, go }); } else if (view === "collection" || view === "spaces") { $("#main").style.overflowY = "auto"; const sel = view === "collection" ? ".co-wrap" : ".sp-wrap"; $("#main").innerHTML = ""; (view === "collection" ? renderCollection : renderSpaces)($("#main"), { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); } }); } else renderPlaceholder(view);
 }
 document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));
 addEventListener("resize", (() => { let t; let last = phone(); return () => { clearTimeout(t); t = setTimeout(() => { if (phone() !== last) { last = phone(); render(); } }, 150); }; })());
