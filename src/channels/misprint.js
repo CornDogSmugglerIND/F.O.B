@@ -197,6 +197,8 @@ export function buildMisprintCreateBody(item) {
   const raw = String(item.grade || item.condition || "NM").trim();
   const grade = grader === "Ungraded" ? (COND[raw.toLowerCase()] || raw.toUpperCase()) : raw;
   const body = { product_id: productId, grading_authority: grader, grading_scale_value: grade, price, quantity: Math.max(1, Number(item.quantity) || 1) };
+  if (item.variant || item.tcgpVariant) body.tcgp_variant = String(item.variant || item.tcgpVariant);
+  if (item.misprintVariantId) body.misprint_variant_id = Number(item.misprintVariantId);
   const imgs = (item.photos || []).map((p) => (typeof p === "string" ? p : p?.url)).filter((u) => /^https:\/\//.test(u || ""));
   if (imgs.length) body.image_urls = imgs;
   return body;

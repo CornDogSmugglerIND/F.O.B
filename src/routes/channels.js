@@ -116,7 +116,7 @@ export function channelsRouter() {
     const log = [];
     try {
       for (const price of [9.91, 9.93]) {
-        const r = await publishMisprintListing({ tcgplayerId: pid, price, condition: "NM", quantity: 1 }, { confirmed: true });
+        const r = await publishMisprintListing({ tcgplayerId: pid, price, condition: "NM", quantity: 1, variant: req.body?.variant, misprintVariantId: req.body?.misprintVariantId }, { confirmed: true });
         log.push({ price, listingId: r.listingId, raw: r.raw });
       }
       const after = (await listMisprintInventory()).filter((r) => r.product_id === pid);
