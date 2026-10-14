@@ -3,6 +3,7 @@ import { renderScouter } from "./scouter.js?v=5";
 import { renderCollection } from "./collection.js?v=3";
 import { renderSpaces } from "./spaces.js?v=3";
 import { renderChannels } from "./channels.js?v=4";
+import { renderSettings } from "./settings.js?v=1";
 import { initKit } from "./kit.js?v=1";
 
 const LS_ITEMS = "coalition-items-v4";
@@ -200,27 +201,6 @@ const NEXT_UP = {
   channels: ["Channels", "Grid views, filters and bulk actions. Built after Collection. The classic Channels still works."],
   spaces: ["Spaces", "Auto-grouped so you never sort 500 listings by hand. Built after Channels. The classic Spaces still works."],
 };
-function renderSettings() {
-  $("#main").style.overflowY = "auto";
-  let used = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); used += (k.length + (localStorage.getItem(k) || "").length) * 2; } } catch { /* ignore */ }
-  const mb = (used / 1048576).toFixed(1), pct = Math.min(100, Math.round(used / 5242880 * 100));
-  $("#main").innerHTML = `<div class="set-wrap">
-    <section class="card-panel set"><h2>Settings</h2><p>Your profile picture is the round picture at the top right. Tap it any time to change it.</p>
-      <button class="btn" id="chg" type="button">Change profile picture</button>
-      <div class="badges"><img src="img/veteran.jpg" alt="Veteran-Owned Coalition"><img src="img/pristine.jpg" alt="Pristine 10"><img src="img/husky.jpg" alt="The Coalition team"></div></section>
-    <section class="card-panel set"><h3>Connections</h3><div id="conn" class="conn"><span class="sub">Checking…</span></div>
-      <p class="sub">Keys and sign-in for eBay, Misprint and Double Holo are managed in the <a href="${CLASSIC}">classic app</a>.</p></section>
-    <section class="card-panel set"><h3>Put it on your phone</h3>
-      <ol class="how"><li>Open this page in <b>Safari</b> (iPhone) or <b>Chrome</b> (Android).</li><li>iPhone: tap Share, then <b>Add to Home Screen</b>. Android: tap the menu, then <b>Install app</b>.</li><li>Open it from the new icon. It fills the whole screen.</li></ol></section>
-    <section class="card-panel set"><h3>Space on this device</h3><div class="meter"><i style="width:${pct}%"></i></div><p class="sub">${mb} MB of about 5 MB used. Photos you scout are shrunk to save room. eBay photos are links and take none.</p></section>
-    <section class="card-panel set"><img src="img/plate.jpg" alt="" style="width:100%;max-width:420px;border-radius:16px;border:1px solid var(--edge)"><img src="img/wordmark.jpg" alt="CornDogSmuggler Coalition" style="width:100%;max-width:560px;border-radius:16px;margin-top:14px;border:1px solid var(--edge)"></section></div>`;
-  $("#chg").addEventListener("click", () => $("#avatarBtn").click());
-  const names = { ebay: "eBay", misprint: "Misprint", double_holo: "Double Holo" };
-  fetch("/api/channels/status").then((r) => r.json()).then((d) => {
-    const host = $("#conn"); if (!host) return;
-    host.innerHTML = (d.channels || []).map((c) => `<div class="row"><span>${esc(names[c.id] || c.id)}</span><span class="${c.configured ? "okk" : "bad"}">${c.configured ? "Connected" : "Not connected"}</span></div>`).join("") || `<span class="sub">No channels reported.</span>`;
-  }).catch(() => { const host = $("#conn"); if (host) host.innerHTML = `<span class="sub">Couldn't check right now.</span>`; });
-}
 function renderPlaceholder(v) {
   const [t, d] = NEXT_UP[v]; $("#main").style.overflowY = "auto";
   $("#main").innerHTML = `<div class="card-panel"><h2>${t}</h2><p>${d}</p><a class="btn" href="${CLASSIC}">Open the classic ${t}</a><button class="btn" data-goto="command">‹ Back to Command</button></div>`;
@@ -237,7 +217,7 @@ function go(v) {
 }
 function render() {
   items = loadItems(); renderStats();
-  if (view === "command") renderCommand(); else if (view === "settings") renderSettings(); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, go }); } else if (view === "collection" || view === "spaces" || view === "channels") { $("#main").style.overflowY = "auto"; const sel = view === "collection" ? ".co-wrap" : ".sp-wrap"; $("#main").innerHTML = ""; (view === "collection" ? renderCollection : view === "channels" ? renderChannels : renderSpaces)($("#main"), { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); } }); } else renderPlaceholder(view);
+  if (view === "command") renderCommand(); else if (view === "settings") renderSettings($("#main")); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, go }); } else if (view === "collection" || view === "spaces" || view === "channels") { $("#main").style.overflowY = "auto"; const sel = view === "collection" ? ".co-wrap" : ".sp-wrap"; $("#main").innerHTML = ""; (view === "collection" ? renderCollection : view === "channels" ? renderChannels : renderSpaces)($("#main"), { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); } }); } else renderPlaceholder(view);
 }
 document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));
 addEventListener("resize", (() => { let t; let last = phone(); return () => { clearTimeout(t); t = setTimeout(() => { if (phone() !== last) { last = phone(); render(); } }, 150); }; })());

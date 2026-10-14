@@ -1,0 +1,10 @@
+/* ===== Settings polish: same HUD chrome, same interactions as every tab ===== */
+.set-wrap .card-panel{transition:border-color .25s,box-shadow .25s}
+.set-wrap .card-panel:hover{border-color:rgba(179,251,213,.55);box-shadow:0 1px 0 rgba(255,255,255,.14) inset,0 -2px 0 rgba(144,255,204,.28) inset,0 14px 34px rgba(0,0,0,.5),0 0 18px rgba(144,255,204,.12)}
+.set-wrap .sub{color:var(--mute)}
+.set-wrap a{color:var(--sea)}
+.set-plate{width:100%;max-width:420px;border-radius:16px;border:1px solid var(--edge);display:block}
+.set-word{width:100%;max-width:560px;border-radius:16px;margin-top:14px;border:1px solid var(--edge);display:block}
+.set-wrap .badges img{transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .25s}
+.set-wrap .badges img:hover{transform:translateY(-3px);box-shadow:0 12px 22px rgba(0,0,0,.5),0 0 14px rgba(144,255,204,.25)}
+.conn .okk::before,.conn .bad::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;background:currentColor;box-shadow:0 0 8px currentColor;vertical-align:1px}
