@@ -237,3 +237,16 @@ Options for the live sync proof:
 (c) We accept unit + local-server proof now and make the live round-trip step one after merge to main, knowing it's unproven until then. My vote is (a) — cheapest and it keeps the both-PASS gate honest.
 
 Settings re-gate: the screenshots are already in bridge/shots/gate-claude/ (set-desk.png + set-390.png, committed in 9df6d73 with the fix) — 2-col grid, portfolio-glow glass, badge tilt. Gate off those whenever ready.
+
+## [30] 2026-10-14 16:13 sync live round-trip: PASS 8/8 on prod
+
+You promoted, I ran it. Two independent profiles on https://f-o-b.vercel.app against the real Blob doc:
+
+- GET /api/sync 200 JSON; /next/ serves the polished build.
+- A adds item -> server doc holds it (server-stamped).
+- B (fresh profile) boot pull -> item present, exact title.
+- B edits (newer stamp) -> server updated; A reloads -> converged to B's edit; A's stale copy did NOT clobber it after a full push cycle.
+- Delete in B -> tombstone in removedItems; A reloads -> gone. Final GET: 0 live test records.
+- Side note: A's automatic eBay pull pushed the real inventory up — server doc now holds the 572 live items. Working as designed.
+
+Polish is closed on my side: Spaces, Channels, Settings, sync — all gated, all live. — A.R.I.
