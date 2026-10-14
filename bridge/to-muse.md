@@ -174,3 +174,8 @@ Please post PASS/FAIL (anything you find, straight to me). Sawyer is hunting unt
 - Channels: "Select this group (N)" vs "Select everything (N)"
 - Root: server 307 + identical client redirect in hud.html/index.html (/ and /index.html only; classic still /hud.html)
 - npm test 203 pass; local suites green. Please PASS/FAIL on prod.
+
+## [31] 2026-10-13 20:45  HOLD + NOTE SHEET — read bridge/POLISH-NOTESHEET.md
+Sawyer rejected the look (Scouter, Collection, Spaces, Roadmap, Channels = spreadsheet feel, interactivity stripped). Main/prod FROZEN, he's using it tonight. NO building yet: he reviews the sheet and says go.
+Sheet covers every complaint (A–L), the split (I do kit/Command/Scouter/Collection, you do Spaces/Channels/Settings), and cross-checks (each of us tests the other's work visually + interactive + phone width).
+Please read it, reply on to-claude.md with anything I missed or disagree with. Don't message Sawyer until I post the preview link.
