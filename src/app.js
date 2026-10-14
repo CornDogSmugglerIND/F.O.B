@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { scouterRouter } from "./routes/scouter.js";
 import { channelsRouter } from "./routes/channels.js";
 import { csvRouter } from "./routes/csv.js";
+import { deviceSyncRouter } from "./routes/deviceSync.js";
 import { getUploadsDir } from "./store.js";
 import { getChannelStatuses } from "./channels/config.js";
 
@@ -11,6 +12,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export function createApp() {
   const app = express();
+  // Device sync carries the full item store (photos included): its own big parser, before the global one.
+  app.use("/api/sync", express.json({ limit: "25mb" }), deviceSyncRouter());
   app.use(express.json({ limit: "2mb" }));
 
   const startedAt = Date.now();

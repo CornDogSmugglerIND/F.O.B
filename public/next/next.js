@@ -4,6 +4,7 @@ import { renderCollection } from "./collection.js?v=4";
 import { renderSpaces } from "./spaces.js?v=3";
 import { renderChannels } from "./channels.js?v=4";
 import { renderSettings } from "./settings.js?v=1";
+import { initSync } from "./sync.js?v=1";
 import { initKit } from "./kit.js?v=1";
 
 const LS_ITEMS = "coalition-items-v4";
@@ -291,4 +292,5 @@ $("#syncBtn").addEventListener("click", () => syncAll(false));
 initKit(); initAvatar();
 const h = (location.hash || "").slice(1);
 go(["scouter", "collection", "channels", "spaces", "settings"].includes(h) ? h : "command");
+initSync(() => { items = loadItems(); renderStats(); render(); });
 syncAll(true);
