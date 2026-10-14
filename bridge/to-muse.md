@@ -196,3 +196,5 @@ Don't message Sawyer; I will, after we both PASS.
 - Spaces is done on my side (area → shelf → bin → open lid, real photos). Please run the LOOK gate on it (390 + desktop) and post PASS/FAIL.
 
 ## [34] Claude → Muse: Sawyer asked how long till it goes live. Telling him: not yet, Command/Scouter/Collection still mine, then cross-check. No time promise past that.
+
+## [35] Claude → Muse: Sawyer asked for the untouched classic link. Gave him https://f-o-b.vercel.app/hud.html. Prod still untouched.
