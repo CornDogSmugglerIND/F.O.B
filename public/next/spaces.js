@@ -1,69 +1,173 @@
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, loadItems, loadSpaces, saveSpaces, assign, uid } from "./shared.js?v=2";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, loadItems, loadSpaces, saveSpaces, assign } from "./shared.js?v=2";
+import { fly, rectOf, sleep, openCard } from "./kit.js?v=1";
 
-let ctx = null;
-const S = { sel: new Set(), open: null, filter: "all", q: "" };
+/* Spaces = his real storage, as a camera you fly through:
+   area -> shelf -> bin (closed, lid flips) -> bin (open, items inside). */
+const IMG = "img/spaces/";
+const SHELVES_KEY = "coalition-shelves-v1";
+const SHELVES = [
+  { id: "s1", name: "Shelf 1", photo: "stackA.jpg", bins: ["bin-tote", "bin-apache", "bin-bunkerA"] },
+  { id: "s2", name: "Shelf 2", photo: "stackB.jpg", bins: ["bin-bunkerB1", "bin-bunkerB2"] },
+];
+/* rect = where the bin sits inside the shelf photo, in % of the photo: [x, y, w, h] */
+const PHYS = {
+  "bin-tote": { name: "Bin 1", sub: "Tan tote", closed: "tote-top.jpg", open: "tote-open.jpg", rect: [3, 64, 90, 34], shelf: "s1" },
+  "bin-apache": { name: "Bin 2", sub: "Apache case", closed: "apache-top.jpg", open: "apache-open.jpg", rect: [8, 39, 80, 25], shelf: "s1" },
+  "bin-bunkerA": { name: "Bin 3", sub: "Bunker tote", closed: "bunkerA-top.jpg", open: "bunkerA-open.jpg", rect: [3, 1, 94, 37], shelf: "s1" },
+  "bin-bunkerB1": { name: "Bin 4", sub: "Bunker tote", closed: "bunkerB1-top.jpg", open: "bunkerB1-open.jpg", rect: [3, 58, 92, 40], shelf: "s2" },
+  "bin-bunkerB2": { name: "Bin 5", sub: "Bunker tote", closed: "bunkerB2-top.jpg", open: "bunkerB2-open.jpg", rect: [3, 2, 92, 56], shelf: "s2" },
+};
 
-function groupsFor(list) {
-  const m = new Map();
-  for (const it of list) { const k = `${gameOf(it)} · ${laneOf(it) === "sealed" ? "Sealed" : "Singles"}`; if (!m.has(k)) m.set(k, []); m.get(k).push(it); }
-  return [...m.entries()].sort((a, b) => b[1].length - a[1].length);
+let ctx = null, busy = false, keyBound = false;
+const S = { level: "area", shelf: null, bin: null, open: false };
+const rank = (l) => ({ area: 0, shelf: 1, bin: 2 }[l]);
+
+/* ---------- data ---------- */
+function ensureBins() {
+  const sp = loadSpaces(); let changed = false;
+  for (const [id, p] of Object.entries(PHYS)) {
+    const have = sp.find((s) => s.id === id);
+    if (!have) { sp.push({ id, name: p.name, sub: p.sub, kind: "storage", itemIds: [], cover: null, phys: true }); changed = true; }
+    else if (!have.phys) { have.phys = true; have.sub = have.sub || p.sub; changed = true; }
+  }
+  if (changed) saveSpaces(sp);
+  return sp;
 }
-function paint() {
-  const items = loadItems(), spaces = loadSpaces(), hand = items.filter(onHand);
-  const un = hand.filter((i) => !i.spaceId || !spaces.some((s) => s.id === i.spaceId));
-  const ended = items.filter((i) => i.ended && !["sold", "packed", "shipped", "delivered"].includes(i.phase) && !i.spaceId).length;
-  const groups = groupsFor(un);
-  const shown = un.filter((i) => (S.filter === "all" || `${gameOf(i)} · ${laneOf(i) === "sealed" ? "Sealed" : "Singles"}` === S.filter) && (!S.q || nameOf(i).toLowerCase().includes(S.q.toLowerCase())));
-  const h = ctx.host;
-  h.innerHTML = `<div class="sp-wrap">
-   <div class="co-head"><div><h2>Spaces</h2><p>Where everything physically lives. ${hand.length - un.length} filed · <b>${un.length} not filed yet</b></p></div></div>
-   ${un.length ? `<div class="sp-auto"><div><b>Sort ${un.length} unfiled items in one tap</b><span>I grouped them by game and sealed vs singles. Review, then file them all into bins.</span></div>
-     <div class="sp-sug">${groups.map(([k, l]) => `<button class="chip${S.filter === k ? " on" : ""}" data-filter="${esc(k)}" type="button">${esc(k)} <em>${l.length}</em></button>`).join("")}</div>
-     <button class="btn go" id="spAuto" type="button">File all ${un.length} into ${groups.length} bin${groups.length > 1 ? "s" : ""}</button></div>` : `<div class="sp-auto ok"><b>Everything on hand is filed.</b></div>`}
-   <div class="sp-bins">${spaces.length ? spaces.map((sp) => { const its = hand.filter((i) => i.spaceId === sp.id); const val = its.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
-      return `<button class="sp-bin" data-bin="${esc(sp.id)}" type="button"><div class="sp-thumbs">${its.slice(0, 4).map((i) => photoOf(i) ? `<img src="${esc(photoOf(i))}" alt="" loading="lazy">` : "<i></i>").join("")}</div><b>${esc(sp.name)}</b><span>${its.length} item${its.length === 1 ? "" : "s"} · ${money(val)}</span></button>`; }).join("") : `<div class="co-empty">No bins yet. File your items above and bins appear here, or add one.</div>`}
-     <button class="sp-bin add" id="spNew" type="button"><b>+ New bin</b><span>Name it, then move items in</span></button></div>
-   ${un.length ? `<h3 class="sp-h">Not filed yet${S.filter !== "all" ? ` · ${esc(S.filter)}` : ""} <em>${shown.length}</em></h3>
-     <div class="sp-tools"><input id="spQ" type="search" placeholder="Search unfiled items" value="${esc(S.q)}"><button class="btn" id="spAll" type="button">Select all ${shown.length}</button></div>
-     <div class="sp-list">${shown.slice(0, 200).map((i) => `<label class="sp-row${S.sel.has(String(i.id)) ? " on" : ""}"><input type="checkbox" data-id="${esc(i.id)}" ${S.sel.has(String(i.id)) ? "checked" : ""}>${photoOf(i) ? `<img src="${esc(photoOf(i))}" alt="" loading="lazy">` : "<i></i>"}<span>${esc(nameOf(i))}</span><b>${money(i.price)}</b></label>`).join("")}${shown.length > 200 ? `<div class="co-empty">Showing 200 of ${shown.length}. Use a filter to narrow it down.</div>` : ""}</div>` : ""}
-   ${ended ? `<p class="co-hint">${ended} more items ended on eBay and aren't filed. They stay hidden until you need them.</p>` : ""}
-   ${S.sel.size ? `<div class="co-bar"><b>${S.sel.size} selected</b><select id="spTo" aria-label="Send to bin"><option value="">File into…</option>${spaces.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")}</select><button class="btn" id="spClear" type="button">Clear</button></div>` : ""}</div>`;
-  wire();
-}
-function wire() {
-  const h = ctx.host, $ = (s) => h.querySelector(s);
-  h.querySelectorAll("[data-filter]").forEach((b) => b.addEventListener("click", () => { S.filter = S.filter === b.dataset.filter ? "all" : b.dataset.filter; S.sel.clear(); paint(); }));
-  $("#spAuto")?.addEventListener("click", autoFile);
-  $("#spNew")?.addEventListener("click", newBin);
-  $("#spQ")?.addEventListener("input", (e) => { S.q = e.target.value; const p = e.target.selectionStart; paint(); const q = h.querySelector("#spQ"); q.focus(); q.setSelectionRange(p, p); });
-  $("#spAll")?.addEventListener("click", () => { const un = loadItems().filter(onHand).filter((i) => !i.spaceId); un.filter((i) => (S.filter === "all" || `${gameOf(i)} · ${laneOf(i) === "sealed" ? "Sealed" : "Singles"}` === S.filter) && (!S.q || nameOf(i).toLowerCase().includes(S.q.toLowerCase()))).forEach((i) => S.sel.add(String(i.id))); paint(); });
-  h.querySelectorAll(".sp-row input").forEach((c) => c.addEventListener("change", () => { c.checked ? S.sel.add(c.dataset.id) : S.sel.delete(c.dataset.id); paint(); }));
-  $("#spClear")?.addEventListener("click", () => { S.sel.clear(); paint(); });
-  $("#spTo")?.addEventListener("change", (e) => { if (!e.target.value) return; const n = S.sel.size; const prev = snapshot(); if (assign([...S.sel], e.target.value)) { S.sel.clear(); ctx.refresh(); paint(); ctx.toastUndo(`Filed ${n} items`, () => { restore(prev); ctx.refresh(); paint(); }); } });
-  h.querySelectorAll("[data-bin]").forEach((b) => b.addEventListener("click", () => binSheet(b.dataset.bin)));
+const shelfNames = () => { try { return JSON.parse(localStorage.getItem(SHELVES_KEY) || "{}"); } catch { return {}; } };
+const shelfName = (sh) => shelfNames()[sh.id] || sh.name;
+const val = (its) => its.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
+function world() {
+  const spaces = ensureBins(), hand = loadItems().filter(onHand);
+  return { spaces, hand, inBin: (id) => hand.filter((i) => i.spaceId === id), un: hand.filter((i) => !i.spaceId || !spaces.some((s) => s.id === i.spaceId)) };
 }
 const snapshot = () => ({ items: localStorage.getItem("coalition-items-v4"), spaces: localStorage.getItem("coalition-spaces-v4") });
 function restore(p) { try { if (p.items != null) localStorage.setItem("coalition-items-v4", p.items); if (p.spaces != null) localStorage.setItem("coalition-spaces-v4", p.spaces); } catch { /* ignore */ } }
-function autoFile() {
-  const prev = snapshot(); const spaces = loadSpaces(); const un = loadItems().filter(onHand).filter((i) => !i.spaceId || !spaces.some((s) => s.id === i.spaceId));
-  let made = 0;
-  for (const [k, list] of groupsFor(un)) { let sp = spaces.find((s) => s.name === k); if (!sp) { sp = { id: uid(), name: k, kind: "storage", itemIds: [], cover: null }; spaces.push(sp); made++; } }
-  if (!saveSpaces(spaces)) { ctx.toast("Couldn't save. Storage is full."); return; }
-  for (const [k, list] of groupsFor(un)) assign(list.map((i) => i.id), spaces.find((s) => s.name === k).id);
-  S.filter = "all"; S.sel.clear(); ctx.refresh(); paint();
-  ctx.toastUndo(`Filed ${un.length} items into ${made || "existing"} bin${made === 1 ? "" : "s"}`, () => { restore(prev); ctx.refresh(); paint(); });
+const groupsFor = (list) => { const m = new Map(); for (const it of list) { const k = `${gameOf(it)} · ${laneOf(it) === "sealed" ? "Sealed" : "Singles"}`; if (!m.has(k)) m.set(k, []); m.get(k).push(it); } return [...m.entries()].sort((a, b) => b[1].length - a[1].length); };
+const nm = (w, id) => (w.spaces.find((s) => s.id === id) || PHYS[id] || {}).name || "bin";
+const brs = `<i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i>`;
+
+/* ---------- markup ---------- */
+function head(w, crumbs) {
+  return `<header class="spx-head"><div class="spx-crumbs">${S.level !== "area" ? `<button class="spx-back" data-up type="button" aria-label="Back">‹</button>` : ""}${crumbs.map((c, i) => c.go ? `<button class="spx-crumb" data-crumb="${i}" type="button">${esc(c.t)}</button>` : `<h2>${esc(c.t)}</h2>`).join(`<span class="spx-sep">›</span>`)}</div>
+    <button class="spx-un${w.un.length ? "" : " done"}" data-un type="button">${w.un.length ? `<b>${w.un.length}</b> not in a bin` : "Everything is in a bin"}</button></header>`;
 }
-function newBin() {
-  const s = ctx.openSheet(`<a class="back" href="#" data-close>‹ Back</a><h2>New bin</h2><form id="nbF"><label class="sc-f"><span>Name</span><input name="n" placeholder="Bin 3, Shelf A, Slab case…" autofocus></label><button class="btn go" type="submit" style="margin-top:12px">Create bin</button></form>`);
-  s.querySelector("#nbF").addEventListener("submit", (e) => { e.preventDefault(); const n = s.querySelector("[name=n]").value.trim(); if (!n) { ctx.toast("Give the bin a name."); return; } const sp = loadSpaces(); sp.push({ id: uid(), name: n, kind: "storage", itemIds: [], cover: null }); saveSpaces(sp); ctx.closeSheet(); paint(); ctx.toast(`Created ${n}`); });
+function areaView(w) {
+  const rows = [...SHELVES].reverse().map((sh) => {
+    const tiles = sh.bins.map((id) => `<div class="spx-tile"><img src="${IMG}${PHYS[id].closed}" alt="" draggable="false"><span>${esc(nm(w, id))}</span><em>${w.inBin(id).length}</em></div>`).join("");
+    const all = sh.bins.flatMap((id) => w.inBin(id));
+    return `<button class="spx-shelf k-tilt" data-shelf="${sh.id}" data-tilt=".5" type="button" aria-label="${esc(shelfName(sh))}, ${sh.bins.length} bins"><div class="spx-win">${tiles}</div><div class="spx-board"></div>
+      <div class="spx-tag"><b>${esc(shelfName(sh))}</b><span>${sh.bins.length} bins · ${all.length} items · ${money(val(all))}</span></div></button>`;
+  }).join("");
+  return `<div class="spx-stage"><div class="spx-room"><div class="spx-rack"><i class="spx-post l"></i><i class="spx-post r"></i>${rows}</div><div class="spx-floor"></div></div><p class="spx-hint">Tap a shelf to fly in</p></div>`;
 }
-function binSheet(id) {
-  const sp = loadSpaces().find((s) => s.id === id); if (!sp) return; const its = loadItems().filter(onHand).filter((i) => i.spaceId === id);
-  const s = ctx.openSheet(`<a class="back" href="#" data-close>‹ Back</a><h2>${esc(sp.name)}</h2><div class="sub">${its.length} items · ${money(its.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0))}</div>
-    <div class="sp-list">${its.slice(0, 120).map((i) => `<div class="sp-row"><${photoOf(i) ? `img src="${esc(photoOf(i))}" alt="" loading="lazy"` : "i"}><span>${esc(nameOf(i))}</span><b>${money(i.price)}</b></div>`).join("") || `<div class="co-empty">Empty bin.</div>`}</div>
-    <button class="btn" id="bnEmpty" type="button" ${its.length ? "" : "disabled"}>Take everything out (back to unfiled)</button><button class="btn warn" id="bnDel" type="button">Delete this bin</button>`);
-  s.querySelector("#bnEmpty").addEventListener("click", () => { const prev = snapshot(); assign(its.map((i) => i.id), null); ctx.closeSheet(); ctx.refresh(); paint(); ctx.toastUndo(`Took ${its.length} out of ${sp.name}`, () => { restore(prev); ctx.refresh(); paint(); }); });
-  s.querySelector("#bnDel").addEventListener("click", () => { const prev = snapshot(); assign(its.map((i) => i.id), null); saveSpaces(loadSpaces().filter((x) => x.id !== id)); ctx.closeSheet(); ctx.refresh(); paint(); ctx.toastUndo(`Deleted ${sp.name}`, () => { restore(prev); ctx.refresh(); paint(); }); });
+function shelfView(w) {
+  const sh = SHELVES.find((x) => x.id === S.shelf);
+  const hot = sh.bins.map((id) => { const [x, y, ww, hh] = PHYS[id].rect, n = w.inBin(id).length;
+    return `<button class="spx-hot" data-bin="${id}" style="left:${x}%;top:${y}%;width:${ww}%;height:${hh}%" type="button" aria-label="${esc(nm(w, id))}"><span class="spx-lab"><b>${esc(nm(w, id))}</b><em>${n} item${n === 1 ? "" : "s"}</em></span></button>`; }).join("");
+  const rows = [...sh.bins].reverse().map((id) => { const sp = w.spaces.find((s) => s.id === id) || PHYS[id], its = w.inBin(id);
+    return `<button class="spx-binrow k-tilt" data-bin="${id}" data-tilt=".6" type="button"><img src="${IMG}${PHYS[id].closed}" alt=""><span><b>${esc(sp.name)}</b><em>${esc(sp.sub || "")}</em><small>${its.length} item${its.length === 1 ? "" : "s"} · ${money(val(its))}</small></span></button>`; }).join("");
+  return `<div class="spx-stage"><div class="spx-shelfview"><div class="spx-photo" data-focus><img src="${IMG}${sh.photo}" alt="${esc(shelfName(sh))}" draggable="false">${hot}${brs}</div>
+    <aside class="spx-side"><div class="spx-sidehead"><h3>${esc(shelfName(sh))}</h3><button class="spx-edit" data-rename-shelf type="button" aria-label="Rename shelf">✎</button></div><p class="spx-note">Top of the stack is at the top. Tap a bin to open it.</p><div class="spx-binrows">${rows}</div></aside></div></div>`;
 }
-export function renderSpaces(host, api) { ctx = { host, ...api }; paint(); }
-export function repaintSpaces() { if (ctx && ctx.host.querySelector(".sp-wrap")) paint(); }
+function binView(w) {
+  const sp = w.spaces.find((s) => s.id === S.bin); if (!sp) return `<div class="spx-stage"><p class="spx-empty">That bin is gone.</p></div>`;
+  const p = PHYS[sp.id], its = w.inBin(sp.id);
+  const flip = p ? `<div class="spx-flip" id="flip"><img class="spx-under" src="${IMG}${p.open}" alt="${esc(sp.name)} open" draggable="false"><img class="spx-lid" src="${IMG}${p.closed}" alt="${esc(sp.name)} closed" draggable="false"></div>`
+    : `<div class="spx-flip generic" id="flip"><div class="spx-under"></div><div class="spx-lid"><b>${esc(sp.name)}</b></div></div>`;
+  const cards = its.length ? its.slice(0, 150).map((i) => { const ph = photoOf(i); return `<button class="spx-card k-tilt" data-item="${esc(i.id)}" type="button">${ph ? `<img src="${esc(ph)}" alt="" loading="lazy" draggable="false">` : `<span class="spx-ini">${esc(nameOf(i).charAt(0))}</span>`}<span class="spx-cap"><span>${esc(nameOf(i))}</span><em>${money(i.price)}</em></span></button>`; }).join("") + (its.length > 150 ? `<p class="spx-more">Showing 150 of ${its.length}.</p>` : "")
+    : `<div class="spx-empty"><b>Nothing in here yet</b><span>Tap Add items to put things in this bin.</span></div>`;
+  return `<div class="spx-stage"><div class="spx-binview"><div class="spx-photo" data-focus>${flip}${brs}<button class="spx-lidbtn" id="lidBtn" type="button">Open lid</button></div>
+    <aside class="spx-side"><div class="spx-sidehead"><h3>${esc(sp.name)}</h3><button class="spx-edit" data-rename-bin type="button" aria-label="Rename bin">✎</button></div>
+      <p class="spx-note">${esc(sp.sub || "")}${sp.sub ? " · " : ""}${its.length} item${its.length === 1 ? "" : "s"} · ${money(val(its))}</p>
+      <div class="spx-acts"><button class="btn go" data-add type="button">Add items</button>${its.length ? `<button class="btn" data-out type="button">Take everything out</button>` : ""}${!sp.phys ? `<button class="btn warn" data-del type="button">Delete bin</button>` : ""}</div></aside>
+    <section class="spx-items" id="items">${cards}</section></div></div>`;
+}
+
+/* ---------- paint + camera ---------- */
+function paint() {
+  const w = world(), sh = SHELVES.find((x) => x.id === S.shelf), sp = w.spaces.find((s) => s.id === S.bin);
+  const crumbs = [{ t: "Spaces", go: S.level !== "area" }];
+  if (S.level !== "area" && sh) crumbs.push({ t: shelfName(sh), go: S.level === "bin" });
+  if (S.level === "bin" && sp) crumbs.push({ t: sp.name });
+  const body = S.level === "area" ? areaView(w) : S.level === "shelf" ? shelfView(w) : binView(w);
+  ctx.host.innerHTML = `<div class="sp-wrap spx" data-level="${S.level}">${head(w, crumbs)}${body}</div>`;
+  if (S.level === "bin" && S.open) setLid(true, true);
+  wire(w);
+}
+async function camera(next, fromEl) {
+  if (busy) return; busy = true;
+  try {
+    const from = rectOf(fromEl), old = ctx.host.querySelector(".spx-stage"), deeper = rank(next.level) > rank(S.level), prev = { shelf: S.shelf, bin: S.bin };
+    if (old && from) { const r = old.getBoundingClientRect(); old.style.transformOrigin = `${from.left + from.width / 2 - r.left}px ${from.top + from.height / 2 - r.top}px`;
+      old.animate(deeper ? [{ transform: "scale(1)", opacity: 1, filter: "blur(0)" }, { transform: "scale(2.2)", opacity: 0, filter: "blur(7px)" }] : [{ transform: "scale(1)", opacity: 1 }, { transform: "scale(.84)", opacity: 0, filter: "blur(4px)" }], { duration: 340, easing: "cubic-bezier(.5,0,.8,.45)", fill: "forwards" }); await sleep(300); }
+    Object.assign(S, next); paint();
+    const st = ctx.host.querySelector(".spx-stage"), foc = ctx.host.querySelector("[data-focus]");
+    if (deeper) { if (foc && from) fly(foc, from, { dur: 560 }); st && st.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: "ease-out" }); }
+    else if (st) { const back = ctx.host.querySelector(`[data-shelf="${prev.shelf}"]`) || ctx.host.querySelector(`[data-bin="${prev.bin}"]`);
+      if (back) { const r = st.getBoundingClientRect(), b = back.getBoundingClientRect(); st.style.transformOrigin = `${b.left + b.width / 2 - r.left}px ${b.top + b.height / 2 - r.top}px`; }
+      st.animate([{ transform: "scale(1.8)", opacity: 0, filter: "blur(7px)" }, { transform: "scale(1)", opacity: 1, filter: "blur(0)" }], { duration: 500, easing: "cubic-bezier(.2,.8,.2,1)" }); }
+    if (S.level === "bin" && deeper) { await sleep(560); if (S.level === "bin" && !S.open) setLid(true); }
+  } finally { busy = false; }
+}
+function setLid(open, quiet) {
+  S.open = open; const h = ctx.host, f = h.querySelector("#flip"), it = h.querySelector("#items"), b = h.querySelector("#lidBtn"); if (!f) return;
+  f.classList.toggle("opened", open); it && it.classList.toggle("show", open); if (b) b.textContent = open ? "Close lid" : "Open lid";
+  if (open && !quiet && it) [...it.children].slice(0, 24).forEach((c, i) => c.animate([{ opacity: 0, transform: "translateY(26px) scale(.9)" }, { opacity: 1, transform: "none" }], { duration: 420, delay: 260 + i * 35, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards" }));
+}
+
+/* ---------- sheets ---------- */
+function renameSheet(title, current, save) {
+  const s = ctx.openSheet(`<a class="back" href="#" data-close>‹ Back</a><h2>${esc(title)}</h2><form id="rnF"><label class="sc-f"><span>Name</span><input name="n" value="${esc(current)}"></label><button class="btn go" type="submit" style="margin-top:12px">Save</button></form>`);
+  s.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", (e) => { e.preventDefault(); ctx.closeSheet(); }));
+  s.querySelector("#rnF").addEventListener("submit", (e) => { e.preventDefault(); const n = s.querySelector("[name=n]").value.trim(); if (!n) { ctx.toast("Give it a name."); return; } save(n); ctx.closeSheet(); paint(); });
+}
+function pickSheet(targetId) {
+  const sel = new Set(); let q = "", tab = "group";
+  const s = ctx.openSheet(`<div id="pk"></div>`), box = s.querySelector("#pk");
+  const move = (ids, to, label) => { const prev = snapshot(); if (!assign(ids, to)) { ctx.toast("Couldn't save. Storage is full."); return; } const name = (loadSpaces().find((b) => b.id === to) || {}).name || "bin"; ctx.closeSheet(); ctx.refresh(); paint(); ctx.toastUndo(`Put ${label} in ${name}`, () => { restore(prev); ctx.refresh(); paint(); }); };
+  const draw = () => {
+    const w2 = world(), un = w2.un, shown = un.filter((i) => !q || nameOf(i).toLowerCase().includes(q.toLowerCase())), groups = groupsFor(un);
+    const opts = () => w2.spaces.map((b) => `<option value="${esc(b.id)}"${b.id === targetId ? " selected" : ""}>${esc(b.name)}${b.sub ? " · " + esc(b.sub) : ""}</option>`).join("");
+    box.innerHTML = `<a class="back" href="#" data-close>‹ Back</a><h2>${targetId ? "Add items" : "Not in a bin yet"}</h2><div class="sub">${un.length} item${un.length === 1 ? "" : "s"} waiting</div>
+      <div class="seg" style="margin-bottom:10px"><button type="button" data-tab="group" class="${tab === "group" ? "on" : ""}">By group</button><button type="button" data-tab="pick" class="${tab === "pick" ? "on" : ""}">Pick items</button></div>
+      ${tab === "group" ? (groups.map(([k, l], gi) => `<div class="spx-grp"><span><b>${esc(k)}</b><em>${l.length}</em></span><select data-g="${gi}" aria-label="Send ${esc(k)} to"><option value="">Send to…</option>${opts()}</select></div>`).join("") || `<div class="spx-empty">Everything is in a bin.</div>`)
+      : `<input id="pkq" type="search" placeholder="Search" value="${esc(q)}" class="spx-q"><div class="sp-list">${shown.slice(0, 120).map((i) => `<label class="sp-row${sel.has(String(i.id)) ? " on" : ""}"><input type="checkbox" data-id="${esc(i.id)}"${sel.has(String(i.id)) ? " checked" : ""}>${photoOf(i) ? `<img src="${esc(photoOf(i))}" alt="" loading="lazy">` : "<i></i>"}<span>${esc(nameOf(i))}</span><b>${money(i.price)}</b></label>`).join("") || `<div class="spx-empty">No matches.</div>`}</div>
+        ${sel.size ? `<div class="spx-pickbar"><b>${sel.size} picked</b><select id="pkTo"><option value="">Put in…</option>${opts()}</select></div>` : ""}`}`;
+    box.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", (e) => { e.preventDefault(); ctx.closeSheet(); }));
+    box.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; draw(); }));
+    box.querySelectorAll("[data-g]").forEach((se) => se.addEventListener("change", () => { if (!se.value) return; const [k, l] = groups[Number(se.dataset.g)]; move(l.map((i) => i.id), se.value, `${l.length} ${k}`); }));
+    const qi = box.querySelector("#pkq"); qi?.addEventListener("input", () => { q = qi.value; const p = qi.selectionStart; draw(); const n = box.querySelector("#pkq"); n.focus(); n.setSelectionRange(p, p); });
+    box.querySelectorAll(".sp-row input").forEach((c) => c.addEventListener("change", () => { c.checked ? sel.add(c.dataset.id) : sel.delete(c.dataset.id); draw(); }));
+    box.querySelector("#pkTo")?.addEventListener("change", (e) => { if (e.target.value) move([...sel], e.target.value, `${sel.size} item${sel.size === 1 ? "" : "s"}`); });
+  };
+  draw();
+}
+
+/* ---------- wiring ---------- */
+function up() { if (busy) return; const f = ctx.host.querySelector("[data-focus]"); if (S.level === "bin") camera({ level: "shelf", bin: null, open: false }, f); else if (S.level === "shelf") camera({ level: "area", shelf: null, bin: null, open: false }, f); }
+function wire(w) {
+  const h = ctx.host, $ = (s) => h.querySelector(s);
+  h.querySelectorAll("[data-shelf]").forEach((b) => b.addEventListener("click", () => camera({ level: "shelf", shelf: b.dataset.shelf, bin: null, open: false }, b)));
+  h.querySelectorAll("[data-bin]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.bin; camera({ level: "bin", shelf: (PHYS[id] || {}).shelf || S.shelf, bin: id, open: false }, b.classList.contains("spx-hot") ? b : $("[data-focus]") || b); }));
+  $("[data-up]")?.addEventListener("click", up);
+  h.querySelectorAll("[data-crumb]").forEach((b) => b.addEventListener("click", () => { if (busy) return; const i = Number(b.dataset.crumb); if (i === 0) camera({ level: "area", shelf: null, bin: null, open: false }, b); else if (S.level === "bin") camera({ level: "shelf", bin: null, open: false }, b); }));
+  $("[data-un]")?.addEventListener("click", () => pickSheet(null));
+  $("#lidBtn")?.addEventListener("click", (e) => { e.stopPropagation(); setLid(!S.open); });
+  $("#flip")?.addEventListener("click", () => setLid(!S.open));
+  $("[data-add]")?.addEventListener("click", () => pickSheet(S.bin));
+  $("[data-rename-shelf]")?.addEventListener("click", () => { const sh = SHELVES.find((x) => x.id === S.shelf); renameSheet("Rename shelf", shelfName(sh), (n) => { const m = shelfNames(); m[sh.id] = n; try { localStorage.setItem(SHELVES_KEY, JSON.stringify(m)); } catch { /* ignore */ } }); });
+  $("[data-rename-bin]")?.addEventListener("click", () => { const sp = loadSpaces().find((s) => s.id === S.bin); renameSheet("Rename bin", sp.name, (n) => { const all = loadSpaces(); all.find((s) => s.id === S.bin).name = n; saveSpaces(all); ctx.refresh(); }); });
+  $("[data-out]")?.addEventListener("click", () => { const its = w.inBin(S.bin), name = nm(w, S.bin), prev = snapshot(); assign(its.map((i) => i.id), null); ctx.refresh(); paint(); ctx.toastUndo(`Took ${its.length} out of ${name}`, () => { restore(prev); ctx.refresh(); paint(); }); });
+  $("[data-del]")?.addEventListener("click", () => { const its = w.inBin(S.bin), name = nm(w, S.bin), prev = snapshot(); assign(its.map((i) => i.id), null); saveSpaces(loadSpaces().filter((x) => x.id !== S.bin)); S.level = "area"; S.bin = null; S.open = false; ctx.refresh(); paint(); ctx.toastUndo(`Deleted ${name}`, () => { restore(prev); ctx.refresh(); paint(); }); });
+  h.querySelectorAll("[data-item]").forEach((c) => c.addEventListener("click", () => {
+    const list = w.inBin(S.bin), name = nm(w, S.bin);
+    openCard(list, { index: list.findIndex((i) => String(i.id) === c.dataset.item), from: c, photo: photoOf, name: nameOf,
+      info: (it) => `<div class="sub">In ${esc(name)}</div><div class="row"><span>Price</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div><button class="btn" data-takeout type="button">Take out of bin</button>`,
+      wire: (root, it, api) => root.querySelector("[data-takeout]")?.addEventListener("click", () => { const prev = snapshot(); assign([it.id], null); api.close(); ctx.refresh(); paint(); ctx.toastUndo("Took it out of the bin", () => { restore(prev); ctx.refresh(); paint(); }); }) });
+  }));
+}
+export function renderSpaces(host, api) {
+  ctx = { host, ...api }; ensureBins(); Object.assign(S, { level: "area", shelf: null, bin: null, open: false }); busy = false; paint();
+  if (!keyBound) { keyBound = true; document.addEventListener("keydown", (e) => { const sh = document.getElementById("sheet"); if (e.key === "Escape" && ctx && ctx.host.querySelector(".spx") && !document.querySelector(".k-zoom") && (!sh || sh.hidden)) up(); }); }
+}
+export function repaintSpaces() { if (ctx && ctx.host.querySelector(".spx")) paint(); }

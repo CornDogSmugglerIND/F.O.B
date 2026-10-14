@@ -1,8 +1,9 @@
 import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=3";
 import { renderCollection } from "./collection.js?v=3";
-import { renderSpaces } from "./spaces.js?v=2";
+import { renderSpaces } from "./spaces.js?v=3";
 import { renderChannels } from "./channels.js?v=3";
+import { initKit } from "./kit.js?v=1";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -259,6 +260,8 @@ async function pullEbay(onProgress) {
   }
   return { rows, complete: offset === null && failed === 0, failed, total };
 }
+function setLink(on) { const l = $("#link"); if (!l) return; l.classList.toggle("on", !!on); l.firstChild.textContent = on ? "EBAY ONLINE" : "EBAY OFFLINE"; }
+fetch("/api/channels/status").then((r) => r.json()).then((d) => setLink((d.channels || []).some((c) => c.id === "ebay" && c.configured))).catch(() => {});
 async function syncAll(auto) {
   const btn = $("#syncBtn"); if (btn.classList.contains("busy")) return;
   btn.classList.add("busy"); btn.textContent = "Syncing…";
@@ -297,12 +300,12 @@ async function syncAll(auto) {
     } catch { /* orders optional */ }
     saveItems(list); items = list; render();
     const nLive = list.filter((i) => phaseFromItem(i) === "listed").length, nSold = list.filter((i) => DONE.includes(i.phase)).length, nEnd = list.filter((i) => i.ended && !DONE.includes(i.phase)).length;
-    toast(pulled.complete ? `Synced: ${nLive} live, ${nSold} sold, ${nEnd} ended (hidden)` : `Synced ${rows.length} of ${pulled.total}. ${pulled.total - rows.length} couldn't be checked. Tap Sync again.`);
+    setLink(true); toast(pulled.complete ? `Synced: ${nLive} live, ${nSold} sold, ${nEnd} ended (hidden)` : `Synced ${rows.length} of ${pulled.total}. ${pulled.total - rows.length} couldn't be checked. Tap Sync again.`);
   } catch { toast(auto ? "Showing saved data." : "eBay sync failed. Try again."); }
   finally { btn.classList.remove("busy"); btn.textContent = "Sync"; }
 }
 $("#syncBtn").addEventListener("click", () => syncAll(false));
-initAvatar();
+initKit(); initAvatar();
 const h = (location.hash || "").slice(1);
 go(["scouter", "collection", "channels", "spaces", "settings"].includes(h) ? h : "command");
 syncAll(true);
