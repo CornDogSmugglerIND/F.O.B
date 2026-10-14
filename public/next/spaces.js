@@ -100,7 +100,7 @@ async function camera(next, fromEl) {
     const from = rectOf(fromEl), old = ctx.host.querySelector(".spx-stage"), deeper = rank(next.level) > rank(S.level), prev = { shelf: S.shelf, bin: S.bin };
     if (old && from) { const r = old.getBoundingClientRect(); old.style.transformOrigin = `${from.left + from.width / 2 - r.left}px ${from.top + from.height / 2 - r.top}px`;
       old.animate(deeper ? [{ transform: "scale(1)", opacity: 1, filter: "blur(0)" }, { transform: "scale(2.2)", opacity: 0, filter: "blur(7px)" }] : [{ transform: "scale(1)", opacity: 1 }, { transform: "scale(.84)", opacity: 0, filter: "blur(4px)" }], { duration: 340, easing: "cubic-bezier(.5,0,.8,.45)", fill: "forwards" }); await sleep(300); }
-    Object.assign(S, next); paint();
+    Object.assign(S, next); paint(); try { document.getElementById("main").scrollTo(0, 0); } catch { /* ignore */ }
     const st = ctx.host.querySelector(".spx-stage"), foc = ctx.host.querySelector("[data-focus]");
     if (deeper) { if (foc && from) fly(foc, from, { dur: 560 }); st && st.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: "ease-out" }); }
     else if (st) { const back = ctx.host.querySelector(`[data-shelf="${prev.shelf}"]`) || ctx.host.querySelector(`[data-bin="${prev.bin}"]`);
