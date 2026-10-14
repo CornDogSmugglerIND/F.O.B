@@ -10,11 +10,10 @@ Written 2026-10-13 20:40 CT from Sawyer's full message. Every complaint is in he
 - 🧱 **Build on what exists. Do NOT scrap the app.** Keep: his theme, drag/drop, sync, real data, Undo.
 - ✋ No eBay writes. Misprint parked. No credentials.
 
-## 🧠 ROOT CAUSE (why it feels like a spreadsheet)
-- The new `/next` app is about **1,000 lines**. It was rebuilt from scratch.
-- The premium parts live in the **classic app** (`/hud.html`): moving arrows on the route, tilt/zoom item card, floating nodes.
-- We never ported them. We rebuilt plain cards and tables instead.
-- **Fix = port the classic motion and zoom into the new look. Do not reinvent.**
+## 🧠 WHY IT FEELS LIKE A SPREADSHEET
+- Pages are plain cards and rows with the same boxes moved around.
+- Interactions were added on some pages and left off others.
+- **Fix = polish the CURRENT app. Add motion, depth and interaction to what is live. No rebuild from old versions. No going back to the old look.**
 
 ## 🎯 THE BAR
 - Heads-up display. Not a spreadsheet. Not an HTML page.
@@ -29,7 +28,7 @@ Written 2026-10-13 20:40 CT from Sawyer's full message. Every complaint is in he
 **A1. Hover/tap zoom is missing on most pages**
 - He said: zoom-up on hover used to work. Now items just shift.
 - Fix: one shared "lift + tilt + glow + half-zoom card" component. Used on Command, Collection, Channels, Spaces, Scouter.
-- Source: classic `public/visor/hud.js` (`rz-card`, `rz-tilt`).
+- Built fresh inside the current app, in our current look.
 - Check: hover a card on every page → it lifts and tilts. Tap → half-zoom card (not full screen). Always a clear back.
 
 **A2. Interactivity was added to some pages, left off others**
@@ -53,11 +52,11 @@ Written 2026-10-13 20:40 CT from Sawyer's full message. Every complaint is in he
 
 **B1. Roadmap lost the original image it was modeled on**
 - He said: now it's "just dots and lines."
-- Fix: rebuild from the reference photo he sent (glowing roadmap path + map pin), plus the classic route with moving arrows.
-- Missing piece: **I need that photo again from the project.** (See open items.)
+- Fix: upgrade the CURRENT roadmap. Keep its layout and data. Add a glowing path, a pin, depth, and stage art.
+- Only reference: the Halo HUD feel he described. No old-app copy.
 
 **B2. Lines don't move any more**
-- Fix: port the classic `animateMotion` arrows. Glow pulse along the path. Items ride the line.
+- Fix: animated glow pulse and arrows travelling along the current path. Items ride the line.
 
 **B3. No way to tell which step is step 1, 2, 3**
 - Example he gave: "1 photo in" doesn't say it's stage one; "11 ready to list" doesn't say stage two.
@@ -85,7 +84,8 @@ Written 2026-10-13 20:40 CT from Sawyer's full message. Every complaint is in he
 
 **C1. It looks like a boring form**
 - He said: "drop your photos here," a "Windows 98 identify button," random money box.
-- Fix: rebuild as a handheld scanner screen. Phone-first.
+- Reference: the original Scouter idea only (twin SNAP/SCAN buttons, ON SCOUTER / VALUE / LIVE / EBAY ONLINE readouts, little package cards). Used to understand the purpose, not to copy the old look.
+- Fix: rebuild this one screen as a handheld scanner, in the current theme. Phone-first.
   - Big viewfinder frame with HUD corners and scan line
   - Two big twin buttons: **SNAP** (photo) and **SCAN** (barcode, separate button)
   - Live readout strip: ON SCOUTER · VALUE · LIVE badge · EBAY ONLINE pill
@@ -179,8 +179,7 @@ Written 2026-10-13 20:40 CT from Sawyer's full message. Every complaint is in he
 |---|---|
 | Phone → desktop sync | Items live in browser storage per device. Test: does a phone scan show on desktop? If not, add a server-side store (Supabase or Vercel KV). Muse + I decide on the bridge, small spike first. |
 | Real bin photos | Not available. Use generated bins, swap in his photos later. |
-| Original roadmap photo | Pull from project docs / ask him to resend one image. |
-| Classic motion code won't port clean | Spike on the roadmap first. If it fights, rebuild only the animation, keep our data. |
+| Motion hurts phone speed | Spike the roadmap animation first. Cap animated nodes, respect reduced motion. |
 | Performance with 560+ items | Test on phone-size viewport. Lazy-render, cap animated nodes. |
 
 ---
@@ -226,9 +225,8 @@ Written 2026-10-13 20:40 CT from Sawyer's full message. Every complaint is in he
 
 ## ❓ K. NEEDS FROM SAWYER (only when he's back)
 1. OK to start? (Go / No-go)
-2. Resend the roadmap reference image (and Halo HUD pics) if you want them matched exactly.
-3. Photos of your real bins, when you can.
-4. Is Collection a collection manager view (Shiny Pro) or part of the reseller flow?
+2. Photos of your real bins, when you can.
+3. Is Collection a collection manager view (Shiny Pro) or part of the reseller flow?
 
 ---
 
