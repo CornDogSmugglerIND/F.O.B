@@ -1,0 +1,36 @@
+/* ===== Channels polish: roadmap stage route + one control drawer ===== */
+
+/* stage route: same stops, same order, same colors as the Command roadmap */
+.ch-route{display:flex;gap:2px;align-items:flex-start;overflow-x:auto;padding:14px 2px 10px;margin-bottom:6px;scrollbar-width:none;position:relative}
+.ch-route::-webkit-scrollbar{display:none}
+.ch-route::before{content:"";position:absolute;left:26px;right:26px;top:23px;height:3px;border-radius:3px;background:linear-gradient(90deg,#50B97E,#B3FBD5 38%,#90FFEE 55%,#E8924A 82%,#9195A0);opacity:.5;box-shadow:0 0 12px rgba(144,255,204,.35)}
+.ch-stop{position:relative;flex:1 0 auto;min-width:86px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:0 6px;background:none;border:0;cursor:pointer;color:var(--mute)}
+.ch-stop .ch-dot{width:16px;height:16px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px rgba(0,0,0,.6),0 0 10px var(--c);transition:transform .2s var(--ease),box-shadow .25s}
+.ch-stop span{font-size:14.5px;font-weight:700;white-space:nowrap;color:var(--ink);opacity:.72;transition:opacity .2s}
+.ch-stop em{font-style:normal;font-size:12.5px;color:var(--mute)}
+.ch-stop:hover .ch-dot{transform:scale(1.2)}
+.ch-stop.on{color:var(--ink)}
+.ch-stop.on .ch-dot{transform:scale(1.45);box-shadow:0 0 0 3px rgba(0,0,0,.6),0 0 20px var(--c),0 0 34px var(--c)}
+.ch-stop.on span{opacity:1;text-shadow:0 0 12px var(--c)}
+.ch-stop.on em{color:var(--ink)}
+
+/* one slim bar: search + the single Controls button */
+.ch-bar2{display:flex;gap:10px;align-items:center;margin:2px 0 12px}
+.ch-bar2 input{flex:1;height:44px;border-radius:12px;border:1px solid var(--chrome);background:#121413;color:var(--ink);padding:0 14px;font-size:15.5px;min-width:0}
+.ch-bar2 input:focus{outline:none;border-color:var(--sea);box-shadow:0 0 12px rgba(144,255,204,.3)}
+.ch-bar2 .btn{margin:0;flex:none}
+.ch-controls.on{border-color:var(--sea);color:var(--sea);box-shadow:0 0 14px rgba(144,255,204,.3)}
+
+/* the drawer: every other control lives here, nowhere else */
+.ch-drawer{display:flex;flex-direction:column;gap:12px;padding:16px 18px;margin-bottom:16px;border-radius:18px;background:var(--glass,linear-gradient(160deg,rgba(40,44,44,.62),rgba(14,16,16,.78)));border:1px solid var(--edge);box-shadow:0 14px 30px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.1) inset;animation:ch-drawer-in .24s cubic-bezier(.2,.8,.2,1)}
+@keyframes ch-drawer-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.ch-drow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.ch-drow>span{width:74px;flex:none;color:var(--mute);font-size:13.5px;letter-spacing:.06em}
+.ch-drow select{height:42px;border-radius:12px;border:1px solid var(--chrome);background:#121413;color:var(--ink);padding:0 12px;font-size:15px}
+.ch-drow .btn{margin:0}
+@media (prefers-reduced-motion:reduce){.ch-drawer{animation:none}}
+
+/* tiles sit in the kit now; the pick badge is the select control */
+.ch-tile .co-pick{cursor:pointer;z-index:4}
+.ch-tile.sel .co-art{outline:2px solid var(--sea);border-radius:14px}
+.ch-row{cursor:pointer}

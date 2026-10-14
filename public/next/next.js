@@ -2,7 +2,7 @@ import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=5";
 import { renderCollection } from "./collection.js?v=3";
 import { renderSpaces } from "./spaces.js?v=3";
-import { renderChannels } from "./channels.js?v=3";
+import { renderChannels } from "./channels.js?v=4";
 import { initKit } from "./kit.js?v=1";
 
 const LS_ITEMS = "coalition-items-v4";
@@ -92,7 +92,7 @@ function stageSheet(sid) {
     ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : ""}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}.</p>` : ""}<button class="btn go" id="seeAll" type="button" style="margin-top:12px">See all ${list.length} in Channels</button>` : `<p class="sub">Nothing here yet.</p>`}`);
   s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
   s.querySelectorAll("[data-item]").forEach((b) => b.addEventListener("click", () => itemSheet(b.dataset.item)));
-  s.querySelector("#seeAll")?.addEventListener("click", () => { window.__chStage = ({ intake: "intake", staged: "staged", listed: "listed", sold: "sold", shipped: "sold" })[sid] || "all"; go("channels"); });
+  s.querySelector("#seeAll")?.addEventListener("click", () => { window.__chStage = ({ intake: "intake", staged: "staged", listed: "listed", sold: "sold", shipped: "shipped" })[sid] || "all"; go("channels"); });
 }
 
 /* ---------- header ---------- */
