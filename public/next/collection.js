@@ -1,7 +1,8 @@
+import { openCard } from "./kit.js?v=1";
 import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=2";
 
 let ctx = null;
-const S = { q: "", stage: "all", sort: "value", sel: new Set(), selecting: false, tab: "sealed", zoom: null, trash: null };
+const S = { q: "", stage: "all", sort: "value", sel: new Set(), selecting: false, tab: "sealed", zoom: null, trash: null, menu: false };
 const phoneNow = () => matchMedia("(max-width:820px)").matches;
 
 function rows() {
@@ -15,21 +16,30 @@ function rows() {
 }
 const STAGE_NAME = { intake: "Photos in", staged: "Ready to list", listed: "Live on eBay" };
 function card(it) {
-  const src = photoOf(it);
+  const src = photoOf(it), fresh = it.source === "scouter" && Date.now() - Date.parse(it.createdAt || 0) < 864e5;
   return `<article class="co-card${S.sel.has(String(it.id)) ? " sel" : ""}" draggable="true" data-id="${esc(it.id)}" tabindex="0">
-    <div class="co-art"><div class="co-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i></div>${S.selecting ? `<i class="co-pick">${S.sel.has(String(it.id)) ? "✓" : ""}</i>` : ""}</div>
-    <div class="co-cap"><span>${esc(nameOf(it))}</span><b>${money(it.price)}</b></div></article>`;
+    <div class="co-art"><div class="co-img k-tilt" data-tilt="1.1">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i><span class="co-price">${money(it.price)}</span>${fresh ? `<span class="co-new">Just scanned</span>` : STAGE_NAME[it.phase] ? `<span class="co-st">${STAGE_NAME[it.phase]}</span>` : ""}</div>${S.selecting ? `<i class="co-pick">${S.sel.has(String(it.id)) ? "✓" : ""}</i>` : ""}</div>
+    <div class="co-cap"><span>${esc(nameOf(it))}</span></div></article>`;
+}
+const val = (l) => l.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
+function portfolio(all, sealed, singles) {
+  const total = val(all), by = new Map(); for (const i of all) { const g = gameOf(i) || "Other"; by.set(g, (by.get(g) || 0) + (Number(i.price) || 0) * (Number(i.quantity) || 1)); }
+  const top = [...by.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5), hue = ["#B3FBD5", "#90FFEE", "#7fb7a3", "#9195A0", "#6c7079"];
+  return `<div class="co-port"><div class="co-big"><em>Collection value at market</em><b id="coTotal" data-v="${total.toFixed(2)}">${money(total)}</b><span>${all.length} items · ${sealed.length} sealed · ${singles.length} singles</span></div>
+    <div class="co-split" aria-label="Value by game">${top.map(([g, v], i) => `<i style="flex:${Math.max(v, 1)};background:${hue[i]}" title="${esc(g)}"></i>`).join("")}</div>
+    <div class="co-legend">${top.map(([g, v], i) => `<span><u style="background:${hue[i]}"></u>${esc(g)} <b>${money(v)}</b></span>`).join("")}</div></div>`;
 }
 function paint() {
   const host = ctx.host, all = rows(); const sealed = all.filter((i) => laneOf(i) === "sealed"), singles = all.filter((i) => laneOf(i) === "singles");
   const total = all.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
   const lane = (id, label, hint, list) => `<section class="co-lane${phoneNow() && S.tab !== id ? " hide" : ""}" data-lane="${id}"><h3>${label} <em>${list.length}</em></h3><p class="co-hint">${hint}</p><div class="co-grid">${list.length ? list.map(card).join("") : `<div class="co-empty">Nothing here. ${all.length ? "Drag a card in, or change the filter." : "Add items in Scouter."}</div>`}</div></section>`;
   host.innerHTML = `<div class="co-wrap">
-    <div class="co-head"><div><h2>Collection</h2><p>${all.length} items on hand · ${money(total)} at market</p></div>
-      <div class="co-tools"><input id="coQ" type="search" placeholder="Search your collection" value="${esc(S.q)}">
-      <select id="coSort" aria-label="Sort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest value</option><option value="new"${S.sort === "new" ? " selected" : ""}>Newest</option><option value="name"${S.sort === "name" ? " selected" : ""}>A to Z</option></select>
-      <button class="btn${S.selecting ? " go" : ""}" id="coSel" type="button">${S.selecting ? "Done selecting" : "Select"}</button></div></div>
-    <div class="co-chips" role="group" aria-label="Stage filter">${[["all", "All"], ["new", "Photos in"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<button class="chip${S.stage === k ? " on" : ""}" data-stage="${k}" type="button">${l}</button>`).join("")}</div>
+    ${portfolio(all, sealed, singles)}
+    <div class="co-bar2"><input id="coQ" type="search" placeholder="Search your collection" value="${esc(S.q)}">
+      <button class="btn${S.selecting ? " go" : ""}" id="coSel" type="button">${S.selecting ? "Done selecting" : "Select"}</button>
+      <button class="btn co-view${S.menu ? " go" : ""}" id="coMenuBtn" type="button" aria-expanded="${!!S.menu}">View ▾</button>
+      ${S.menu ? `<div class="co-menu" id="coMenu"><div class="co-mrow"><span>Show</span><div class="co-chips" role="group" aria-label="Stage filter">${[["all", "All"], ["new", "Photos in"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<button class="chip${S.stage === k ? " on" : ""}" data-stage="${k}" type="button">${l}</button>`).join("")}</div></div>
+      <div class="co-mrow"><span>Sort</span><select id="coSort" aria-label="Sort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest value</option><option value="new"${S.sort === "new" ? " selected" : ""}>Newest</option><option value="name"${S.sort === "name" ? " selected" : ""}>A to Z</option></select></div></div>` : ""}</div>
     ${phoneNow() ? `<div class="co-tabs"><button class="chip${S.tab === "sealed" ? " on" : ""}" data-tab="sealed" type="button">Sealed ${sealed.length}</button><button class="chip${S.tab === "singles" ? " on" : ""}" data-tab="singles" type="button">Singles ${singles.length}</button></div>` : ""}
     <div class="co-lanes">${lane("sealed", "Sealed", "Boxes, packs, decks, tins. " + (phoneNow() ? "Tap a card, then Move to Singles." : "Drag a card to Singles to move it."), sealed)}${lane("singles", "Singles", "Individual cards and slabs. " + (phoneNow() ? "Tap a card, then Move to Sealed." : "Drag a card to Sealed to move it."), singles)}</div>
     ${S.selecting ? bar() : ""}</div>`;
@@ -47,17 +57,15 @@ function commit(mut) { const list = loadItems(); mut(list); if (!saveItems(list)
 function wire() {
   const h = ctx.host; const $ = (s) => h.querySelector(s);
   $("#coQ").addEventListener("input", (e) => { S.q = e.target.value; const p = e.target.selectionStart; paint(); const q = h.querySelector("#coQ"); q.focus(); q.setSelectionRange(p, p); });
-  $("#coSort").addEventListener("change", (e) => { S.sort = e.target.value; paint(); });
+  $("#coMenuBtn").addEventListener("click", () => { S.menu = !S.menu; paint(); });
+  $("#coSort")?.addEventListener("change", (e) => { S.sort = e.target.value; paint(); });
   $("#coSel").addEventListener("click", () => { S.selecting = !S.selecting; if (!S.selecting) S.sel.clear(); paint(); });
   h.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => { S.stage = b.dataset.stage; paint(); }));
   h.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { S.tab = b.dataset.tab; paint(); }));
   h.querySelectorAll(".co-card").forEach((c) => {
     const id = c.dataset.id;
-    c.addEventListener("click", () => { if (S.selecting) { S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); paint(); } else openZoom(id); });
+    c.addEventListener("click", () => { if (S.selecting) { S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); paint(); } else openZoom(id, c.querySelector(".co-img")); });
     c.addEventListener("keydown", (e) => { if (e.key === "Enter") c.click(); });
-    const img = c.querySelector(".co-img");
-    c.addEventListener("pointermove", (e) => { if (e.pointerType === "touch") return; const r = img.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; img.style.transform = `perspective(700px) rotateY(${x * 18}deg) rotateX(${-y * 18}deg) scale(1.04)`; img.style.setProperty("--mx", `${(x + .5) * 100}%`); img.style.setProperty("--my", `${(y + .5) * 100}%`); img.classList.add("tilt"); });
-    c.addEventListener("pointerleave", () => { img.style.transform = ""; img.classList.remove("tilt"); });
     c.addEventListener("dragstart", (e) => { const ids = S.selecting && S.sel.has(id) ? [...S.sel] : [id]; e.dataTransfer.setData("text/plain", JSON.stringify(ids)); e.dataTransfer.effectAllowed = "move"; c.classList.add("drag"); });
     c.addEventListener("dragend", () => c.classList.remove("drag"));
   });
@@ -76,22 +84,12 @@ function bulk(kind) {
   else if (kind === "del") { const before = loadItems(); const removed = before.filter((i) => set.has(String(i.id))); if (commit((l) => { for (let k = l.length - 1; k >= 0; k--) if (set.has(String(l[k].id))) l.splice(k, 1); })) { S.sel.clear(); undo(before, `Removed ${removed.length} from this app`); paint(); } }
 }
 function undo(prev, msg) { ctx.toastUndo(msg, () => { saveItems(prev); ctx.refresh(); paint(); ctx.toast("Restored"); }); }
-function openZoom(id) {
-  const list = rows(), i = list.findIndex((x) => String(x.id) === String(id)); if (i < 0) return; S.zoom = i;
-  const it = list[i], src = photoOf(it), profit = it.purchasePrice != null && it.purchasePrice !== "" ? (Number(it.price) || 0) - Number(it.purchasePrice) : null;
-  const sp = loadSpaces().find((s) => s.id === it.spaceId);
-  const s = ctx.openSheet(`<a class="back" href="#" data-close>‹ Back</a>
-    <div class="co-zoom"><div class="co-zimg"><div class="co-img big">${src ? `<img src="${esc(src)}" alt="" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i></div></div>
-    <h2>${esc(nameOf(it))}</h2><div class="sub">${esc(STAGE_NAME[it.phase] || "")} · ${esc(laneOf(it) === "sealed" ? "Sealed" : "Single")} · ${esc(gameOf(it))}</div>
-    <div class="row"><span>Market value</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>
-    ${profit != null ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div><div class="row"><span>Profit</span><span>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</span></div>` : ""}
-    <div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div>
-    <div class="co-znav"><button class="btn" id="zPrev" type="button" ${i ? "" : "disabled"}>‹ Previous</button><button class="btn" id="zLane" type="button">Move to ${laneOf(it) === "sealed" ? "Singles" : "Sealed"}</button><button class="btn" id="zNext" type="button" ${i < list.length - 1 ? "" : "disabled"}>Next ›</button></div></div>`);
-  const img = s.querySelector(".co-img.big"), z = s.querySelector(".co-zimg");
-  z.addEventListener("pointermove", (e) => { const r = z.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; img.style.transform = `perspective(900px) rotateY(${x * 22}deg) rotateX(${-y * 22}deg)`; img.style.setProperty("--mx", `${(x + .5) * 100}%`); img.style.setProperty("--my", `${(y + .5) * 100}%`); img.classList.add("tilt"); });
-  z.addEventListener("pointerleave", () => { img.style.transform = ""; img.classList.remove("tilt"); });
-  s.querySelector("#zPrev").addEventListener("click", () => openZoom(list[i - 1].id)); s.querySelector("#zNext").addEventListener("click", () => openZoom(list[i + 1].id));
-  s.querySelector("#zLane").addEventListener("click", () => { setLane([it.id], laneOf(it) === "sealed" ? "singles" : "sealed"); ctx.closeSheet(); paint(); });
+function openZoom(id, fromEl) {
+  const list = rows(), i = list.findIndex((x) => String(x.id) === String(id)); if (i < 0) return;
+  openCard(list, { index: i, from: fromEl || null, photo: photoOf, name: nameOf,
+    info: (it) => { const profit = it.purchasePrice != null && it.purchasePrice !== "" ? (Number(it.price) || 0) - Number(it.purchasePrice) : null, sp = loadSpaces().find((s) => s.id === it.spaceId);
+      return `<div class="sub">${esc(STAGE_NAME[it.phase] || "")} · ${esc(laneOf(it) === "sealed" ? "Sealed" : "Single")} · ${esc(gameOf(it))}</div><div class="row"><span>Market value</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${profit != null ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div><div class="row"><span>Profit</span><span>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div><button class="btn" id="zLane" type="button">Move to ${laneOf(it) === "sealed" ? "Singles" : "Sealed"}</button>`; },
+    wire: (root, it, api) => root.querySelector("#zLane")?.addEventListener("click", () => { api.close(); setLane([it.id], laneOf(it) === "sealed" ? "singles" : "sealed"); }) });
 }
 export function renderCollection(host, api) { ctx = { host, ...api }; if (!host.querySelector(".co-wrap")) S.sel.clear(); paint(); }
 export function repaintCollection() { if (ctx && ctx.host.querySelector(".co-wrap")) paint(); }

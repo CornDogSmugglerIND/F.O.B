@@ -1,6 +1,6 @@
 import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=5";
-import { renderCollection } from "./collection.js?v=3";
+import { renderCollection } from "./collection.js?v=4";
 import { renderSpaces } from "./spaces.js?v=3";
 import { renderChannels } from "./channels.js?v=4";
 import { renderSettings } from "./settings.js?v=1";
