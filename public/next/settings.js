@@ -11,7 +11,7 @@ export function renderSettings(host) {
   host.innerHTML = `<div class="set-wrap">
     <section class="card-panel set"><h2>Settings</h2><p>Your profile picture is the round picture at the top right. Tap it any time to change it.</p>
       <button class="btn" id="chg" type="button">Change profile picture</button>
-      <div class="badges"><img src="img/veteran.jpg" alt="Veteran-Owned Coalition"><img src="img/pristine.jpg" alt="Pristine 10"><img src="img/husky.jpg" alt="The Coalition team"></div></section>
+      <div class="badges"><img class="k-tilt" src="img/veteran.jpg" alt="Veteran-Owned Coalition"><img class="k-tilt" src="img/pristine.jpg" alt="Pristine 10"><img class="k-tilt" src="img/husky.jpg" alt="The Coalition team"></div></section>
     <section class="card-panel set"><h3>Connections</h3><div id="conn" class="conn"><span class="sub">Checking…</span></div>
       <p class="sub">Keys and sign-in for eBay, Misprint and Double Holo are managed in the <a href="${CLASSIC}">classic app</a>.</p></section>
     <section class="card-panel set"><h3>Put it on your phone</h3>

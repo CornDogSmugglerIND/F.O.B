@@ -3,7 +3,7 @@ import { renderScouter } from "./scouter.js?v=5";
 import { renderCollection } from "./collection.js?v=4";
 import { renderSpaces } from "./spaces.js?v=4";
 import { renderChannels } from "./channels.js?v=4";
-import { renderSettings } from "./settings.js?v=1";
+import { renderSettings } from "./settings.js?v=2";
 import { initSync } from "./sync.js?v=1";
 import { initKit } from "./kit.js?v=1";
 
