@@ -14,6 +14,7 @@ function blank() {
   return { photos: [], paid: "", market: "", marketNote: "", marketState: "idle", qty: 1, title: "", identity: null, idState: "idle", idMsg: "", candidates: [], manual: false, saved: null };
 }
 let d = blank();
+const session = []; // this sitting's scans, shown as little package cards
 let ctx = null; // { host, getItems, setItems, toast, go }
 
 /* ---------- image work: decode + resize without blocking taps ---------- */
@@ -104,10 +105,11 @@ async function save() {
     collectorNumber: id.collector_number || "", setName: id.set_name || "", setCode: id.set_code || "", game: id.game || "", rarity: id.rarity || "", finish: id.finish || "",
     language: id.language || "", condition: id.condition || "", identifyConfidence: id.confidence || null, identifyPath: d.identity ? (d.manual ? "manual" : "photo_search") : null,
     quantity: Math.max(1, Number(d.qty) || 1), price: num(d.market) || 0, purchasePrice: num(d.paid),
-    listingStatus: "draft", phase: identified ? "staged" : "intake", staged: identified, spaceId: null, channels: {}, photos: stored, notes: "", collections: [],
+    source: "scouter", listingStatus: "draft", phase: identified ? "staged" : "intake", staged: identified, spaceId: null, channels: {}, photos: stored, notes: "", collections: [],
   };
   try { ctx.setItems([item, ...ctx.getItems()]); } catch { ctx.toast("Couldn't save. Storage is full."); if (btn) { btn.disabled = false; btn.textContent = "Save item"; } return; }
   try { let u = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); u += (k.length + (localStorage.getItem(k) || "").length) * 2; } if (u > 4.2 * 1048576) ctx.toast("Device storage is about " + Math.round(u / 52428.8) + "% full. List or remove items soon."); } catch { /* ignore */ }
+  session.unshift({ title: item.title, qty: item.quantity, price: item.price, photo: stored[0] && stored[0].dataUrl, staged: item.phase === "staged" });
   d.saved = { item, backup: { done: 0, total: stored.length, state: "run" } };
   paintAll(); backup(item);
 }
@@ -125,21 +127,29 @@ async function backup(item) {
 /* ---------- painting ---------- */
 const $ = (s) => ctx.host.querySelector(s);
 function paintAll() { if (!ctx) return; ctx.host.innerHTML = shell(); wire(); paintTray(); paintFlow(); paintSaved(); }
+const online = () => { const l = document.getElementById("link"); return !!(l && l.classList.contains("on")); };
+function hud() {
+  const n = session.reduce((a, x) => a + (Number(x.qty) || 1), 0), v = session.reduce((a, x) => a + (Number(x.price) || 0) * (Number(x.qty) || 1), 0);
+  return `<div class="sc-hud" id="scHud"><div><em>On scouter</em><b>${n}</b></div><div><em>Value</em><b>${money(v)}</b></div><div class="live"><i></i>Live</div><div class="net${online() ? " on" : ""}"><i></i>${online() ? "eBay online" : "eBay offline"}</div></div>`;
+}
+function pkgs() {
+  if (!session.length) return "";
+  return `<div class="sc-pkgs"><h3>On this scouter</h3><div class="sc-pk">${session.slice(0, 12).map((x) => `<div class="sc-pkg k-tilt">${x.photo ? `<img src="${esc(x.photo)}" alt="" draggable="false">` : "<i></i>"}<span>${esc(x.title)}</span><em>${money(x.price)}</em>${x.qty > 1 ? `<u>x${x.qty}</u>` : ""}<s class="${x.staged ? "ok" : ""}">${x.staged ? "Staged" : "Photos in"}</s></div>`).join("")}</div></div>`;
+}
 function shell() {
-  if (d.saved) return `<div class="sc-wrap"><div class="sc-saved" id="scSaved"></div></div>`;
-  return `<div class="sc-wrap">
-    <div class="sc-head"><h2>Scouter</h2><p>One item at a time. Add photos, pick up to ${MAX_PICK}, and I'll do the rest.</p></div>
-    <div class="sc-grid">
-      <section class="sc-left">
-        <div class="sc-drop" id="scDrop" tabindex="0" role="button" aria-label="Add photos">
-          <b>Drop photos here</b><span>or paste them, or tap to choose</span>
-          <div class="sc-btns"><button class="btn" id="scCam" type="button">Take photo</button><button class="btn" id="scPick" type="button">Choose photos</button></div>
-        </div>
-        <input type="file" id="scFile" accept="image/*" multiple hidden><input type="file" id="scCamFile" accept="image/*" capture="environment" hidden>
-        <div class="sc-tray" id="scTray"></div>
-      </section>
-      <section class="sc-right" id="scFlow"></section>
-    </div></div>`;
+  if (d.saved) return `<div class="sc-wrap hh">${hud()}<div class="sc-saved" id="scSaved"></div>${pkgs()}</div>`;
+  return `<div class="sc-wrap hh">${hud()}
+    <section class="sc-left">
+      <div class="sc-drop sc-vf" id="scDrop" tabindex="0" role="button" aria-label="Add photos">
+        <img id="scVfImg" alt="" hidden draggable="false"><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
+        <div class="sc-aim"><b>Aim at the item</b><span>Tap SNAP for a photo. Drop or paste photos here too.</span></div><div class="sc-scanmsg">Scanning…</div>
+      </div>
+      <input type="file" id="scFile" accept="image/*" multiple hidden><input type="file" id="scCamFile" accept="image/*" capture="environment" hidden>
+      <div class="sc-twin"><button class="sc-big snap" id="scCam" type="button"><i></i>Snap</button><button class="sc-big scan" id="scId" type="button" disabled><i></i>Scan</button></div>
+      <button class="sc-lib" id="scPick" type="button">Choose photos from library</button>
+      <div class="sc-tray" id="scTray"></div>
+    </section>
+    <section class="sc-right" id="scFlow"></section>${pkgs()}</div>`;
 }
 function paintTray() {
   const t = $("#scTray"); if (!t) return;
@@ -156,6 +166,7 @@ function paintTray() {
   }));
   t.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => { const i = d.photos.findIndex((x) => x.id === b.dataset.del); if (i >= 0) { URL.revokeObjectURL(d.photos[i].preview); d.photos.splice(i, 1); } paintTray(); paintFlow(); }));
   const dz = $("#scDrop"); if (dz) dz.classList.toggle("small", d.photos.length > 0);
+  const vi = $("#scVfImg"), first = d.photos.find((p) => p.picked) || d.photos[0]; if (vi) { vi.hidden = !first; if (first) vi.src = first.data || first.preview; dz && dz.classList.toggle("has", !!first); }
 }
 function paintFlow() {
   const f = $("#scFlow"); if (!f) return;
@@ -167,19 +178,21 @@ function paintFlow() {
   else if (d.idState === "ok") step1 = `<div class="sc-step ok"><span>Identified</span><b>${esc(d.title)}</b><button class="btn" id="scRe" type="button">Identify again</button></div>`;
   else if (d.idState === "pick") step1 = `<div class="sc-step"><b>Not sure. Which one is it?</b><span>${esc(d.idMsg)}</span>${d.candidates.map((c, i) => `<button class="sc-cand" data-c="${i}" type="button">${esc([c.product_name, c.collector_number, c.set_name, c.finish].filter(Boolean).join(" · "))}</button>`).join("")}<button class="btn" id="scMan" type="button">None of these. I'll type it</button></div>`;
   else if (d.idState === "fail" || d.manual) step1 = d.manual ? manualForm() : `<div class="sc-step"><b>Couldn't identify it</b><span>${esc(d.idMsg)}</span><button class="btn" id="scRe" type="button">Try again</button><button class="btn" id="scMan" type="button">I'll type it</button></div>`;
-  else step1 = `<div class="sc-step"><b>1. Identify</b><span>${picked ? `${picked} photo${picked > 1 ? "s" : ""} ready.` : "Add a photo to start."}</span><button class="btn go" id="scId" type="button" ${picked ? "" : "disabled"}>Identify this item</button><button class="sc-link" id="scMan" type="button">or type it myself</button></div>`;
+  else step1 = `<div class="sc-step idle"><b>${picked ? "Ready to scan" : "Nothing in the viewfinder"}</b><span>${picked ? `${picked} photo${picked > 1 ? "s" : ""} ready. Hit SCAN to read it.` : "Tap SNAP and take a photo."}</span><button class="btn" id="scMan" type="button">Type it instead</button></div>`;
   const mkNote = d.marketState === "loading" ? "Looking up value…" : d.marketNote;
   f.innerHTML = `${step1}
-    <div class="sc-step"><b>2. Money</b>
+    <div class="sc-step money"><b>Money</b>
       <label class="sc-f"><span>You paid</span><input id="scPaid" inputmode="decimal" placeholder="0.00" value="${esc(paid)}"></label>
-      <label class="sc-f"><span>Market value</span><input id="scMkt" inputmode="decimal" placeholder="${d.marketState === "loading" ? "looking up…" : "0.00"}" value="${esc(mk)}"></label>
+      <label class="sc-f"><span>Market value <small>median of active eBay listings</small></span><input id="scMkt" inputmode="decimal" placeholder="${d.marketState === "loading" ? "looking up…" : "0.00"}" value="${esc(mk)}"></label>
       ${mkNote ? `<small class="sc-note">${esc(mkNote)}</small>` : ""}
       ${profit != null ? `<div class="sc-profit ${profit >= 0 ? "pos" : "neg"}">Profit if it sells at market: <b>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</b></div>` : ""}
       <label class="sc-f"><span>Quantity</span><input id="scQty" inputmode="numeric" value="${esc(d.qty)}"></label>
     </div>
-    <div class="sc-step"><b>3. Save</b><span>${d.identity || d.title.trim() ? "It goes to Ready to list." : "Not identified yet, so it goes to Photos in."}</span>
+    <div class="sc-step stage"><b>Stage it</b><span>${d.identity || d.title.trim() ? "It goes to Ready to list." : "Not identified yet, so it goes to Photos in."}</span>
       <button class="btn go" id="scSave" type="button" ${picked ? "" : "disabled"}>Save item</button></div>`;
-  $("#scId")?.addEventListener("click", () => identify());
+  const sid = $("#scId"); if (sid) { sid.disabled = !picked || d.idState === "working"; if (!sid.dataset.on) { sid.dataset.on = "1"; sid.addEventListener("click", () => identify()); } }
+  $("#scDrop")?.classList.toggle("scanning", d.idState === "working");
+  const hd = $("#scHud"); if (hd) hd.outerHTML = hud();
   $("#scRe")?.addEventListener("click", () => identify());
   $("#scMan")?.addEventListener("click", () => { d.manual = true; paintFlow(); });
   f.querySelectorAll("[data-c]").forEach((b) => b.addEventListener("click", () => applyIdentity(d.candidates[+b.dataset.c])));

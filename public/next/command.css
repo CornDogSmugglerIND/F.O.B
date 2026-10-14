@@ -1,0 +1,18 @@
+/* ===== Command roadmap: motion, order, plain labels ===== */
+.road .flow{animation:k-flow 1.6s linear infinite}
+@keyframes k-flow{to{stroke-dashoffset:-72}}
+.tag{background:linear-gradient(160deg,rgba(40,44,44,.7),rgba(10,12,11,.82));border:1px solid rgba(145,149,160,.35);backdrop-filter:blur(6px);transition:border-color .2s,box-shadow .2s}
+.stop:hover .tag{border-color:var(--c);box-shadow:0 0 18px color-mix(in srgb,var(--c) 45%,transparent)}
+.tag .stepn{display:block;font-style:normal;font-size:12px;letter-spacing:.08em;color:var(--c);text-transform:uppercase}
+.tag small b{font-size:inherit;color:var(--ink);margin:0}
+.dot{position:relative;transition:transform .2s}
+.dot::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:2px solid var(--c);opacity:0;animation:k-ring 2.6s ease-out infinite}
+@keyframes k-ring{0%{transform:scale(.6);opacity:.8}100%{transform:scale(1.9);opacity:0}}
+.stop:hover .dot{transform:scale(1.35)}
+.pc.k-tilt{position:absolute}
+.pc.k-tilt.is-hot{--s:1.08}
+.flag{position:absolute;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--mute);transform:translate(-50%,-50%);pointer-events:none}
+.flag i{width:10px;height:10px;border-radius:2px;background:var(--mute);transform:rotate(45deg)}
+.flag.start{color:var(--sea)}.flag.start i{background:var(--sea);box-shadow:0 0 10px var(--sea)}
+.flag.end{color:#E8924A}.flag.end i{background:#E8924A;box-shadow:0 0 10px #E8924A}
+@media (prefers-reduced-motion:reduce){.road .flow,.dot::after{animation:none}.road circle{display:none}}
