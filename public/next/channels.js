@@ -6,7 +6,7 @@ const S = { stage: "listed", view: "cards", group: "game", q: "", sort: "value",
 /* Stage selector follows the Command roadmap: same stops, same order, same colors.
    Ended + Everything are Channels extras at the end of the route. */
 const STAGES = [
-  ["intake", "Photos in", "#B3FBD5"],
+  ["intake", "Intake", "#B3FBD5"],
   ["staged", "Ready to list", "#B3FBD5"],
   ["listed", "Live on eBay", "#90FFEE"],
   ["sold", "Sold", "#E8924A"],
@@ -15,13 +15,15 @@ const STAGES = [
   ["all", "Everything", "#9195A0"],
 ];
 const SOLD = ["sold", "packed", "shipped", "delivered"];
+const SHOWN = (it) => !(["intake", "staged"].includes(it.phase || "intake") && !(it.source === "scouter" || it.source === "app"));
+const shown = () => loadItems().filter(SHOWN);
 const stageOf = (it) => it.ended && !SOLD.includes(it.phase) ? "ended" : it.phase === "shipped" || it.phase === "delivered" ? "shipped" : SOLD.includes(it.phase) ? "sold" : (it.phase || "intake");
-const STAGE_LABEL = { listed: "Live on eBay", staged: "Ready to list", intake: "Photos in", sold: "Sold", shipped: "Shipped", ended: "Ended on eBay" };
+const STAGE_LABEL = { listed: "Live on eBay", staged: "Ready to list", intake: "Intake", sold: "Sold", shipped: "Shipped", ended: "Ended on eBay" };
 const keyOf = (it) => S.group === "stage" ? STAGE_LABEL[stageOf(it)] || "Other" : S.group === "game" ? gameOf(it) : S.group === "bin" ? (loadSpaces().find((s) => s.id === it.spaceId)?.name || "Not filed yet") : S.group === "type" ? (laneOf(it) === "sealed" ? "Sealed" : "Singles") : "All items";
 
 function rows() {
   const q = S.q.trim().toLowerCase();
-  return loadItems().filter((it) => (S.stage === "all" || stageOf(it) === S.stage) && (!q || nameOf(it).toLowerCase().includes(q) || String(it.sku || "").toLowerCase().includes(q)))
+  return shown().filter((it) => (S.stage === "all" || stageOf(it) === S.stage) && (!q || nameOf(it).toLowerCase().includes(q) || String(it.sku || "").toLowerCase().includes(q)))
     .sort((a, b) => S.sort === "name" ? nameOf(a).localeCompare(nameOf(b)) : S.sort === "low" ? (Number(a.price) || 0) - (Number(b.price) || 0) : (Number(b.price) || 0) - (Number(a.price) || 0));
 }
 function tile(it) {
@@ -45,7 +47,7 @@ function paint() {
   const all = rows(), h = ctx.host; const groups = new Map();
   for (const it of all) { const k = keyOf(it); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(it); }
   const total = all.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
-  const counts = Object.fromEntries(STAGES.map(([k]) => [k, loadItems().filter((i) => k === "all" || stageOf(i) === k).length]));
+  const counts = Object.fromEntries(STAGES.map(([k]) => [k, shown().filter((i) => k === "all" || stageOf(i) === k).length]));
   const sections = [...groups.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, list]) => {
     const shown = list.slice(0, S.more[k] || 120), closed = S.closed.has(k);
     return `<section class="ch-group"><header><button class="ch-fold" data-fold="${esc(k)}" type="button" aria-expanded="${!closed}">${closed ? "▸" : "▾"} ${esc(k)} <em>${list.length}</em></button><span>${money(list.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0))}</span><button class="chip" data-selgrp="${esc(k)}" type="button">Select this group (${list.length})</button></header>
@@ -78,7 +80,7 @@ function zoom(list, el) {
   openCard(list, {
     index: idx, from: el, photo: photoOf, name: nameOf,
     info: (it) => { const sp = loadSpaces().find((s) => s.id === it.spaceId); const on = S.sel.has(String(it.id));
-      return `<div class="sub">${esc(STAGE_LABEL[stageOf(it)] || "")}</div><div class="row"><span>Price</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div><div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div><button class="btn" data-sel type="button">${on ? "Deselect" : "Select for bulk actions"}</button>`; },
+      return `<div class="sub">${esc(STAGE_LABEL[stageOf(it)] || "")}</div><div class="row"><span>Price</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${(it.photos || []).length > 1 ? `<div class="row"><span>Photos</span><span>${it.photos.length}, all kept together</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div><button class="btn" data-sel type="button">${on ? "Deselect" : "Select for bulk actions"}</button>`; },
     wire: (root, it) => root.querySelector("[data-sel]")?.addEventListener("click", () => { toggle(String(it.id)); paint(); root.querySelector("[data-sel]").textContent = S.sel.has(String(it.id)) ? "Deselect" : "Select for bulk actions"; }),
   });
 }

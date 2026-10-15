@@ -1,8 +1,8 @@
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=5";
-import { renderCollection } from "./collection.js?v=5";
+import { renderScouter } from "./scouter.js?v=6";
+import { renderCollection } from "./collection.js?v=6";
 import { renderSpaces } from "./spaces.js?v=8";
-import { renderChannels } from "./channels.js?v=5";
+import { renderChannels } from "./channels.js?v=6";
 import { renderSettings } from "./settings.js?v=3";
 import { initSync } from "./sync.js?v=1";
 import { initKit } from "./kit.js?v=1";
@@ -22,12 +22,14 @@ function saveItems(items) { try { localStorage.setItem(LS_ITEMS, JSON.stringify(
 let items = loadItems();
 
 const STOPS = [
-  { id: "intake", label: "Photos in", note: "not identified yet", phases: ["intake"], c: "#B3FBD5", pos: [12, 76], movable: true },
-  { id: "staged", label: "Ready to list", note: "listing not built yet", phases: ["staged"], c: "#B3FBD5", pos: [34, 48], movable: true },
-  { id: "listed", label: "Live on eBay", note: "selling now", phases: ["listed"], c: "#90FFEE", pos: [57, 72], movable: false },
-  { id: "sold", label: "Sold", note: "needs packing", phases: ["sold", "packed"], c: "#E8924A", pos: [78, 40], movable: true },
-  { id: "shipped", label: "Shipped", note: "on the way", phases: ["shipped", "delivered"], c: "#E8924A", pos: [92, 66], movable: true },
+  { id: "intake", label: "Intake", note: "not identified yet", phases: ["intake"], c: "#B3FBD5", pos: [9, 76], movable: true },
+  { id: "staged", label: "Ready to list", note: "listing not built yet", phases: ["staged"], c: "#B3FBD5", pos: [26, 48], movable: true },
+  { id: "listed", label: "Live on eBay", note: "selling now", phases: ["listed"], c: "#90FFEE", pos: [43, 72], movable: false },
+  { id: "stored", label: "Put away", note: "in its bin", phases: [], c: "#90FFEE", pos: [60, 44], movable: false },
+  { id: "sold", label: "Sold", note: "needs packing", phases: ["sold", "packed"], c: "#E8924A", pos: [77, 70], movable: true },
+  { id: "shipped", label: "Shipped", note: "on the way", phases: ["shipped", "delivered"], c: "#E8924A", pos: [92, 42], movable: true },
 ];
+const stopFor = (it) => { const ph = phaseFromItem(it); return ph === "listed" && it.spaceId ? STOPS.find((x) => x.id === "stored") : STOPS.find((x) => x.phases.includes(ph)); };
 const MOVE_TO = { intake: "intake", staged: "staged", sold: "sold", shipped: "shipped" };
 
 /* The roadmap tracks what you bring in through the app (Scouter). Your eBay inventory lives in Collection, Channels and Spaces. */
@@ -35,8 +37,7 @@ const mine = (list) => list.filter((i) => i.source === "scouter" || i.source ===
 function groups() {
   const g = Object.fromEntries(STOPS.map((s) => [s.id, []]));
   for (const it of mine(items)) {
-    const ph = phaseFromItem(it);
-    const s = STOPS.find((x) => x.phases.includes(ph));
+    const s = stopFor(it);
     if (s) g[s.id].push(it);
   }
   return g;
@@ -64,7 +65,9 @@ function openSheet(html) {
 $("#sheetBack").addEventListener("click", closeSheet);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
 
-function nextAction(ph) {
+function nextAction(ph, it) {
+  if (ph === "listed" && it && it.spaceId) return `<p class="sub" style="margin-top:12px">Live on eBay and put away in its bin.</p><button class="btn" data-act="spaces" type="button">Open Spaces</button>`;
+  if (ph === "listed") return `<p class="sub" style="margin-top:12px">Live on eBay. Next: put it away in its bin.</p><button class="btn go" data-act="spaces" type="button">Put it in a bin</button>`;
   if (ph === "intake") return `<p class="sub" style="margin-top:12px">Next: identify it from its photos.</p><button class="btn go" data-act="scouter" type="button">Identify it in Scouter</button>`;
   if (ph === "staged") return `<p class="sub" style="margin-top:12px">Next: build the eBay listing.</p><button class="btn go" data-act="channels" data-st="staged" type="button">Build the listing</button>`;
   if (ph === "listed") return `<p class="sub" style="margin-top:12px">Selling on eBay now.</p><button class="btn" data-act="channels" type="button">See all live listings</button>`;
@@ -73,18 +76,21 @@ function nextAction(ph) {
 }
 function itemSheet(id) {
   const it = items.find((i) => String(i.id) === String(id)); if (!it) return;
-  const src = photoOf(it); const ph = phaseFromItem(it); const st = STOPS.find((s) => s.phases.includes(ph));
+  const src = photoOf(it); const ph = phaseFromItem(it); const st = stopFor(it);
   const s = openSheet(`
     <a class="back" href="#" data-close>‹ Back</a>
     ${src ? `<img src="${esc(src)}" alt="" style="width:100%;max-height:300px;object-fit:contain;border-radius:14px;background:#0f1211;margin-bottom:12px">` : ""}
+    ${(it.photos || []).length > 1 ? `<div style="display:flex;gap:8px;overflow-x:auto;margin:-2px 0 12px">${it.photos.slice(1).map((p) => `<img src="${esc(p.dataUrl || p.url || "")}" alt="" style="height:64px;width:64px;object-fit:cover;border-radius:10px;flex:none">`).join("")}</div>` : ""}
     <h2>${esc(nameOf(it))}</h2>
     <div class="sub">${st ? esc(st.label) : ph === "ended" ? "Ended on eBay" : ""}</div>
     <div class="row"><span>Price</span><span>${money(it.price)}</span></div>
     <div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>
     ${it.purchasePrice ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div>` : ""}
-    ${nextAction(ph)}`);
+    ${nextAction(ph, it)}
+    ${String(it.id).startsWith("ebay-") ? "" : `<button class="btn warn" data-del type="button" style="margin-top:14px">Delete this item</button>`}`);
   s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
-  s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "channels") { window.__chStage = e.currentTarget.dataset.st || "listed"; go("channels"); } });
+  s.querySelector("[data-del]")?.addEventListener("click", () => { const prev = items.slice(); items = items.filter((i) => String(i.id) !== String(id)); saveItems(items); closeSheet(); render(); toastUndo(`Deleted ${nameOf(it)}`, () => { items = prev; saveItems(prev); render(); }); });
+  s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "spaces") { closeSheet(); go("spaces"); } else if (a === "channels") { window.__chStage = e.currentTarget.dataset.st || "listed"; go("channels"); } });
 }
 function stageSheet(sid) {
   const stop = STOPS.find((x) => x.id === sid); const list = groups()[sid];
@@ -141,7 +147,7 @@ function renderCommand() {
   ].map(([n, t, v, st]) => `<button class="pill" data-goto="${v}" ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto"; main.style.overflowX = "hidden";
-    const H = 1610, W = 390, PX = [27, 73, 27, 73, 30], PY = [260, 550, 840, 1130, 1420];
+    const H = 1900, W = 390, PX = [27, 73, 27, 73, 27, 73], PY = [260, 550, 840, 1130, 1420, 1710];
     const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
     let path = `M${pts[0][0]},${pts[0][1]}`;
     for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], m = (y0 + y1) / 2; path += ` C${x0},${m} ${x1},${m} ${x1},${y1}`; }
@@ -154,7 +160,7 @@ function renderCommand() {
       ${STOPS.map((s, i) => `<div class="stop" data-drop="${s.id}" style="left:${PX[i]}%;top:${PY[i]}px;--c:${s.c}">
         ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: scan your first item" : "")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
         <div class="tag" data-stage="${s.id}"><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small><b>${g[s.id].length}</b> item${g[s.id].length === 1 ? "" : "s"} · ${s.note}</small></div></div>`).join("")}
-      <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[4] + 20}%;top:${PY[4] + 8}px"><i></i>Done</div></div>`;
+      <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[5] - 17}%;top:${PY[5] + 8}px"><i></i>Done</div></div>`;
   } else {
     main.style.overflowY = "hidden"; main.style.overflowX = "";
     const W = Math.max(600, main.clientWidth || 1000), H = Math.max(420, main.clientHeight || 600);
@@ -170,7 +176,7 @@ function renderCommand() {
       ${STOPS.map((s) => `<div class="stop" data-drop="${s.id}" style="left:${s.pos[0]}%;top:${s.pos[1]}%;--c:${s.c}">
         ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: scan your first item" : "")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
         <div class="tag" data-stage="${s.id}"><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small><b>${g[s.id].length}</b> item${g[s.id].length === 1 ? "" : "s"} · ${s.note}</small></div></div>`).join("")}
-      <div class="flag start" style="left:${STOPS[0].pos[0] - 6}%;top:${STOPS[0].pos[1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${STOPS[4].pos[0] - 2}%;top:${STOPS[4].pos[1] + 12}%"><i></i>Done</div>
+      <div class="flag start" style="left:${STOPS[0].pos[0] - 6}%;top:${STOPS[0].pos[1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${STOPS[5].pos[0] - 2}%;top:${STOPS[5].pos[1] + 12}%"><i></i>Done</div>
       <div class="dock">${pills}</div><div class="hint">Tap a stop to open it · hold a card and drop it on a stop to move it</div></div>`;
   }
   // wire up
@@ -198,7 +204,7 @@ function bindDrag(el) {
     const target = over && over.dataset.drop; if (over) over.classList.remove("drop"); if (ghost) ghost.remove(); el.style.opacity = "";
     if (!target) return;
     const it = items.find((i) => String(i.id) === String(el.dataset.item)); if (!it) return;
-    if (!MOVE_TO[target]) { toast("Use Build and publish to put an item live on eBay."); return; }
+    if (!MOVE_TO[target]) { toast(target === "stored" ? "Open Spaces to put it in a bin." : "Use Build and publish to put an item live on eBay."); return; }
     it.phase = MOVE_TO[target]; saveItems(items); toast(`Moved to ${STOPS.find((s) => s.id === target).label}`); render();
   };
   el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);

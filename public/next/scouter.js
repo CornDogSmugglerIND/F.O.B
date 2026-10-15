@@ -134,7 +134,7 @@ function hud() {
 }
 function pkgs() {
   if (!session.length) return "";
-  return `<div class="sc-pkgs"><h3>On this scouter</h3><div class="sc-pk">${session.slice(0, 12).map((x) => `<div class="sc-pkg k-tilt">${x.photo ? `<img src="${esc(x.photo)}" alt="" draggable="false">` : "<i></i>"}<span>${esc(x.title)}</span><em>${money(x.price)}</em>${x.qty > 1 ? `<u>x${x.qty}</u>` : ""}<s class="${x.staged ? "ok" : ""}">${x.staged ? "Staged" : "Photos in"}</s></div>`).join("")}</div></div>`;
+  return `<div class="sc-pkgs"><h3>On this scouter</h3><div class="sc-pk">${session.slice(0, 12).map((x) => `<div class="sc-pkg k-tilt">${x.photo ? `<img src="${esc(x.photo)}" alt="" draggable="false">` : "<i></i>"}<span>${esc(x.title)}</span><em>${money(x.price)}</em>${x.qty > 1 ? `<u>x${x.qty}</u>` : ""}<s class="${x.staged ? "ok" : ""}">${x.staged ? "Staged" : "Intake"}</s></div>`).join("")}</div></div>`;
 }
 function shell() {
   if (d.saved) return `<div class="sc-wrap hh">${hud()}<div class="sc-saved" id="scSaved"></div>${pkgs()}</div>`;
@@ -188,7 +188,7 @@ function paintFlow() {
       ${profit != null ? `<div class="sc-profit ${profit >= 0 ? "pos" : "neg"}">Profit if it sells at market: <b>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</b></div>` : ""}
       <label class="sc-f"><span>Quantity</span><input id="scQty" inputmode="numeric" value="${esc(d.qty)}"></label>
     </div>
-    <div class="sc-step stage"><b>Stage it</b><span>${d.identity || d.title.trim() ? "It goes to Ready to list." : "Not identified yet, so it goes to Photos in."}</span>
+    <div class="sc-step stage"><b>Stage it</b><span>${d.identity || d.title.trim() ? "It goes to Ready to list." : "Not identified yet, so it goes to Intake."}</span>
       <button class="btn go" id="scSave" type="button" ${picked ? "" : "disabled"}>Save item</button></div>`;
   const sid = $("#scId"); if (sid) { sid.disabled = !picked || d.idState === "working"; if (!sid.dataset.on) { sid.dataset.on = "1"; sid.addEventListener("click", () => identify()); } }
   $("#scDrop")?.classList.toggle("scanning", d.idState === "working");
@@ -215,7 +215,7 @@ function manualForm() {
 function paintSaved() {
   const s = $("#scSaved"); if (!s || !d.saved) return;
   const it = d.saved.item, b = d.saved.backup, ready = it.phase === "staged";
-  s.innerHTML = `<div class="sc-done"><i>✓</i><h2>Saved</h2><p><b>${esc(it.title)}</b> is in <b>${ready ? "Ready to list" : "Photos in"}</b>${it.price ? ` · market ${money(it.price)}` : ""}.</p>
+  s.innerHTML = `<div class="sc-done"><i>✓</i><h2>Saved</h2><p><b>${esc(it.title)}</b> is in <b>${ready ? "Ready to list" : "Intake"}</b>${it.price ? ` · market ${money(it.price)}` : ""}.</p>
     <small class="sc-note">${b.state === "run" ? `Backing up photos ${b.done}/${b.total}…` : b.state === "ok" ? "Photos backed up." : "Saved on this device. Backup skipped."}</small>
     <div class="sc-next"><button class="btn go" id="scNext" type="button">${ready ? "Build the listing" : "Identify it now"}</button><button class="btn" id="scAgain" type="button">Scout another item</button></div></div>`;
   $("#scAgain")?.addEventListener("click", () => { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); });

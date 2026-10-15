@@ -14,7 +14,7 @@ function rows() {
     return !q || nameOf(it).toLowerCase().includes(q) || gameOf(it).toLowerCase().includes(q);
   }).sort((a, b) => S.sort === "name" ? nameOf(a).localeCompare(nameOf(b)) : S.sort === "new" ? String(b.createdAt || "").localeCompare(String(a.createdAt || "")) : (Number(b.price) || 0) - (Number(a.price) || 0));
 }
-const STAGE_NAME = { intake: "Photos in", staged: "Ready to list", listed: "Live on eBay" };
+const STAGE_NAME = { intake: "Intake", staged: "Ready to list", listed: "Live on eBay" };
 function card(it) {
   const src = photoOf(it), fresh = it.source === "scouter" && Date.now() - Date.parse(it.createdAt || 0) < 864e5;
   return `<article class="co-card${S.sel.has(String(it.id)) ? " sel" : ""}" draggable="true" data-id="${esc(it.id)}" tabindex="0">
@@ -38,7 +38,7 @@ function paint() {
     <div class="co-bar2"><input id="coQ" type="search" placeholder="Search your collection" value="${esc(S.q)}">
       <button class="btn${S.selecting ? " go" : ""}" id="coSel" type="button">${S.selecting ? "Done selecting" : "Select"}</button>
       <button class="btn co-view${S.menu ? " go" : ""}" id="coMenuBtn" type="button" aria-expanded="${!!S.menu}">View ▾</button>
-      ${S.menu ? `<div class="co-menu" id="coMenu"><div class="co-mrow"><span>Show</span><div class="co-chips" role="group" aria-label="Stage filter">${[["all", "All"], ["new", "Photos in"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<button class="chip${S.stage === k ? " on" : ""}" data-stage="${k}" type="button">${l}</button>`).join("")}</div></div>
+      ${S.menu ? `<div class="co-menu" id="coMenu"><div class="co-mrow"><span>Show</span><div class="co-chips" role="group" aria-label="Stage filter">${[["all", "All"], ["new", "Intake"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<button class="chip${S.stage === k ? " on" : ""}" data-stage="${k}" type="button">${l}</button>`).join("")}</div></div>
       <div class="co-mrow"><span>Sort</span><select id="coSort" aria-label="Sort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest value</option><option value="new"${S.sort === "new" ? " selected" : ""}>Newest</option><option value="name"${S.sort === "name" ? " selected" : ""}>A to Z</option></select></div></div>` : ""}</div>
     ${phoneNow() ? `<div class="co-tabs"><button class="chip${S.tab === "sealed" ? " on" : ""}" data-tab="sealed" type="button">Sealed ${sealed.length}</button><button class="chip${S.tab === "singles" ? " on" : ""}" data-tab="singles" type="button">Singles ${singles.length}</button></div>` : ""}
     <div class="co-lanes">${lane("sealed", "Sealed", "Boxes, packs, decks, tins. " + (phoneNow() ? "Tap a card, then Move to Singles." : "Drag a card to Singles to move it."), sealed)}${lane("singles", "Singles", "Individual cards and slabs. " + (phoneNow() ? "Tap a card, then Move to Sealed." : "Drag a card to Sealed to move it."), singles)}</div>
