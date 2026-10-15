@@ -6,8 +6,8 @@ import { fly, rectOf, sleep, openCard } from "./kit.js?v=1";
 const IMG = "img/spaces/";
 const SHELVES_KEY = "coalition-shelves-v1";
 const SHELVES = [
-  { id: "s1", name: "Shelf 1", photo: "stackA.jpg", bins: ["bin-tote", "bin-apache", "bin-bunkerA"] },
-  { id: "s2", name: "Shelf 2", photo: "stackB.jpg", bins: ["bin-bunkerB1", "bin-bunkerB2"] },
+  { id: "s1", kind: "Listed items", name: "Shelf 1", photo: "stackA.jpg", bins: ["bin-tote", "bin-apache", "bin-bunkerA"] },
+  { id: "s2", kind: "Unsifted items", name: "Shelf 2", photo: "stackB.jpg", bins: ["bin-bunkerB1", "bin-bunkerB2"] },
 ];
 /* rect = where the bin sits inside the shelf photo, in % of the photo: [x, y, w, h] */
 const PHYS = {
@@ -52,11 +52,11 @@ function head(w, crumbs) {
     <button class="spx-un${w.un.length ? "" : " done"}" data-un type="button">${w.un.length ? `<b>${w.un.length}</b> not in a bin` : "Everything is in a bin"}</button></header>`;
 }
 function areaView(w) {
-  const rows = [...SHELVES].reverse().map((sh) => {
+  const rows = SHELVES.map((sh) => {
     const tiles = sh.bins.map((id) => `<div class="spx-tile"><img src="${IMG}${PHYS[id].closed}" alt="" draggable="false"><span>${esc(nm(w, id))}</span><em>${w.inBin(id).length}</em></div>`).join("");
     const all = sh.bins.flatMap((id) => w.inBin(id));
     return `<button class="spx-shelf k-tilt" data-shelf="${sh.id}" data-tilt=".5" type="button" aria-label="${esc(shelfName(sh))}, ${sh.bins.length} bins"><div class="spx-win">${tiles}</div><div class="spx-board"></div>
-      <div class="spx-tag"><b>${esc(shelfName(sh))}</b><span>${sh.bins.length} bins · ${all.length} items · ${money(val(all))}</span></div></button>`;
+      <div class="spx-tag"><b>${esc(shelfName(sh))}</b><span>${esc(sh.kind || "")}${sh.kind ? " · " : ""}${sh.bins.length} bins · ${all.length} items · ${money(val(all))}</span></div></button>`;
   }).join("");
   return `<div class="spx-stage"><div class="spx-room"><div class="spx-rack"><i class="spx-post l"></i><i class="spx-post r"></i>${rows}</div><div class="spx-floor"></div></div><p class="spx-hint">Tap a shelf to fly in</p></div>`;
 }
