@@ -3,7 +3,7 @@ import { renderScouter } from "./scouter.js?v=5";
 import { renderCollection } from "./collection.js?v=4";
 import { renderSpaces } from "./spaces.js?v=4";
 import { renderChannels } from "./channels.js?v=4";
-import { renderSettings } from "./settings.js?v=2";
+import { renderSettings } from "./settings.js?v=3";
 import { initSync } from "./sync.js?v=1";
 import { initKit } from "./kit.js?v=1";
 
@@ -15,7 +15,6 @@ const money = (n) => "$" + (Number(n) || 0).toLocaleString("en-US", { minimumFra
 const nameOf = (it) => it.title || it.productName || "Untitled";
 const photoOf = (it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "";
 const worth = (it) => (Number(it.price) || 0) * (Number(it.quantity) || 1);
-const CLASSIC = "/hud.html";
 
 /* ---------- data ---------- */
 function loadItems() { try { const v = JSON.parse(localStorage.getItem(LS_ITEMS) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } }
@@ -65,7 +64,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet
 
 function nextAction(ph) {
   if (ph === "intake") return `<p class="sub" style="margin-top:12px">Next: identify it from its photos.</p><button class="btn go" data-act="scouter" type="button">Identify it in Scouter</button>`;
-  if (ph === "staged") return `<p class="sub" style="margin-top:12px">Next: build the eBay listing.</p><a class="btn go" href="${CLASSIC}">Build the listing</a>`;
+  if (ph === "staged") return `<p class="sub" style="margin-top:12px">Next: build the eBay listing.</p><button class="btn go" data-act="channels" data-st="staged" type="button">Build the listing</button>`;
   if (ph === "listed") return `<p class="sub" style="margin-top:12px">Selling on eBay now.</p><button class="btn" data-act="channels" type="button">See all live listings</button>`;
   if (["sold", "packed"].includes(ph)) return `<p class="sub" style="margin-top:12px">Next: pack it and print the label in eBay.</p><a class="btn go" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener">Open eBay orders</a>`;
   return "";
@@ -83,7 +82,7 @@ function itemSheet(id) {
     ${it.purchasePrice ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div>` : ""}
     ${nextAction(ph)}`);
   s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
-  s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "channels") { window.__chStage = "listed"; go("channels"); } });
+  s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "channels") { window.__chStage = e.currentTarget.dataset.st || "listed"; go("channels"); } });
 }
 function stageSheet(sid) {
   const stop = STOPS.find((x) => x.id === sid); const list = groups()[sid];
@@ -202,17 +201,6 @@ function bindDrag(el) {
 }
 
 /* ---------- other views ---------- */
-const NEXT_UP = {
-  scouter: ["Scouter", "Your photo tool, built for one hand on your phone, with a big drop zone on desktop. Built next. Until then the classic Scouter works."],
-  collection: ["Collection", "Sealed and singles as interactive cards. Built after Scouter. The classic Collection still works."],
-  channels: ["Channels", "Grid views, filters and bulk actions. Built after Collection. The classic Channels still works."],
-  spaces: ["Spaces", "Auto-grouped so you never sort 500 listings by hand. Built after Channels. The classic Spaces still works."],
-};
-function renderPlaceholder(v) {
-  const [t, d] = NEXT_UP[v]; $("#main").style.overflowY = "auto";
-  $("#main").innerHTML = `<div class="card-panel"><h2>${t}</h2><p>${d}</p><a class="btn" href="${CLASSIC}">Open the classic ${t}</a><button class="btn" data-goto="command">‹ Back to Command</button></div>`;
-  $("#main").querySelector("[data-goto]").addEventListener("click", () => go("command"));
-}
 
 /* ---------- router ---------- */
 let view = "command";
@@ -224,13 +212,13 @@ function go(v) {
 }
 function render() {
   items = loadItems(); renderStats();
-  if (view === "command") renderCommand(); else if (view === "settings") renderSettings($("#main")); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, go }); } else if (view === "collection" || view === "spaces" || view === "channels") { $("#main").style.overflowY = "auto"; const sel = view === "collection" ? ".co-wrap" : ".sp-wrap"; $("#main").innerHTML = ""; (view === "collection" ? renderCollection : view === "channels" ? renderChannels : renderSpaces)($("#main"), { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); } }); } else renderPlaceholder(view);
+  if (view === "command") renderCommand(); else if (view === "settings") renderSettings($("#main")); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, go }); } else if (view === "collection" || view === "spaces" || view === "channels") { $("#main").style.overflowY = "auto"; const sel = view === "collection" ? ".co-wrap" : ".sp-wrap"; $("#main").innerHTML = ""; (view === "collection" ? renderCollection : view === "channels" ? renderChannels : renderSpaces)($("#main"), { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); } }); } else renderCommand();
 }
 document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));
 addEventListener("resize", (() => { let t; let last = phone(); return () => { clearTimeout(t); t = setTimeout(() => { if (phone() !== last) { last = phone(); render(); } }, 150); }; })());
 addEventListener("storage", () => render());
 
-/* ---------- sync (same data path as classic, writes the shared store) ---------- */
+/* ---------- sync (writes the shared store) ---------- */
 const DONE = ["sold", "packed", "shipped", "delivered"];
 async function pullEbay(onProgress) {
   const rows = []; let offset = 0, failed = 0, total = 0, guard = 0;

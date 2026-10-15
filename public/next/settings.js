@@ -2,7 +2,6 @@
    verified in P1+2: profile picture, live connections, install steps, storage
    meter, brand plates. Polish lives in settings.css. */
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const CLASSIC = "/hud.html";
 
 export function renderSettings(host) {
   host.style.overflowY = "auto";
@@ -12,8 +11,7 @@ export function renderSettings(host) {
     <section class="card-panel set"><h2>Settings</h2><p>Your profile picture is the round picture at the top right. Tap it any time to change it.</p>
       <button class="btn" id="chg" type="button">Change profile picture</button>
       <div class="badges"><img class="k-tilt" src="img/veteran.jpg" alt="Veteran-Owned Coalition"><img class="k-tilt" src="img/pristine.jpg" alt="Pristine 10"><img class="k-tilt" src="img/husky.jpg" alt="The Coalition team"></div></section>
-    <section class="card-panel set"><h3>Connections</h3><div id="conn" class="conn"><span class="sub">Checking…</span></div>
-      <p class="sub">Keys and sign-in for eBay, Misprint and Double Holo are managed in the <a href="${CLASSIC}">classic app</a>.</p></section>
+    <section class="card-panel set"><h3>Connections</h3><div id="conn" class="conn"><span class="sub">Checking…</span></div></section>
     <section class="card-panel set"><h3>Put it on your phone</h3>
       <ol class="how"><li>Open this page in <b>Safari</b> (iPhone) or <b>Chrome</b> (Android).</li><li>iPhone: tap Share, then <b>Add to Home Screen</b>. Android: tap the menu, then <b>Install app</b>.</li><li>Open it from the new icon. It fills the whole screen.</li></ol></section>
     <section class="card-panel set"><h3>Space on this device</h3><div class="meter"><i style="width:${pct}%"></i></div><p class="sub">${mb} MB of about 5 MB used. Photos you scout are shrunk to save room. eBay photos are links and take none.</p></section>
