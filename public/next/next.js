@@ -157,14 +157,16 @@ function renderCommand() {
       <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[4] + 20}%;top:${PY[4] + 8}px"><i></i>Done</div></div>`;
   } else {
     main.style.overflowY = "hidden"; main.style.overflowX = "";
-    const pts = STOPS.map((s) => s.pos);
-    const path = pts.map((p, i) => `${i ? "L" : "M"}${p[0] * 10},${p[1] * 6}`).join(" ");
-    main.innerHTML = `<div class="road"><svg viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
-      <defs><linearGradient id="rg" x1="0" x2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
-      <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".4" stroke-width="11" vector-effect="non-scaling-stroke" style="filter:blur(7px)"/>
-      <path d="${path}" fill="none" stroke="url(#rg)" stroke-width="3" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
-      <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 34" vector-effect="non-scaling-stroke"/>
-      ${[0, 1, 2].map((k) => `<circle r="6" fill="#B3FBD5" style="filter:drop-shadow(0 0 7px #90FFCC)"><animateMotion dur="9s" begin="${k * 3}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
+    const W = Math.max(600, main.clientWidth || 1000), H = Math.max(420, main.clientHeight || 600);
+    const pts = STOPS.map((s) => [s.pos[0] / 100 * W, s.pos[1] / 100 * H]);
+    let path = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], m = (x0 + x1) / 2; path += ` C${m},${y0} ${m},${y1} ${x1},${y1}`; }
+    main.innerHTML = `<div class="road"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+      <defs><linearGradient id="rg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${W}" y2="0"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
+      <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".45" stroke-width="16" stroke-linecap="round" style="filter:blur(9px)"/>
+      <path d="${path}" fill="none" stroke="url(#rg)" stroke-width="4" stroke-linecap="round"/>
+      <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 34"/>
+      ${[0, 1, 2, 3].map((k) => `<circle r="7" fill="#B3FBD5" style="filter:drop-shadow(0 0 9px #90FFCC)"><animateMotion dur="14s" begin="${k * 3.5}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
       ${STOPS.map((s) => `<div class="stop" data-drop="${s.id}" style="left:${s.pos[0]}%;top:${s.pos[1]}%;--c:${s.c}">
         ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: scan your first item" : "")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
         <div class="tag" data-stage="${s.id}"><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small><b>${g[s.id].length}</b> item${g[s.id].length === 1 ? "" : "s"} · ${s.note}</small></div></div>`).join("")}
@@ -217,7 +219,7 @@ function render() {
   if (view === "command") renderCommand(); else if (view === "settings") renderSettings($("#main")); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, go }); } else if (view === "collection" || view === "spaces" || view === "channels") { $("#main").style.overflowY = "auto"; const sel = view === "collection" ? ".co-wrap" : ".sp-wrap"; $("#main").innerHTML = ""; (view === "collection" ? renderCollection : view === "channels" ? renderChannels : renderSpaces)($("#main"), { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); } }); } else renderCommand();
 }
 document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));
-addEventListener("resize", (() => { let t; let last = phone(); return () => { clearTimeout(t); t = setTimeout(() => { if (phone() !== last) { last = phone(); render(); } }, 150); }; })());
+addEventListener("resize", (() => { let t; let last = phone(); return () => { clearTimeout(t); t = setTimeout(() => { if (phone() !== last) { last = phone(); render(); } else if (!phone() && document.querySelector(".road")) render(); }, 150); }; })());
 addEventListener("storage", () => render());
 
 /* ---------- sync (writes the shared store) ---------- */
