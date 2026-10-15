@@ -100,7 +100,6 @@ async function camera(next, fromEl) {
     else if (st) { const back = ctx.host.querySelector(`[data-shelf="${prev.shelf}"]`) || ctx.host.querySelector(`[data-bin="${prev.bin}"]`);
       if (back) { const r = st.getBoundingClientRect(), b = back.getBoundingClientRect(); st.style.transformOrigin = `${b.left + b.width / 2 - r.left}px ${b.top + b.height / 2 - r.top}px`; }
       st.animate([{ transform: "scale(1.8)", opacity: 0, filter: "blur(7px)" }, { transform: "scale(1)", opacity: 1, filter: "blur(0)" }], { duration: 500, easing: "cubic-bezier(.2,.8,.2,1)" }); }
-    if (S.level === "bin" && deeper) { await sleep(560); if (S.level === "bin" && !S.open) setLid(true); }
   } finally { busy = false; }
 }
 function setLid(open, quiet) {
