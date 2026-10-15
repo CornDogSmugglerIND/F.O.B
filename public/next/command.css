@@ -16,3 +16,4 @@
 .flag.start{color:var(--sea)}.flag.start i{background:var(--sea);box-shadow:0 0 10px var(--sea)}
 .flag.end{color:#E8924A}.flag.end i{background:#E8924A;box-shadow:0 0 10px #E8924A}
 @media (prefers-reduced-motion:reduce){.road .flow,.dot::after{animation:none}.road circle{display:none}}
+@media (max-width:820px){.road.pv .dock{position:absolute;left:0;top:0;right:0;bottom:auto;height:auto;z-index:6;margin:0;transform:none;padding:2px 0 10px}.road.pv .tag{min-width:170px}.road.pv .stop .pile{z-index:2}}

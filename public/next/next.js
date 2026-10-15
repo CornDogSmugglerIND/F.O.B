@@ -140,14 +140,20 @@ function renderCommand() {
   ].map(([n, t, v, st]) => `<button class="pill" data-goto="${v}" ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto";
-    main.innerHTML = `<div class="road v" style="position:relative;padding:4px 0 24px 34px"><div class="dock">${pills}</div>
-      <div style="position:absolute;left:12px;top:14px;bottom:70px;width:3px;border-radius:3px;background:linear-gradient(#50B97E,#B3FBD5 60%,#E8924A);box-shadow:0 0 14px rgba(144,255,204,.6)"></div>
-      ${STOPS.map((s) => `<section class="stop" data-drop="${s.id}" style="position:relative;transform:none;margin-bottom:26px;--c:${s.c}">
-        <div class="dot" style="position:absolute;left:-30px;top:6px;margin:0"></div>
-        <div class="tag" style="position:static;transform:none;text-align:left;margin-bottom:10px" data-stage="${s.id}"><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small><b>${g[s.id].length}</b> item${g[s.id].length === 1 ? "" : "s"} · ${s.note}</small></div>
-        <div style="position:relative;height:${g[s.id].length ? 170 : 90}px;width:130px">${g[s.id].length ? pileHtml(g[s.id], "").replace('class="pile ', 'style="left:0;transform:none;width:112px;height:156px" class="pile ') : `<div class="empty" style="position:static;transform:none;width:130px;height:80px">Nothing here yet</div>`}</div>
-      </section>`).join("")}
-      </div>`;
+    const H = 1610, W = 390, PX = [27, 73, 27, 73, 30], PY = [260, 550, 840, 1130, 1420];
+    const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
+    let path = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], m = (y0 + y1) / 2; path += ` C${x0},${m} ${x1},${m} ${x1},${y1}`; }
+    main.innerHTML = `<div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
+      <defs><linearGradient id="rgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
+      <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".4" stroke-width="11" style="filter:blur(7px)"/>
+      <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/>
+      <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 34"/>
+      ${[0, 1, 2].map((k) => `<circle r="6" fill="#B3FBD5" style="filter:drop-shadow(0 0 7px #90FFCC)"><animateMotion dur="12s" begin="${k * 4}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
+      ${STOPS.map((s, i) => `<div class="stop" data-drop="${s.id}" style="left:${PX[i]}%;top:${PY[i]}px;--c:${s.c}">
+        ${pileHtml(g[s.id], "up")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
+        <div class="tag" data-stage="${s.id}"><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small><b>${g[s.id].length}</b> item${g[s.id].length === 1 ? "" : "s"} · ${s.note}</small></div></div>`).join("")}
+      <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[4] + 20}%;top:${PY[4] + 8}px"><i></i>Done</div></div>`;
   } else {
     main.style.overflowY = "hidden";
     const pts = STOPS.map((s) => s.pos);
