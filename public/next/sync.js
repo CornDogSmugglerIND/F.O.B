@@ -11,7 +11,8 @@ import { mergeDocs } from "./syncMerge.js?v=1";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";
-const SHADOW = "coalition-sync-shadow-v1";
+const SHADOW = "coalition-sync-shadow-v2"; // v1 kept a full JSON copy of every record: too big for localStorage, so it silently never saved
+const hash = (r) => { const t = JSON.stringify({ ...r, updatedAt: undefined }); let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + "." + t.length; };
 
 let rawSet = null; // localStorage.setItem before our hook: internal writes use it so they don't retrigger pushes
 const read = (k, dflt) => { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v ?? dflt; } catch { return dflt; } };
@@ -24,8 +25,8 @@ function applyDoc(doc) {
   writeRaw(LS_ITEMS, doc.items || []);
   writeRaw(LS_SPACES, doc.spaces || []);
   const shadow = { items: {}, spaces: {}, tombItems: doc.removedItems || [], tombSpaces: doc.removedSpaces || [] };
-  for (const r of doc.items || []) shadow.items[String(r.id)] = JSON.stringify(r);
-  for (const r of doc.spaces || []) shadow.spaces[String(r.id)] = JSON.stringify(r);
+  for (const r of doc.items || []) shadow.items[String(r.id)] = hash(r);
+  for (const r of doc.spaces || []) shadow.spaces[String(r.id)] = hash(r);
   writeRaw(SHADOW, shadow);
   return JSON.stringify(local()) !== before;
 }
@@ -34,8 +35,7 @@ function diffed(curList, shadowMap, at) {
   let stamped = false;
   const list = (curList || []).map((r) => {
     const prev = shadowMap ? shadowMap[String(r.id)] : undefined;
-    if (prev !== undefined && prev === JSON.stringify(r)) return r;
-    if (prev !== undefined && JSON.stringify({ ...r, updatedAt: undefined }) === JSON.stringify({ ...JSON.parse(prev), updatedAt: undefined })) return r;
+    if (prev !== undefined && prev === hash(r)) return r;
     stamped = true;
     return { ...r, updatedAt: at };
   });
@@ -68,10 +68,11 @@ async function push() {
   pushing = false;
   if (again) { again = false; schedule(); }
 }
-function schedule() { clearTimeout(timer); timer = setTimeout(push, 2500); }
+function schedule() { clearTimeout(timer); timer = setTimeout(push, 700); }
 
 export function initSync(cb) {
   onMerged = cb || null;
+  try { localStorage.removeItem("coalition-sync-shadow-v1"); } catch { /* ignore */ }
   rawSet = localStorage.setItem.bind(localStorage);
   localStorage.setItem = (k, v) => { const r = rawSet(k, v); if (k === LS_ITEMS || k === LS_SPACES) schedule(); return r; };
   (async () => {
@@ -80,8 +81,10 @@ export function initSync(cb) {
       if (r.ok) {
         const d = await r.json();
         if (d.doc && ((d.doc.items || []).length || (d.doc.spaces || []).length || (d.doc.removedItems || []).length)) {
-          const sh = read(SHADOW, { tombItems: [], tombSpaces: [] });
-          const merged = mergeDocs({ ...local(), removedItems: sh.tombItems || [], removedSpaces: sh.tombSpaces || [] }, d.doc);
+          const sh = read(SHADOW, { items: {}, spaces: {}, tombItems: [], tombSpaces: [] }), cur = local(), at = new Date().toISOString();
+          // deletes made on this device that haven't been pushed yet must survive the pull, or the server copy brings them back
+          const pend = (map, list) => { const have = idSet(list); return Object.keys(map || {}).filter((id) => !have.has(id)).map((id) => ({ id, at })); };
+          const merged = mergeDocs({ ...cur, removedItems: [...(sh.tombItems || []), ...pend(sh.items, cur.items)], removedSpaces: [...(sh.tombSpaces || []), ...pend(sh.spaces, cur.spaces)] }, d.doc);
           const changed = applyDoc(merged);
           if (changed && onMerged) onMerged();
         }
