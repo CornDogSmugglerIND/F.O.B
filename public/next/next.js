@@ -138,7 +138,7 @@ function renderCommand() {
     [g.sold.length, "Pack and ship", "channels", "sold"],
   ].map(([n, t, v, st]) => `<button class="pill" data-goto="${v}" ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
-    main.style.overflowY = "auto";
+    main.style.overflowY = "auto"; main.style.overflowX = "hidden";
     const H = 1610, W = 390, PX = [27, 73, 27, 73, 30], PY = [260, 550, 840, 1130, 1420];
     const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
     let path = `M${pts[0][0]},${pts[0][1]}`;
@@ -154,7 +154,7 @@ function renderCommand() {
         <div class="tag" data-stage="${s.id}"><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small><b>${g[s.id].length}</b> item${g[s.id].length === 1 ? "" : "s"} · ${s.note}</small></div></div>`).join("")}
       <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[4] + 20}%;top:${PY[4] + 8}px"><i></i>Done</div></div>`;
   } else {
-    main.style.overflowY = "hidden";
+    main.style.overflowY = "hidden"; main.style.overflowX = "";
     const pts = STOPS.map((s) => s.pos);
     const path = pts.map((p, i) => `${i ? "L" : "M"}${p[0] * 10},${p[1] * 6}`).join(" ");
     main.innerHTML = `<div class="road"><svg viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
