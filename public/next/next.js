@@ -30,9 +30,11 @@ const STOPS = [
 ];
 const MOVE_TO = { intake: "intake", staged: "staged", sold: "sold", shipped: "shipped" };
 
+/* The roadmap tracks what you bring in through the app (Scouter). Your eBay inventory lives in Collection, Channels and Spaces. */
+const mine = (list) => list.filter((i) => i.source === "scouter" || i.source === "app");
 function groups() {
   const g = Object.fromEntries(STOPS.map((s) => [s.id, []]));
-  for (const it of items) {
+  for (const it of mine(items)) {
     const ph = phaseFromItem(it);
     const s = STOPS.find((x) => x.phases.includes(ph));
     if (s) g[s.id].push(it);
@@ -99,7 +101,7 @@ function stageSheet(sid) {
 /* ---------- header ---------- */
 function renderStats() {
   const g = groups();
-  const open = items.filter((i) => !["ended", "sold", "packed", "shipped", "delivered"].includes(phaseFromItem(i)));
+  const open = mine(items).filter((i) => !["ended", "sold", "packed", "shipped", "delivered"].includes(phaseFromItem(i)));
   const value = open.reduce((a, i) => a + worth(i), 0);
   $("#stats").innerHTML = [[money(value), "Total value in progress"], [g.intake.length + g.staged.length, "Items need action"], [g.listed.length, "Live on eBay"]]
     .map(([b, l]) => `<div class="stat"><b>${b}</b><span>${l}</span></div>`).join("");
@@ -124,8 +126,8 @@ function initAvatar() {
 
 /* ---------- Command ---------- */
 const phone = () => matchMedia("(max-width:820px)").matches;
-function pileHtml(list, cls) {
-  if (!list.length) return `<div class="empty ${cls}">Nothing here yet</div>`;
+function pileHtml(list, cls, emptyMsg) {
+  if (!list.length) return `<div class="empty ${cls}">${esc(emptyMsg || "Nothing here yet")}</div>`;
   const top = list[0]; const src = photoOf(top);
   const face = (it, k) => { const p = photoOf(it); return `<div class="pc ${k === "" ? "k-tilt" : k}" ${k === "" ? `data-item="${esc(it.id)}"` : ""}>${p ? `<img src="${esc(p)}" alt="" draggable="false">` : `<div class="ini">${esc(nameOf(it).charAt(0).toUpperCase())}</div>`}${k === "" ? `<span class="cap"><span>${esc(nameOf(it))}</span><em>${money(worth(it))}</em></span>` : ""}</div>`; };
   return `<div class="pile ${cls}">${list[2] ? face(list[2], "b2") : ""}${list[1] ? face(list[1], "b1") : ""}${face(top, "")}${list.length > 1 ? `<span class="more" data-stage="${""}">+${list.length - 1} more</span>` : ""}</div>`;
@@ -150,7 +152,7 @@ function renderCommand() {
       <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 34"/>
       ${[0, 1, 2].map((k) => `<circle r="6" fill="#B3FBD5" style="filter:drop-shadow(0 0 7px #90FFCC)"><animateMotion dur="12s" begin="${k * 4}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
       ${STOPS.map((s, i) => `<div class="stop" data-drop="${s.id}" style="left:${PX[i]}%;top:${PY[i]}px;--c:${s.c}">
-        ${pileHtml(g[s.id], "up")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
+        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: scan your first item" : "")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
         <div class="tag" data-stage="${s.id}"><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small><b>${g[s.id].length}</b> item${g[s.id].length === 1 ? "" : "s"} · ${s.note}</small></div></div>`).join("")}
       <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[4] + 20}%;top:${PY[4] + 8}px"><i></i>Done</div></div>`;
   } else {
@@ -164,7 +166,7 @@ function renderCommand() {
       <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 34" vector-effect="non-scaling-stroke"/>
       ${[0, 1, 2].map((k) => `<circle r="6" fill="#B3FBD5" style="filter:drop-shadow(0 0 7px #90FFCC)"><animateMotion dur="9s" begin="${k * 3}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
       ${STOPS.map((s) => `<div class="stop" data-drop="${s.id}" style="left:${s.pos[0]}%;top:${s.pos[1]}%;--c:${s.c}">
-        ${pileHtml(g[s.id], "up")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
+        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: scan your first item" : "")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
         <div class="tag" data-stage="${s.id}"><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small><b>${g[s.id].length}</b> item${g[s.id].length === 1 ? "" : "s"} · ${s.note}</small></div></div>`).join("")}
       <div class="flag start" style="left:${STOPS[0].pos[0] - 6}%;top:${STOPS[0].pos[1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${STOPS[4].pos[0] - 2}%;top:${STOPS[4].pos[1] + 12}%"><i></i>Done</div>
       <div class="dock">${pills}</div><div class="hint">Tap a stop to open it · hold a card and drop it on a stop to move it</div></div>`;
