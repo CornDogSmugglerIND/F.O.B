@@ -162,3 +162,14 @@ main{position:fixed;z-index:5;left:106px;right:20px;top:108px;bottom:20px;overfl
 
 body:has(.co-bar) .toast{bottom:180px}
 @media (min-width:821px){body:has(.co-bar) .toast{bottom:130px}}
+@media (max-width:820px){
+ .top{gap:8px}
+ .top .brand{flex:1 1 auto;min-width:0}
+ .top .brand-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:18px}
+ .syncbtn{flex:none;white-space:nowrap;font-size:12px;padding:0 10px;min-width:64px}
+ .avatar{flex:none}
+ .top .link{flex:none}
+ .stop .dot{width:22px;height:22px}
+ .stop .dot::before{content:"";position:absolute;inset:-12px}
+}
+.tile .tini{position:absolute;inset:0;display:grid;place-items:center;font-size:42px;font-weight:800;color:var(--mute);opacity:.55}.tile{position:relative}

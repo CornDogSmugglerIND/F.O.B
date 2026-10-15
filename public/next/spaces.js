@@ -1,4 +1,4 @@
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, loadItems, loadSpaces, saveSpaces, assign } from "./shared.js?v=2";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, loadItems, loadSpaces, saveSpaces, assign } from "./shared.js?v=3";
 import { fly, rectOf, sleep, openCard } from "./kit.js?v=1";
 
 /* Spaces = his real storage, as a camera you fly through:

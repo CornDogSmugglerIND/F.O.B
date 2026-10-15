@@ -1,4 +1,4 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=2";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=3";
 import { openCard } from "./kit.js?v=1";
 
 let ctx = null;

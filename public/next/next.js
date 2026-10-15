@@ -1,8 +1,8 @@
 import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=5";
-import { renderCollection } from "./collection.js?v=4";
-import { renderSpaces } from "./spaces.js?v=5";
-import { renderChannels } from "./channels.js?v=4";
+import { renderCollection } from "./collection.js?v=5";
+import { renderSpaces } from "./spaces.js?v=6";
+import { renderChannels } from "./channels.js?v=5";
 import { renderSettings } from "./settings.js?v=3";
 import { initSync } from "./sync.js?v=1";
 import { initKit } from "./kit.js?v=1";
@@ -12,7 +12,7 @@ const LS_AVATAR = "cdsc-avatar";
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const money = (n) => "$" + (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const nameOf = (it) => it.title || it.productName || "Untitled";
+const nameOf = (it) => { const t = it.title || it.productName || ""; return !t ? "Untitled" : /^sku-\d+$/i.test(t.trim()) ? `Draft listing …${t.trim().slice(-4)}` : t; };
 const photoOf = (it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "";
 const worth = (it) => (Number(it.price) || 0) * (Number(it.quantity) || 1);
 
@@ -90,7 +90,7 @@ function stageSheet(sid) {
   const s = openSheet(`
     <a class="back" href="#" data-close>‹ Back</a>
     <h2>${esc(stop.label)}</h2><div class="sub">${list.length} ${list.length === 1 ? "item" : "items"} · ${esc(stop.note)}</div>
-    ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : ""}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}.</p>` : ""}<button class="btn go" id="seeAll" type="button" style="margin-top:12px">See all ${list.length} in Channels</button>` : `<p class="sub">Nothing here yet.</p>`}`);
+    ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : `<div class="tini">${esc(nameOf(it).replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "?")}</div>`}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}.</p>` : ""}<button class="btn go" id="seeAll" type="button" style="margin-top:12px">See all ${list.length} in Channels</button>` : `<p class="sub">Nothing here yet.</p>`}`);
   s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
   s.querySelectorAll("[data-item]").forEach((b) => b.addEventListener("click", () => itemSheet(b.dataset.item)));
   s.querySelector("#seeAll")?.addEventListener("click", () => { window.__chStage = ({ intake: "intake", staged: "staged", listed: "listed", sold: "sold", shipped: "shipped" })[sid] || "all"; go("channels"); });
@@ -242,10 +242,10 @@ function setLink(on) { const l = $("#link"); if (!l) return; l.classList.toggle(
 fetch("/api/channels/status").then((r) => r.json()).then((d) => setLink((d.channels || []).some((c) => c.id === "ebay" && c.configured))).catch(() => {});
 async function syncAll(auto) {
   const btn = $("#syncBtn"); if (btn.classList.contains("busy")) return;
-  btn.classList.add("busy"); btn.textContent = "Syncing…";
+  btn.classList.add("busy"); btn.textContent = (phone() ? "…" : "Syncing…");
   if (!auto) toast("Pulling eBay…");
   try {
-    const pulled = await pullEbay((n, t) => { btn.textContent = `Syncing ${n}/${t}`; });
+    const pulled = await pullEbay((n, t) => { btn.textContent = (phone() ? `${n}/${t}` : `Syncing ${n}/${t}`); });
     if (pulled.error) { toast(auto ? "Showing saved data. eBay didn't answer." : pulled.error); return; }
     const body = { partial: !pulled.complete };
     const list = loadItems(); const all = pulled.rows; const rows = all.filter((r) => r.offerKnown !== false);

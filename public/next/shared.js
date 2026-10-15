@@ -3,7 +3,7 @@ export const LS_ITEMS = "coalition-items-v4";
 export const LS_SPACES = "coalition-spaces-v4";
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const money = (n) => "$" + (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-export const nameOf = (it) => it.title || it.productName || "Untitled";
+export const nameOf = (it) => { const t = it.title || it.productName || ""; return !t ? "Untitled" : /^sku-\d+$/i.test(t.trim()) ? `Draft listing …${t.trim().slice(-4)}` : t; };
 export const photoOf = (it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "";
 const DONE = ["sold", "packed", "shipped", "delivered"];
 export const onHand = (it) => !it.ended && !DONE.includes(it.phase);

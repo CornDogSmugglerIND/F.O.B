@@ -1,5 +1,5 @@
 import { openCard } from "./kit.js?v=1";
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=2";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=3";
 
 let ctx = null;
 const S = { q: "", stage: "all", sort: "value", sel: new Set(), selecting: false, tab: "sealed", zoom: null, trash: null, menu: false };
