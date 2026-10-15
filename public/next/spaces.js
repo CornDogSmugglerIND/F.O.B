@@ -51,23 +51,17 @@ function head(w, crumbs) {
   return `<header class="spx-head"><div class="spx-crumbs">${S.level !== "area" ? `<button class="spx-back" data-up type="button" aria-label="Back">‹</button>` : ""}${crumbs.map((c, i) => c.go ? `<button class="spx-crumb" data-crumb="${i}" type="button">${esc(c.t)}</button>` : `<h2>${esc(c.t)}</h2>`).join(`<span class="spx-sep">›</span>`)}</div>
     <button class="spx-un${w.un.length ? "" : " done"}" data-un type="button">${w.un.length ? `<b>${w.un.length}</b> not in a bin` : "Everything is in a bin"}</button></header>`;
 }
-function areaView(w) {
-  const rows = SHELVES.map((sh) => {
-    const tiles = sh.bins.map((id) => `<div class="spx-tile"><img src="${IMG}${PHYS[id].closed}" alt="" draggable="false"><span>${esc(nm(w, id))}</span><em>${w.inBin(id).length}</em></div>`).join("");
-    const all = sh.bins.flatMap((id) => w.inBin(id));
-    return `<button class="spx-shelf k-tilt" data-shelf="${sh.id}" data-tilt=".5" type="button" aria-label="${esc(shelfName(sh))}, ${sh.bins.length} bins"><div class="spx-win">${tiles}</div><div class="spx-board"></div>
-      <div class="spx-tag"><b>${esc(shelfName(sh))}</b><span>${esc(sh.kind || "")}${sh.kind ? " · " : ""}${sh.bins.length} bins · ${all.length} items · ${money(val(all))}</span></div></button>`;
-  }).join("");
-  return `<div class="spx-stage"><div class="spx-room"><div class="spx-rack"><i class="spx-post l"></i><i class="spx-post r"></i>${rows}</div><div class="spx-floor"></div></div><p class="spx-hint">Tap a shelf to fly in</p></div>`;
-}
-function shelfView(w) {
-  const sh = SHELVES.find((x) => x.id === S.shelf);
-  const hot = sh.bins.map((id) => { const [x, y, ww, hh] = PHYS[id].rect, n = w.inBin(id).length;
+function hotspots(w, sh) {
+  return sh.bins.map((id) => { const [x, y, ww, hh] = PHYS[id].rect, n = w.inBin(id).length;
     return `<button class="spx-hot" data-bin="${id}" style="left:${x}%;top:${y}%;width:${ww}%;height:${hh}%" type="button" aria-label="${esc(nm(w, id))}"><span class="spx-lab"><b>${esc(nm(w, id))}</b><em>${n} item${n === 1 ? "" : "s"}</em></span></button>`; }).join("");
-  const rows = [...sh.bins].reverse().map((id) => { const sp = w.spaces.find((s) => s.id === id) || PHYS[id], its = w.inBin(id);
-    return `<button class="spx-binrow k-tilt" data-bin="${id}" data-tilt=".6" type="button"><img src="${IMG}${PHYS[id].closed}" alt=""><span><b>${esc(sp.name)}</b><em>${esc(sp.sub || "")}</em><small>${its.length} item${its.length === 1 ? "" : "s"} · ${money(val(its))}</small></span></button>`; }).join("");
-  return `<div class="spx-stage"><div class="spx-shelfview"><div class="spx-photo" data-focus><img src="${IMG}${sh.photo}" alt="${esc(shelfName(sh))}" draggable="false">${hot}${brs}</div>
-    <aside class="spx-side"><div class="spx-sidehead"><h3>${esc(shelfName(sh))}</h3><button class="spx-edit" data-rename-shelf type="button" aria-label="Rename shelf">✎</button></div><p class="spx-note">Top of the stack is at the top. Tap a bin to open it.</p><div class="spx-binrows">${rows}</div></aside></div></div>`;
+}
+function areaView(w) {
+  const stacks = SHELVES.map((sh) => {
+    const all = sh.bins.flatMap((id) => w.inBin(id));
+    return `<figure class="spx-stack"><div class="spx-photo"><img src="${IMG}${sh.photo}" alt="${esc(shelfName(sh))}" draggable="false">${hotspots(w, sh)}${brs}</div>
+      <figcaption><span><b>${esc(shelfName(sh))}</b><em>${esc(sh.kind || "")}${sh.kind ? " · " : ""}${sh.bins.length} bins · ${all.length} items · ${money(val(all))}</em></span><button class="spx-edit" data-rename-shelf="${sh.id}" type="button" aria-label="Rename ${esc(shelfName(sh))}">✎</button></figcaption></figure>`;
+  }).join("");
+  return `<div class="spx-stage"><div class="spx-areaview">${stacks}</div><p class="spx-hint">Tap a bin to zoom in</p></div>`;
 }
 function binView(w) {
   const sp = w.spaces.find((s) => s.id === S.bin); if (!sp) return `<div class="spx-stage"><p class="spx-empty">That bin is gone.</p></div>`;
@@ -87,9 +81,8 @@ function binView(w) {
 function paint() {
   const w = world(), sh = SHELVES.find((x) => x.id === S.shelf), sp = w.spaces.find((s) => s.id === S.bin);
   const crumbs = [{ t: "Spaces", go: S.level !== "area" }];
-  if (S.level !== "area" && sh) crumbs.push({ t: shelfName(sh), go: S.level === "bin" });
   if (S.level === "bin" && sp) crumbs.push({ t: sp.name });
-  const body = S.level === "area" ? areaView(w) : S.level === "shelf" ? shelfView(w) : binView(w);
+  const body = S.level === "area" ? areaView(w) : binView(w);
   ctx.host.innerHTML = `<div class="sp-wrap spx" data-level="${S.level}">${head(w, crumbs)}${body}</div>`;
   if (S.level === "bin" && S.open) setLid(true, true);
   wire(w);
@@ -99,7 +92,8 @@ async function camera(next, fromEl) {
   try {
     const from = rectOf(fromEl), old = ctx.host.querySelector(".spx-stage"), deeper = rank(next.level) > rank(S.level), prev = { shelf: S.shelf, bin: S.bin };
     if (old && from) { const r = old.getBoundingClientRect(); old.style.transformOrigin = `${from.left + from.width / 2 - r.left}px ${from.top + from.height / 2 - r.top}px`;
-      old.animate(deeper ? [{ transform: "scale(1)", opacity: 1, filter: "blur(0)" }, { transform: "scale(2.2)", opacity: 0, filter: "blur(7px)" }] : [{ transform: "scale(1)", opacity: 1 }, { transform: "scale(.84)", opacity: 0, filter: "blur(4px)" }], { duration: 340, easing: "cubic-bezier(.5,0,.8,.45)", fill: "forwards" }); await sleep(300); }
+      const dive = Math.min(5, Math.max(2.2, (r.width * .85) / Math.max(1, from.width)));
+      old.animate(deeper ? [{ transform: "scale(1)", opacity: 1, filter: "blur(0)" }, { transform: `scale(${dive})`, opacity: 0, filter: "blur(6px)" }] : [{ transform: "scale(1)", opacity: 1 }, { transform: "scale(.84)", opacity: 0, filter: "blur(4px)" }], { duration: 340, easing: "cubic-bezier(.5,0,.8,.45)", fill: "forwards" }); await sleep(300); }
     Object.assign(S, next); paint(); try { document.getElementById("main").scrollTo(0, 0); } catch { /* ignore */ }
     const st = ctx.host.querySelector(".spx-stage"), foc = ctx.host.querySelector("[data-focus]");
     if (deeper) { if (foc && from) fly(foc, from, { dur: 560 }); st && st.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: "ease-out" }); }
@@ -144,18 +138,17 @@ function pickSheet(targetId) {
 }
 
 /* ---------- wiring ---------- */
-function up() { if (busy) return; const f = ctx.host.querySelector("[data-focus]"); if (S.level === "bin") camera({ level: "shelf", bin: null, open: false }, f); else if (S.level === "shelf") camera({ level: "area", shelf: null, bin: null, open: false }, f); }
+function up() { if (busy) return; const f = ctx.host.querySelector("[data-focus]"); if (S.level === "bin") camera({ level: "area", shelf: null, bin: null, open: false }, f); }
 function wire(w) {
   const h = ctx.host, $ = (s) => h.querySelector(s);
-  h.querySelectorAll("[data-shelf]").forEach((b) => b.addEventListener("click", () => camera({ level: "shelf", shelf: b.dataset.shelf, bin: null, open: false }, b)));
   h.querySelectorAll("[data-bin]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.bin; camera({ level: "bin", shelf: (PHYS[id] || {}).shelf || S.shelf, bin: id, open: false }, b.classList.contains("spx-hot") ? b : $("[data-focus]") || b); }));
   $("[data-up]")?.addEventListener("click", up);
-  h.querySelectorAll("[data-crumb]").forEach((b) => b.addEventListener("click", () => { if (busy) return; const i = Number(b.dataset.crumb); if (i === 0) camera({ level: "area", shelf: null, bin: null, open: false }, b); else if (S.level === "bin") camera({ level: "shelf", bin: null, open: false }, b); }));
+  h.querySelectorAll("[data-crumb]").forEach((b) => b.addEventListener("click", () => { if (busy) return; const i = Number(b.dataset.crumb); if (i === 0) camera({ level: "area", shelf: null, bin: null, open: false }, b); }));
   $("[data-un]")?.addEventListener("click", () => pickSheet(null));
   $("#lidBtn")?.addEventListener("click", (e) => { e.stopPropagation(); setLid(!S.open); });
   $("#flip")?.addEventListener("click", () => setLid(!S.open));
   $("[data-add]")?.addEventListener("click", () => pickSheet(S.bin));
-  $("[data-rename-shelf]")?.addEventListener("click", () => { const sh = SHELVES.find((x) => x.id === S.shelf); renameSheet("Rename shelf", shelfName(sh), (n) => { const m = shelfNames(); m[sh.id] = n; try { localStorage.setItem(SHELVES_KEY, JSON.stringify(m)); } catch { /* ignore */ } }); });
+  h.querySelectorAll("[data-rename-shelf]").forEach((eb) => eb.addEventListener("click", (ev) => { ev.stopPropagation(); const sh = SHELVES.find((x) => x.id === eb.dataset.renameShelf); renameSheet("Rename shelf", shelfName(sh), (n) => { const m = shelfNames(); m[sh.id] = n; try { localStorage.setItem(SHELVES_KEY, JSON.stringify(m)); } catch { /* ignore */ } }); }));
   $("[data-rename-bin]")?.addEventListener("click", () => { const sp = loadSpaces().find((s) => s.id === S.bin); renameSheet("Rename bin", sp.name, (n) => { const all = loadSpaces(); all.find((s) => s.id === S.bin).name = n; saveSpaces(all); ctx.refresh(); }); });
   $("[data-out]")?.addEventListener("click", () => { const its = w.inBin(S.bin), name = nm(w, S.bin), prev = snapshot(); assign(its.map((i) => i.id), null); ctx.refresh(); paint(); ctx.toastUndo(`Took ${its.length} out of ${name}`, () => { restore(prev); ctx.refresh(); paint(); }); });
   $("[data-del]")?.addEventListener("click", () => { const its = w.inBin(S.bin), name = nm(w, S.bin), prev = snapshot(); assign(its.map((i) => i.id), null); saveSpaces(loadSpaces().filter((x) => x.id !== S.bin)); S.level = "area"; S.bin = null; S.open = false; ctx.refresh(); paint(); ctx.toastUndo(`Deleted ${name}`, () => { restore(prev); ctx.refresh(); paint(); }); });

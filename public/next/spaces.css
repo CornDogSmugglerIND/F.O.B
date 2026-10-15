@@ -79,3 +79,15 @@
   .spx-items{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (prefers-reduced-motion:reduce){.spx-flip .spx-lid,.spx-items{transition:none}}
+/* area = the real stacked photos; tap a bin to dive in */
+.spx-areaview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px;align-items:start;justify-items:center}
+.spx-stack{margin:0;display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0;max-width:100%}
+.spx-stack .spx-photo>img{max-height:60vh}
+.spx-stack figcaption{display:flex;align-items:center;gap:10px}
+.spx-stack figcaption b{display:block;font-size:19px}
+.spx-stack figcaption em{font-style:normal;color:var(--mute);font-size:14px}
+@media (max-width:820px){
+ .spx-areaview{grid-template-columns:1fr;gap:22px}
+ .spx-stack .spx-photo>img{max-height:56vh}
+}
+.spx-stack figcaption b{color:var(--ink)}
