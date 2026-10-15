@@ -80,8 +80,8 @@ function zoom(list, el) {
   openCard(list, {
     index: idx, from: el, photo: photoOf, name: nameOf,
     info: (it) => { const sp = loadSpaces().find((s) => s.id === it.spaceId); const on = S.sel.has(String(it.id));
-      return `<div class="sub">${esc(STAGE_LABEL[stageOf(it)] || "")}</div><div class="row"><span>Price</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${(it.photos || []).length > 1 ? `<div class="row"><span>Photos</span><span>${it.photos.length}, all kept together</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div><button class="btn" data-sel type="button">${on ? "Deselect" : "Select for bulk actions"}</button>`; },
-    wire: (root, it) => root.querySelector("[data-sel]")?.addEventListener("click", () => { toggle(String(it.id)); paint(); root.querySelector("[data-sel]").textContent = S.sel.has(String(it.id)) ? "Deselect" : "Select for bulk actions"; }),
+      return `<div class="sub">${esc(STAGE_LABEL[stageOf(it)] || "")}</div><div class="row"><span>Price</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${(it.photos || []).length > 1 ? `<div class="row"><span>Photos</span><span>${it.photos.length}, all kept together</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div>${stageOf(it) === "staged" ? `<button class="btn go" data-build type="button">Build the listing</button>` : ""}<button class="btn" data-sel type="button">${on ? "Deselect" : "Select for bulk actions"}</button>${String(it.id).startsWith("ebay-") ? "" : `<button class="btn warn" data-rm type="button">Delete this item</button>`}`; },
+    wire: (root, it, api) => { root.querySelector("[data-build]")?.addEventListener("click", () => { api.close(); buildSheet(it); }); root.querySelector("[data-rm]")?.addEventListener("click", () => removeItem(it, api.close)); root.querySelector("[data-sel]")?.addEventListener("click", () => { toggle(String(it.id)); paint(); root.querySelector("[data-sel]").textContent = S.sel.has(String(it.id)) ? "Deselect" : "Select for bulk actions"; }); },
   });
 }
 function wire(all) {
@@ -119,4 +119,55 @@ function bulk(kind) {
     s.querySelector(".co-znav .btn").addEventListener("click", ctx.closeSheet);
   }
 }
-export function renderChannels(host, api) { ctx = { host, ...api }; if (window.__chStage) { S.stage = window.__chStage; S.more = {}; window.__chStage = null; } if (!host.querySelector(".ch-wrap")) S.sel.clear(); paint(); }
+
+/* ---------- Build the listing: review, check with eBay, list ---------- */
+function patchItem(id, mut) { const l = loadItems(); const it = l.find((x) => String(x.id) === String(id)); if (!it) return null; mut(it); it.updatedAt = new Date().toISOString(); saveItems(l); ctx.refresh(); return it; }
+function removeItem(it, close) {
+  const prev = snap();
+  if (commit((l) => { const k = l.findIndex((x) => String(x.id) === String(it.id)); if (k >= 0) l.splice(k, 1); })) { close && close(); S.sel.delete(String(it.id)); paint(); ctx.toastUndo(`Deleted ${nameOf(it)}`, () => { restore(prev); ctx.refresh(); paint(); }); }
+}
+function buildSheet(it) {
+  if (!it) return;
+  const ph = it.photos || [];
+  const s = ctx.openSheet(`<a class="back" href="#" data-close>‹ Back</a><h2>Build the listing</h2>
+    <div class="bl-ph">${ph.map((p) => `<img src="${esc(p.dataUrl || p.url || "")}" alt="" draggable="false">`).join("")}</div>
+    <p class="sub">${ph.length} photo${ph.length === 1 ? "" : "s"}, kept together on one listing</p>
+    <label class="sc-f"><span>Title</span><input id="blTitle" maxlength="80" value="${esc(nameOf(it))}"></label>
+    <label class="sc-f"><span>Price</span><input id="blPrice" inputmode="decimal" value="${esc(Number(it.price) || "")}"></label>
+    <label class="sc-f"><span>Quantity</span><input id="blQty" inputmode="numeric" value="${esc(Number(it.quantity) || 1)}"></label>
+    <label class="sc-f"><span>Condition</span><select id="blCond">${[["NM", "Near Mint"], ["LP", "Lightly Played"], ["MP", "Moderately Played"], ["HP", "Heavily Played"]].map(([k, l]) => `<option value="${k}"${String(it.condition || "NM").toUpperCase() === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+    <div id="blMsg" class="sub bl-msg" role="status">Check it with eBay first. Nothing goes live until you tap List on eBay twice.</div>
+    <div class="co-znav bl-act"><button class="btn" id="blCheck" type="button">Check with eBay</button><button class="btn go" id="blGo" type="button">List on eBay</button></div>`);
+  const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#blMsg"); m.textContent = t; m.style.color = bad ? "var(--org)" : ""; };
+  let armed = null;
+  const read = () => {
+    const title = $("#blTitle").value.trim().slice(0, 80), price = parseFloat(String($("#blPrice").value).replace(/[^0-9.]/g, "")), qty = Math.max(1, parseInt($("#blQty").value, 10) || 1), cond = $("#blCond").value;
+    if (!title) { msg("Add a title first.", true); return null; }
+    if (!(price > 0)) { msg("Add a price first.", true); return null; }
+    return { title, price, quantity: qty, condition: cond };
+  };
+  const call = async (dryRun) => {
+    const f = read(); if (!f) return null;
+    const saved = patchItem(it.id, (i) => Object.assign(i, f)) || Object.assign({}, it, f);
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 90000);
+    try {
+      const res = await fetch("/api/channels/ebay/publish-item", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item: saved, dryRun }), signal: ctl.signal });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok || !out.ok) { msg(out.error || "eBay said no. Check the details and try again.", true); return null; }
+      return out;
+    } catch (e) { msg(e.name === "AbortError" ? "eBay took too long. Nothing was listed. Try again." : "Couldn't reach eBay. Nothing was listed.", true); return null; }
+    finally { clearTimeout(to); }
+  };
+  const busy = (on) => { $("#blCheck").disabled = on; $("#blGo").disabled = on; };
+  $("#blCheck").addEventListener("click", async () => { armed = null; $("#blGo").textContent = "List on eBay"; busy(true); msg("Checking with eBay…"); const out = await call(true); busy(false); if (out) msg("eBay accepted this listing. Nothing was published."); });
+  $("#blGo").addEventListener("click", async () => {
+    const f = read(); if (!f) return;
+    if (!armed) { armed = setTimeout(() => { armed = null; $("#blGo").textContent = "List on eBay"; }, 10000); $("#blGo").textContent = `Yes, list it now for ${money(f.price)}`; msg("This goes live on eBay right away. Tap again to confirm.", false); return; }
+    clearTimeout(armed); armed = null; busy(true); msg("Listing on eBay…");
+    const out = await call(false); busy(false); $("#blGo").textContent = "List on eBay";
+    if (!out) return;
+    patchItem(it.id, (i) => { i.phase = "listed"; i.listingStatus = "active"; i.staged = false; i.channels = Object.assign({}, i.channels, { ebay: { listingId: out.listingId, offerId: out.offerId, sku: out.sku, at: new Date().toISOString() } }); });
+    ctx.closeSheet(); S.stage = "listed"; paint(); ctx.toast("Listed on eBay. Next: put it away in its bin.");
+  });
+}
+export function renderChannels(host, api) { ctx = { host, ...api }; if (window.__chStage) { S.stage = window.__chStage; S.more = {}; window.__chStage = null; } if (!host.querySelector(".ch-wrap")) S.sel.clear(); paint(); if (window.__chBuild) { const id = window.__chBuild; window.__chBuild = null; buildSheet(loadItems().find((x) => String(x.id) === String(id))); } }

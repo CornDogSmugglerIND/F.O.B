@@ -34,3 +34,5 @@
 .ch-tile .co-pick{cursor:pointer;z-index:4}
 .ch-tile.sel .co-art{outline:2px solid var(--sea);border-radius:14px}
 .ch-row{cursor:pointer}
+
+.bl-ph{display:flex;gap:8px;overflow-x:auto;margin:10px 0 4px}.bl-ph img{height:96px;width:auto;border-radius:10px;flex:none;background:#0f1211}.bl-msg{min-height:22px;margin:10px 0}.bl-act{display:flex;gap:10px;flex-wrap:wrap}.bl-act .btn{flex:1 1 150px}#sheet .sc-f select{height:46px;border-radius:12px;border:1px solid var(--chrome);background:#121413;color:var(--ink);padding:0 14px;font-size:17px}#sheet .sc-f{margin-top:10px}

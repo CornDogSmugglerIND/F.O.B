@@ -1,8 +1,8 @@
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=7";
+import { renderScouter } from "./scouter.js?v=8";
 import { renderCollection } from "./collection.js?v=6";
 import { renderSpaces } from "./spaces.js?v=8";
-import { renderChannels } from "./channels.js?v=6";
+import { renderChannels } from "./channels.js?v=7";
 import { renderSettings } from "./settings.js?v=3";
 import { initSync } from "./sync.js?v=3";
 import { initKit } from "./kit.js?v=1";
@@ -90,7 +90,7 @@ function itemSheet(id) {
     ${String(it.id).startsWith("ebay-") ? "" : `<button class="btn warn" data-del type="button" style="margin-top:14px">Delete this item</button>`}`);
   s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
   s.querySelector("[data-del]")?.addEventListener("click", () => { const prev = items.slice(); items = items.filter((i) => String(i.id) !== String(id)); saveItems(items); closeSheet(); render(); toastUndo(`Deleted ${nameOf(it)}`, () => { items = prev; saveItems(prev); render(); }); });
-  s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "spaces") { closeSheet(); go("spaces"); } else if (a === "channels") { window.__chStage = e.currentTarget.dataset.st || "listed"; go("channels"); } });
+  s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "spaces") { closeSheet(); go("spaces"); } else if (a === "channels") { window.__chStage = e.currentTarget.dataset.st || "listed"; if (e.currentTarget.dataset.st === "staged") window.__chBuild = id; go("channels"); } });
 }
 function stageSheet(sid) {
   const stop = STOPS.find((x) => x.id === sid); const list = groups()[sid];
