@@ -23,6 +23,7 @@ function live() {
   for (const it of shown()) {
     if (it.ended || SOLD.includes(it.phase) || /^(demo-|mp-)/.test(String(it.id))) continue;
     const lid = it.phase === "listed" && it.channels?.ebay?.listingId;
+    if (it.phase === "listed" && (!lid || /^demo/.test(lid))) continue; /* "Live on eBay" = has a real eBay listing id, nothing else */
     if (lid && !/^demo/.test(lid)) { const g = seen.get(lid); if (g) { g._kids.push(it); continue; } const rep = Object.assign({}, it, { _kids: [it] }); seen.set(lid, rep); out.push(rep); } else out.push(it);
   }
   for (const r of out) if (r._kids) { r._n = r._kids.length; GROUP.set(String(r.id), r._kids.map((k) => String(k.id))); if (r._n > 1) { const ps = r._kids.map((k) => Number(k.price) || 0); r._lo = Math.min(...ps); r._hi = Math.max(...ps); r.quantity = r._kids.reduce((a, k) => a + (Number(k.quantity) || 1), 0); } }
