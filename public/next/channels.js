@@ -86,7 +86,7 @@ function bar(n) {
   return `<div class="co-bar"><b>${n} selected</b>
     <select id="chBin" aria-label="Send to bin"><option value="">Send to bin…</option>${spaces.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")}</select>
     <span class="co-pct"><input id="chPct" inputmode="numeric" placeholder="±%" aria-label="Percent"><button class="btn" data-bulk="pct" type="button">Change price</button></span>
-    <button class="btn" data-bulk="live" type="button">Publish on eBay…</button><button class="btn" data-bulk="end" type="button">End on eBay…</button>
+    <button class="btn go" data-bulk="var" type="button">Make one variation listing</button><button class="btn" data-bulk="live" type="button">Publish on eBay…</button><button class="btn" data-bulk="end" type="button">End on eBay…</button>
     <button class="btn warn" data-bulk="del" type="button">Remove from app</button><button class="btn" data-bulk="clear" type="button">Clear</button>
     <small>Price and remove change this app only. Publish and end touch real eBay listings, so they ask first.</small></div>`;
 }
@@ -134,6 +134,7 @@ function restore(p) { try { if (p.items != null) localStorage.setItem("coalition
 function bulk(kind) {
   const ids = expand([...S.sel]); if (!ids.length && kind !== "clear") return; const set = new Set(ids.map(String)); if (kind === "del") hideIds([...set].filter((x) => x.startsWith("ebay-")));
   if (kind === "clear") { S.sel.clear(); paint(); return; }
+  if (kind === "var") { varSheet(loadItems().filter((i) => set.has(String(i.id)))); return; }
   if (kind === "pct") {
     const p = parseFloat(String(ctx.host.querySelector("#chPct").value).replace(/[^0-9.\-+]/g, "")); if (!Number.isFinite(p) || !p) { ctx.toast("Type a percent, like -10 or 15."); return; }
     const prev = snap(); if (commit((l) => l.forEach((i) => { if (set.has(String(i.id))) i.price = Math.max(0, Math.round((Number(i.price) || 0) * (1 + p / 100) * 100) / 100); }))) { S.sel.clear(); paint(); ctx.toastUndo(`Changed ${ids.length} prices ${p > 0 ? "+" : ""}${p}% in this app`, () => { restore(prev); ctx.refresh(); paint(); }); }
@@ -144,6 +145,41 @@ function bulk(kind) {
     const s = ctx.openSheet(`<a class="back" href="#" data-close>‹ Back</a><h2>${verb} ${ids.length} on eBay?</h2><p class="sub">This changes real eBay listings. It is switched off until you approve it, so nothing happens yet.</p><p>${kind === "live" ? "Publishing needs each item to have its listing built first. Use Build the listing on the item, then publish." : "Ending takes the listing off eBay. You can relist it later."}</p><div class="co-znav"><button class="btn" data-close type="button">OK, got it</button></div>`);
     s.querySelector(".co-znav .btn").addEventListener("click", ctx.closeSheet);
   }
+}
+
+/* ---------- Variation listing: several cards become ONE eBay listing ---------- */
+function varSheet(list) {
+  const ok = list.filter((i) => i.phase === "staged" && (i.photos || []).length);
+  if (ok.length < 2) { ctx.toast("Pick 2 or more items from Ready to list that have photos."); return; }
+  const s = ctx.openSheet(`<a class="back" href="#" data-close>‹ Back</a><h2>One variation listing</h2><p class="sub">${ok.length} cards become one eBay listing. Buyers pick their card.</p>
+    <div class="bl-vars" style="max-height:320px">${ok.map((i, k) => `<div style="gap:8px;align-items:center"><span>${esc(nameOf(i))}</span><input data-vp="${k}" inputmode="decimal" value="${esc(Number(i.price) || "")}" aria-label="Price" style="width:72px;text-align:right"></div>`).join("")}</div>
+    <div id="vlMsg" class="sub bl-msg" role="status">Check it first. Nothing goes live until you tap List on eBay twice.</div>
+    <div class="co-znav bl-act"><button class="btn" id="vlCheck" type="button">Check it</button><button class="btn go" id="vlGo" type="button">List on eBay</button></div>`);
+  const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#vlMsg"); m.textContent = t; m.style.color = bad ? "var(--org)" : ""; };
+  s.querySelector("[data-close]").addEventListener("click", (e) => { e.preventDefault(); ctx.closeSheet(); });
+  const read = () => { const ps = [...s.querySelectorAll("[data-vp]")].map((x) => parseFloat(String(x.value).replace(/[^0-9.]/g, ""))); if (ps.some((p) => !(p > 0))) { msg("Every card needs a price.", true); return null; } return ok.map((i, k) => Object.assign({}, i, { price: ps[k] })); };
+  const call = async (dryRun) => {
+    const items = read(); if (!items) return null;
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 120000);
+    try {
+      const r = await fetch("/api/channels/ebay/publish-variation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items, dryRun }), signal: ctl.signal });
+      const out = await r.json().catch(() => ({}));
+      if (!r.ok || !out.ok) { msg(out.error || "eBay said no. Nothing was listed.", true); return null; }
+      return { out, items };
+    } catch (e) { msg(e.name === "AbortError" ? "That took too long. Nothing was confirmed. Check eBay before trying again." : "Couldn't reach the server. Nothing was listed.", true); return null; } finally { clearTimeout(to); }
+  };
+  const busy = (on) => { $("#vlCheck").disabled = on; $("#vlGo").disabled = on; };
+  let armed = null;
+  $("#vlCheck").addEventListener("click", async () => { armed = null; $("#vlGo").textContent = "List on eBay"; busy(true); msg("Checking…"); const r = await call(true); busy(false); if (r) msg(`Looks good: "${r.out.title}", ${r.out.count} cards. This only checks the details. It doesn't test eBay.`); });
+  $("#vlGo").addEventListener("click", async () => {
+    if (!read()) return;
+    if (!armed) { armed = setTimeout(() => { armed = null; $("#vlGo").textContent = "List on eBay"; }, 10000); $("#vlGo").textContent = `Yes, list all ${ok.length} now`; msg("This goes live on eBay right away. Tap again to confirm.", false); return; }
+    clearTimeout(armed); armed = null; busy(true); msg("Listing on eBay…");
+    const r = await call(false); busy(false); $("#vlGo").textContent = "List on eBay"; if (!r) return;
+    const lid = r.out.published?.listingId || r.out.groupId, ids = new Set(ok.map((i) => String(i.id))), price = new Map(r.items.map((i) => [String(i.id), i.price]));
+    commit((l) => l.forEach((i) => { if (ids.has(String(i.id))) { i.phase = "listed"; i.listingStatus = "active"; i.staged = false; i.price = price.get(String(i.id)); i.channels = Object.assign({}, i.channels, { ebay: { listingId: lid, sku: `hud-${i.id}`, at: new Date().toISOString() } }); i.updatedAt = new Date().toISOString(); } }));
+    S.sel.clear(); ctx.closeSheet(); S.stage = "listed"; paint(); ctx.toast("Listed as one variation listing on eBay.");
+  });
 }
 
 /* ---------- Build the listing: review, check with eBay, list ---------- */

@@ -14,6 +14,7 @@ export function createApp() {
   const app = express();
   // Device sync carries the full item store (photos included): its own big parser, before the global one.
   app.use("/api/sync", express.json({ limit: "25mb" }), deviceSyncRouter());
+  app.use(["/api/channels/ebay/publish-item", "/api/channels/ebay/publish-variation"], express.json({ limit: "25mb" }));
   app.use(express.json({ limit: "2mb" }));
 
   const startedAt = Date.now();

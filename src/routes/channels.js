@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { getCanonicalInventory, getChannelStatuses, getEbayChannelStatus } from "../channels/config.js";
 import { applySale } from "../channels/sync.js";
 import { publishListing, assertChannelConfigured } from "../channels/adapters.js";
-import { publishEbayVariationListing, publishEbayListing, endEbayListing, endEbayVariationListing } from "../channels/ebay.js";
+import { publishEbayVariationListing, publishEbayListing, endEbayListing, endEbayVariationListing, resolveEbayImages } from "../channels/ebay.js";
 import { probeEbay, syncEbayInventory, syncEbayWindow, clearEbayTokenCache, getEbayTracking } from "../channels/ebay.js";
 import {
   buildEbayAuthorizeUrl,
@@ -280,20 +280,23 @@ export function channelsRouter() {
    * Combine + PUBLISH a Pick-Your-Card variation listing to eBay.
    * Body: same as /ebay/combine. Needs eBay connected + policy IDs.
    */
-  router.post("/ebay/publish-variation", async (req, res, next) => {
+  router.post("/ebay/publish-variation", async (req, res) => {
     try {
       const children = Array.isArray(req.body?.items) ? req.body.items : [];
-      if (children.length < 2) {
-        return res.status(400).json({ error: "items (2+) required", code: "VALIDATION" });
+      if (children.length < 2) return res.status(400).json({ ok: false, error: "Pick at least 2 cards to make a variation listing." });
+      for (const c of children) {
+        if (!(Number(c.price) > 0)) return res.status(400).json({ ok: false, error: `${c.title || c.id} needs a price.` });
+        if (!(c.photos || []).length) return res.status(400).json({ ok: false, error: `${c.title || c.id} needs a photo.` });
       }
-      const batch = combineVariationBatch(children, {
-        setName: req.body?.setName, rarity: req.body?.rarity, game: req.body?.game,
-      });
+      const opts = { setName: req.body?.setName, rarity: req.body?.rarity, game: req.body?.game };
+      const batch = combineVariationBatch(children, opts);
+      if (req.body?.dryRun) return res.json({ ok: true, dryRun: true, groupId: batch.groupId, title: batch.title, count: children.length, totalQty: batch.totalQty });
       assertChannelConfigured("ebay");
+      for (let i = 0; i < children.length; i++) batch.children[i].photos = (await resolveEbayImages(children[i])).map((url) => ({ url }));
       const published = await publishEbayVariationListing(batch);
       res.json({ ok: true, groupId: batch.groupId, title: batch.title, published });
-    } catch (err) {
-      next(err);
+    } catch (e) {
+      res.status(e.code === "VALIDATION" ? 400 : 502).json({ ok: false, error: e.message, details: e.details });
     }
   });
 
