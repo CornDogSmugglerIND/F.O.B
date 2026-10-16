@@ -6,8 +6,6 @@ let ctx = null;
 const S = { stage: "listed", view: "cards", group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
 /* Stage selector follows the Command roadmap: same stops, same order, same colors. */
 const STAGES = [
-  ["intake", "Intake", "#B3FBD5"],
-  ["staged", "Ready to list", "#B3FBD5"],
   ["listed", "Live on eBay", "#90FFEE"],
   ["sold", "Sold", "#E8924A"],
   ["shipped", "Shipped", "#E8924A"],
@@ -151,14 +149,14 @@ function bulk(kind) {
 /* ---------- Variation listing: several cards become ONE eBay listing ---------- */
 function varSheet(list) {
   const ok = list.filter((i) => i.phase === "staged" && (i.photos || []).length);
-  if (ok.length < 2) { ctx.toast("Pick 2 or more items from Ready to list that have photos."); return; }
+  if (ok.length < 2) { ctx.toast("You need 2 or more ready-to-list items with photos."); return; }
   const s = ctx.openSheet(`<a class="back" href="#" data-close>‹ Back</a><h2>One variation listing</h2><p class="sub">${ok.length} cards become one eBay listing. Buyers pick their card.</p>
-    <div class="bl-vars" style="max-height:320px">${ok.map((i, k) => `<div style="gap:8px;align-items:center"><span>${esc(nameOf(i))}</span><input data-vp="${k}" inputmode="decimal" value="${esc(Number(i.price) || "")}" aria-label="Price" style="width:72px;text-align:right"></div>`).join("")}</div>
+    <div class="bl-vars" style="max-height:320px">${ok.map((i, k) => `<div style="gap:8px;align-items:center"><input type="checkbox" data-vk="${k}" checked aria-label="Include"><span>${esc(nameOf(i))}</span><input data-vp="${k}" inputmode="decimal" value="${esc(Number(i.price) || "")}" aria-label="Price" style="width:72px;text-align:right"></div>`).join("")}</div>
     <div id="vlMsg" class="sub bl-msg" role="status">Check it first. Nothing goes live until you tap List on eBay twice.</div>
     <div class="co-znav bl-act"><button class="btn" id="vlCheck" type="button">Check it</button><button class="btn go" id="vlGo" type="button">List on eBay</button></div>`);
   const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#vlMsg"); m.textContent = t; m.style.color = bad ? "var(--org)" : ""; };
   s.querySelector("[data-close]").addEventListener("click", (e) => { e.preventDefault(); ctx.closeSheet(); });
-  const read = () => { const ps = [...s.querySelectorAll("[data-vp]")].map((x) => parseFloat(String(x.value).replace(/[^0-9.]/g, ""))); if (ps.some((p) => !(p > 0))) { msg("Every card needs a price.", true); return null; } return ok.map((i, k) => Object.assign({}, i, { price: ps[k] })); };
+  const read = () => { const on = ok.map((i, k) => [i, k]).filter(([, k]) => s.querySelector(`[data-vk="${k}"]`).checked); if (on.length < 2) { msg("Tick at least 2 cards.", true); return null; } const ps = on.map(([, k]) => parseFloat(String(s.querySelector(`[data-vp="${k}"]`).value).replace(/[^0-9.]/g, ""))); if (ps.some((p) => !(p > 0))) { msg("Every ticked card needs a price.", true); return null; } return on.map(([i], j) => Object.assign({}, i, { price: ps[j] })); };
   const call = async (dryRun) => {
     const items = read(); if (!items) return null;
     const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 120000);
@@ -173,13 +171,13 @@ function varSheet(list) {
   let armed = null;
   $("#vlCheck").addEventListener("click", async () => { armed = null; $("#vlGo").textContent = "List on eBay"; busy(true); msg("Checking…"); const r = await call(true); busy(false); if (r) msg(`Looks good: "${r.out.title}", ${r.out.count} cards. This only checks the details. It doesn't test eBay.`); });
   $("#vlGo").addEventListener("click", async () => {
-    if (!read()) return;
-    if (!armed) { armed = setTimeout(() => { armed = null; $("#vlGo").textContent = "List on eBay"; }, 10000); $("#vlGo").textContent = `Yes, list all ${ok.length} now`; msg("This goes live on eBay right away. Tap again to confirm.", false); return; }
+    const pick = read(); if (!pick) return;
+    if (!armed) { armed = setTimeout(() => { armed = null; $("#vlGo").textContent = "List on eBay"; }, 10000); $("#vlGo").textContent = `Yes, list all ${pick.length} now`; msg("This goes live on eBay right away. Tap again to confirm.", false); return; }
     clearTimeout(armed); armed = null; busy(true); msg("Listing on eBay…");
     const r = await call(false); busy(false); $("#vlGo").textContent = "List on eBay"; if (!r) return;
-    const lid = r.out.published?.listingId || r.out.groupId, ids = new Set(ok.map((i) => String(i.id))), price = new Map(r.items.map((i) => [String(i.id), i.price]));
+    const lid = r.out.published?.listingId || r.out.groupId, ids = new Set(r.items.map((i) => String(i.id))), price = new Map(r.items.map((i) => [String(i.id), i.price]));
     commit((l) => l.forEach((i) => { if (ids.has(String(i.id))) { i.phase = "listed"; i.listingStatus = "active"; i.staged = false; i.price = price.get(String(i.id)); i.channels = Object.assign({}, i.channels, { ebay: { listingId: lid, sku: `hud-${i.id}`, at: new Date().toISOString() } }); i.updatedAt = new Date().toISOString(); } }));
-    S.sel.clear(); ctx.closeSheet(); S.stage = "listed"; paint(); ctx.toast("Listed as one variation listing on eBay.");
+    S.sel.clear(); ctx.closeSheet(); S.stage = "listed"; paint(); ctx.rerender?.(); ctx.toast("Listed as one variation listing on eBay.");
   });
 }
 
@@ -230,7 +228,10 @@ function buildSheet(it) {
     const out = await call(false); busy(false); $("#blGo").textContent = "List on eBay";
     if (!out) return;
     patchItem(it.id, (i) => { i.phase = "listed"; i.listingStatus = "active"; i.staged = false; i.channels = Object.assign({}, i.channels, { ebay: { listingId: out.listingId, offerId: out.offerId, sku: out.sku, at: new Date().toISOString() } }); });
-    ctx.closeSheet(); S.stage = "listed"; paint(); ctx.toast("Listed on eBay. Next: put it away in its bin.");
+    ctx.closeSheet(); S.stage = "listed"; paint(); ctx.rerender?.(); ctx.toast("Listed on eBay. Next: put it away in its bin.");
   });
 }
-export function renderChannels(host, api) { ctx = { host, ...api }; if (window.__chStage) { S.stage = window.__chStage; S.more = {}; window.__chStage = null; } if (!host.querySelector(".ch-wrap")) S.sel.clear(); paint(); if (window.__chBuild) { const id = window.__chBuild; window.__chBuild = null; buildSheet(loadItems().find((x) => String(x.id) === String(id))); } }
+export function renderChannels(host, api) { ctx = { host, ...api }; if (window.__chStage) { S.stage = /^(intake|staged)$/.test(window.__chStage) ? "listed" : window.__chStage; S.more = {}; window.__chStage = null; } if (/^(intake|staged)$/.test(S.stage)) S.stage = "listed"; if (!host.querySelector(".ch-wrap")) S.sel.clear(); paint(); }
+/* Listing is built from Command, never from the Channels page (Channels = what is live on eBay). */
+export function buildListing(id, api) { ctx = { host: document.createElement("div"), ...api }; const it = loadItems().find((x) => String(x.id) === String(id)); if (it) buildSheet(it); }
+export function variationListing(api) { ctx = { host: document.createElement("div"), ...api }; varSheet(shown().filter((i) => i.phase === "staged" && !i.ended)); }

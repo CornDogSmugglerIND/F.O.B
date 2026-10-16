@@ -219,7 +219,7 @@ function paintSaved() {
     <small class="sc-note">${b.state === "run" ? `Backing up photos ${b.done}/${b.total}…` : b.state === "ok" ? "Photos backed up." : "Saved on this device. Backup skipped."}</small>
     <div class="sc-next"><button class="btn go" id="scNext" type="button">${ready ? "Build the listing" : "Identify it now"}</button><button class="btn" id="scAgain" type="button">Scout another item</button></div></div>`;
   $("#scAgain")?.addEventListener("click", () => { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); });
-  $("#scNext")?.addEventListener("click", () => { if (ready) { window.__chStage = "staged"; window.__chBuild = it.id; ctx.go("channels"); } else { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); ctx.toast("Add the photos again to identify, or open it from Command."); } });
+  $("#scNext")?.addEventListener("click", () => { if (ready) { ctx.build(it.id); } else { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); ctx.toast("Add the photos again to identify, or open it from Command."); } });
 }
 function wire() {
   const dz = $("#scDrop"); if (!dz) return;
