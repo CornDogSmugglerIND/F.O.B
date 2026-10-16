@@ -67,7 +67,6 @@ main{position:fixed;z-index:5;left:106px;right:20px;top:108px;bottom:20px;overfl
 .toast{position:fixed;z-index:200;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:var(--panel);border:1px solid var(--sea);border-radius:99px;padding:10px 20px;opacity:0;pointer-events:none;transition:.25s}
 .toast.show{opacity:1;transform:translateX(-50%)}
 :focus-visible{outline:2px solid var(--sea);outline-offset:2px}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 /* ===== phone ===== */
 @media (max-width:820px){
  .smoke{width:34vw;opacity:.85}

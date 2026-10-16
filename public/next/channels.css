@@ -36,3 +36,13 @@
 .ch-row{cursor:pointer}
 
 .bl-ph{display:flex;gap:8px;overflow-x:auto;margin:10px 0 4px}.bl-ph img{height:96px;width:auto;border-radius:10px;flex:none;background:#0f1211}.bl-msg{min-height:22px;margin:10px 0}.bl-act{display:flex;gap:10px;flex-wrap:wrap}.bl-act .btn{flex:1 1 150px}#sheet .sc-f select{height:46px;border-radius:12px;border:1px solid var(--chrome);background:#121413;color:var(--ink);padding:0 14px;font-size:17px}#sheet .sc-f{margin-top:10px}
+
+.ch-badge{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);padding:3px 8px;border-radius:999px;background:rgba(14,18,17,.82);color:#B3FBD5;font-size:11px;line-height:1.3;font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;backdrop-filter:blur(6px)}
+.bl-vars{max-height:200px;overflow:auto;margin:6px 0 12px;font-size:13px}.bl-vars div{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.07)}.bl-vars span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.trk{margin:10px 0 14px}.trk-ends{display:flex;justify-content:space-between;font-size:12px;opacity:.8;margin-bottom:8px}
+.trk-bar{position:relative;height:6px;border-radius:6px;background:rgba(255,255,255,.12);margin:4px 6px 14px}.trk-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:linear-gradient(90deg,#50B97E,#B3FBD5)}
+.trk-bar b{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:#B3FBD5;transform:translate(-50%,-50%);box-shadow:0 0 12px #90FFCC;animation:trkp 1.8s ease-in-out infinite}@keyframes trkp{50%{box-shadow:0 0 20px #90FFCC,0 0 4px #fff}}
+.trk-steps{list-style:none;margin:0 0 8px;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;font-size:11px;text-align:center}.trk-steps li{padding:6px 2px;border-radius:8px;background:rgba(255,255,255,.05);opacity:.55}.trk-steps li.done{opacity:1;background:rgba(80,185,126,.25)}.trk-steps li.now{opacity:1;background:#B3FBD5;color:#0b0d0c;font-weight:600}
+.bl-vars{width:100%;box-sizing:border-box;min-width:0}.bl-vars div{min-width:0}.bl-vars span{flex:1;min-width:0}.bl-vars b{flex:none}
+.k-zinfo{min-width:0}.k-zcard{grid-template-columns:minmax(0,1fr)}@media(min-width:821px){.k-zcard{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}

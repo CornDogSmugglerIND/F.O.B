@@ -747,8 +747,10 @@ export async function getEbayTracking(opts = {}) {
       trackingNumber: pickShipmentField(shipment, "shipmentTrackingNumber", "trackingNumber"),
       shippingService: pickShipmentField(shipment, "shippingServiceCode", "serviceCode"),
       status,
+      total: Number(o.pricingSummary?.total?.value) || 0,
+      shipTo: (() => { const ad = o.fulfillmentStartInstructions?.[0]?.shippingStep?.shipTo?.contactAddress; return ad ? [ad.city, ad.stateOrProvince].filter(Boolean).join(", ") : ""; })(),
       createdAt: o.creationDate || null,
-      shippedAt: status === "label_created" ? null : o.lastModifiedDate || null,
+      shippedAt: status === "label_created" ? null : pickShipmentField(shipment, "shippedDate") || o.lastModifiedDate || null,
       deliveredAt: status === "delivered" ? o.lastModifiedDate || null : null,
       buyer: o.buyer?.username || "",
     };

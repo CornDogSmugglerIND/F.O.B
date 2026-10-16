@@ -142,10 +142,10 @@ function shell() {
     <section class="sc-left">
       <div class="sc-drop sc-vf" id="scDrop" tabindex="0" role="button" aria-label="Add photos">
         <img id="scVfImg" alt="" hidden draggable="false"><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
-        <div class="sc-aim"><b>Aim at the item</b><span>Tap SNAP for a photo. Drop or paste photos here too.</span></div><div class="sc-scanmsg">Scanning…</div>
+        <div class="sc-aim"><b>Aim at the item</b><span>Tap SNAP for a photo. Drop or paste photos here too.</span></div><div class="sc-scanmsg">Identifying…</div>
       </div>
       <input type="file" id="scFile" accept="image/*" multiple hidden><input type="file" id="scCamFile" accept="image/*" capture="environment" hidden>
-      <div class="sc-twin"><button class="sc-big snap" id="scCam" type="button"><i></i>Snap</button><button class="sc-big scan" id="scId" type="button" disabled><i></i>Scan</button></div>
+      <div class="sc-twin"><button class="sc-big snap" id="scCam" type="button"><i></i>Snap</button><button class="sc-big scan" id="scId" type="button" disabled><i></i>Identify</button></div>
       <button class="sc-lib" id="scPick" type="button">Choose photos from library</button>
       <div class="sc-tray" id="scTray"></div>
     </section>
@@ -178,7 +178,7 @@ function paintFlow() {
   else if (d.idState === "ok") step1 = `<div class="sc-step ok"><span>Identified</span><b>${esc(d.title)}</b><button class="btn" id="scRe" type="button">Identify again</button></div>`;
   else if (d.idState === "pick") step1 = `<div class="sc-step"><b>Not sure. Which one is it?</b><span>${esc(d.idMsg)}</span>${d.candidates.map((c, i) => `<button class="sc-cand" data-c="${i}" type="button">${esc([c.product_name, c.collector_number, c.set_name, c.finish].filter(Boolean).join(" · "))}</button>`).join("")}<button class="btn" id="scMan" type="button">None of these. I'll type it</button></div>`;
   else if (d.idState === "fail" || d.manual) step1 = d.manual ? manualForm() : `<div class="sc-step"><b>Couldn't identify it</b><span>${esc(d.idMsg)}</span><button class="btn" id="scRe" type="button">Try again</button><button class="btn" id="scMan" type="button">I'll type it</button></div>`;
-  else step1 = `<div class="sc-step idle"><b>${picked ? "Ready to scan" : "Nothing in the viewfinder"}</b><span>${picked ? `${picked} photo${picked > 1 ? "s" : ""} ready. Hit SCAN to read it.` : "Tap SNAP and take a photo."}</span><button class="btn" id="scMan" type="button">Type it instead</button></div>`;
+  else step1 = `<div class="sc-step idle"><b>${picked ? "Ready to identify" : "Nothing in the viewfinder"}</b><span>${picked ? `${picked} photo${picked > 1 ? "s" : ""} ready. Hit IDENTIFY to read it.` : "Tap SNAP and take a photo."}</span><button class="btn" id="scMan" type="button">Type it instead</button></div>`;
   const mkNote = d.marketState === "loading" ? "Looking up value…" : d.marketNote;
   f.innerHTML = `${step1}
     <div class="sc-step money"><b>Money</b>

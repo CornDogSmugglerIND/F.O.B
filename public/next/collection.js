@@ -1,4 +1,4 @@
-import { openCard } from "./kit.js?v=1";
+import { openCard } from "./kit.js?v=2";
 import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=3";
 
 let ctx = null;
@@ -14,18 +14,20 @@ function rows() {
     return !q || nameOf(it).toLowerCase().includes(q) || gameOf(it).toLowerCase().includes(q);
   }).sort((a, b) => S.sort === "name" ? nameOf(a).localeCompare(nameOf(b)) : S.sort === "new" ? String(b.createdAt || "").localeCompare(String(a.createdAt || "")) : (Number(b.price) || 0) - (Number(a.price) || 0));
 }
-const STAGE_NAME = { intake: "Intake", staged: "Ready to list", listed: "Live on eBay" };
+const STAGE = { intake: "Intake", staged: "Ready to list", listed: "Live on eBay" };
+/* Where it is for sale: eBay vs Double Holo vs not listed anywhere yet */
+const where = (it) => String(it.id).startsWith("mp-") ? "On Double Holo" : it.phase === "listed" ? "Live on eBay" : String(it.id).startsWith("ebay-") && it.phase === "staged" ? "eBay draft" : it.phase === "staged" ? "Ready to list" : "Not listed";
 function card(it) {
   const src = photoOf(it), fresh = it.source === "scouter" && Date.now() - Date.parse(it.createdAt || 0) < 864e5;
   return `<article class="co-card${S.sel.has(String(it.id)) ? " sel" : ""}" draggable="true" data-id="${esc(it.id)}" tabindex="0">
-    <div class="co-art"><div class="co-img k-tilt" data-tilt="1.1">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i><span class="co-price">${money(it.price)}</span>${fresh ? `<span class="co-new">Just scanned</span>` : STAGE_NAME[it.phase] ? `<span class="co-st">${STAGE_NAME[it.phase]}</span>` : ""}</div>${S.selecting ? `<i class="co-pick">${S.sel.has(String(it.id)) ? "✓" : ""}</i>` : ""}</div>
+    <div class="co-art"><div class="co-img k-tilt" data-tilt="1.1">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i><span class="co-price">${money(it.price)}</span>${fresh ? `<span class="co-new">Just added</span>` : `<span class="co-st">${where(it)}</span>`}</div>${S.selecting ? `<i class="co-pick">${S.sel.has(String(it.id)) ? "✓" : ""}</i>` : ""}</div>
     <div class="co-cap"><span>${esc(nameOf(it))}</span></div></article>`;
 }
 const val = (l) => l.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
 function portfolio(all, sealed, singles) {
   const total = val(all), by = new Map(); for (const i of all) { const g = gameOf(i) || "Other"; by.set(g, (by.get(g) || 0) + (Number(i.price) || 0) * (Number(i.quantity) || 1)); }
   const top = [...by.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5), hue = ["#B3FBD5", "#90FFEE", "#7fb7a3", "#9195A0", "#6c7079"];
-  return `<div class="co-port"><div class="co-big"><em>Collection value at market</em><b id="coTotal" data-v="${total.toFixed(2)}">${money(total)}</b><span>${all.length} items · ${sealed.length} sealed · ${singles.length} singles</span></div>
+  return `<div class="co-port"><div class="co-big"><em>Collection value at market</em><b id="coTotal" data-v="${total.toFixed(2)}">${money(total)}</b><span>${all.length} items · ${sealed.length} sealed · ${singles.length} singles</span><span>${["Live on eBay", "eBay draft", "On Double Holo", "Not listed"].map((w) => `${w} ${money(val(all.filter((i) => where(i) === w)))}`).join(" · ")}</span></div>
     <div class="co-split" aria-label="Value by game">${top.map(([g, v], i) => `<i style="flex:${Math.max(v, 1)};background:${hue[i]}" title="${esc(g)}"></i>`).join("")}</div>
     <div class="co-legend">${top.map(([g, v], i) => `<span><u style="background:${hue[i]}"></u>${esc(g)} <b>${money(v)}</b></span>`).join("")}</div></div>`;
 }
@@ -88,7 +90,7 @@ function openZoom(id, fromEl) {
   const list = rows(), i = list.findIndex((x) => String(x.id) === String(id)); if (i < 0) return;
   openCard(list, { index: i, from: fromEl || null, photo: photoOf, name: nameOf,
     info: (it) => { const profit = it.purchasePrice != null && it.purchasePrice !== "" ? (Number(it.price) || 0) - Number(it.purchasePrice) : null, sp = loadSpaces().find((s) => s.id === it.spaceId);
-      return `<div class="sub">${esc(STAGE_NAME[it.phase] || "")} · ${esc(laneOf(it) === "sealed" ? "Sealed" : "Single")} · ${esc(gameOf(it))}</div><div class="row"><span>Market value</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${profit != null ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div><div class="row"><span>Profit</span><span>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div><button class="btn" id="zLane" type="button">Move to ${laneOf(it) === "sealed" ? "Singles" : "Sealed"}</button>`; },
+      return `<div class="sub">${esc(where(it))} · ${esc(laneOf(it) === "sealed" ? "Sealed" : "Single")} · ${esc(gameOf(it))}</div><div class="row"><span>Market value</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${profit != null ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div><div class="row"><span>Profit</span><span>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div><button class="btn" id="zLane" type="button">Move to ${laneOf(it) === "sealed" ? "Singles" : "Sealed"}</button>`; },
     wire: (root, it, api) => root.querySelector("#zLane")?.addEventListener("click", () => { api.close(); setLane([it.id], laneOf(it) === "sealed" ? "singles" : "sealed"); }) });
 }
 export function renderCollection(host, api) { ctx = { host, ...api }; if (!host.querySelector(".co-wrap")) S.sel.clear(); paint(); }

@@ -1,11 +1,12 @@
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=2";
 import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=8";
-import { renderCollection } from "./collection.js?v=6";
-import { renderSpaces } from "./spaces.js?v=8";
-import { renderChannels } from "./channels.js?v=7";
+import { renderCollection } from "./collection.js?v=7";
+import { renderSpaces } from "./spaces.js?v=9";
+import { renderChannels } from "./channels.js?v=10";
 import { renderSettings } from "./settings.js?v=3";
 import { initSync } from "./sync.js?v=3";
-import { initKit } from "./kit.js?v=1";
+import { initKit } from "./kit.js?v=2";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -22,15 +23,16 @@ function saveItems(items) { try { localStorage.setItem(LS_ITEMS, JSON.stringify(
 let items = loadItems();
 
 const STOPS = [
-  { id: "intake", label: "Intake", note: "not identified yet", phases: ["intake"], c: "#B3FBD5", pos: [9, 76], movable: true },
-  { id: "staged", label: "Ready to list", note: "listing not built yet", phases: ["staged"], c: "#B3FBD5", pos: [26, 48], movable: true },
-  { id: "listed", label: "Live on eBay", note: "selling now", phases: ["listed"], c: "#90FFEE", pos: [43, 72], movable: false },
-  { id: "stored", label: "Put away", note: "in its bin", phases: [], c: "#90FFEE", pos: [60, 44], movable: false },
-  { id: "sold", label: "Sold", note: "needs packing", phases: ["sold", "packed"], c: "#E8924A", pos: [77, 70], movable: true },
-  { id: "shipped", label: "Shipped", note: "on the way", phases: ["shipped", "delivered"], c: "#E8924A", pos: [92, 42], movable: true },
+  { id: "intake", label: "Intake", note: "not identified yet", phases: ["intake"], c: "#B3FBD5", pos: [6, 76], movable: true },
+  { id: "staged", label: "Ready to list", note: "listing not built yet", phases: ["staged"], c: "#B3FBD5", pos: [20, 48], movable: true },
+  { id: "listed", label: "Live on eBay", note: "selling now", phases: ["listed"], c: "#90FFEE", pos: [34, 72], movable: false },
+  { id: "stored", label: "Put away", note: "in its bin", phases: [], c: "#90FFEE", pos: [48, 44], movable: false },
+  { id: "sold", label: "Sold", note: "needs shipping", phases: ["sold", "packed"], c: "#E8924A", pos: [62, 70], movable: true },
+  { id: "shipped", label: "Shipped", note: "on the way, tap to track", phases: ["shipped"], c: "#E8924A", pos: [77, 44], movable: true },
+  { id: "delivered", label: "Delivered", note: "at the door", phases: ["delivered"], c: "#E8924A", pos: [92, 70], movable: true },
 ];
 const stopFor = (it) => { const ph = phaseFromItem(it); return ph === "listed" && it.spaceId ? STOPS.find((x) => x.id === "stored") : STOPS.find((x) => x.phases.includes(ph)); };
-const MOVE_TO = { intake: "intake", staged: "staged", sold: "sold", shipped: "shipped" };
+const MOVE_TO = { intake: "intake", staged: "staged", sold: "sold", shipped: "shipped", delivered: "delivered" };
 
 /* The roadmap tracks what you bring in through the app (Scouter). Your eBay inventory lives in Collection, Channels and Spaces. */
 const mine = (list) => list.filter((i) => i.source === "scouter" || i.source === "app");
@@ -40,6 +42,7 @@ function groups() {
     const s = stopFor(it);
     if (s) g[s.id].push(it);
   }
+  for (const o of orderItems(30)) g[o.phase].push(o);
   return g;
 }
 
@@ -74,7 +77,17 @@ function nextAction(ph, it) {
   if (["sold", "packed"].includes(ph)) return `<p class="sub" style="margin-top:12px">Next: pack it and print the label in eBay.</p><a class="btn go" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener">Open eBay orders</a>`;
   return "";
 }
+function orderSheet(it) {
+  const o = it._order, u = trackUrl(o), src = photoOf(it);
+  const s = openSheet(`<a class="back" href="#" data-close>‹ Back</a>${src ? `<img src="${esc(src)}" alt="" style="width:100%;max-height:220px;object-fit:contain;border-radius:14px;background:#0f1211;margin-bottom:12px">` : ""}<h2>${esc(nameOf(it))}</h2><div class="sub">${it.phase === "sold" ? "Sold, needs shipping" : it.phase === "delivered" ? "Delivered" : "Shipped"}</div>
+    ${it.phase === "sold" ? "" : trackerHtml(o)}
+    <div class="row"><span>Total</span><span>${money(o.total)}</span></div><div class="row"><span>Buyer</span><span>${esc(o.buyer || "—")}</span></div><div class="row"><span>Sold</span><span>${dayText(o.createdAt) || "—"}</span></div><div class="row"><span>Carrier</span><span>${esc(o.carrier || "—")}</span></div><div class="row"><span>Tracking</span><span>${o.trackingNumber ? esc(o.trackingNumber) : "No label yet"}</span></div>
+    ${u ? `<a class="btn go" href="${esc(u)}" target="_blank" rel="noopener" style="margin-top:12px">Open carrier tracking</a>` : `<a class="btn go" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener" style="margin-top:12px">Open eBay orders</a>`}`);
+  s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
+  s.querySelector("[data-ov]")?.addEventListener("click", (e) => { setOv(o.orderId, e.currentTarget.dataset.ov); closeSheet(); render(); toast(e.currentTarget.dataset.ov === "delivered" ? "Moved to Delivered" : "Moved back to Shipped"); });
+}
 function itemSheet(id) {
+  if (String(id).startsWith("ord-")) { const o = orderItems(30).find((x) => x.id === String(id)); if (o) orderSheet(o); return; }
   const it = items.find((i) => String(i.id) === String(id)); if (!it) return;
   const src = photoOf(it); const ph = phaseFromItem(it); const st = stopFor(it);
   const s = openSheet(`
@@ -101,7 +114,7 @@ function stageSheet(sid) {
     ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : `<div class="tini">${esc(nameOf(it).replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "?")}</div>`}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}.</p>` : ""}<button class="btn go" id="seeAll" type="button" style="margin-top:12px">See all ${list.length} in Channels</button>` : `<p class="sub">Nothing here yet.</p>`}`);
   s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
   s.querySelectorAll("[data-item]").forEach((b) => b.addEventListener("click", () => itemSheet(b.dataset.item)));
-  s.querySelector("#seeAll")?.addEventListener("click", () => { window.__chStage = ({ intake: "intake", staged: "staged", listed: "listed", sold: "sold", shipped: "shipped" })[sid] || "all"; go("channels"); });
+  s.querySelector("#seeAll")?.addEventListener("click", () => { window.__chStage = ({ intake: "intake", staged: "staged", listed: "listed", sold: "sold", shipped: "shipped", delivered: "delivered" })[sid] || "all"; go("channels"); });
 }
 
 /* ---------- header ---------- */
@@ -109,7 +122,7 @@ function renderStats() {
   const g = groups();
   const open = mine(items).filter((i) => !["ended", "sold", "packed", "shipped", "delivered"].includes(phaseFromItem(i)));
   const value = open.reduce((a, i) => a + worth(i), 0);
-  $("#stats").innerHTML = [[money(value), "Total value in progress"], [g.intake.length + g.staged.length, "Items need action"], [g.listed.length, "Live on eBay"]]
+  $("#stats").innerHTML = [[money(value), "Total value in progress"], [g.intake.length + g.staged.length, "Items need action"], [new Set(items.filter((i) => i.phase === "listed" && !i.ended && !/^demo/.test(String(i.id))).map((i) => i.channels?.ebay?.listingId || i.id)).size, "Live on eBay"]]
     .map(([b, l]) => `<div class="stat"><b>${b}</b><span>${l}</span></div>`).join("");
 }
 function initAvatar() {
@@ -147,7 +160,7 @@ function renderCommand() {
   ].map(([n, t, v, st]) => `<button class="pill" data-goto="${v}" ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto"; main.style.overflowX = "hidden";
-    const H = 1900, W = 390, PX = [27, 73, 27, 73, 27, 73], PY = [260, 550, 840, 1130, 1420, 1710];
+    const H = 2230, W = 390, PX = [27, 73, 27, 73, 27, 73, 27], PY = [260, 550, 840, 1130, 1420, 1710, 2000];
     const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
     let path = `M${pts[0][0]},${pts[0][1]}`;
     for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], m = (y0 + y1) / 2; path += ` C${x0},${m} ${x1},${m} ${x1},${y1}`; }
@@ -158,9 +171,9 @@ function renderCommand() {
       <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 34"/>
       ${[0, 1, 2].map((k) => `<circle r="6" fill="#B3FBD5" style="filter:drop-shadow(0 0 7px #90FFCC)"><animateMotion dur="12s" begin="${k * 4}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
       ${STOPS.map((s, i) => `<div class="stop" data-drop="${s.id}" style="left:${PX[i]}%;top:${PY[i]}px;--c:${s.c}">
-        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: scan your first item" : "")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
+        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: add your first item" : "")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
         <div class="tag" data-stage="${s.id}"><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small><b>${g[s.id].length}</b> item${g[s.id].length === 1 ? "" : "s"} · ${s.note}</small></div></div>`).join("")}
-      <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[5] - 17}%;top:${PY[5] + 8}px"><i></i>Done</div></div>`;
+      <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[6] - 17}%;top:${PY[6] + 8}px"><i></i>Done</div></div>`;
   } else {
     main.style.overflowY = "hidden"; main.style.overflowX = "";
     const W = Math.max(600, main.clientWidth || 1000), H = Math.max(420, main.clientHeight || 600);
@@ -174,9 +187,9 @@ function renderCommand() {
       <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 34"/>
       ${[0, 1, 2, 3].map((k) => `<circle r="7" fill="#B3FBD5" style="filter:drop-shadow(0 0 9px #90FFCC)"><animateMotion dur="14s" begin="${k * 3.5}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
       ${STOPS.map((s) => `<div class="stop" data-drop="${s.id}" style="left:${s.pos[0]}%;top:${s.pos[1]}%;--c:${s.c}">
-        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: scan your first item" : "")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
+        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: add your first item" : "")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
         <div class="tag" data-stage="${s.id}"><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small><b>${g[s.id].length}</b> item${g[s.id].length === 1 ? "" : "s"} · ${s.note}</small></div></div>`).join("")}
-      <div class="flag start" style="left:${STOPS[0].pos[0] - 6}%;top:${STOPS[0].pos[1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${STOPS[5].pos[0] - 2}%;top:${STOPS[5].pos[1] + 12}%"><i></i>Done</div>
+      <div class="flag start" style="left:${STOPS[0].pos[0] - 6}%;top:${STOPS[0].pos[1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${STOPS[STOPS.length - 1].pos[0] - 2}%;top:${STOPS[STOPS.length - 1].pos[1] + 12}%"><i></i>Done</div>
       <div class="dock">${pills}</div><div class="hint">Tap a stop to open it · hold a card and drop it on a stop to move it</div></div>`;
   }
   // wire up
@@ -204,10 +217,12 @@ function bindDrag(el) {
     const target = over && over.dataset.drop; if (over) over.classList.remove("drop"); if (ghost) ghost.remove(); el.style.opacity = "";
     if (!target) return;
     const it = items.find((i) => String(i.id) === String(el.dataset.item)); if (!it) return;
+    if (String(el.dataset.item).startsWith("ord-")) { toast("Orders come from eBay. Open it to see tracking."); return; }
     if (!MOVE_TO[target]) { toast(target === "stored" ? "Open Spaces to put it in a bin." : "Use Build and publish to put an item live on eBay."); return; }
     it.phase = MOVE_TO[target]; saveItems(items); toast(`Moved to ${STOPS.find((s) => s.id === target).label}`); render();
   };
-  el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", () => { down = false; moved = false; if (ghost) ghost.remove(); ghost = null; if (over) over.classList.remove("drop"); over = null; el.style.opacity = ""; });
 }
 
 /* ---------- other views ---------- */
@@ -250,17 +265,31 @@ async function pullEbay(onProgress) {
 }
 function setLink(on) { const l = $("#link"); if (!l) return; l.classList.toggle("on", !!on); l.firstChild.textContent = on ? "EBAY ONLINE" : "EBAY OFFLINE"; }
 fetch("/api/channels/status").then((r) => r.json()).then((d) => setLink((d.channels || []).some((c) => c.id === "ebay" && c.configured))).catch(() => {});
+async function pullOrders() {
+  const bySku = new Map();
+  try {
+    const o = await fetch("/api/channels/ebay/orders?days=90");
+    if (o.ok) {
+      const ob = await o.json().catch(() => ({})); const ords = (ob.orders || []).filter((x) => x.orderId);
+      if (ords.length || ob.ok) saveOrders(ords);
+      for (const ord of ords) for (const li of ord.items || []) { if (li.sku) bySku.set(li.sku, ord.status === "label_created" ? "sold" : "shipped"); }
+    }
+  } catch { /* orders optional */ }
+  return bySku;
+}
 async function syncAll(auto) {
+  const HIDDEN = hiddenIds();
   const btn = $("#syncBtn"); if (btn.classList.contains("busy")) return;
   btn.classList.add("busy"); btn.textContent = (phone() ? "…" : "Syncing…");
   if (!auto) toast("Pulling eBay…");
+  const ordersP = pullOrders();
   try {
     const pulled = await pullEbay((n, t) => { btn.textContent = (phone() ? `${n}/${t}` : `Syncing ${n}/${t}`); });
-    if (pulled.error) { toast(auto ? "Showing saved data. eBay didn't answer." : pulled.error); return; }
+    if (pulled.error) { await ordersP; render(); toast(auto ? "Showing saved data. eBay didn't answer." : pulled.error); return; }
     const body = { partial: !pulled.complete };
     const list = loadItems(); const all = pulled.rows; const rows = all.filter((r) => r.offerKnown !== false);
     for (const r of rows) {
-      const sku = r.channels?.ebay?.sku || r.sku; if (!sku) continue;
+      const sku = r.channels?.ebay?.sku || r.sku; if (!sku) continue; if (HIDDEN.has(r.id || `ebay-${sku}`)) continue;
       const idx = list.findIndex((i) => i.channels?.ebay?.sku === sku || (r.id && i.id === r.id));
       const live = r.channels.ebay.listingId ? "listed" : "draft";
       const photos = (r.photos || []).filter((p) => p.dataUrl || p.url).map((p) => ({ id: p.id, dataUrl: p.dataUrl || p.url }));
@@ -274,21 +303,11 @@ async function syncAll(auto) {
       const seen = new Set(rows.map((r) => r.channels?.ebay?.sku || r.sku).filter(Boolean));
       for (const it of list) { const sku = it.channels?.ebay?.sku; if (sku && !seen.has(sku) && !it.ended && !DONE.includes(it.phase)) it.ended = true; }
     }
-    try {
-      const o = await fetch("/api/channels/ebay/orders?days=90");
-      if (o.ok) {
-        const ob = await o.json().catch(() => ({})); const rank = { delivered: 6, shipped: 5, label_created: 4, packed: 4, awaiting_shipment: 3, paid: 3 }; const bySku = new Map();
-        for (const ord of ob.orders || []) for (const li of ord.items || []) {
-          if (!li.sku) continue;
-          const phase = ord.status === "delivered" ? "delivered" : /ship|transit|out_for/.test(ord.status || "") ? "shipped" : "sold";
-          const prev = bySku.get(li.sku); if (!prev || (rank[ord.status] || 3) > prev.r) bySku.set(li.sku, { phase, r: rank[ord.status] || 3 });
-        }
-        for (const it of list) { const hit = bySku.get(it.sku || it.channels?.ebay?.sku); if (hit && (it.ended || (it.phase !== hit.phase && ["listed", "staged", "intake", "sold", "packed", "shipped"].includes(it.phase)))) { it.phase = hit.phase; it.ended = false; it.listingStatus = "listed"; } }
-      }
-    } catch { /* orders optional */ }
+    const bySku = await ordersP;
+    for (const it of list) { if (!(it.source === "scouter" || it.source === "app")) continue; const hit = bySku.get(it.sku || it.channels?.ebay?.sku); if (hit && it.phase !== hit && ["listed", "staged", "intake", "sold", "packed"].includes(it.phase)) { it.phase = hit; it.ended = false; } }
     saveItems(list); items = list; render();
     const nLive = list.filter((i) => phaseFromItem(i) === "listed").length, nSold = list.filter((i) => DONE.includes(i.phase)).length, nEnd = list.filter((i) => i.ended && !DONE.includes(i.phase)).length;
-    setLink(true); toast(pulled.complete ? `Synced: ${nLive} live, ${nSold} sold, ${nEnd} ended (hidden)` : `Synced ${rows.length} of ${pulled.total}. ${pulled.total - rows.length} couldn't be checked. Tap Sync again.`);
+    setLink(true); toast(pulled.complete ? `Synced: ${nLive} live, ${nSold} sold, ${orderItems().length} orders` : `Synced ${rows.length} of ${pulled.total}. ${pulled.total - rows.length} couldn't be checked. Tap Sync again.`);
   } catch { toast(auto ? "Showing saved data." : "eBay sync failed. Try again."); }
   finally { btn.classList.remove("busy"); btn.textContent = "Sync"; }
 }

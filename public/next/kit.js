@@ -4,7 +4,7 @@
    - fly(): shared-element move between two rects (the camera moves in Spaces)
    Nothing here knows about eBay or storage. Pages just add classes. */
 
-const reduce = () => matchMedia("(prefers-reduced-motion:reduce)").matches;
+const reduce = () => false; // Reduce Motion is on for the owner, and the app animations are the point
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 

@@ -1,35 +1,52 @@
 import { esc, money, nameOf, photoOf, laneOf, gameOf, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=3";
-import { openCard } from "./kit.js?v=1";
+import { openCard } from "./kit.js?v=2";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=2";
 
 let ctx = null;
 const S = { stage: "listed", view: "cards", group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
-/* Stage selector follows the Command roadmap: same stops, same order, same colors.
-   Ended + Everything are Channels extras at the end of the route. */
+/* Stage selector follows the Command roadmap: same stops, same order, same colors. */
 const STAGES = [
   ["intake", "Intake", "#B3FBD5"],
   ["staged", "Ready to list", "#B3FBD5"],
   ["listed", "Live on eBay", "#90FFEE"],
   ["sold", "Sold", "#E8924A"],
   ["shipped", "Shipped", "#E8924A"],
-  ["ended", "Ended on eBay", "#9195A0"],
-  ["all", "Everything", "#9195A0"],
+  ["delivered", "Delivered", "#E8924A"],
 ];
 const SOLD = ["sold", "packed", "shipped", "delivered"];
 const SHOWN = (it) => !(["intake", "staged"].includes(it.phase || "intake") && !(it.source === "scouter" || it.source === "app"));
 const shown = () => loadItems().filter(SHOWN);
-const stageOf = (it) => it.ended && !SOLD.includes(it.phase) ? "ended" : it.phase === "shipped" || it.phase === "delivered" ? "shipped" : SOLD.includes(it.phase) ? "sold" : (it.phase || "intake");
-const STAGE_LABEL = { listed: "Live on eBay", staged: "Ready to list", intake: "Intake", sold: "Sold", shipped: "Shipped", ended: "Ended on eBay" };
-const keyOf = (it) => S.group === "stage" ? STAGE_LABEL[stageOf(it)] || "Other" : S.group === "game" ? gameOf(it) : S.group === "bin" ? (loadSpaces().find((s) => s.id === it.spaceId)?.name || "Not filed yet") : S.group === "type" ? (laneOf(it) === "sealed" ? "Sealed" : "Singles") : "All items";
+/* One row per eBay listing: variation children share a listing id, so they collapse into one card. */
+let GROUP = new Map();
+function live() {
+  const out = [], seen = new Map(); GROUP = new Map();
+  for (const it of shown()) {
+    if (it.ended || SOLD.includes(it.phase) || /^demo-/.test(String(it.id))) continue;
+    const lid = it.phase === "listed" && it.channels?.ebay?.listingId;
+    if (lid && !/^demo/.test(lid)) { const g = seen.get(lid); if (g) { g._kids.push(it); continue; } const rep = Object.assign({}, it, { _kids: [it] }); seen.set(lid, rep); out.push(rep); } else out.push(it);
+  }
+  for (const r of out) if (r._kids) { r._n = r._kids.length; GROUP.set(String(r.id), r._kids.map((k) => String(k.id))); if (r._n > 1) { const ps = r._kids.map((k) => Number(k.price) || 0); r._lo = Math.min(...ps); r._hi = Math.max(...ps); r.quantity = r._kids.reduce((a, k) => a + (Number(k.quantity) || 1), 0); } }
+  return out;
+}
+const pool = (stage) => ["sold", "shipped", "delivered"].includes(stage) ? orderItems().filter((o) => o.phase === stage) : live().filter((i) => stageOf(i) === stage);
+const valOf = (it) => it._kids ? it._kids.reduce((a, k) => a + (Number(k.price) || 0) * (Number(k.quantity) || 1), 0) : (Number(it.price) || 0) * (Number(it.quantity) || 1);
+const ptxt = (it) => it._n > 1 ? `${money(it._lo)}${it._hi > it._lo ? "–" + money(it._hi) : ""}` : money(it.price);
+const badge = (it) => it._order ? (it.phase === "sold" ? "Needs shipping" : ["Label made", "Shipped", "In transit", "Out for delivery", "Delivered"][track(it._order).step]) : it._n > 1 ? `${it._n} variations` : "";
+const expand = (ids) => ids.flatMap((i) => GROUP.get(String(i)) || [i]);
+const stageOf = (it) => it._order ? it.phase : (it.phase || "intake");
+const STAGE_LABEL = { listed: "Live on eBay", staged: "Ready to list", intake: "Intake", sold: "Sold", shipped: "Shipped", delivered: "Delivered" };
+const keyOf = (it) => it._order ? whenLabel(it.when) : S.group === "stage" ? STAGE_LABEL[stageOf(it)] || "Other" : S.group === "game" ? gameOf(it) : S.group === "bin" ? (loadSpaces().find((s) => s.id === it.spaceId)?.name || "Not filed yet") : S.group === "type" ? (laneOf(it) === "sealed" ? "Sealed" : "Singles") : "All items";
 
 function rows() {
   const q = S.q.trim().toLowerCase();
-  return shown().filter((it) => (S.stage === "all" || stageOf(it) === S.stage) && (!q || nameOf(it).toLowerCase().includes(q) || String(it.sku || "").toLowerCase().includes(q)))
-    .sort((a, b) => S.sort === "name" ? nameOf(a).localeCompare(nameOf(b)) : S.sort === "low" ? (Number(a.price) || 0) - (Number(b.price) || 0) : (Number(b.price) || 0) - (Number(a.price) || 0));
+  const list = pool(S.stage).filter((it) => !q || nameOf(it).toLowerCase().includes(q) || String(it.sku || "").toLowerCase().includes(q) || String(it._order?.trackingNumber || "").includes(q) || String(it._order?.buyer || "").toLowerCase().includes(q));
+  if (["sold", "shipped", "delivered"].includes(S.stage)) return list;
+  return list.sort((a, b) => S.sort === "name" ? nameOf(a).localeCompare(nameOf(b)) : S.sort === "low" ? (Number(a.price) || 0) - (Number(b.price) || 0) : (Number(b.price) || 0) - (Number(a.price) || 0));
 }
 function tile(it) {
   const src = photoOf(it), on = S.sel.has(String(it.id));
-  if (S.view === "list") return `<label class="sp-row ch-row${on ? " on" : ""}" data-id="${esc(it.id)}"><input type="checkbox" data-id="${esc(it.id)}" ${on ? "checked" : ""}>${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : "<i></i>"}<span>${esc(nameOf(it))}</span><em>${esc(STAGE_LABEL[stageOf(it)] || "")}</em><b>${money(it.price)}</b><small>x${Number(it.quantity) || 1}</small></label>`;
-  return `<article class="co-card ch-tile k-tilt ${S.view}${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0"><div class="co-art"><div class="co-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i></div><i class="co-pick${on ? " on" : ""}" data-pick="${esc(it.id)}">${on ? "✓" : ""}</i></div>${S.view === "cards" ? `<div class="co-cap"><span>${esc(nameOf(it))}</span><b>${money(it.price)}</b></div>` : `<div class="ch-price">${money(it.price)}</div>`}</article>`;
+  if (S.view === "list") return `<label class="sp-row ch-row${on ? " on" : ""}" data-id="${esc(it.id)}"><input type="checkbox" data-id="${esc(it.id)}" ${on ? "checked" : ""}>${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : "<i></i>"}<span>${esc(nameOf(it))}</span><em>${esc(STAGE_LABEL[stageOf(it)] || "")}</em><b>${ptxt(it)}</b><small>x${Number(it.quantity) || 1}</small></label>`;
+  return `<article class="co-card ch-tile k-tilt ${S.view}${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0"><div class="co-art"><div class="co-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i></div>${badge(it) ? `<i class="ch-badge">${esc(badge(it))}</i>` : ""}<i class="co-pick${on ? " on" : ""}" data-pick="${esc(it.id)}">${on ? "✓" : ""}</i></div>${S.view === "cards" ? `<div class="co-cap"><span>${esc(nameOf(it))}</span><b>${ptxt(it)}</b></div>` : `<div class="ch-price">${ptxt(it)}</div>`}</article>`;
 }
 function routeHtml(counts) {
   return `<div class="ch-route" role="group" aria-label="Stage">${STAGES.map(([k, l, c]) => `<button class="ch-stop${S.stage === k ? " on" : ""}" data-stage="${k}" type="button" style="--c:${c}"><i class="ch-dot"></i><span>${l}</span><em>${counts[k]}</em></button>`).join("")}</div>`;
@@ -46,21 +63,21 @@ function drawerHtml() {
 function paint() {
   const all = rows(), h = ctx.host; const groups = new Map();
   for (const it of all) { const k = keyOf(it); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(it); }
-  const total = all.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
-  const counts = Object.fromEntries(STAGES.map(([k]) => [k, shown().filter((i) => k === "all" || stageOf(i) === k).length]));
+  const total = all.reduce((a, i) => a + (i._order ? Number(i.price) || 0 : valOf(i)), 0);
+  const counts = Object.fromEntries(STAGES.map(([k]) => [k, pool(k).length]));
   const sections = [...groups.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, list]) => {
     const shown = list.slice(0, S.more[k] || 120), closed = S.closed.has(k);
-    return `<section class="ch-group"><header><button class="ch-fold" data-fold="${esc(k)}" type="button" aria-expanded="${!closed}">${closed ? "▸" : "▾"} ${esc(k)} <em>${list.length}</em></button><span>${money(list.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0))}</span><button class="chip" data-selgrp="${esc(k)}" type="button">Select this group (${list.length})</button></header>
+    return `<section class="ch-group"><header><button class="ch-fold" data-fold="${esc(k)}" type="button" aria-expanded="${!closed}">${closed ? "▸" : "▾"} ${esc(k)} <em>${list.length}</em></button><span>${money(list.reduce((a, i) => a + (i._order ? Number(i.price) || 0 : valOf(i)), 0))}</span><button class="chip" data-selgrp="${esc(k)}" type="button">Select this group (${list.length})</button></header>
       ${closed ? "" : `<div class="${S.view === "list" ? "sp-list" : "co-grid ch-grid " + S.view}">${shown.map(tile).join("")}</div>${list.length > shown.length ? `<button class="btn" data-more="${esc(k)}" type="button">Show ${Math.min(120, list.length - shown.length)} more of ${list.length - shown.length}</button>` : ""}`}</section>`;
   }).join("");
   const n = S.sel.size;
   h.innerHTML = `<div class="co-wrap ch-wrap">
-    <div class="co-head"><div><h2>Channels</h2><p>${all.length} listings shown · ${money(total)} at list price · eBay is your main channel</p></div></div>
+    <div class="co-head"><div><h2>Channels</h2><p>${["sold", "shipped", "delivered"].includes(S.stage) ? `${all.length} order${all.length === 1 ? "" : "s"} from eBay, last 90 days · ${money(total)} sold` : `${all.length} listing${all.length === 1 ? "" : "s"} · ${money(total)} at list price`}</p></div></div>
     ${routeHtml(counts)}
     <div class="ch-bar2"><input id="chQ" type="search" placeholder="Search title or SKU" value="${esc(S.q)}" aria-label="Search title or SKU">
       <button class="btn ch-controls${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}">Controls</button></div>
     ${drawerHtml()}
-    ${sections || `<div class="co-empty">${counts.all ? "Nothing matches. Try another stage or clear the search." : "Nothing here yet. Tap Sync to pull your eBay listings."}</div>`}
+    ${sections || `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing here yet."}</div>`}
     ${n ? bar(n) : ""}</div>`;
   wire(all);
 }
@@ -75,13 +92,22 @@ function bar(n) {
 }
 function commit(mut) { const l = loadItems(); mut(l); if (!saveItems(l)) { ctx.toast("Couldn't save. Storage is full."); return false; } ctx.refresh(); return true; }
 function toggle(id) { S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); }
+const dt = (iso) => dayText(iso) || "—";
+function orderInfo(it) {
+  const o = it._order, u = trackUrl(o);
+  return `<div class="sub">${esc(STAGE_LABEL[it.phase])}</div>${it.phase === "sold" ? "" : trackerHtml(o)}<div class="row"><span>Total</span><span>${money(o.total)}</span></div><div class="row"><span>Buyer</span><span>${esc(o.buyer || "—")}</span></div><div class="row"><span>Sold</span><span>${dt(o.createdAt)}</span></div>${it.phase === "sold" ? "" : `<div class="row"><span>Shipped</span><span>${dt(o.shippedAt)}</span></div>`}<div class="row"><span>Carrier</span><span>${esc(o.carrier || "—")}</span></div><div class="row"><span>Tracking</span><span>${o.trackingNumber ? esc(o.trackingNumber) : "No label yet"}</span></div>${u ? `<a class="btn go" href="${esc(u)}" target="_blank" rel="noopener">Open carrier tracking</a>` : `<a class="btn go" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener">Open eBay orders</a>`}`;
+}
+function varInfo(it) {
+  if (!(it._n > 1)) return "";
+  return `<div class="row"><span>Variations</span><span>${it._n} options</span></div><div class="bl-vars">${it._kids.slice(0, 40).map((k) => `<div><span>${esc(nameOf(k))}</span><b>${money(k.price)}</b></div>`).join("")}${it._n > 40 ? `<div><span>and ${it._n - 40} more</span></div>` : ""}</div>`;
+}
 function zoom(list, el) {
   const id = el.dataset.id, idx = list.findIndex((i) => String(i.id) === String(id)); if (idx < 0) return;
   openCard(list, {
     index: idx, from: el, photo: photoOf, name: nameOf,
-    info: (it) => { const sp = loadSpaces().find((s) => s.id === it.spaceId); const on = S.sel.has(String(it.id));
-      return `<div class="sub">${esc(STAGE_LABEL[stageOf(it)] || "")}</div><div class="row"><span>Price</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${(it.photos || []).length > 1 ? `<div class="row"><span>Photos</span><span>${it.photos.length}, all kept together</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div>${stageOf(it) === "staged" ? `<button class="btn go" data-build type="button">Build the listing</button>` : ""}<button class="btn" data-sel type="button">${on ? "Deselect" : "Select for bulk actions"}</button>${String(it.id).startsWith("ebay-") ? "" : `<button class="btn warn" data-rm type="button">Delete this item</button>`}`; },
-    wire: (root, it, api) => { root.querySelector("[data-build]")?.addEventListener("click", () => { api.close(); buildSheet(it); }); root.querySelector("[data-rm]")?.addEventListener("click", () => removeItem(it, api.close)); root.querySelector("[data-sel]")?.addEventListener("click", () => { toggle(String(it.id)); paint(); root.querySelector("[data-sel]").textContent = S.sel.has(String(it.id)) ? "Deselect" : "Select for bulk actions"; }); },
+    info: (it) => it._order ? orderInfo(it) : varInfo(it) + (() => { const sp = loadSpaces().find((s) => s.id === it.spaceId); const on = S.sel.has(String(it.id));
+      return `<div class="sub">${esc(STAGE_LABEL[stageOf(it)] || "")}</div><div class="row"><span>Price</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${(it.photos || []).length > 1 ? `<div class="row"><span>Photos</span><span>${it.photos.length}, all kept together</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div>${stageOf(it) === "staged" ? `<button class="btn go" data-build type="button">Build the listing</button>` : ""}<button class="btn" data-sel type="button">${on ? "Deselect" : "Select for bulk actions"}</button><button class="btn warn" data-rm type="button">${String(it.id).startsWith("ebay-") ? "Hide from this app (stays on eBay)" : "Delete this item"}</button>`; })(),
+    wire: (root, it, api) => { root.querySelector("[data-ov]")?.addEventListener("click", (e) => { setOv(it._order.orderId, e.currentTarget.dataset.ov); api.close(); ctx.toast(e.currentTarget.dataset.ov === "delivered" ? "Moved to Delivered" : "Moved back to Shipped"); paint(); }); root.querySelector("[data-build]")?.addEventListener("click", () => { api.close(); buildSheet(it); }); root.querySelector("[data-rm]")?.addEventListener("click", () => removeItem(it, api.close)); root.querySelector("[data-sel]")?.addEventListener("click", () => { toggle(String(it.id)); paint(); root.querySelector("[data-sel]").textContent = S.sel.has(String(it.id)) ? "Deselect" : "Select for bulk actions"; }); },
   });
 }
 function wire(all) {
@@ -106,7 +132,7 @@ function wire(all) {
 const snap = () => ({ items: localStorage.getItem("coalition-items-v4"), spaces: localStorage.getItem("coalition-spaces-v4") });
 function restore(p) { try { if (p.items != null) localStorage.setItem("coalition-items-v4", p.items); if (p.spaces != null) localStorage.setItem("coalition-spaces-v4", p.spaces); } catch { /* ignore */ } }
 function bulk(kind) {
-  const ids = [...S.sel]; if (!ids.length && kind !== "clear") return; const set = new Set(ids);
+  const ids = expand([...S.sel]); if (!ids.length && kind !== "clear") return; const set = new Set(ids.map(String)); if (kind === "del") hideIds([...set].filter((x) => x.startsWith("ebay-")));
   if (kind === "clear") { S.sel.clear(); paint(); return; }
   if (kind === "pct") {
     const p = parseFloat(String(ctx.host.querySelector("#chPct").value).replace(/[^0-9.\-+]/g, "")); if (!Number.isFinite(p) || !p) { ctx.toast("Type a percent, like -10 or 15."); return; }
@@ -123,8 +149,8 @@ function bulk(kind) {
 /* ---------- Build the listing: review, check with eBay, list ---------- */
 function patchItem(id, mut) { const l = loadItems(); const it = l.find((x) => String(x.id) === String(id)); if (!it) return null; mut(it); it.updatedAt = new Date().toISOString(); saveItems(l); ctx.refresh(); return it; }
 function removeItem(it, close) {
-  const prev = snap();
-  if (commit((l) => { const k = l.findIndex((x) => String(x.id) === String(it.id)); if (k >= 0) l.splice(k, 1); })) { close && close(); S.sel.delete(String(it.id)); paint(); ctx.toastUndo(`Deleted ${nameOf(it)}`, () => { restore(prev); ctx.refresh(); paint(); }); }
+  const prev = snap(), gone = new Set(expand([String(it.id)]).map(String)); hideIds([...gone].filter((x) => x.startsWith("ebay-")));
+  if (commit((l) => { for (let k = l.length - 1; k >= 0; k--) if (gone.has(String(l[k].id))) l.splice(k, 1); })) { close && close(); S.sel.delete(String(it.id)); paint(); ctx.toastUndo(`Deleted ${nameOf(it)}`, () => { restore(prev); ctx.refresh(); paint(); }); }
 }
 function buildSheet(it) {
   if (!it) return;
