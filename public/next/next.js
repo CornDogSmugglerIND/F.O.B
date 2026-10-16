@@ -20,6 +20,9 @@ const worth = (it) => (Number(it.price) || 0) * (Number(it.quantity) || 1);
 /* ---------- data ---------- */
 function loadItems() { try { const v = JSON.parse(localStorage.getItem(LS_ITEMS) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } }
 function saveItems(items) { try { localStorage.setItem(LS_ITEMS, JSON.stringify(items)); } catch { toast("Couldn't save. Storage is full."); } }
+const isDemo = (i) => i.demo || /^demo/.test(String(i.channels?.ebay?.listingId || "")) || (i.photos || []).some((p) => String(p.dataUrl || "").startsWith("/demo/"));
+function purgeDemo() { const l = loadItems(), k = l.filter((i) => !isDemo(i)); if (k.length !== l.length) saveItems(k); }
+purgeDemo();
 let items = loadItems();
 
 const STOPS = [
@@ -239,6 +242,7 @@ function go(v) {
 let sig = "";
 const sigOf = (l) => (localStorage.getItem("coalition-orders-v1") || "").length + "|" + (localStorage.getItem("coalition-order-state-v1") || "") + "|" + l.length + ":" + l.reduce((m, i) => (i.updatedAt > m ? i.updatedAt : m), "");
 function softRender() {
+  purgeDemo();
   const l = loadItems(), n = sigOf(l); items = l; renderStats();
   if (n === sig) return; sig = n;
   if (!$("#sheet").hidden || document.querySelector(".k-zoom") || document.querySelector(".ghost")) return;
@@ -246,7 +250,7 @@ function softRender() {
   const m = $("#main"), y = m.scrollTop; render(); m.scrollTop = y;
 }
 function render() {
-  items = loadItems(); renderStats(); sig = sigOf(items);
+  purgeDemo(); items = loadItems(); renderStats(); sig = sigOf(items);
   if (view === "command") renderCommand(); else if (view === "settings") renderSettings($("#main")); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, go }); } else if (view === "collection" || view === "spaces" || view === "channels") { $("#main").style.overflowY = "auto"; const sel = view === "collection" ? ".co-wrap" : ".sp-wrap"; $("#main").innerHTML = ""; (view === "collection" ? renderCollection : view === "channels" ? renderChannels : renderSpaces)($("#main"), { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); } }); } else renderCommand();
 }
 document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));
