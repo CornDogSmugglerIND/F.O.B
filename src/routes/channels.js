@@ -3,7 +3,8 @@ import { randomUUID } from "node:crypto";
 import { getCanonicalInventory, getChannelStatuses, getEbayChannelStatus } from "../channels/config.js";
 import { applySale } from "../channels/sync.js";
 import { publishListing, assertChannelConfigured } from "../channels/adapters.js";
-import { publishEbayVariationListing, publishEbayListing, endEbayListing, endEbayVariationListing, resolveEbayImages } from "../channels/ebay.js";
+import { publishEbayVariationListing, publishEbayListing, endEbayListing, endEbayVariationListing, resolveEbayImages, cardAspects, resolveFulfillmentPolicyId } from "../channels/ebay.js";
+import { runListingEngine, buildItemSpecifics } from "../listing/engine.js";
 import { probeEbay, syncEbayInventory, syncEbayWindow, clearEbayTokenCache, getEbayTracking } from "../channels/ebay.js";
 import {
   buildEbayAuthorizeUrl,
@@ -95,6 +96,22 @@ export function channelsRouter() {
   const router = Router();
   router.use(async (_req, _res, next) => { try { await hydrateMisprintKeys(); await hydrateEbaySettings(); } catch { /* ignore */ } next(); });
   /** The real button: list one item from the app on eBay (photos are hosted on eBay first). */
+  /** Everything the Build-the-listing screen shows before it goes live: description, item specifics, shipping / returns / payment. Read-only, nothing is sent to eBay. */
+  router.post("/ebay/listing-preview", async (req, res) => {
+    const item = req.body?.item || {};
+    const eng = runListingEngine(item);
+    const aspects = {};
+    for (const [k, v] of Object.entries(cardAspects({ ...item, number: item.number || item.collectorNumber, cardName: item.cardName || item.productName }) || {})) aspects[k] = (Array.isArray(v) ? v : [v]).join(", ");
+    if (item.rarity) aspects.Rarity = String(item.rarity);
+    if (item.finish) aspects.Finish = String(item.finish);
+    if (!aspects.Language) aspects.Language = String(item.language || "English");
+    const man = buildItemSpecifics({ game: item.game }).Manufacturer; if (man) aspects.Manufacturer = man;
+    let names = {};
+    try { const p = await listEbayPolicies(); for (const g of [p.fulfillment, p.payment, p.returns]) for (const x of g || []) names[x.id] = x.name; } catch { /* not connected: ids only */ }
+    const st = currentEbaySettings(), ship = resolveFulfillmentPolicyId(item);
+    const pol = (id) => (id ? { id, name: names[id] || "Your saved eBay policy" } : null);
+    res.json({ ok: true, title: eng.title, description: eng.description, aspects, shipping: pol(ship), returns: pol(st.returnPolicyId), payment: pol(st.paymentPolicyId) });
+  });
   router.post("/ebay/publish-item", async (req, res) => {
     const item = req.body?.item || {};
     try {

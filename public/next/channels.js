@@ -152,8 +152,8 @@ function varSheet(list) {
   if (ok.length < 2) { ctx.toast("You need 2 or more ready-to-list items with photos."); return; }
   const s = ctx.openSheet(`<a class="back" href="#" data-close>‹ Back</a><h2>One variation listing</h2><p class="sub">${ok.length} cards become one eBay listing. Buyers pick their card.</p>
     <div class="bl-vars" style="max-height:320px">${ok.map((i, k) => `<div style="gap:8px;align-items:center"><input type="checkbox" data-vk="${k}" checked aria-label="Include"><span>${esc(nameOf(i))}</span><input data-vp="${k}" inputmode="decimal" value="${esc(Number(i.price) || "")}" aria-label="Price" style="width:72px;text-align:right"></div>`).join("")}</div>
-    <div id="vlMsg" class="sub bl-msg" role="status">Check it first. Nothing goes live until you tap List on eBay twice.</div>
-    <div class="co-znav bl-act"><button class="btn" id="vlCheck" type="button">Check it</button><button class="btn go" id="vlGo" type="button">List on eBay</button></div>`);
+    <div id="vlMsg" class="sub bl-msg" role="status">Nothing goes live until you tap List on eBay twice.</div>
+    <div class="co-znav bl-act"><button class="btn go" id="vlGo" type="button">List on eBay</button></div>`);
   const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#vlMsg"); m.textContent = t; m.style.color = bad ? "var(--org)" : ""; };
   s.querySelector("[data-close]").addEventListener("click", (e) => { e.preventDefault(); ctx.closeSheet(); });
   const read = () => { const on = ok.map((i, k) => [i, k]).filter(([, k]) => s.querySelector(`[data-vk="${k}"]`).checked); if (on.length < 2) { msg("Tick at least 2 cards.", true); return null; } const ps = on.map(([, k]) => parseFloat(String(s.querySelector(`[data-vp="${k}"]`).value).replace(/[^0-9.]/g, ""))); if (ps.some((p) => !(p > 0))) { msg("Every ticked card needs a price.", true); return null; } return on.map(([i], j) => Object.assign({}, i, { price: ps[j] })); };
@@ -167,9 +167,8 @@ function varSheet(list) {
       return { out, items };
     } catch (e) { msg(e.name === "AbortError" ? "That took too long. Nothing was confirmed. Check eBay before trying again." : "Couldn't reach the server. Nothing was listed.", true); return null; } finally { clearTimeout(to); }
   };
-  const busy = (on) => { $("#vlCheck").disabled = on; $("#vlGo").disabled = on; };
+  const busy = (on) => { $("#vlGo").disabled = on; };
   let armed = null;
-  $("#vlCheck").addEventListener("click", async () => { armed = null; $("#vlGo").textContent = "List on eBay"; busy(true); msg("Checking…"); const r = await call(true); busy(false); if (r) msg(`Looks good: "${r.out.title}", ${r.out.count} cards. This only checks the details. It doesn't test eBay.`); });
   $("#vlGo").addEventListener("click", async () => {
     const pick = read(); if (!pick) return;
     if (!armed) { armed = setTimeout(() => { armed = null; $("#vlGo").textContent = "List on eBay"; }, 10000); $("#vlGo").textContent = `Yes, list all ${pick.length} now`; msg("This goes live on eBay right away. Tap again to confirm.", false); return; }
@@ -197,15 +196,31 @@ function buildSheet(it) {
     <label class="sc-f"><span>Price</span><input id="blPrice" inputmode="decimal" value="${esc(Number(it.price) || "")}"></label>
     <label class="sc-f"><span>Quantity</span><input id="blQty" inputmode="numeric" value="${esc(Number(it.quantity) || 1)}"></label>
     <label class="sc-f"><span>Condition</span><select id="blCond">${[["NM", "Near Mint"], ["LP", "Lightly Played"], ["MP", "Moderately Played"], ["HP", "Heavily Played"]].map(([k, l]) => `<option value="${k}"${String(it.condition || "NM").toUpperCase() === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
-    <div id="blMsg" class="sub bl-msg" role="status">Check it with eBay first. Nothing goes live until you tap List on eBay twice.</div>
-    <div class="co-znav bl-act"><button class="btn" id="blCheck" type="button">Check with eBay</button><button class="btn go" id="blGo" type="button">List on eBay</button></div>`);
+    <label class="sc-f"><span>Description</span><textarea id="blDesc" rows="8" style="width:100%;resize:vertical"></textarea></label>
+    <div class="sc-f"><span>Item specifics</span><div id="blAsp" class="bl-vars" style="max-height:none"></div><button class="btn" id="blAddAsp" type="button" style="margin-top:6px">Add item specific</button></div>
+    <div class="sc-f"><span>Shipping, returns and payment</span><div id="blPol" class="sub">Loading your eBay policies…</div></div>
+    <label class="sc-f" style="flex-direction:row;gap:10px;align-items:center"><input type="checkbox" id="blDH" checked><span>Also download a Double Holo file after listing</span></label>
+    <div id="blMsg" class="sub bl-msg" role="status">Nothing goes live until you tap List on eBay twice.</div>
+    <div class="co-znav bl-act"><button class="btn go" id="blGo" type="button">List on eBay</button></div>`);
+  const aspRow = (k = "", v = "") => `<div style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" aria-label="Item specific name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="Value" aria-label="Item specific value" style="flex:1;min-width:0"></div>`;
   const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#blMsg"); m.textContent = t; m.style.color = bad ? "var(--org)" : ""; };
   let armed = null;
+  $("#blDesc").value = it.description || "";
+  $("#blAddAsp").addEventListener("click", () => { $("#blAsp").insertAdjacentHTML("beforeend", aspRow()); });
+  fetch("/api/channels/ebay/listing-preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item: it }) }).then((r) => r.json()).then((p) => {
+    if (!p || !p.ok || !s.isConnected) return;
+    if (!$("#blDesc").value) $("#blDesc").value = p.description || "";
+    const ex = it.aspects || {}, all = Object.assign({}, p.aspects, ex);
+    $("#blAsp").innerHTML = Object.entries(all).map(([k, v]) => aspRow(k, Array.isArray(v) ? v.join(", ") : v)).join("");
+    const line = (l, o) => `<div class="row"><span>${l}</span><span>${o ? esc(o.name) : "Not set up in eBay yet"}</span></div>`;
+    $("#blPol").innerHTML = line("Shipping", p.shipping) + line("Returns", p.returns) + line("Payment", p.payment);
+  }).catch(() => { if (s.isConnected) $("#blPol").textContent = "Couldn't load your eBay policies. eBay will use your defaults."; });
   const read = () => {
     const title = $("#blTitle").value.trim().slice(0, 80), price = parseFloat(String($("#blPrice").value).replace(/[^0-9.]/g, "")), qty = Math.max(1, parseInt($("#blQty").value, 10) || 1), cond = $("#blCond").value;
     if (!title) { msg("Add a title first.", true); return null; }
     if (!(price > 0)) { msg("Add a price first.", true); return null; }
-    return { title, price, quantity: qty, condition: cond };
+    const aspects = {}; s.querySelectorAll("#blAsp > div").forEach((r) => { const k = r.querySelector("[data-ak]").value.trim(), v = r.querySelector("[data-av]").value.trim(); if (k && v) aspects[k] = v; });
+    return { title, price, quantity: qty, condition: cond, description: $("#blDesc").value.trim() || title, aspects };
   };
   const call = async (dryRun) => {
     const f = read(); if (!f) return null;
@@ -219,8 +234,7 @@ function buildSheet(it) {
     } catch (e) { msg(e.name === "AbortError" ? "eBay took too long. Nothing was listed. Try again." : "Couldn't reach eBay. Nothing was listed.", true); return null; }
     finally { clearTimeout(to); }
   };
-  const busy = (on) => { $("#blCheck").disabled = on; $("#blGo").disabled = on; };
-  $("#blCheck").addEventListener("click", async () => { armed = null; $("#blGo").textContent = "List on eBay"; busy(true); msg("Checking with eBay…"); const out = await call(true); busy(false); if (out) msg("eBay accepted this listing. Nothing was published."); });
+  const busy = (on) => { $("#blGo").disabled = on; };
   $("#blGo").addEventListener("click", async () => {
     const f = read(); if (!f) return;
     if (!armed) { armed = setTimeout(() => { armed = null; $("#blGo").textContent = "List on eBay"; }, 10000); $("#blGo").textContent = `Yes, list it now for ${money(f.price)}`; msg("This goes live on eBay right away. Tap again to confirm.", false); return; }
@@ -228,7 +242,9 @@ function buildSheet(it) {
     const out = await call(false); busy(false); $("#blGo").textContent = "List on eBay";
     if (!out) return;
     patchItem(it.id, (i) => { i.phase = "listed"; i.listingStatus = "active"; i.staged = false; i.channels = Object.assign({}, i.channels, { ebay: { listingId: out.listingId, offerId: out.offerId, sku: out.sku, at: new Date().toISOString() } }); });
+    const wantDH = $("#blDH").checked, dhItem = Object.assign({}, it, f, { id: it.id });
     ctx.closeSheet(); S.stage = "listed"; paint(); ctx.rerender?.(); ctx.toast("Listed on eBay. Next: put it away in its bin.");
+    if (wantDH) { try { const r = await fetch("/api/csv/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: "double_holo", items: [dhItem] }) }); if (r.ok) { const u = URL.createObjectURL(await r.blob()), a = document.createElement("a"); a.href = u; a.download = `double-holo-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); } } catch { /* the eBay listing is already live; the file is optional */ } }
   });
 }
 export function renderChannels(host, api) { ctx = { host, ...api }; if (window.__chStage) { S.stage = /^(intake|staged)$/.test(window.__chStage) ? "listed" : window.__chStage; S.more = {}; window.__chStage = null; } if (/^(intake|staged)$/.test(S.stage)) S.stage = "listed"; if (!host.querySelector(".ch-wrap")) S.sel.clear(); paint(); }
