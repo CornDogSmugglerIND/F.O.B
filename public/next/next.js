@@ -235,13 +235,23 @@ function go(v) {
   try { history.replaceState(null, "", v === "command" ? "./" : `#${v}`); } catch { /* ignore */ }
   render();
 }
+/* Background updates (sync, other tab) must never move you: no re-render while you're in a sheet, card, bin or the Scouter, and scroll is kept. */
+let sig = "";
+const sigOf = (l) => (localStorage.getItem("coalition-orders-v1") || "").length + "|" + (localStorage.getItem("coalition-order-state-v1") || "") + "|" + l.length + ":" + l.reduce((m, i) => (i.updatedAt > m ? i.updatedAt : m), "");
+function softRender() {
+  const l = loadItems(), n = sigOf(l); items = l; renderStats();
+  if (n === sig) return; sig = n;
+  if (!$("#sheet").hidden || document.querySelector(".k-zoom") || document.querySelector(".ghost")) return;
+  if (view === "scouter" || view === "settings" || view === "spaces") return;
+  const m = $("#main"), y = m.scrollTop; render(); m.scrollTop = y;
+}
 function render() {
-  items = loadItems(); renderStats();
+  items = loadItems(); renderStats(); sig = sigOf(items);
   if (view === "command") renderCommand(); else if (view === "settings") renderSettings($("#main")); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, go }); } else if (view === "collection" || view === "spaces" || view === "channels") { $("#main").style.overflowY = "auto"; const sel = view === "collection" ? ".co-wrap" : ".sp-wrap"; $("#main").innerHTML = ""; (view === "collection" ? renderCollection : view === "channels" ? renderChannels : renderSpaces)($("#main"), { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); } }); } else renderCommand();
 }
 document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));
 addEventListener("resize", (() => { let t; let last = phone(); return () => { clearTimeout(t); t = setTimeout(() => { if (phone() !== last) { last = phone(); render(); } else if (!phone() && document.querySelector(".road")) render(); }, 150); }; })());
-addEventListener("storage", () => render());
+addEventListener("storage", () => softRender());
 
 /* ---------- sync (writes the shared store) ---------- */
 const DONE = ["sold", "packed", "shipped", "delivered"];
@@ -285,7 +295,7 @@ async function syncAll(auto) {
   const ordersP = pullOrders();
   try {
     const pulled = await pullEbay((n, t) => { btn.textContent = (phone() ? `${n}/${t}` : `Syncing ${n}/${t}`); });
-    if (pulled.error) { await ordersP; render(); toast(auto ? "Showing saved data. eBay didn't answer." : pulled.error); return; }
+    if (pulled.error) { await ordersP; softRender(); toast(auto ? "Showing saved data. eBay didn't answer." : pulled.error); return; }
     const body = { partial: !pulled.complete };
     const list = loadItems(); const all = pulled.rows; const rows = all.filter((r) => r.offerKnown !== false);
     for (const r of rows) {
@@ -305,7 +315,7 @@ async function syncAll(auto) {
     }
     const bySku = await ordersP;
     for (const it of list) { if (!(it.source === "scouter" || it.source === "app")) continue; const hit = bySku.get(it.sku || it.channels?.ebay?.sku); if (hit && it.phase !== hit && ["listed", "staged", "intake", "sold", "packed"].includes(it.phase)) { it.phase = hit; it.ended = false; } }
-    saveItems(list); items = list; render();
+    saveItems(list); items = list; softRender();
     const nLive = list.filter((i) => phaseFromItem(i) === "listed").length, nSold = list.filter((i) => DONE.includes(i.phase)).length, nEnd = list.filter((i) => i.ended && !DONE.includes(i.phase)).length;
     setLink(true); toast(pulled.complete ? `Synced: ${nLive} live, ${nSold} sold, ${orderItems().length} orders` : `Synced ${rows.length} of ${pulled.total}. ${pulled.total - rows.length} couldn't be checked. Tap Sync again.`);
   } catch { toast(auto ? "Showing saved data." : "eBay sync failed. Try again."); }
@@ -315,5 +325,5 @@ $("#syncBtn").addEventListener("click", () => syncAll(false));
 initKit(); initAvatar();
 const h = (location.hash || "").slice(1);
 go(["scouter", "collection", "channels", "spaces", "settings"].includes(h) ? h : "command");
-initSync(() => { items = loadItems(); renderStats(); render(); });
+initSync(() => softRender());
 syncAll(true);
