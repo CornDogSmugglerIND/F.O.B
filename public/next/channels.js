@@ -21,7 +21,7 @@ let GROUP = new Map();
 function live() {
   const out = [], seen = new Map(); GROUP = new Map();
   for (const it of shown()) {
-    if (it.ended || SOLD.includes(it.phase) || /^demo-/.test(String(it.id))) continue;
+    if (it.ended || SOLD.includes(it.phase) || /^(demo-|mp-)/.test(String(it.id))) continue;
     const lid = it.phase === "listed" && it.channels?.ebay?.listingId;
     if (lid && !/^demo/.test(lid)) { const g = seen.get(lid); if (g) { g._kids.push(it); continue; } const rep = Object.assign({}, it, { _kids: [it] }); seen.set(lid, rep); out.push(rep); } else out.push(it);
   }

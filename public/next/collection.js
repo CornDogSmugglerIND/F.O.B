@@ -39,6 +39,7 @@ function paint() {
     ${portfolio(all, sealed, singles)}
     <div class="co-bar2"><input id="coQ" type="search" placeholder="Search your collection" value="${esc(S.q)}">
       <button class="btn${S.selecting ? " go" : ""}" id="coSel" type="button">${S.selecting ? "Done selecting" : "Select"}</button>
+      <button class="btn" id="coIO" type="button">Import / Export</button>
       <button class="btn co-view${S.menu ? " go" : ""}" id="coMenuBtn" type="button" aria-expanded="${!!S.menu}">View ▾</button>
       ${S.menu ? `<div class="co-menu" id="coMenu"><div class="co-mrow"><span>Show</span><div class="co-chips" role="group" aria-label="Stage filter">${[["all", "All"], ["new", "Intake"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<button class="chip${S.stage === k ? " on" : ""}" data-stage="${k}" type="button">${l}</button>`).join("")}</div></div>
       <div class="co-mrow"><span>Sort</span><select id="coSort" aria-label="Sort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest value</option><option value="new"${S.sort === "new" ? " selected" : ""}>Newest</option><option value="name"${S.sort === "name" ? " selected" : ""}>A to Z</option></select></div></div>` : ""}</div>
@@ -61,6 +62,7 @@ function wire() {
   $("#coQ").addEventListener("input", (e) => { S.q = e.target.value; const p = e.target.selectionStart; paint(); const q = h.querySelector("#coQ"); q.focus(); q.setSelectionRange(p, p); });
   $("#coMenuBtn").addEventListener("click", () => { S.menu = !S.menu; paint(); });
   $("#coSort")?.addEventListener("change", (e) => { S.sort = e.target.value; paint(); });
+  $("#coIO").addEventListener("click", ioSheet);
   $("#coSel").addEventListener("click", () => { S.selecting = !S.selecting; if (!S.selecting) S.sel.clear(); paint(); });
   h.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => { S.stage = b.dataset.stage; paint(); }));
   h.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { S.tab = b.dataset.tab; paint(); }));
@@ -95,3 +97,36 @@ function openZoom(id, fromEl) {
 }
 export function renderCollection(host, api) { ctx = { host, ...api }; if (!host.querySelector(".co-wrap")) S.sel.clear(); paint(); }
 export function repaintCollection() { if (ctx && ctx.host.querySelector(".co-wrap")) paint(); }
+
+/* Import / Export CSV (uses the server's /api/csv converters) */
+function ioSheet() {
+  const s = ctx.openSheet(`<a class="back" href="#" data-close>‹ Back</a><h2>Import / Export</h2>
+    <h3 style="margin:14px 0 6px">Export</h3><p class="sub">Downloads what Collection shows right now.</p>
+    <label class="sc-f"><span>Format</span><select id="ioXs"><option value="tcgplayer">Generic CSV</option><option value="ebay">eBay</option><option value="double_holo">Double Holo</option></select></label>
+    <button class="btn go" id="ioX" type="button">Download CSV</button>
+    <h3 style="margin:22px 0 6px">Import</h3><p class="sub">Adds the rows in your file to Collection. Nothing is overwritten.</p>
+    <label class="sc-f"><span>Where is the file from</span><select id="ioIs"><option value="double_holo">Double Holo / Shiny Pro</option><option value="ebay">eBay</option><option value="misprint">Misprint</option><option value="seller_fb">Facebook</option></select></label>
+    <input id="ioF" type="file" accept=".csv,text/csv" style="margin:8px 0"><div class="sub" id="ioMsg" role="status"></div><button class="btn go" id="ioI" type="button">Import file</button>`);
+  const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#ioMsg"); m.textContent = t; m.style.color = bad ? "var(--org)" : ""; };
+  s.querySelector("[data-close]").addEventListener("click", (e) => { e.preventDefault(); ctx.closeSheet(); });
+  $("#ioX").addEventListener("click", async () => {
+    const items = rows(); if (!items.length) { msg("Nothing to export.", true); return; }
+    try {
+      const r = await fetch("/api/csv/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: $("#ioXs").value, items }) });
+      if (!r.ok) { const b = await r.json().catch(() => ({})); msg(b.error || "Export failed.", true); return; }
+      const url = URL.createObjectURL(await r.blob()), a = document.createElement("a"); a.href = url; a.download = `collection-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); msg(`Exported ${items.length} items.`);
+    } catch { msg("Couldn't reach the server.", true); }
+  });
+  $("#ioI").addEventListener("click", async () => {
+    const f = $("#ioF").files && $("#ioF").files[0]; if (!f) { msg("Choose a CSV file first.", true); return; }
+    const src = $("#ioIs").value; msg("Reading…");
+    try {
+      const r = await fetch("/api/csv/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: src, csv: await f.text() }) });
+      const b = await r.json().catch(() => ({})); if (!r.ok || !b.ok) { msg(b.error || "Couldn't read that file.", true); return; }
+      const have = new Set(loadItems().map((i) => String(i.sku || "")).filter(Boolean)); let n = 0, skip = 0; const stamp = Date.now().toString(36), add = [];
+      (b.items || []).forEach((it, k) => { if (it.sku && have.has(String(it.sku))) { skip++; return; } n++; add.push(Object.assign({}, it, { id: src === "double_holo" ? `mp-imp-${stamp}-${k}` : `imp-${stamp}-${k}`, source: "app", phase: src === "ebay" ? "listed" : src === "double_holo" ? "listed" : "intake", quantity: Number(it.quantity) || 1, photos: it.photos || [], createdAt: new Date().toISOString() })); });
+      const l = loadItems(); l.unshift(...add); if (!saveItems(l)) { msg("Storage is full. Nothing was added.", true); return; }
+      ctx.refresh(); paint(); msg(`Added ${n} items${skip ? `, skipped ${skip} you already have` : ""}${(b.errors || []).length ? `, ${(b.errors || []).length} rows had problems` : ""}.`);
+    } catch { msg("Import failed. Nothing was added.", true); }
+  });
+}
