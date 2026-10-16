@@ -190,6 +190,7 @@ export async function publishEbayListing(item, opts = {}) {
   const qty = Math.max(1, Number(item.quantity) || 1);
   const marketplaceId = ebayMarketplaceId();
 
+  const imageUrls = await resolveEbayImages(item, opts);
   await ebayRequest(`/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, {
     method: "PUT",
     fetchImpl: opts.fetchImpl,
@@ -203,7 +204,7 @@ export async function publishEbayListing(item, opts = {}) {
         title: String(item.title).slice(0, 80),
         description: item.description || item.title,
         aspects: cardAspects(item),
-        imageUrls: await resolveEbayImages(item, opts),
+        imageUrls,
       },
     },
   });
@@ -271,6 +272,7 @@ export async function publishEbayListing(item, opts = {}) {
     price,
     status: "active",
     fulfillmentPolicyId,
+    imageUrls,
   };
 }
 

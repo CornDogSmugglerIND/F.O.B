@@ -140,12 +140,31 @@ export function exportGenericTcgCsv(items) {
 }
 
 /**
- * @param {'ebay'|'double_holo'|'tcgplayer'} format
+ * Double Holo Vendor Hub "Import photos" CSV. Headers match the DH UI exactly.
+ * PicURL = front|back (DH only uses the first two). Name/set/number match the card CSV.
+ * @param {Array<Record<string, unknown>>} items  each with picUrls: string[] (public https URLs)
+ */
+export function exportDoubleHoloPhotosCsv(items) {
+  const lines = [row(["*C:Card Name", "*C:Set", "*C:Card Number", "PicURL"])];
+  for (const it of items) {
+    let name = it.productName || it.title || "";
+    if (it.finish && !/\[[^\]]+\]/.test(name)) name = `${name} [${it.finish}]`;
+    const number = String(it.collectorNumber || "").replace(/^0+(?=\d)/, "").replace(/\/\d+$/, "");
+    const pics = (Array.isArray(it.picUrls) ? it.picUrls : []).map((u) => String(u || "").trim()).filter((u) => /^https:\/\//.test(u)).slice(0, 2);
+    if (!pics.length) continue;
+    lines.push(row([name, it.setName || "", number, pics.join("|")]));
+  }
+  return lines.join("\r\n") + "\r\n";
+}
+
+/**
+ * @param {'ebay'|'double_holo'|'double_holo_photos'|'tcgplayer'} format
  * @param {Array<Record<string, unknown>>} items
  */
 export function exportCsv(format, items) {
   if (format === "ebay") return exportEbayFileExchange(items);
   if (format === "double_holo") return exportDoubleHoloCsv(items);
+  if (format === "double_holo_photos") return exportDoubleHoloPhotosCsv(items);
   return exportGenericTcgCsv(items);
 }
 

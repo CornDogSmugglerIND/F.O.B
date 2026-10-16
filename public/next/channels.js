@@ -199,7 +199,7 @@ function buildSheet(it) {
     <label class="sc-f"><span>Description</span><textarea id="blDesc" rows="8" style="width:100%;resize:vertical"></textarea></label>
     <div class="sc-f"><span>Item specifics</span><div id="blAsp" class="bl-vars" style="max-height:none"></div><button class="btn" id="blAddAsp" type="button" style="margin-top:6px">Add item specific</button></div>
     <div class="sc-f"><span>Shipping, returns and payment</span><div id="blPol" class="sub">Loading your eBay policies…</div></div>
-    <label class="sc-f" style="flex-direction:row;gap:10px;align-items:center"><input type="checkbox" id="blDH" checked><span>Also download a Double Holo file after listing</span></label>
+    <label class="sc-f" style="flex-direction:row;gap:10px;align-items:center"><input type="checkbox" id="blDH" checked><span>Also download the Double Holo files (cards + photos) after listing</span></label>
     <div id="blMsg" class="sub bl-msg" role="status">Nothing goes live until you tap List on eBay twice.</div>
     <div class="co-znav bl-act"><button class="btn go" id="blGo" type="button">List on eBay</button></div>`);
   const aspRow = (k = "", v = "") => `<div style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" aria-label="Item specific name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="Value" aria-label="Item specific value" style="flex:1;min-width:0"></div>`;
@@ -244,7 +244,13 @@ function buildSheet(it) {
     patchItem(it.id, (i) => { i.phase = "listed"; i.listingStatus = "active"; i.staged = false; i.channels = Object.assign({}, i.channels, { ebay: { listingId: out.listingId, offerId: out.offerId, sku: out.sku, at: new Date().toISOString() } }); });
     const wantDH = $("#blDH").checked, dhItem = Object.assign({}, it, f, { id: it.id });
     ctx.closeSheet(); S.stage = "listed"; paint(); ctx.rerender?.(); ctx.toast("Listed on eBay. Next: put it away in its bin.");
-    if (wantDH) { try { const r = await fetch("/api/csv/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: "double_holo", items: [dhItem] }) }); if (r.ok) { const u = URL.createObjectURL(await r.blob()), a = document.createElement("a"); a.href = u; a.download = `double-holo-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); } } catch { /* the eBay listing is already live; the file is optional */ } }
+    if (wantDH) {
+      const dl = async (source, items, name) => { try { const r = await fetch("/api/csv/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source, items }) }); if (!r.ok) return false; const u = URL.createObjectURL(await r.blob()), a = document.createElement("a"); a.href = u; a.download = `${name}-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); return true; } catch { return false; } };
+      const ok1 = await dl("double_holo", [dhItem], "double-holo-cards");
+      await new Promise((r) => setTimeout(r, 700));
+      const ok2 = (out.imageUrls || []).length ? await dl("double_holo_photos", [Object.assign({}, dhItem, { picUrls: out.imageUrls })], "double-holo-photos") : false;
+      ctx.toast(ok1 && ok2 ? "Double Holo files downloaded: upload the cards file, then the photos file." : ok1 ? "Cards file downloaded. Photos file couldn't be made." : "Couldn't make the Double Holo files.");
+    }
   });
 }
 export function renderChannels(host, api) { ctx = { host, ...api }; if (window.__chStage) { S.stage = /^(intake|staged)$/.test(window.__chStage) ? "listed" : window.__chStage; S.more = {}; window.__chStage = null; } if (/^(intake|staged)$/.test(S.stage)) S.stage = "listed"; if (!host.querySelector(".ch-wrap")) S.sel.clear(); paint(); }

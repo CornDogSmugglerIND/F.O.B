@@ -2,7 +2,7 @@ import { Router } from "express";
 import { importCsv, exportCsv } from "../listing/csv.js";
 import { listScoutItems } from "../store.js";
 
-const EXPORT_SOURCES = ["ebay", "double_holo", "generic", "tcgplayer"];
+const EXPORT_SOURCES = ["double_holo_photos", "ebay", "double_holo", "generic", "tcgplayer"];
 const IMPORT_SOURCES = ["ebay", "double_holo", "misprint", "seller_fb"];
 
 export function csvRouter() {
