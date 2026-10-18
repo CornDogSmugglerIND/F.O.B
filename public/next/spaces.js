@@ -1,4 +1,4 @@
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, loadItems, loadSpaces, saveSpaces, assign } from "./shared.js?v=3";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=4";
 import { fly, rectOf, sleep, openCard } from "./kit.js?v=2";
 
 /* Spaces = his real storage, as a camera you fly through:
@@ -30,6 +30,8 @@ function ensureBins() {
     if (!have) { sp.push({ id, name: p.name, sub: p.sub, kind: "storage", itemIds: [], cover: null, phys: true }); changed = true; }
     else if (!have.phys) { have.phys = true; have.sub = have.sub || p.sub; changed = true; }
   }
+  const keep = sp.filter((x) => x.phys || (x.kind !== "ebay_listed" && x.id !== "staged"));
+  if (keep.length !== sp.length) { saveSpaces(keep); return keep; }
   if (changed) saveSpaces(sp);
   return sp;
 }
@@ -115,23 +117,35 @@ function renameSheet(title, current, save) {
   s.querySelector("#rnF").addEventListener("submit", (e) => { e.preventDefault(); const n = s.querySelector("[name=n]").value.trim(); if (!n) { ctx.toast("Give it a name."); return; } save(n); ctx.closeSheet(); paint(); });
 }
 function pickSheet(targetId) {
-  const sel = new Set(); let q = "", tab = "group";
+  const sel = new Set(); let q = "", cat = "All", more = 60;
   const s = ctx.openSheet(`<div id="pk"></div>`), box = s.querySelector("#pk");
   const move = (ids, to, label) => { const prev = snapshot(); if (!assign(ids, to)) { ctx.toast("Couldn't save. Storage is full."); return; } const name = (loadSpaces().find((b) => b.id === to) || {}).name || "bin"; ctx.closeSheet(); ctx.refresh(); paint(); ctx.toastUndo(`Put ${label} in ${name}`, () => { restore(prev); ctx.refresh(); paint(); }); };
-  const draw = () => {
-    const w2 = world(), un = w2.un, shown = un.filter((i) => !q || nameOf(i).toLowerCase().includes(q.toLowerCase())), groups = groupsFor(un);
-    const opts = () => w2.spaces.map((b) => `<option value="${esc(b.id)}"${b.id === targetId ? " selected" : ""}>${esc(b.name)}${b.sub ? " · " + esc(b.sub) : ""}</option>`).join("");
-    box.innerHTML = `<a class="back" href="#" data-close>‹ Back</a><h2>${targetId ? "Add items" : "Not in a bin yet"}</h2><div class="sub">${un.length} item${un.length === 1 ? "" : "s"} waiting</div>
-      <div class="seg" style="margin-bottom:10px"><button type="button" data-tab="group" class="${tab === "group" ? "on" : ""}">By group</button><button type="button" data-tab="pick" class="${tab === "pick" ? "on" : ""}">Pick items</button></div>
-      ${tab === "group" ? (groups.map(([k, l], gi) => `<div class="spx-grp"><span><b>${esc(k)}</b><em>${l.length}</em></span><select data-g="${gi}" aria-label="Send ${esc(k)} to"><option value="">Send to…</option>${opts()}</select></div>`).join("") || `<div class="spx-empty">Everything is in a bin.</div>`)
-      : `<input id="pkq" type="search" placeholder="Search" value="${esc(q)}" class="spx-q"><div class="sp-list">${shown.slice(0, 120).map((i) => `<label class="sp-row${sel.has(String(i.id)) ? " on" : ""}"><input type="checkbox" data-id="${esc(i.id)}"${sel.has(String(i.id)) ? " checked" : ""}>${photoOf(i) ? `<img src="${esc(photoOf(i))}" alt="" loading="lazy">` : "<i></i>"}<span>${esc(nameOf(i))}</span><b>${money(i.price)}</b></label>`).join("") || `<div class="spx-empty">No matches.</div>`}</div>
-        ${sel.size ? `<div class="spx-pickbar"><b>${sel.size} picked</b><select id="pkTo"><option value="">Put in…</option>${opts()}</select></div>` : ""}`}`;
+  const draw = (keepScroll) => {
+    const w2 = world(), un = w2.un, cats = new Map(); un.forEach((i) => { const c = catOf(i); cats.set(c, (cats.get(c) || 0) + 1); });
+    const shown = un.filter((i) => (cat === "All" || catOf(i) === cat) && (!q || nameOf(i).toLowerCase().includes(q.toLowerCase())));
+    const bins = w2.spaces.filter((b) => b.phys || true);
+    const ids = shown.map((i) => String(i.id)), allOn = ids.length && ids.every((x) => sel.has(x));
+    const sc = keepScroll ? box.querySelector(".pk-grid")?.scrollTop : 0;
+    box.innerHTML = `<div class="pk-top"><a class="back" href="#" data-close>‹ Back</a><h2>${targetId ? "Add items" : "Put away"}</h2><div class="sub">${un.length} not in a bin</div>
+      <div class="pk-chips" role="tablist"><button type="button" class="${cat === "All" ? "on" : ""}" data-cat="All">All <em>${un.length}</em></button>${[...cats.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => `<button type="button" class="${cat === c ? "on" : ""}" data-cat="${esc(c)}">${esc(c)} <em>${n}</em></button>`).join("")}</div>
+      <div class="pk-tools"><input id="pkq" type="search" placeholder="Search" value="${esc(q)}" class="spx-q"><button type="button" class="pk-all" id="pkAll">${allOn ? "Clear" : `Select all ${shown.length}`}</button></div></div>
+      <div class="pk-grid">${shown.slice(0, more).map((i) => { const on = sel.has(String(i.id)), ph = photoOf(i); return `<button type="button" class="pk-tile${on ? " on" : ""}" data-id="${esc(i.id)}" draggable="true">${ph ? `<img src="${esc(ph)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="pk-ini">${esc(nameOf(i).charAt(0))}</span>`}<i class="pk-ck"></i><span class="pk-cap">${esc(nameOf(i))}</span></button>`; }).join("") || `<div class="spx-empty">${un.length ? "Nothing matches." : "Everything is in a bin."}</div>`}${shown.length > more ? `<button type="button" class="pk-more" id="pkMore">Show more (${shown.length - more})</button>` : ""}</div>
+      <div class="pk-bar${sel.size ? " on" : ""}"><b>${sel.size ? `${sel.size} picked. Put in:` : "Tap photos to pick, then choose a bin"}</b><div class="pk-bins">${bins.map((b) => `<button type="button" class="pk-bin${b.id === targetId ? " tgt" : ""}" data-to="${esc(b.id)}"${sel.size ? "" : " disabled"}>${esc(b.name)}</button>`).join("")}</div></div>`;
+    if (sc) box.querySelector(".pk-grid").scrollTop = sc;
     box.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", (e) => { e.preventDefault(); ctx.closeSheet(); }));
-    box.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; draw(); }));
-    box.querySelectorAll("[data-g]").forEach((se) => se.addEventListener("change", () => { if (!se.value) return; const [k, l] = groups[Number(se.dataset.g)]; move(l.map((i) => i.id), se.value, `${l.length} ${k}`); }));
-    const qi = box.querySelector("#pkq"); qi?.addEventListener("input", () => { q = qi.value; const p = qi.selectionStart; draw(); const n = box.querySelector("#pkq"); n.focus(); n.setSelectionRange(p, p); });
-    box.querySelectorAll(".sp-row input").forEach((c) => c.addEventListener("change", () => { c.checked ? sel.add(c.dataset.id) : sel.delete(c.dataset.id); draw(); }));
-    box.querySelector("#pkTo")?.addEventListener("change", (e) => { if (e.target.value) move([...sel], e.target.value, `${sel.size} item${sel.size === 1 ? "" : "s"}`); });
+    box.querySelectorAll("[data-cat]").forEach((b) => b.addEventListener("click", () => { cat = b.dataset.cat; more = 60; draw(); }));
+    box.querySelector("#pkAll")?.addEventListener("click", () => { allOn ? ids.forEach((x) => sel.delete(x)) : ids.forEach((x) => sel.add(x)); draw(true); });
+    box.querySelector("#pkMore")?.addEventListener("click", () => { more += 60; draw(true); });
+    const qi = box.querySelector("#pkq"); qi?.addEventListener("input", () => { q = qi.value; more = 60; const p = qi.selectionStart; draw(); const n = box.querySelector("#pkq"); n.focus(); n.setSelectionRange(p, p); });
+    box.querySelectorAll(".pk-tile").forEach((t) => {
+      t.addEventListener("click", () => { const id = t.dataset.id; sel.has(id) ? sel.delete(id) : sel.add(id); t.classList.toggle("on", sel.has(id)); const bar = box.querySelector(".pk-bar"); bar.classList.toggle("on", sel.size > 0); bar.querySelector("b").textContent = sel.size ? `${sel.size} picked. Put in:` : "Tap photos to pick, then choose a bin"; bar.querySelectorAll(".pk-bin").forEach((x) => { x.disabled = !sel.size; }); const all = box.querySelector("#pkAll"); if (all) { const on = ids.length && ids.every((x) => sel.has(x)); all.textContent = on ? "Clear" : `Select all ${shown.length}`; } });
+      t.addEventListener("dragstart", (e) => { if (!sel.has(t.dataset.id)) { sel.add(t.dataset.id); t.classList.add("on"); } e.dataTransfer.setData("text/plain", "pk"); e.dataTransfer.effectAllowed = "move"; });
+    });
+    box.querySelectorAll(".pk-bin").forEach((b) => {
+      b.addEventListener("click", () => { if (sel.size) move([...sel], b.dataset.to, `${sel.size} item${sel.size === 1 ? "" : "s"}`); });
+      b.addEventListener("dragover", (e) => { e.preventDefault(); b.classList.add("over"); }); b.addEventListener("dragleave", () => b.classList.remove("over"));
+      b.addEventListener("drop", (e) => { e.preventDefault(); b.classList.remove("over"); if (sel.size) move([...sel], b.dataset.to, `${sel.size} item${sel.size === 1 ? "" : "s"}`); });
+    });
   };
   draw();
 }

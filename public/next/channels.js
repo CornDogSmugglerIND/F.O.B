@@ -1,4 +1,4 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=3";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=4";
 import { openCard } from "./kit.js?v=2";
 import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=2";
 

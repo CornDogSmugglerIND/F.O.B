@@ -24,6 +24,19 @@ export function gameOf(it) {
 }
 export function loadItems() { try { const v = JSON.parse(localStorage.getItem(LS_ITEMS) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } }
 export function saveItems(list) { try { localStorage.setItem(LS_ITEMS, JSON.stringify(list)); return true; } catch { return false; } }
+/* store-style categories, used to sort things when putting away */
+const BOW = /bow|arrow|broadhead|archery|hunting|quiver|camo/i;
+export function catOf(it) {
+  const g = gameOf(it), sealed = laneOf(it) === "sealed", t = nameOf(it);
+  if (g === "Pokemon") return sealed ? "Pokémon sealed" : "Pokémon singles";
+  if (g === "Dragon Ball") return sealed ? "Dragon Ball sealed" : "Dragon Ball singles";
+  if (g === "One Piece") return sealed ? "One Piece sealed" : "One Piece singles";
+  if (g === "Hockey") return "Hockey cards";
+  if (g === "Wrestling") return "Wrestling cards";
+  if (g === "Other" && BOW.test(t)) return "Bow hunting";
+  if (g === "Other") return "Other";
+  return sealed ? `${g} sealed` : `${g} singles`;
+}
 export function loadSpaces() { try { const v = JSON.parse(localStorage.getItem(LS_SPACES) || "null"); return Array.isArray(v) ? v : []; } catch { return []; } }
 export function saveSpaces(list) { try { localStorage.setItem(LS_SPACES, JSON.stringify(list)); return true; } catch { return false; } }
 /** Put items into a bin (or null = unsorted), keeping item.spaceId and space.itemIds in step. */
