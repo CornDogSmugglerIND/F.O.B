@@ -106,11 +106,11 @@ export function channelsRouter() {
     if (item.finish) aspects.Finish = String(item.finish);
     if (!aspects.Language) aspects.Language = String(item.language || "English");
     const man = buildItemSpecifics({ game: item.game }).Manufacturer; if (man) aspects.Manufacturer = man;
-    let names = {};
-    try { const p = await listEbayPolicies(); for (const g of [p.fulfillment, p.payment, p.returns]) for (const x of g || []) names[x.id] = x.name; } catch { /* not connected: ids only */ }
+    let names = {}, shippingOptions = [];
+    try { const p = await listEbayPolicies(); shippingOptions = p.fulfillment || []; for (const g of [p.fulfillment, p.payment, p.returns]) for (const x of g || []) names[x.id] = x.name; } catch { /* not connected: ids only */ }
     const st = currentEbaySettings(), ship = resolveFulfillmentPolicyId(item);
     const pol = (id) => (id ? { id, name: names[id] || "Your saved eBay policy" } : null);
-    res.json({ ok: true, title: eng.title, description: eng.description, aspects, shipping: pol(ship), returns: pol(st.returnPolicyId), payment: pol(st.paymentPolicyId) });
+    res.json({ ok: true, title: eng.title, description: eng.description, aspects, shipping: pol(ship), shippingOptions, returns: pol(st.returnPolicyId), payment: pol(st.paymentPolicyId) });
   });
   router.post("/ebay/publish-item", async (req, res) => {
     const item = req.body?.item || {};

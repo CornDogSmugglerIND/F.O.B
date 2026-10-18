@@ -93,4 +93,8 @@ export function initSync(cb) {
     schedule();
   })();
   addEventListener("online", schedule);
+  /* pull what the other device did: when this tab comes back into view, and every 30s while it is open */
+  addEventListener("focus", schedule);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) schedule(); });
+  setInterval(() => { if (!document.hidden) schedule(); }, 30000);
 }

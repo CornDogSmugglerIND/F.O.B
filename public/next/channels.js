@@ -202,25 +202,28 @@ function buildSheet(it) {
     <label class="sc-f" style="flex-direction:row;gap:10px;align-items:center"><input type="checkbox" id="blDH" checked><span>Also download the Double Holo files (cards + photos) after listing</span></label>
     <div id="blMsg" class="sub bl-msg" role="status">Nothing goes live until you tap List on eBay twice.</div>
     <div class="co-znav bl-act"><button class="btn go" id="blGo" type="button">List on eBay</button></div>`);
-  const aspRow = (k = "", v = "") => `<div style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" aria-label="Item specific name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="Value" aria-label="Item specific value" style="flex:1;min-width:0"></div>`;
+  const aspRow = (k = "", v = "") => `<div style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" aria-label="Item specific name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="Value" aria-label="Item specific value" style="flex:1;min-width:0"><button class="btn" data-rm type="button" aria-label="Remove this item specific" style="flex:none;padding:6px 12px">×</button></div>`;
   const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#blMsg"); m.textContent = t; m.style.color = bad ? "var(--org)" : ""; };
   let armed = null;
   $("#blDesc").value = it.description || "";
   $("#blAddAsp").addEventListener("click", () => { $("#blAsp").insertAdjacentHTML("beforeend", aspRow()); });
+  $("#blAsp").addEventListener("click", (e) => { const b = e.target.closest("[data-rm]"); if (b) b.parentElement.remove(); });
   fetch("/api/channels/ebay/listing-preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item: it }) }).then((r) => r.json()).then((p) => {
     if (!p || !p.ok || !s.isConnected) return;
     if (!$("#blDesc").value) $("#blDesc").value = p.description || "";
     const ex = it.aspects || {}, all = Object.assign({}, p.aspects, ex);
     $("#blAsp").innerHTML = Object.entries(all).map(([k, v]) => aspRow(k, Array.isArray(v) ? v.join(", ") : v)).join("");
     const line = (l, o) => `<div class="row"><span>${l}</span><span>${o ? esc(o.name) : "Not set up in eBay yet"}</span></div>`;
-    $("#blPol").innerHTML = line("Shipping", p.shipping) + line("Returns", p.returns) + line("Payment", p.payment);
+    const opts = p.shippingOptions || [], cur = it.fulfillmentPolicyId || (p.shipping && p.shipping.id) || "";
+    const shipRow = opts.length ? `<label class="sc-f"><span>Shipping</span><select id="blShip">${opts.map((o) => `<option value="${esc(o.id)}"${String(o.id) === String(cur) ? " selected" : ""}>${esc(o.name)}</option>`).join("")}</select></label>` : line("Shipping", p.shipping);
+    $("#blPol").innerHTML = shipRow + line("Returns", p.returns) + line("Payment", p.payment);
   }).catch(() => { if (s.isConnected) $("#blPol").textContent = "Couldn't load your eBay policies. eBay will use your defaults."; });
   const read = () => {
     const title = $("#blTitle").value.trim().slice(0, 80), price = parseFloat(String($("#blPrice").value).replace(/[^0-9.]/g, "")), qty = Math.max(1, parseInt($("#blQty").value, 10) || 1), cond = $("#blCond").value;
     if (!title) { msg("Add a title first.", true); return null; }
     if (!(price > 0)) { msg("Add a price first.", true); return null; }
     const aspects = {}; s.querySelectorAll("#blAsp > div").forEach((r) => { const k = r.querySelector("[data-ak]").value.trim(), v = r.querySelector("[data-av]").value.trim(); if (k && v) aspects[k] = v; });
-    return { title, price, quantity: qty, condition: cond, description: $("#blDesc").value.trim() || title, aspects };
+    const ship = s.querySelector("#blShip"); return { title, price, quantity: qty, condition: cond, ...(ship ? { fulfillmentPolicyId: ship.value } : {}), description: $("#blDesc").value.trim() || title, aspects };
   };
   const call = async (dryRun) => {
     const f = read(); if (!f) return null;

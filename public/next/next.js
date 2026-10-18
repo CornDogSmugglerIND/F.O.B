@@ -3,9 +3,9 @@ import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=9";
 import { renderCollection } from "./collection.js?v=8";
 import { renderSpaces } from "./spaces.js?v=9";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=16";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=17";
 import { renderSettings } from "./settings.js?v=3";
-import { initSync } from "./sync.js?v=3";
+import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=2";
 
 const LS_ITEMS = "coalition-items-v4";
@@ -223,6 +223,7 @@ function bindDrag(el) {
     if (!target) return;
     const it = items.find((i) => String(i.id) === String(el.dataset.item)); if (!it) return;
     if (String(el.dataset.item).startsWith("ord-")) { toast("Orders come from eBay. Open it to see tracking."); return; }
+    if (target === "listed" && it.phase === "staged") { if (it.channels?.ebay?.listingId) { it.phase = "listed"; saveItems(items); toast("Moved to Live on eBay"); render(); } else buildListing(it.id, chApi()); return; }
     if (!MOVE_TO[target]) { toast(target === "stored" ? "Open Spaces to put it in a bin." : "Use Build and publish to put an item live on eBay."); return; }
     it.phase = MOVE_TO[target]; saveItems(items); toast(`Moved to ${STOPS.find((s) => s.id === target).label}`); render();
   };

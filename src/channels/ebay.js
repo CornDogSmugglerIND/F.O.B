@@ -137,6 +137,7 @@ function skuForItem(item) {
  * @returns {string}
  */
 export function resolveFulfillmentPolicyId(item = {}) {
+  if (item.fulfillmentPolicyId) return String(item.fulfillmentPolicyId);
   const general = env("EBAY_FULFILLMENT_POLICY_ID");
   const envelope = env("EBAY_CARD_ENVELOPE_POLICY_ID");
   if (!envelope) return general;
