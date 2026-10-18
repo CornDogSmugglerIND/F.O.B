@@ -190,8 +190,8 @@ function buildSheet(it) {
   if (!it) return;
   const ph = it.photos || [];
   const s = ctx.openSheet(`<a class="back" href="#" data-close>‹ Back</a><h2>Build the listing</h2>
-    <div class="bl-ph">${ph.map((p) => `<img src="${esc(p.dataUrl || p.url || "")}" alt="" draggable="false">`).join("")}</div>
-    <p class="sub">${ph.length} photo${ph.length === 1 ? "" : "s"}, kept together on one listing</p>
+    <div class="bl-ph" id="blPh"></div>
+    <p class="sub">${ph.length} photo${ph.length === 1 ? "" : "s"} on one listing. ${ph.length > 1 ? "Tap a photo to make it the main one." : ""}</p>
     <label class="sc-f"><span>Title</span><input id="blTitle" maxlength="80" value="${esc(nameOf(it))}"></label>
     <label class="sc-f"><span>Price</span><input id="blPrice" inputmode="decimal" value="${esc(Number(it.price) || "")}"></label>
     <label class="sc-f"><span>Quantity</span><input id="blQty" inputmode="numeric" value="${esc(Number(it.quantity) || 1)}"></label>
@@ -205,6 +205,9 @@ function buildSheet(it) {
   const aspRow = (k = "", v = "") => `<div style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" aria-label="Item specific name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="Value" aria-label="Item specific value" style="flex:1;min-width:0"><button class="btn" data-rm type="button" aria-label="Remove this item specific" style="flex:none;padding:6px 12px">×</button></div>`;
   const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#blMsg"); m.textContent = t; m.style.color = bad ? "var(--org)" : ""; };
   let armed = null;
+  const paintPh = () => { const cur = loadItems().find((x) => String(x.id) === String(it.id)) || it, list = cur.photos || []; $("#blPh").innerHTML = list.map((p, k) => `<button type="button" class="bl-pic${k === 0 ? " on" : ""}" data-k="${k}" aria-label="${k === 0 ? "Main photo" : "Make this the main photo"}"><img src="${esc(p.dataUrl || p.url || "")}" alt="" draggable="false">${k === 0 ? "<b>Main</b>" : ""}</button>`).join(""); };
+  paintPh();
+  $("#blPh").addEventListener("click", (e) => { const b = e.target.closest("[data-k]"); if (!b || b.dataset.k === "0") return; const k = Number(b.dataset.k); patchItem(it.id, (i) => { const l = i.photos || []; const [m] = l.splice(k, 1); l.unshift(m); i.photos = l; }); paintPh(); });
   $("#blDesc").value = it.description || "";
   $("#blAddAsp").addEventListener("click", () => { $("#blAsp").insertAdjacentHTML("beforeend", aspRow()); });
   $("#blAsp").addEventListener("click", (e) => { const b = e.target.closest("[data-rm]"); if (b) b.parentElement.remove(); });

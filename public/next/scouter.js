@@ -10,8 +10,11 @@ const num = (v) => { const n = parseFloat(String(v ?? "").replace(/[^0-9.]/g, ""
 let uid = 0;
 const nid = () => `sc-${Date.now().toString(36)}-${(uid++).toString(36)}`;
 
+/* The main photo (eBay shows it first): the one marked Main, else the first picked. Picked photos always go out main-first. */
+function pickedOrdered() { const l = d.photos.filter((p) => p.picked), m = l.find((p) => p.id === d.main) || l[0]; return m ? [m, ...l.filter((p) => p !== m)] : []; }
+function mainOf() { return pickedOrdered()[0] || null; }
 function blank() {
-  return { photos: [], paid: "", market: "", marketNote: "", marketState: "idle", qty: 1, title: "", identity: null, idState: "idle", idMsg: "", candidates: [], manual: false, saved: null };
+  return { photos: [], main: null, paid: "", market: "", marketNote: "", marketState: "idle", qty: 1, title: "", identity: null, idState: "idle", idMsg: "", candidates: [], manual: false, saved: null };
 }
 let d = blank();
 const session = []; // this sitting's scans, shown as little package cards
@@ -57,7 +60,7 @@ function addFiles(files) {
 
 /* ---------- identify + market value ---------- */
 async function identify(manualBody) {
-  const picked = d.photos.filter((p) => p.picked && p.data);
+  const picked = pickedOrdered().filter((p) => p.data);
   if (!manualBody && !picked.length) { ctx.toast("Pick at least one photo first."); return; }
   d.idState = "working"; d.idMsg = ""; d.candidates = []; paintFlow();
   try {
@@ -91,7 +94,7 @@ async function fetchMarket() {
 
 /* ---------- save (only on confirm) ---------- */
 async function save() {
-  const picked = d.photos.filter((p) => p.picked && p.data);
+  const picked = pickedOrdered().filter((p) => p.data);
   if (!picked.length) { ctx.toast("Add and pick at least one photo."); return; }
   const btn = ctx.host.querySelector("#scSave"); if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
   const stored = [];
@@ -156,17 +159,18 @@ function paintTray() {
   const n = d.photos.filter((p) => p.picked).length;
   t.innerHTML = d.photos.length ? `<div class="sc-count"><b>${n}</b> of ${MAX_PICK} picked${d.photos.length > MAX_PICK ? " · tap a photo to swap" : ""}</div><div class="sc-thumbs">${d.photos.map((p) => `
     <div class="sc-th${p.picked ? " on" : ""}${p.data || p.err ? "" : " busy"}" data-id="${p.id}">
-      <img src="${p.data || p.preview}" alt=""><i class="sc-chk">${p.picked ? "✓" : ""}</i>${p.err ? `<em class="sc-err">can't read</em>` : ""}
+      <img src="${p.data || p.preview}" alt=""><i class="sc-chk">${p.picked ? "✓" : ""}</i>${p.err ? `<em class="sc-err">can't read</em>` : ""}${p.picked ? `<button class="sc-main${mainOf() === p ? " on" : ""}" data-main="${p.id}" type="button">${mainOf() === p ? "★ Main photo" : "Make main"}</button>` : ""}
       <button class="sc-x" data-del="${p.id}" aria-label="Remove photo" type="button">×</button></div>`).join("")}</div>` : "";
   t.querySelectorAll(".sc-th").forEach((el) => el.addEventListener("click", (e) => {
     if (e.target.closest("[data-del]")) return;
+    const mb = e.target.closest("[data-main]"); if (mb) { d.main = mb.dataset.main; paintTray(); paintFlow(); return; }
     const p = d.photos.find((x) => x.id === el.dataset.id); if (!p || p.err) return;
-    if (p.picked) p.picked = false; else if (d.photos.filter((x) => x.picked).length < MAX_PICK) p.picked = true; else { ctx.toast(`Already ${MAX_PICK} picked. Untick one first.`); return; }
+    if (p.picked) { p.picked = false; if (d.main === p.id) d.main = null; } else if (d.photos.filter((x) => x.picked).length < MAX_PICK) p.picked = true; else { ctx.toast(`Already ${MAX_PICK} picked. Untick one first.`); return; }
     paintTray(); paintFlow();
   }));
   t.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => { const i = d.photos.findIndex((x) => x.id === b.dataset.del); if (i >= 0) { URL.revokeObjectURL(d.photos[i].preview); d.photos.splice(i, 1); } paintTray(); paintFlow(); }));
   const dz = $("#scDrop"); if (dz) dz.classList.toggle("small", d.photos.length > 0);
-  const vi = $("#scVfImg"), first = d.photos.find((p) => p.picked) || d.photos[0]; if (vi) { vi.hidden = !first; if (first) vi.src = first.data || first.preview; dz && dz.classList.toggle("has", !!first); }
+  const vi = $("#scVfImg"), first = mainOf() || d.photos[0]; if (vi) { vi.hidden = !first; if (first) vi.src = first.data || first.preview; dz && dz.classList.toggle("has", !!first); }
 }
 function paintFlow() {
   const f = $("#scFlow"); if (!f) return;

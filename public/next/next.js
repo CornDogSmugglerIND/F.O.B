@@ -1,9 +1,9 @@
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=2";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=9";
+import { renderScouter } from "./scouter.js?v=10";
 import { renderCollection } from "./collection.js?v=8";
 import { renderSpaces } from "./spaces.js?v=9";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=17";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=18";
 import { renderSettings } from "./settings.js?v=3";
 import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=2";
