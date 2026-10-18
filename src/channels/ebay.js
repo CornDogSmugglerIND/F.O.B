@@ -500,6 +500,15 @@ export async function listEbayOffers(opts = {}) {
  *   maxItems caps how many inventory items are processed (default 1000);
  *   `limit` is accepted as a legacy alias for maxItems.
  */
+const grpCache = new Map();
+/** Variation listings: the cover photo + title belong to the inventory item group, not to any one child card. */
+async function attachGroupInfo(records, fetchImpl) {
+  const ids = [...new Set(records.map((r) => r.groupId).filter(Boolean))].filter((g) => !grpCache.has(g));
+  const q = [...ids];
+  await Promise.all(Array.from({ length: Math.min(5, q.length) }, async () => { while (q.length) { const g = q.shift(); try { const { data } = await ebayRequest(`/sell/inventory/v1/inventory_item_group/${encodeURIComponent(g)}`, { fetchImpl }); grpCache.set(g, { image: (data?.imageUrls || [])[0] || "", title: data?.title || "" }); } catch { grpCache.set(g, { image: "", title: "" }); } } }));
+  for (const r of records) { const g = r.groupId && grpCache.get(r.groupId); if (g) { r.groupImage = g.image || null; r.groupTitle = g.title || null; } }
+  return records;
+}
 function toRecord(inv, offer, offerKnown) {
   const product = inv.product || {};
   const price = offer.pricingSummary?.price?.value ?? offer.price?.value ?? null;
@@ -509,6 +518,7 @@ function toRecord(inv, offer, offerKnown) {
     1;
   return {
     sku: inv.sku,
+    groupId: (inv.groupIds || [])[0] || null,
     title: product.title || inv.sku,
     price: price != null ? Number(price) : null,
     quantity: Math.max(0, Number(qty) || 0),
@@ -575,6 +585,7 @@ export async function syncEbayWindow(opts = {}) {
   await Promise.all(Array.from({ length: Math.min(LANES, inv.length) }, worker));
   const total = page.total ?? offset + inv.length;
   const end = offset + inv.length;
+  await attachGroupInfo(records, opts.fetchImpl);
   return { ok: true, offset, total, pulled: inv.length, failed, next: inv.length && end < total ? end : null, records };
 }
 
@@ -629,6 +640,7 @@ export async function syncEbayInventory(opts = {}) {
   }
 
   const records = slice.map((inv) => toRecord(inv, offersBySku.get(inv.sku) || {}, true));
+  await attachGroupInfo(records, opts.fetchImpl);
 
   return {
     ok: true,
@@ -729,9 +741,31 @@ export function mapFulfillmentStatus(order, shipment) {
  * Tracking cards for recent orders: line items + carrier/tracking + status.
  * @param {{ days?: number, fetchImpl?: typeof fetch }} [opts]
  */
+const imgCache = new Map();
+/** Best-effort cover photo for an order line: inventory item by SKU, else Trading GetItem by legacy item id. */
+async function lineImage(li, fetchImpl) {
+  const key = li.sku || li.legacyItemId; if (!key) return "";
+  if (imgCache.has(key)) return imgCache.get(key);
+  let url = "";
+  try {
+    if (li.sku) { const { data } = await ebayRequest(`/sell/inventory/v1/inventory_item/${encodeURIComponent(li.sku)}`, { fetchImpl }); url = (data?.product?.imageUrls || [])[0] || ""; }
+  } catch { /* fall through */ }
+  if (!url && li.legacyItemId) {
+    try {
+      const token = await getEbayAccessToken({ fetchImpl });
+      const host = ebayApiBase().replace("api.", "api.");
+      const r = await fetchImpl(`${host}/ws/api.dll`, { method: "POST", signal: AbortSignal.timeout(5000), headers: { "X-EBAY-API-SITEID": "0", "X-EBAY-API-COMPATIBILITY-LEVEL": "1193", "X-EBAY-API-CALL-NAME": "GetItem", "X-EBAY-API-IAF-TOKEN": token, "Content-Type": "text/xml" },
+        body: `<?xml version="1.0" encoding="utf-8"?><GetItemRequest xmlns="urn:ebay:apis:eBLBaseComponents"><ItemID>${String(li.legacyItemId).replace(/[^0-9]/g, "")}</ItemID><DetailLevel>ReturnAll</DetailLevel><OutputSelector>PictureURL</OutputSelector><OutputSelector>GalleryURL</OutputSelector></GetItemRequest>` });
+      const x = await r.text(); const m = /<PictureURL>([^<]+)<\/PictureURL>/.exec(x) || /<GalleryURL>([^<]+)<\/GalleryURL>/.exec(x); if (m) url = m[1].replace(/&amp;/g, "&").replace(/^http:/, "https:");
+    } catch { /* no photo */ }
+  }
+  imgCache.set(key, url); return url;
+}
 export async function getEbayTracking(opts = {}) {
   const fetchImpl = opts.fetchImpl || fetch;
   const orders = await listEbayOrders({ ...opts, fetchImpl });
+  { const q = []; for (const o of orders) for (const li of o.lineItems || []) q.push(li);
+    await Promise.all(Array.from({ length: 6 }, async () => { while (q.length) { const li = q.shift(); li._img = await lineImage({ sku: li.sku || "", legacyItemId: li.legacyItemId || "" }, fetchImpl); } })); }
   const shipments = await getEbayShipments(
     orders.map((o) => o.orderId).filter(Boolean),
     { fetchImpl },
@@ -745,6 +779,7 @@ export async function getEbayTracking(opts = {}) {
         sku: li.sku || "",
         title: li.title || "",
         qty: Number(li.quantity) || 1,
+        image: li._img || "",
       })),
       carrier: pickShipmentField(shipment, "shippingCarrierCode", "carrierCode"),
       trackingNumber: pickShipmentField(shipment, "shipmentTrackingNumber", "trackingNumber"),
@@ -815,8 +850,8 @@ export async function updateEbayPhotos(sku, photos, opts = {}) {
   const imageUrls = await resolveEbayImages({ photos }, opts);
   if (!imageUrls.length) { const e = new Error("eBay needs at least one photo."); e.code = "VALIDATION"; throw e; }
   const path = `/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`;
-  const cur = await ebayRequest(path, { method: "GET", fetchImpl: opts.fetchImpl });
-  const body = { ...cur, product: { ...(cur.product || {}), imageUrls } };
+  const { data: cur } = await ebayRequest(path, { method: "GET", fetchImpl: opts.fetchImpl });
+  const body = { ...(cur || {}), product: { ...((cur || {}).product || {}), imageUrls } };
   delete body.sku; delete body.locale;
   await ebayRequest(path, { method: "PUT", fetchImpl: opts.fetchImpl, body });
   return { sku, imageUrls };

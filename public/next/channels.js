@@ -1,7 +1,7 @@
 import { esc, money, nameOf, photoOf, laneOf, gameOf, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=4";
 import { photoManager } from "./photos.js?v=1";
 import { openCard } from "./kit.js?v=2";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=2";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=3";
 
 let ctx = null;
 const S = { stage: "listed", view: "cards", group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
@@ -25,7 +25,7 @@ function live() {
     if (it.phase === "listed" && (!lid || /^demo/.test(lid))) continue; /* "Live on eBay" = has a real eBay listing id, nothing else */
     if (lid && !/^demo/.test(lid)) { const g = seen.get(lid); if (g) { g._kids.push(it); continue; } const rep = Object.assign({}, it, { _kids: [it] }); seen.set(lid, rep); out.push(rep); } else out.push(it);
   }
-  for (const r of out) if (r._kids) { r._n = r._kids.length; GROUP.set(String(r.id), r._kids.map((k) => String(k.id))); if (r._n > 1) { const ps = r._kids.map((k) => Number(k.price) || 0); r._lo = Math.min(...ps); r._hi = Math.max(...ps); r.quantity = r._kids.reduce((a, k) => a + (Number(k.quantity) || 1), 0); } }
+  for (const r of out) if (r._kids) { r._n = r._kids.length; if (r._n > 1) { const gi = r._kids.find((k) => k.groupImage), gt = r._kids.find((k) => k.groupTitle); if (gi) r.photos = [{ id: "grp-cover", dataUrl: gi.groupImage }]; if (gt) r.title = gt.groupTitle; } GROUP.set(String(r.id), r._kids.map((k) => String(k.id))); if (r._n > 1) { const ps = r._kids.map((k) => Number(k.price) || 0); r._lo = Math.min(...ps); r._hi = Math.max(...ps); r.quantity = r._kids.reduce((a, k) => a + (Number(k.quantity) || 1), 0); } }
   return out;
 }
 const pool = (stage) => ["sold", "shipped", "delivered"].includes(stage) ? orderItems().filter((o) => o.phase === stage) : live().filter((i) => stageOf(i) === stage);

@@ -1,10 +1,10 @@
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=2";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=3";
 import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=11";
 import { renderCollection } from "./collection.js?v=8";
 import { photoManager } from "./photos.js?v=1";
 import { renderSpaces } from "./spaces.js?v=10";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=19";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=20";
 import { renderSettings } from "./settings.js?v=3";
 import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=2";
@@ -97,7 +97,7 @@ function itemSheet(id) {
   const s = openSheet(`
     <a class="back" href="#" data-close>‹ Back</a>
     ${src ? `<img id="sheetMain" src="${esc(src)}" alt="" style="width:100%;max-height:300px;object-fit:contain;border-radius:14px;background:#0f1211;margin-bottom:12px">` : ""}
-    <div id="phMgr"></div>
+    <div id="phMgr"></div>${(() => { const g = groups()[st && st.id] || []; const others = g.filter((x) => String(x.id) !== String(it.id)).slice(0, 24); return others.length ? `<div class="ph-head" style="margin-top:6px"><b>Also in ${esc(st.label)}</b><span>${g.length} total</span></div><div class="ph-row">${others.map((x) => { const p = photoOf(x); return `<button type="button" class="sib" data-sib="${esc(x.id)}">${p ? `<img src="${esc(p)}" alt="" loading="lazy">` : `<i>${esc(nameOf(x).charAt(0))}</i>`}<span>${esc(nameOf(x))}</span></button>`; }).join("")}</div>` : ""; })()}
     <h2>${esc(nameOf(it))}</h2>
     <div class="sub">${st ? esc(st.label) : ph === "ended" ? "Ended on eBay" : ""}</div>
     <div class="row"><span>Price</span><span>${money(it.price)}</span></div>
@@ -107,6 +107,7 @@ function itemSheet(id) {
     ${String(it.id).startsWith("ebay-") ? "" : `<button class="btn warn" data-del type="button" style="margin-top:14px">Delete this item</button>`}`);
   s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
   photoManager(s.querySelector("#phMgr"), it.id, { toast, refresh: () => { items = loadItems(); renderStats(); const m = s.querySelector("#sheetMain"); const c = items.find((i) => String(i.id) === String(id)); if (m && c) m.src = photoOf(c); } });
+  s.querySelectorAll("[data-sib]").forEach((b) => b.addEventListener("click", () => itemSheet(b.dataset.sib)));
   s.querySelector("[data-del]")?.addEventListener("click", () => { const prev = items.slice(); items = items.filter((i) => String(i.id) !== String(id)); saveItems(items); closeSheet(); render(); toastUndo(`Deleted ${nameOf(it)}`, () => { items = prev; saveItems(prev); render(); }); });
   s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "spaces") { closeSheet(); go("spaces"); } else if (a === "channels") { window.__chStage = e.currentTarget.dataset.st || "listed"; if (e.currentTarget.dataset.st === "staged") { closeSheet(); buildListing(id, chApi()); } else go("channels"); } });
 }
@@ -117,7 +118,7 @@ function stageSheet(sid) {
   const s = openSheet(`
     <a class="back" href="#" data-close>‹ Back</a>
     <h2>${esc(stop.label)}</h2><div class="sub">${list.length} ${list.length === 1 ? "item" : "items"} · ${esc(stop.note)}</div>
-    ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : `<div class="tini">${esc(nameOf(it).replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "?")}</div>`}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}.</p>` : ""}${sid === "staged" ? `<button class="btn go" id="varAll" type="button" style="margin-top:12px">List several as one variation listing</button>` : sid === "intake" ? "" : `<button class="btn go" id="seeAll" type="button" style="margin-top:12px">See all ${list.length} in Channels</button>`}` : `<p class="sub">Nothing here yet.</p>`}`);
+    ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : `<div class="tini">${esc(nameOf(it).replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "?")}</div>`}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}.</p>` : ""}${sid === "staged" ? `<button class="btn go" id="varAll" type="button" style="margin-top:12px">List several as one variation listing</button>` : sid === "intake" ? "" : `<button class="btn go" id="seeAll" type="button" style="margin-top:12px">Open ${esc(stop.label)} in Channels</button>`}` : `<p class="sub">Nothing here yet.</p>`}`);
   s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
   s.querySelectorAll("[data-item]").forEach((b) => b.addEventListener("click", () => itemSheet(b.dataset.item)));
   s.querySelector("#varAll")?.addEventListener("click", () => { closeSheet(); variationListing(chApi()); });
@@ -156,7 +157,7 @@ function pileHtml(list, cls, emptyMsg) {
   if (!list.length) return emptyMsg ? `<button type="button" class="empty ${cls}" data-goto="scouter" style="font:inherit;color:inherit;cursor:pointer">${esc(emptyMsg)}</button>` : `<div class="empty ${cls}">Nothing here yet</div>`;
   const top = list[0]; const src = photoOf(top);
   const face = (it, k) => { const p = photoOf(it); return `<div class="pc ${k === "" ? "k-tilt" : k}" ${k === "" ? `data-item="${esc(it.id)}"` : ""}>${p ? `<img src="${esc(p)}" alt="" draggable="false">` : `<div class="ini">${esc(nameOf(it).charAt(0).toUpperCase())}</div>`}${k === "" ? `<span class="cap"><span>${esc(nameOf(it))}</span><em>${money(worth(it))}</em></span>` : ""}</div>`; };
-  return `<div class="pile ${cls}">${list[2] ? face(list[2], "b2") : ""}${list[1] ? face(list[1], "b1") : ""}${face(top, "")}${list.length > 1 ? `<span class="more" data-stage="${""}">+${list.length - 1} more</span>` : ""}</div>`;
+  return `<div class="pile ${cls}">${list[2] ? face(list[2], "b2") : ""}${list[1] ? face(list[1], "b1") : ""}${face(top, "")}${list.length > 1 ? `<span class="more" data-stage="${""}">+${list.length - 1} more · tap to see</span>` : ""}</div>`;
 }
 function renderCommand() {
   const g = groups(); const main = $("#main");
@@ -200,6 +201,7 @@ function renderCommand() {
       <div class="dock">${pills}</div><div class="hint">Tap a stop to open it · hold a card and drop it on a stop to move it</div></div>`;
   }
   // wire up
+  main.querySelectorAll(".pc.b1,.pc.b2").forEach((m) => { m.dataset.stage = m.closest(".stop").dataset.drop; m.style.cursor = "pointer"; });
   main.querySelectorAll(".more").forEach((m) => { const st = m.closest(".stop"); m.dataset.stage = st.dataset.drop; });
   main.querySelectorAll("[data-stage]").forEach((el) => el.addEventListener("click", () => stageSheet(el.dataset.stage)));
   main.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.pst) window.__chStage = b.dataset.pst; go(b.dataset.goto); }));
@@ -314,7 +316,7 @@ async function syncAll(auto) {
       const photos = (r.photos || []).filter((p) => p.dataUrl || p.url).map((p) => ({ id: p.id, dataUrl: p.dataUrl || p.url }));
       if (!photos.length && r.imageUrl) photos.push({ id: `img-${sku}`, dataUrl: r.imageUrl });
       const mapped = { id: r.id || `ebay-${sku}`, title: r.title || r.productName, productName: r.productName || r.title, sku, quantity: r.quantity || 1, price: r.price,
-        phase: r.phase || (live === "listed" ? "listed" : "staged"), ended: Boolean(r.ended), listingStatus: r.ended ? "draft" : live, staged: false, spaceId: r.spaceId || null, channels: r.channels, photos };
+        phase: r.phase || (live === "listed" ? "listed" : "staged"), ended: Boolean(r.ended), listingStatus: r.ended ? "draft" : live, staged: false, spaceId: r.spaceId || null, channels: r.channels, photos, groupImage: r.groupImage || null, groupTitle: r.groupTitle || null };
       if (idx >= 0) { const keep = list[idx]; list[idx] = { ...keep, ...mapped, spaceId: keep.spaceId || mapped.spaceId, photos: keep.photos?.length ? keep.photos : mapped.photos }; }
       else list.unshift(mapped);
     }
