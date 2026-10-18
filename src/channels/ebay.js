@@ -810,6 +810,17 @@ export async function uploadEbayImage(dataUrl, opts = {}) {
 }
 
 /** https URLs pass through; data: photos are uploaded to eBay. */
+/** Replace the photos on a live eBay inventory item (keeps everything else as-is). */
+export async function updateEbayPhotos(sku, photos, opts = {}) {
+  const imageUrls = await resolveEbayImages({ photos }, opts);
+  if (!imageUrls.length) { const e = new Error("eBay needs at least one photo."); e.code = "VALIDATION"; throw e; }
+  const path = `/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`;
+  const cur = await ebayRequest(path, { method: "GET", fetchImpl: opts.fetchImpl });
+  const body = { ...cur, product: { ...(cur.product || {}), imageUrls } };
+  delete body.sku; delete body.locale;
+  await ebayRequest(path, { method: "PUT", fetchImpl: opts.fetchImpl, body });
+  return { sku, imageUrls };
+}
 export async function resolveEbayImages(item, opts = {}) {
   const raw = (item.photos || item.imageUrls || []).map((x) => (typeof x === "string" ? x : x?.dataUrl || x?.url)).filter(Boolean).slice(0, 6);
   const out = [];

@@ -60,3 +60,5 @@
 @media (prefers-reduced-motion:reduce){.sc-beam{animation:none}}
 .sc-wrap.hh>*{flex:none}.sc-right>*{flex:none}
 .sc-step.money{align-items:end}
+.sc-big{letter-spacing:.04em;font-size:19px;white-space:nowrap;text-transform:none;height:68px}
+@media (max-width:820px){.sc-vf{height:clamp(190px,28vh,300px)}.sc-twin{gap:10px}}

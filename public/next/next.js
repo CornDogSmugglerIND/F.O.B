@@ -1,9 +1,10 @@
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=2";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=10";
+import { renderScouter } from "./scouter.js?v=11";
 import { renderCollection } from "./collection.js?v=8";
+import { photoManager } from "./photos.js?v=1";
 import { renderSpaces } from "./spaces.js?v=10";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=18";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=19";
 import { renderSettings } from "./settings.js?v=3";
 import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=2";
@@ -95,8 +96,8 @@ function itemSheet(id) {
   const src = photoOf(it); const ph = phaseFromItem(it); const st = stopFor(it);
   const s = openSheet(`
     <a class="back" href="#" data-close>‹ Back</a>
-    ${src ? `<img src="${esc(src)}" alt="" style="width:100%;max-height:300px;object-fit:contain;border-radius:14px;background:#0f1211;margin-bottom:12px">` : ""}
-    ${(it.photos || []).length > 1 ? `<div style="display:flex;gap:8px;overflow-x:auto;margin:-2px 0 12px">${it.photos.slice(1).map((p) => `<img src="${esc(p.dataUrl || p.url || "")}" alt="" style="height:64px;width:64px;object-fit:cover;border-radius:10px;flex:none">`).join("")}</div>` : ""}
+    ${src ? `<img id="sheetMain" src="${esc(src)}" alt="" style="width:100%;max-height:300px;object-fit:contain;border-radius:14px;background:#0f1211;margin-bottom:12px">` : ""}
+    <div id="phMgr"></div>
     <h2>${esc(nameOf(it))}</h2>
     <div class="sub">${st ? esc(st.label) : ph === "ended" ? "Ended on eBay" : ""}</div>
     <div class="row"><span>Price</span><span>${money(it.price)}</span></div>
@@ -105,6 +106,7 @@ function itemSheet(id) {
     ${nextAction(ph, it)}
     ${String(it.id).startsWith("ebay-") ? "" : `<button class="btn warn" data-del type="button" style="margin-top:14px">Delete this item</button>`}`);
   s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
+  photoManager(s.querySelector("#phMgr"), it.id, { toast, refresh: () => { items = loadItems(); renderStats(); const m = s.querySelector("#sheetMain"); const c = items.find((i) => String(i.id) === String(id)); if (m && c) m.src = photoOf(c); } });
   s.querySelector("[data-del]")?.addEventListener("click", () => { const prev = items.slice(); items = items.filter((i) => String(i.id) !== String(id)); saveItems(items); closeSheet(); render(); toastUndo(`Deleted ${nameOf(it)}`, () => { items = prev; saveItems(prev); render(); }); });
   s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "spaces") { closeSheet(); go("spaces"); } else if (a === "channels") { window.__chStage = e.currentTarget.dataset.st || "listed"; if (e.currentTarget.dataset.st === "staged") { closeSheet(); buildListing(id, chApi()); } else go("channels"); } });
 }

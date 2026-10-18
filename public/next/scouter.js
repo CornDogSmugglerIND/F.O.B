@@ -14,7 +14,7 @@ const nid = () => `sc-${Date.now().toString(36)}-${(uid++).toString(36)}`;
 function pickedOrdered() { const l = d.photos.filter((p) => p.picked), m = l.find((p) => p.id === d.main) || l[0]; return m ? [m, ...l.filter((p) => p !== m)] : []; }
 function mainOf() { return pickedOrdered()[0] || null; }
 function blank() {
-  return { photos: [], main: null, paid: "", market: "", marketNote: "", marketState: "idle", qty: 1, title: "", identity: null, idState: "idle", idMsg: "", candidates: [], manual: false, saved: null };
+  return { photos: [], main: null, paid: "", market: "", marketNote: "", marketState: "idle", qty: 1, title: "", identity: null, idState: "idle", idMsg: "", candidates: [], manual: false, saved: null, reid: null };
 }
 let d = blank();
 const session = []; // this sitting's scans, shown as little package cards
@@ -110,7 +110,9 @@ async function save() {
     quantity: Math.max(1, Number(d.qty) || 1), price: num(d.market) || 0, purchasePrice: num(d.paid),
     source: "scouter", listingStatus: "draft", phase: identified ? "staged" : "intake", staged: identified, spaceId: null, channels: {}, photos: stored, notes: "", collections: [],
   };
-  try { ctx.setItems([item, ...ctx.getItems()]); } catch { ctx.toast("Couldn't save. Storage is full."); if (btn) { btn.disabled = false; btn.textContent = "Save item"; } return; }
+  let list = ctx.getItems();
+  if (d.reid) { const old = list.find((x) => String(x.id) === String(d.reid)); if (old) { Object.assign(item, { id: old.id, createdAt: old.createdAt, notes: old.notes || "", collections: old.collections || [], spaceId: old.spaceId || null, sku: old.sku, channels: old.channels || {} }); list = list.filter((x) => x !== old); } }
+  try { ctx.setItems([item, ...list]); } catch { ctx.toast("Couldn't save. Storage is full."); if (btn) { btn.disabled = false; btn.textContent = "Save item"; } return; }
   try { let u = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); u += (k.length + (localStorage.getItem(k) || "").length) * 2; } if (u > 4.2 * 1048576) ctx.toast("Device storage is about " + Math.round(u / 52428.8) + "% full. List or remove items soon."); } catch { /* ignore */ }
   session.unshift({ title: item.title, qty: item.quantity, price: item.price, photo: stored[0] && stored[0].dataUrl, staged: item.phase === "staged" });
   d.saved = { item, backup: { done: 0, total: stored.length, state: "run" } };
@@ -139,20 +141,37 @@ function pkgs() {
   if (!session.length) return "";
   return `<div class="sc-pkgs"><h3>On this scouter</h3><div class="sc-pk">${session.slice(0, 12).map((x) => `<div class="sc-pkg k-tilt">${x.photo ? `<img src="${esc(x.photo)}" alt="" draggable="false">` : "<i></i>"}<span>${esc(x.title)}</span><em>${money(x.price)}</em>${x.qty > 1 ? `<u>x${x.qty}</u>` : ""}<s class="${x.staged ? "ok" : ""}">${x.staged ? "Staged" : "Intake"}</s></div>`).join("")}</div></div>`;
 }
+function queue_() {
+  const all = ctx.getItems().filter((i) => !i.ended && i.listingStatus !== "listed");
+  const wait = all.filter((i) => i.phase === "intake"), ready = all.filter((i) => i.phase === "staged" && i.source === "scouter");
+  const tile = (i, k) => `<button class="sc-q k-tilt" data-q="${esc(i.id)}" data-k="${k}" type="button">${i.photos?.[0] ? `<img src="${esc(i.photos[0].dataUrl || i.photos[0].url || "")}" alt="" loading="lazy" draggable="false">` : "<i></i>"}<span>${esc(i.title || "Untitled item")}</span></button>`;
+  const row = (t, sub, l, k) => l.length ? `<div class="sc-qh"><h3>${t}</h3><em>${l.length}</em><small>${sub}</small></div><div class="sc-qs">${l.slice(0, 30).map((i) => tile(i, k)).join("")}</div>` : "";
+  const out = row("Waiting to identify", "Tap one to read it", wait, "wait") + row("Ready to list", "Tap one to build the listing", ready, "ready");
+  return out ? `<section class="sc-queue">${out}</section>` : "";
+}
+function loadForId(id) {
+  const it = ctx.getItems().find((x) => String(x.id) === String(id)); if (!it) return;
+  d.photos.forEach((p) => p.preview && p.preview.startsWith("blob:") && URL.revokeObjectURL(p.preview));
+  d = blank(); d.reid = it.id; d.title = /^untitled/i.test(it.title || "") ? "" : (it.title || ""); d.qty = it.quantity || 1; d.paid = it.purchasePrice ? String(it.purchasePrice) : ""; d.market = it.price ? String(it.price) : "";
+  (it.photos || []).slice(0, MAX_PICK).forEach((ph, k) => { const u = ph.dataUrl || ph.url || ""; d.photos.push({ id: nid(), preview: u, data: ph.dataUrl || "", picked: true, err: false, src: u }); });
+  paintAll();
+  d.photos.filter((p) => !p.data && p.src).forEach(async (p) => { try { const b = await (await fetch(p.src)).blob(); p.data = await new Promise((r, j) => { const f = new FileReader(); f.onload = () => r(f.result); f.onerror = j; f.readAsDataURL(b); }); p.data = await resizeData(p.data, SHRINK); } catch { p.err = true; p.picked = false; } paintTray(); paintFlow(); });
+  ctx.toast("Loaded. Tap Identify.");
+}
 function shell() {
-  if (d.saved) return `<div class="sc-wrap hh">${hud()}<div class="sc-saved" id="scSaved"></div>${pkgs()}</div>`;
+  if (d.saved) return `<div class="sc-wrap hh">${hud()}<div class="sc-saved" id="scSaved"></div>${pkgs()}${queue_()}</div>`;
   return `<div class="sc-wrap hh">${hud()}
     <section class="sc-left">
       <div class="sc-drop sc-vf" id="scDrop" tabindex="0" role="button" aria-label="Add photos">
         <img id="scVfImg" alt="" hidden draggable="false"><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
-        <div class="sc-aim"><b>Aim at the item</b><span>Tap SNAP for a photo. Drop or paste photos here too.</span></div><div class="sc-scanmsg">Identifying…</div>
+        <div class="sc-aim"><b>Aim at the item</b><span>Take a photo, or drop and paste photos here.</span></div><div class="sc-scanmsg">Identifying…</div>
       </div>
       <input type="file" id="scFile" accept="image/*" multiple hidden><input type="file" id="scCamFile" accept="image/*" capture="environment" hidden>
-      <div class="sc-twin"><button class="sc-big snap" id="scCam" type="button"><i></i>Snap</button><button class="sc-big scan" id="scId" type="button" disabled><i></i>Identify</button></div>
+      <div class="sc-twin"><button class="sc-big snap" id="scCam" type="button"><i></i>Take photo</button><button class="sc-big scan" id="scId" type="button" disabled><i></i>Identify</button></div>
       <button class="sc-lib" id="scPick" type="button">Choose photos from library</button>
       <div class="sc-tray" id="scTray"></div>
     </section>
-    <section class="sc-right" id="scFlow"></section>${pkgs()}</div>`;
+    <section class="sc-right" id="scFlow"></section>${pkgs()}${queue_()}</div>`;
 }
 function paintTray() {
   const t = $("#scTray"); if (!t) return;
@@ -182,7 +201,7 @@ function paintFlow() {
   else if (d.idState === "ok") step1 = `<div class="sc-step ok"><span>Identified</span><b>${esc(d.title)}</b><button class="btn" id="scRe" type="button">Identify again</button></div>`;
   else if (d.idState === "pick") step1 = `<div class="sc-step"><b>Not sure. Which one is it?</b><span>${esc(d.idMsg)}</span>${d.candidates.map((c, i) => `<button class="sc-cand" data-c="${i}" type="button">${esc([c.product_name, c.collector_number, c.set_name, c.finish].filter(Boolean).join(" · "))}</button>`).join("")}<button class="btn" id="scMan" type="button">None of these. I'll type it</button></div>`;
   else if (d.idState === "fail" || d.manual) step1 = d.manual ? manualForm() : `<div class="sc-step"><b>Couldn't identify it</b><span>${esc(d.idMsg)}</span><button class="btn" id="scRe" type="button">Try again</button><button class="btn" id="scMan" type="button">I'll type it</button></div>`;
-  else step1 = `<div class="sc-step idle"><b>${picked ? "Ready to identify" : "Nothing in the viewfinder"}</b><span>${picked ? `${picked} photo${picked > 1 ? "s" : ""} ready. Hit IDENTIFY to read it.` : "Tap SNAP and take a photo."}</span><button class="btn" id="scMan" type="button">Type it instead</button></div>`;
+  else step1 = `<div class="sc-step idle"><b>${picked ? "Ready to identify" : "Nothing in the viewfinder"}</b><span>${picked ? `${picked} photo${picked > 1 ? "s" : ""} ready. Tap Identify to read it.` : "Take a photo to start."}</span><button class="btn" id="scMan" type="button">Type it instead</button></div>`;
   const mkNote = d.marketState === "loading" ? "Looking up value…" : d.marketNote;
   f.innerHTML = `${step1}
     <div class="sc-step money"><b>Money</b>
@@ -225,7 +244,11 @@ function paintSaved() {
   $("#scAgain")?.addEventListener("click", () => { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); });
   $("#scNext")?.addEventListener("click", () => { if (ready) { ctx.build(it.id); } else { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); ctx.toast("Add the photos again to identify, or open it from Command."); } });
 }
+function wireQueue() {
+  ctx.host.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.k === "ready") ctx.build(b.dataset.q); else loadForId(b.dataset.q); try { document.getElementById("main").scrollTo({ top: 0 }); } catch { /* ignore */ } }));
+}
 function wire() {
+  wireQueue();
   const dz = $("#scDrop"); if (!dz) return;
   const file = $("#scFile"), cam = $("#scCamFile");
   const choose = () => file.click();
