@@ -89,7 +89,7 @@ function bar(n) {
   return `<div class="co-bar"><b>${n} selected</b>
     <select id="chBin" aria-label="Send to bin"><option value="">Send to bin…</option>${spaces.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")}</select>
     <span class="co-pct"><input id="chPct" inputmode="numeric" placeholder="±%" aria-label="Percent"><button class="btn" data-bulk="pct" type="button">Change price</button></span>
-    <button class="btn go" data-bulk="var" type="button">Make one variation listing</button><button class="btn" data-bulk="live" type="button">Publish on eBay…</button><button class="btn" data-bulk="end" type="button">End on eBay…</button>
+    <button class="btn" data-bulk="end" type="button">End on eBay…</button>
     <button class="btn warn" data-bulk="del" type="button">Remove from app</button><button class="btn" data-bulk="clear" type="button">Clear</button>
     <small>Price and remove change this app only. Publish and end touch real eBay listings, so they ask first.</small></div>`;
 }
@@ -143,10 +143,52 @@ function bulk(kind) {
     const prev = snap(); if (commit((l) => l.forEach((i) => { if (set.has(String(i.id))) i.price = Math.max(0, Math.round((Number(i.price) || 0) * (1 + p / 100) * 100) / 100); }))) { S.sel.clear(); paint(); ctx.toastUndo(`Changed ${ids.length} prices ${p > 0 ? "+" : ""}${p}% in this app`, () => { restore(prev); ctx.refresh(); paint(); }); }
   } else if (kind === "del") {
     const prev = snap(); if (commit((l) => { for (let k = l.length - 1; k >= 0; k--) if (set.has(String(l[k].id))) l.splice(k, 1); })) { S.sel.clear(); paint(); ctx.toastUndo(`Removed ${ids.length} from this app`, () => { restore(prev); ctx.refresh(); paint(); }); }
-  } else if (kind === "live" || kind === "end") {
-    const verb = kind === "live" ? "Publish" : "End";
-    const s = ctx.openSheet(`<a class="back" href="#" data-close>‹ Back</a><h2>${verb} ${ids.length} on eBay?</h2><p class="sub">This changes real eBay listings. It is switched off until you approve it, so nothing happens yet.</p><p>${kind === "live" ? "Publishing needs each item to have its listing built first. Use Build the listing on the item, then publish." : "Ending takes the listing off eBay. You can relist it later."}</p><div class="co-znav"><button class="btn" data-close type="button">OK, got it</button></div>`);
-    s.querySelector(".co-znav .btn").addEventListener("click", ctx.closeSheet);
+  } else if (kind === "end") {
+    const pick = loadItems().filter((i) => set.has(String(i.id)) && i.channels?.ebay && !i.ended && i.phase === "listed");
+    if (!pick.length) { ctx.toast("None of those are live on eBay."); return; }
+    const groups = new Set(pick.filter((i) => i.groupId).map((i) => i.groupId)).size, singles = pick.filter((i) => !i.groupId).length, n = groups + singles;
+    const s = ctx.openSheet(`<h2>End ${n} listing${n === 1 ? "" : "s"} on eBay?</h2><p class="sub">They come off eBay right away. Items stay in this app, marked ended, so you can relist later.</p>
+      <div class="bl-vars">${pick.slice(0, 30).map((k) => `<div><span>${esc(nameOf(k))}</span><b>${money(k.price)}</b></div>`).join("")}${pick.length > 30 ? `<div><span>and ${pick.length - 30} more</span></div>` : ""}</div>
+      <p class="sub" id="enMsg" role="status"></p><div class="co-znav"><button class="btn warn" id="enGo" type="button">End ${n} on eBay</button><button class="btn" data-close type="button">Cancel</button></div>`);
+    let armed = false;
+    s.querySelector("#enGo").addEventListener("click", async (e) => {
+      const b = e.currentTarget, m = s.querySelector("#enMsg");
+      if (!armed) { armed = true; b.textContent = `Yes, end ${n} now`; m.textContent = "Tap again to confirm. This changes real eBay listings."; return; }
+      b.disabled = true; m.textContent = "Ending on eBay…";
+      try {
+        const r = await fetch("/api/channels/ebay/end-listings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: pick.map((i) => ({ id: i.id, offerId: i.channels.ebay.offerId, listingId: i.channels.ebay.listingId, groupId: i.groupId || null })) }) });
+        const out = await r.json().catch(() => ({ ended: [], failed: [] })); const done = new Set((out.ended || []).map(String));
+        commit((l) => l.forEach((i) => { if (done.has(String(i.id))) { i.ended = true; i.phase = "ended"; i.listingStatus = "draft"; } }));
+        S.sel.clear(); ctx.refresh(); paint(); ctx.rerender?.();
+        if ((out.failed || []).length) { b.disabled = false; armed = false; b.textContent = "Try the rest again"; m.textContent = `Ended ${done.size}. ${out.failed.length} didn't end: ${out.failed[0].error}`; }
+        else { ctx.closeSheet(); ctx.toast(`Ended ${done.size} on eBay`); }
+      } catch { b.disabled = false; armed = false; b.textContent = `End ${n} on eBay`; m.textContent = "Couldn't reach eBay. Nothing was ended."; }
+    });
+  } else if (kind === "live") {
+    const pick = loadItems().filter((i) => set.has(String(i.id)) && (i.phase === "staged" || i.ended));
+    if (!pick.length) { ctx.toast("Pick items that are ready to list or ended."); return; }
+    if (pick.length === 1) { buildSheet(pick[0]); return; }
+    const s = ctx.openSheet(`<h2>List ${pick.length} on eBay?</h2><p class="sub">Each one goes live as its own listing with its saved title, price and photos. Want them as one listing instead? Use Make one variation listing.</p>
+      <div class="bl-vars">${pick.slice(0, 30).map((k) => `<div><span>${esc(nameOf(k))}</span><b>${money(k.price)}</b></div>`).join("")}</div>
+      <p class="sub" id="lvMsg" role="status"></p><div class="co-znav"><button class="btn go" id="lvGo" type="button">List ${pick.length} on eBay</button><button class="btn" data-close type="button">Cancel</button></div>`);
+    let armed = false;
+    s.querySelector("#lvGo").addEventListener("click", async (e) => {
+      const b = e.currentTarget, m = s.querySelector("#lvMsg");
+      if (!armed) { armed = true; b.textContent = `Yes, list ${pick.length} now`; m.textContent = "Tap again to confirm. They go live right away."; return; }
+      b.disabled = true; let ok = 0; const bad = [];
+      for (const [k, it] of pick.entries()) {
+        m.textContent = `Listing ${k + 1} of ${pick.length}…`;
+        try {
+          const r = await fetch("/api/channels/ebay/publish-item", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item: it }) });
+          const out = await r.json().catch(() => ({}));
+          if (!r.ok || !out.ok) { bad.push(`${nameOf(it)}: ${out.error || "eBay said no"}`); continue; }
+          ok++; commit((l) => { const x = l.find((i) => String(i.id) === String(it.id)); if (x) { x.phase = "listed"; x.ended = false; x.listingStatus = "active"; x.staged = false; x.channels = Object.assign({}, x.channels, { ebay: { listingId: out.listingId, offerId: out.offerId, sku: out.sku, at: new Date().toISOString() } }); } });
+        } catch { bad.push(`${nameOf(it)}: couldn't reach eBay`); }
+      }
+      S.sel.clear(); ctx.refresh(); paint(); ctx.rerender?.();
+      if (bad.length) { b.disabled = false; armed = false; b.textContent = "Close"; b.onclick = () => ctx.closeSheet(); m.textContent = `Listed ${ok}. ${bad.length} didn't: ${bad.slice(0, 3).join(" · ")}`; }
+      else { ctx.closeSheet(); ctx.toast(`Listed ${ok} on eBay`); }
+    });
   }
 }
 

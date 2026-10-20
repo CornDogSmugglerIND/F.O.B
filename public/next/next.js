@@ -4,7 +4,7 @@ import { renderScouter } from "./scouter.js?v=13";
 import { renderCollection } from "./collection.js?v=13";
 import { photoManager } from "./photos.js?v=3";
 import { renderSpaces } from "./spaces.js?v=11";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=24";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=26";
 import { renderSettings } from "./settings.js?v=6";
 import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=2";
@@ -191,18 +191,13 @@ function pileHtml(list, cls, emptyMsg) {
 }
 function renderCommand() {
   const g = groups(); const main = $("#main");
-  const pills = [
-    [g.intake.length, "Identify new photos", "scouter"],
-    [g.staged.length, "Build and publish", "channels", "staged"],
-    [g.sold.length, "Pack and ship", "channels", "sold"],
-  ].map(([n, t, v, st]) => `<button class="pill" data-goto="${v}" ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto"; main.style.overflowX = "hidden";
     const open = mine(items).filter((i) => !["ended", "sold", "packed", "shipped", "delivered"].includes(phaseFromItem(i)));
     const value = open.reduce((a, i) => a + worth(i), 0);
     const need = g.intake.length + g.staged.length, live = g.listed.length + g.stored.length;
-    const acts = [[g.intake.length, "Identify", "new photos", "scouter"], [g.staged.length, "Build", "and publish", "channels", "staged"], [g.sold.length, "Pack", "and ship", "channels", "sold"]]
-      .map(([n, t, u, v, st]) => `<button type="button" class="cm-act${n ? " hot" : ""}" data-goto="${v}" ${st ? `data-pst="${st}"` : ""}><b>${n}</b><span>${t}</span><small>${u}</small></button>`).join("");
+    const acts = [[g.intake.length, "Identify", "new photos", "scouter"], [g.staged.length, "Build", "and publish", "@staged"], [g.sold.length, "Pack", "and ship", "channels", "sold"]]
+      .map(([n, t, u, v, st]) => `<button type="button" class="cm-act${n ? " hot" : ""}" ${v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b><span>${t}</span><small>${u}</small></button>`).join("");
     const rows = STOPS.map((s, i) => { const l = g[s.id]; const th = l.slice(0, 4).map((it) => { const p = photoOf(it); return `<i class="cm-th">${p ? `<img src="${esc(p)}" alt="" loading="lazy" draggable="false">` : esc(nameOf(it).charAt(0).toUpperCase())}</i>`; }).join("");
       return `<button type="button" class="cm-row${l.length ? " has" : ""}" data-stage="${s.id}" style="--c:${s.c}" aria-label="${esc(s.label)}, ${l.length} items"><i class="cm-dot"></i><span class="cm-t"><em>Step ${i + 1} of ${STOPS.length}</em><b>${esc(s.label)}</b><small>${esc(s.note)}</small></span><span class="cm-stack">${th}${l.length > 4 ? `<i class="cm-th cm-more">+${l.length - 4}</i>` : ""}</span><span class="cm-n">${l.length}</span></button>`; }).join("");
     main.innerHTML = `<div class="cm"><section class="cm-hero"><span class="cm-k">Total value in progress</span><b class="cm-big">${money(value)}</b><div class="cm-two"><div><b>${need}</b><span>Need action</span></div><div><b>${live}</b><span>Live on eBay</span></div></div></section>
@@ -215,8 +210,8 @@ function renderCommand() {
     const soldVal = [...g.sold, ...g.shipped, ...g.delivered].reduce((a, i) => a + worth(i), 0);
     const kpi = [[money(value), "Value in progress"], [need, "Need action"], [live, "Live on eBay"], [g.sold.length, "To ship"], [money(soldVal), "Sold, last 90 days"]]
       .map(([v, l], i) => `<div class="hk${i === 0 ? " big" : ""}"><b class="cm-two-b">${v}</b><span>${l}</span></div>`).join("");
-    const acts = [[g.intake.length, "Identify new photos", "scouter"], [g.staged.length, "Build and publish", "channels", "staged"], [g.sold.length, "Pack and ship", "channels", "sold"]]
-      .map(([k, t, v, st]) => `<button type="button" class="cm-act${k ? " hot" : ""}" data-goto="${v}" ${st ? `data-pst="${st}"` : ""}><b>${k}</b><span>${t}</span></button>`).join("");
+    const acts = [[g.intake.length, "Identify new photos", "scouter"], [g.staged.length, "Build and publish", "@staged"], [g.sold.length, "Pack and ship", "channels", "sold"]]
+      .map(([k, t, v, st]) => `<button type="button" class="cm-act${k ? " hot" : ""}" ${v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${k}</b><span>${t}</span></button>`).join("");
     const card = (it) => { const p = photoOf(it); return `<div class="pc hc" data-item="${esc(it.id)}" role="button" tabindex="0">${p ? `<img src="${esc(p)}" alt="" loading="lazy" draggable="false">` : `<div class="ini">${esc(nameOf(it).charAt(0).toUpperCase())}</div>`}<span class="hc-t"><span>${esc(nameOf(it))}</span><em>${money(worth(it))}</em></span></div>`; };
     const cols = STOPS.map((s, i) => { const l = g[s.id], val = l.reduce((a, x) => a + worth(x), 0), cap = 6;
       return `<section class="stop hcol" data-drop="${s.id}" style="--c:${s.c}"><header class="hh" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${l.length} items"><i class="dot"></i><em>Step ${i + 1}</em><b>${esc(s.label)}</b><span><strong>${l.length}</strong> · ${money(val)}</span></header>
@@ -350,7 +345,7 @@ async function syncAll(auto) {
       const photos = (r.photos || []).filter((p) => p.dataUrl || p.url).map((p) => ({ id: p.id, dataUrl: p.dataUrl || p.url }));
       if (!photos.length && r.imageUrl) photos.push({ id: `img-${sku}`, dataUrl: r.imageUrl });
       const mapped = { id: r.id || `ebay-${sku}`, title: r.title || r.productName, productName: r.productName || r.title, sku, quantity: r.quantity || 1, price: r.price,
-        phase: r.phase || (live === "listed" ? "listed" : "staged"), ended: Boolean(r.ended), listingStatus: r.ended ? "draft" : live, staged: false, spaceId: r.spaceId || null, channels: r.channels, photos, groupImage: r.groupImage || null, groupTitle: r.groupTitle || null };
+        phase: r.phase || (live === "listed" ? "listed" : "staged"), ended: Boolean(r.ended), listingStatus: r.ended ? "draft" : live, staged: false, spaceId: r.spaceId || null, channels: r.channels, photos, groupId: r.groupId || null, groupImage: r.groupImage || null, groupTitle: r.groupTitle || null };
       if (idx >= 0) { const keep = list[idx]; list[idx] = { ...keep, ...mapped, spaceId: keep.spaceId || mapped.spaceId, photos: (keep.photos?.length ? keep.photos : mapped.photos) };
         { const u = list[idx]; const eb = (r.imageUrls || []).filter((x) => /^https:/.test(x)); if (!u.photosDirty && live === "listed" && eb.length && eb.length === (u.photos || []).length && (u.photos || []).some((p) => String(p.dataUrl || "").startsWith("data:"))) u.photos = eb.map((x, k) => ({ id: `eb-${k}`, dataUrl: x })); } }
       else list.unshift(mapped);

@@ -136,6 +136,29 @@ export function channelsRouter() {
       res.status(e.code === "VALIDATION" ? 400 : 502).json({ ok: false, error: e.message, details: e.details });
     }
   });
+  /** End live listings. Body: { items: [{ id, offerId, listingId, groupId }] }. Variation listings end as one group. */
+  router.post("/ebay/end-listings", async (req, res) => {
+    const list = Array.isArray(req.body?.items) ? req.body.items.slice(0, 200) : [];
+    try {
+      assertChannelConfigured("ebay");
+      if (!list.length) return res.status(400).json({ ok: false, error: "Pick at least one listing." });
+      const ended = [], failed = [], doneGroups = new Map(), doneOffers = new Set();
+      for (const it of list) {
+        try {
+          if (it.groupId) {
+            if (!doneGroups.has(it.groupId)) { doneGroups.set(it.groupId, endEbayVariationListing(it.groupId).then(() => null, (e) => e)); }
+            const err = await doneGroups.get(it.groupId); if (err) throw err;
+          } else if (it.offerId) {
+            if (!doneOffers.has(it.offerId)) { doneOffers.add(it.offerId); await endEbayListing({ listingId: it.offerId }); }
+          } else { throw new Error("No eBay offer on this item. Tap Sync, then try again."); }
+          ended.push(it.id);
+        } catch (e) { failed.push({ id: it.id, error: e.message || "eBay said no." }); }
+      }
+      res.json({ ok: failed.length === 0, ended, failed });
+    } catch (e) {
+      res.status(502).json({ ok: false, error: e.message, ended: [], failed: list.map((x) => ({ id: x.id, error: e.message })) });
+    }
+  });
   /** One-shot live proof of a Pick-Your-Card listing: publish 2 cheap cards as one listing, then end it. */
   router.post("/ebay/variation-test", async (req, res) => {
     const stamp = Date.now();
