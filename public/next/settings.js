@@ -15,7 +15,7 @@ export function renderSettings(host) {
     <section class="card-panel set"><h3>Put it on your phone</h3>
       <ol class="how"><li>Open this page in <b>Safari</b> (iPhone) or <b>Chrome</b> (Android).</li><li>iPhone: tap Share, then <b>Add to Home Screen</b>. Android: tap the menu, then <b>Install app</b>.</li><li>Open it from the new icon. It fills the whole screen.</li></ol></section>
     <section class="card-panel set"><h3>Space on this device</h3><div class="meter"><i style="width:${pct}%"></i></div><p class="sub" id="spMsg">${mb} MB of about 5 MB used. Photos you scout are shrunk to save room. eBay photos are links and take none.</p><button class="btn" id="spFree" type="button">Free up space</button></section>
-    <section class="card-panel set"><h3>eBay</h3><p class="sub">Pull your live listings, sold orders and photos from eBay.</p><button class="btn go" id="spSync" type="button">Sync with eBay now</button></section>
+    <section class="card-panel set"><h3>eBay</h3><p class="sub">App build ${(/next\.js\?v=(\d+)/.exec(document.documentElement.innerHTML) || [])[1] || "?"}</p><p class="sub">Pull your live listings, sold orders and photos from eBay.</p><button class="btn go" id="spSync" type="button">Sync with eBay now</button></section>
 </div>`;
   host.querySelector("#spSync").addEventListener("click", () => document.querySelector("#syncBtn")?.click());
   host.querySelector("#spFree").addEventListener("click", async (e) => {

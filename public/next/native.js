@@ -60,3 +60,16 @@ if (main) {
   const end = () => { if (y0 == null) return; const go = d > 90; y0 = null; pill.style.opacity = "0"; pill.style.transform = "translate(-50%,0)"; if (go) $("#syncBtn")?.click(); };
   main.addEventListener("touchend", end); main.addEventListener("touchcancel", end);
 }
+
+/* always run the newest build: if the server has a newer index, reload once */
+const pin = (h) => (/next\.js\?v=(\d+)/.exec(h) || [])[1];
+const mine = pin(document.documentElement.innerHTML);
+export const BUILD = mine || "?";
+async function fresh() {
+  try {
+    const r = await fetch("/next/?_=" + Date.now(), { cache: "no-store" }), t = await r.text(), v = pin(t);
+    if (v && mine && v !== mine && sessionStorage.getItem("fob-reload") !== v) { sessionStorage.setItem("fob-reload", v); location.reload(); }
+  } catch { /* offline */ }
+}
+fresh(); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") fresh(); });
+const tag = document.createElement("div"); tag.className = "build-tag"; tag.textContent = "Build " + BUILD; document.body.appendChild(tag);
