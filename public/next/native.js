@@ -73,3 +73,16 @@ async function fresh() {
 }
 fresh(); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") fresh(); });
 const tag = document.createElement("div"); tag.className = "build-tag"; tag.textContent = "Build " + BUILD; document.body.appendChild(tag);
+
+/* ---- haptics: iOS 17.4+ fires a tap when a switch checkbox's label is clicked ---- */
+(() => {
+  let lab;
+  try {
+    lab = document.createElement("label"); lab.setAttribute("aria-hidden", "true");
+    lab.style.cssText = "position:fixed;left:-99px;top:-99px;opacity:0;pointer-events:none";
+    const i = document.createElement("input"); i.type = "checkbox"; i.setAttribute("switch", ""); lab.appendChild(i); document.body.appendChild(lab);
+  } catch { return; }
+  const tick = () => { try { lab.click(); } catch { /* ignore */ } try { navigator.vibrate && navigator.vibrate(8); } catch { /* ignore */ } };
+  document.addEventListener("pointerdown", (e) => { if (e.target.closest && e.target.closest("button,.cm-row,.cm-act,.cx-card,.co-card,.ch-tile,.sc-q,.tile,.pk-tile,[role=button],.chip")) tick(); }, { passive: true });
+  window.__tick = tick;
+})();

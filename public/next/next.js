@@ -5,7 +5,7 @@ import { renderCollection } from "./collection.js?v=10";
 import { photoManager } from "./photos.js?v=3";
 import { renderSpaces } from "./spaces.js?v=11";
 import { renderChannels, buildListing, variationListing } from "./channels.js?v=23";
-import { renderSettings } from "./settings.js?v=5";
+import { renderSettings } from "./settings.js?v=6";
 import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=2";
 
@@ -244,7 +244,16 @@ function bindDrag(el) {
 
 /* ---------- router ---------- */
 let view = "command";
+const ORDER = ["command", "scouter", "spaces", "channels", "collection", "settings"];
 function go(v) {
+  const run = () => go_(v);
+  const reduce = matchMedia("(prefers-reduced-motion:reduce)").matches;
+  if (document.startViewTransition && !reduce && v !== view) {
+    document.documentElement.dataset.vt = ORDER.indexOf(v) >= ORDER.indexOf(view) ? "fwd" : "back";
+    const t = document.startViewTransition(run); t.finished.finally(() => { delete document.documentElement.dataset.vt; });
+  } else run();
+}
+function go_(v) {
   view = v; closeSheet();
   document.querySelectorAll("#nav button").forEach((b) => { b.classList.toggle("on", b.dataset.view === v); if (b.dataset.view === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   try { history.replaceState(null, "", v === "command" ? "./" : `#${v}`); } catch { /* ignore */ }

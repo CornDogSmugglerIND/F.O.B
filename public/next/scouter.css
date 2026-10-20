@@ -71,3 +71,10 @@
 .more{white-space:nowrap}
 .sc-q{position:relative}.sc-qx{position:absolute;top:6px;right:6px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(10,12,11,.82);border:1px solid rgba(255,140,120,.7);color:#ff9d8a;font:700 20px/1 var(--disp,inherit);text-decoration:none;z-index:3;backdrop-filter:blur(6px)}
 .sc-qx:active{transform:scale(.88)}
+/* v12 phone: camera first, less clutter */
+@media (max-width:820px){
+ .sc-hud .live,.sc-hud .net{display:none}.sc-hud{grid-template-columns:1fr 1fr}
+ .pg-title span{display:none}.pg-title{padding-bottom:4px}
+ .sc-vf{min-height:0;height:min(46dvh,420px)}
+ .sc-vf strong,.sc-vf h3{font-size:22px}
+}
