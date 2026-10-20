@@ -1,7 +1,7 @@
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=4";
 import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=13";
-import { renderCollection } from "./collection.js?v=10";
+import { renderCollection } from "./collection.js?v=12";
 import { photoManager } from "./photos.js?v=3";
 import { renderSpaces } from "./spaces.js?v=11";
 import { renderChannels, buildListing, variationListing } from "./channels.js?v=23";
@@ -72,8 +72,25 @@ function toastUndo(msg, fn) {
   clearTimeout(toastT); toastT = setTimeout(hide, 30000); // long window: tappable until you move on
   b.addEventListener("click", () => { hide(); fn(); }); x.addEventListener("click", hide);
 }
-function closeSheet() { $("#sheet").hidden = true; $("#sheetBack").hidden = true; }
+/* Sheets: real iOS sheets (Ionic ion-modal with detents + swipe) when Ionic is loaded; plain panel otherwise. */
+let modal = null;
+const sheetIsOpen = () => !!modal || !$("#sheet").hidden;
+function closeSheet() { const m = modal; modal = null; if (m) { try { Promise.resolve(m.dismiss()).finally(() => m.remove()); } catch { m.remove(); } } $("#sheet").hidden = true; $("#sheetBack").hidden = true; }
 function openSheet(html) {
+  if (window.customElements && customElements.get("ion-modal")) {
+    if (modal) { const old = modal; modal = null; old.remove(); }
+    const m = document.createElement("ion-modal"); const ph = phone();
+    if (ph) { m.breakpoints = [0, 0.55, 0.94]; m.initialBreakpoint = 0.94; m.handle = true; m.handleBehavior = "cycle"; }
+    m.className = "fob-sheet" + (ph ? " is-phone" : "");
+    m.innerHTML = `<ion-content class="shx-c"><div class="shx"><button class="x" aria-label="Close" data-close type="button">×</button>${html}</div></ion-content>`;
+    document.body.appendChild(m); modal = m;
+    const gone = () => { if (modal === m) modal = null; m.remove(); };
+    m.addEventListener("ionModalDidDismiss", gone); m.addEventListener("didDismiss", gone);
+    const s = m.querySelector(".shx");
+    s.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", closeSheet));
+    m.present();
+    return s;
+  }
   const s = $("#sheet"); s.innerHTML = `<button class="x" aria-label="Close" data-close>×</button>${html}`; s.hidden = false; $("#sheetBack").hidden = false;
   s.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", closeSheet));
   s.scrollTop = 0;
@@ -106,14 +123,17 @@ function itemSheet(id) {
   const src = photoOf(it); const ph = phaseFromItem(it); const st = stopFor(it);
   const s = openSheet(`
     <a class="back" href="#" data-close>‹ Back</a>
-    ${src ? `<img id="sheetMain" src="${esc(src)}" alt="" style="width:100%;max-height:300px;object-fit:contain;border-radius:14px;background:#0f1211;margin-bottom:12px">` : ""}
-    <div id="phMgr"></div>${(() => { const g = groups()[st && st.id] || []; const others = g.filter((x) => String(x.id) !== String(it.id)).slice(0, 24); return others.length ? `<div class="ph-head" style="margin-top:6px"><b>Also in ${esc(st.label)}</b><span>${g.length} total</span></div><div class="ph-row">${others.map((x) => { const p = photoOf(x); return `<button type="button" class="sib" data-sib="${esc(x.id)}">${p ? `<img src="${esc(p)}" alt="" loading="lazy">` : `<i>${esc(nameOf(x).charAt(0))}</i>`}<span>${esc(nameOf(x))}</span></button>`; }).join("")}</div>` : ""; })()}
+    ${src ? `<img id="sheetMain" src="${esc(src)}" alt="" style="width:100%;height:300px;object-fit:contain;border-radius:20px;background:#0f1211;margin-bottom:14px;box-shadow:0 14px 34px rgba(0,0,0,.5)">` : ""}
+<div class="it-info">
     <h2>${esc(nameOf(it))}</h2>
     <div class="sub">${st ? esc(st.label) : ph === "ended" ? "Ended on eBay" : ""}</div>
     <div class="row"><span>Price</span><span>${money(it.price)}</span></div>
     <div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>
     ${it.purchasePrice ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div>` : ""}
     ${nextAction(ph, it)}
+</div>
+    <div id="phMgr" style="margin-top:18px"></div>${(() => { const g = groups()[st && st.id] || []; const others = g.filter((x) => String(x.id) !== String(it.id)).slice(0, 24); return others.length ? `<div class="ph-head" style="margin-top:6px"><b>Also in ${esc(st.label)}</b><span>${g.length} total</span></div><div class="ph-row">${others.map((x) => { const p = photoOf(x); return `<button type="button" class="sib" data-sib="${esc(x.id)}">${p ? `<img src="${esc(p)}" alt="" loading="lazy">` : `<i>${esc(nameOf(x).charAt(0))}</i>`}<span>${esc(nameOf(x))}</span></button>`; }).join("")}</div>` : ""; })()}
+
     ${String(it.id).startsWith("ebay-") ? "" : `<button class="btn warn" data-del type="button" style="margin-top:14px">Delete this item</button>`}`);
   s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
   photoManager(s.querySelector("#phMgr"), it.id, { toast, refresh: () => { items = loadItems(); renderStats(); const m = s.querySelector("#sheetMain"); const c = items.find((i) => String(i.id) === String(id)); if (m && c) m.src = photoOf(c); } });
@@ -266,7 +286,7 @@ function softRender() {
   purgeDemo();
   const l = loadItems(), n = sigOf(l); items = l; renderStats();
   if (n === sig) return; sig = n;
-  if (!$("#sheet").hidden || document.querySelector(".k-zoom") || document.querySelector(".ghost")) return;
+  if (sheetIsOpen() || document.querySelector(".k-zoom") || document.querySelector(".ghost")) return;
   if (view === "scouter" || view === "settings" || view === "spaces") return;
   const m = $("#main"), y = m.scrollTop; render(); m.scrollTop = y;
 }

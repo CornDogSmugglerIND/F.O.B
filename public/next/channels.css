@@ -49,3 +49,4 @@
 
 .bl-pic{position:relative;flex:none;padding:0;border:2px solid transparent;border-radius:12px;background:none;cursor:pointer}.bl-pic.on{border-color:var(--sea,#90ffcc)}.bl-pic b{position:absolute;left:6px;bottom:6px;background:var(--sea,#90ffcc);color:#04110c;font-size:12px;padding:2px 8px;border-radius:8px}
 @media (min-width:1400px){.ch-wrap,.co-wrap.ch,.sp-wrap.ch{max-width:none}.ch-grid.cards,.ch-grid.grid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}}
+.ch-fold{min-height:40px}

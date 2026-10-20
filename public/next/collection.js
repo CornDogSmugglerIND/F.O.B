@@ -29,14 +29,14 @@ const val = (l) => l.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.qua
 function paint() {
   const host = ctx.host, keep = host.querySelector(".cx-grid")?.parentElement?.scrollTop;
   const base = peekItems().filter(onHand), cats = new Map(); base.forEach((i) => { const c = catOf(i); cats.set(c, (cats.get(c) || 0) + 1); });
-  const all = rows(), shown = all.slice(0, S.more), total = val(all), binName = (id) => loadSpaces().find((x) => x.id === id)?.name || "";
+  const all = rows(), shown = all.slice(0, S.more), total = val(all), SP = new Map(loadSpaces().map((x) => [x.id, x.name])), binName = (id) => (id && SP.get(id)) || "";
   host.innerHTML = `<div class="co-wrap cx">
     <header class="cx-top"><div class="cx-val"><em>${S.cat === "All" ? "Everything on hand" : esc(S.cat)}</em><b>${money(total)}</b><span>${all.length} item${all.length === 1 ? "" : "s"} at market value</span></div>
       <div class="cx-tools"><button class="cx-btn${S.selecting ? " on" : ""}" id="coSel" type="button">${S.selecting ? "Done" : "Select"}</button><button class="cx-btn" id="coMenuBtn" type="button" aria-expanded="${!!S.menu}">⋯</button></div></header>
     ${S.menu ? `<div class="cx-menu"><label><span>Sort</span><select id="coSort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest value</option><option value="new"${S.sort === "new" ? " selected" : ""}>Newest</option><option value="name"${S.sort === "name" ? " selected" : ""}>Name</option></select></label>
       <label><span>Show</span><select id="coStage">${[["all", "All"], ["new", "Intake"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<option value="${k}"${S.stage === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
       <button class="cx-btn" id="coIO" type="button">Import / Export</button></div>` : ""}
-    <div class="cx-chips" role="tablist"><button type="button" class="${S.cat === "All" ? "on" : ""}" data-cat="All">All <em>${base.length}</em></button>${[...cats.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => `<button type="button" class="${S.cat === c ? "on" : ""}" data-cat="${esc(c)}">${esc(c)} <em>${n}</em></button>`).join("")}</div>
+    <div class="cx-chips" role="group" aria-label="Categories"><button type="button" class="${S.cat === "All" ? "on" : ""}" data-cat="All">All <em>${base.length}</em></button>${[...cats.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => `<button type="button" class="${S.cat === c ? "on" : ""}" data-cat="${esc(c)}">${esc(c)} <em>${n}</em></button>`).join("")}</div>
     <input id="coQ" class="cx-q" type="search" placeholder="Search your collection" value="${esc(S.q)}">
     <div class="cx-scroll"><div class="cx-grid">${shown.map((it) => { const src = photoOf(it), on = S.sel.has(String(it.id)), bn = binName(it.spaceId); return `<article class="cx-card${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0">
       <div class="cx-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<span class="cx-price">${money(it.price)}</span>${Number(it.quantity) > 1 ? `<span class="cx-qty">x${Number(it.quantity)}</span>` : ""}${S.selecting ? `<i class="cx-ck"></i>` : ""}</div>

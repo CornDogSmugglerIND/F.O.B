@@ -80,9 +80,10 @@ const tag = document.createElement("div"); tag.className = "build-tag"; tag.text
   try {
     lab = document.createElement("label"); lab.setAttribute("aria-hidden", "true");
     lab.style.cssText = "position:fixed;left:-99px;top:-99px;opacity:0;pointer-events:none";
-    const i = document.createElement("input"); i.type = "checkbox"; i.setAttribute("switch", ""); lab.appendChild(i); document.body.appendChild(lab);
+    var i = document.createElement("input"); i.type = "checkbox"; i.setAttribute("switch", ""); lab.appendChild(i); document.body.appendChild(lab);
   } catch { return; }
   const tick = () => { try { lab.click(); } catch { /* ignore */ } try { navigator.vibrate && navigator.vibrate(8); } catch { /* ignore */ } };
-  document.addEventListener("pointerdown", (e) => { if (e.target.closest && e.target.closest("button,.cm-row,.cm-act,.cx-card,.co-card,.ch-tile,.sc-q,.tile,.pk-tile,[role=button],.chip")) tick(); }, { passive: true });
+  i.tabIndex = -1;
+  document.addEventListener("click", (e) => { if (!e.isTrusted || lab.contains(e.target)) return; if (e.target.closest && e.target.closest("button,.cm-row,.cm-act,.cx-card,.co-card,.ch-tile,.sc-q,.tile,.pk-tile,.sib,[role=button],.chip")) { const a = document.activeElement; tick(); try { a && a !== document.body && a.focus({ preventScroll: true }); } catch { /* ignore */ } } });
   window.__tick = tick;
 })();
