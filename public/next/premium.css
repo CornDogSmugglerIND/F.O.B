@@ -70,3 +70,25 @@ img{-webkit-user-drag:none;-webkit-touch-callout:none}
 .cx-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,160px),1fr))}
 .cx-card,.co-card{min-width:0}.cx-cap span,.cx-cap em{min-width:0;overflow:hidden}
 @media (max-width:820px){.cx-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* ===== v8: native shell (phone) — safe areas, flush glass bars ===== */
+:root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--ease2:cubic-bezier(.2,.8,.2,1)}
+@media (max-width:820px){
+ .hud-frame,.hud-scan{display:none!important}
+ .top{left:0!important;right:0!important;top:0!important;height:calc(58px + var(--sat))!important;padding:var(--sat) 14px 0!important;border-radius:0!important;border:0!important;border-bottom:1px solid rgba(179,251,213,.18)!important;background:linear-gradient(180deg,rgba(18,22,21,.88),rgba(12,14,13,.8))!important;backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);box-shadow:0 8px 24px rgba(0,0,0,.35)!important}
+ .nav{left:0!important;right:0!important;bottom:0!important;top:auto!important;height:calc(62px + var(--sab))!important;padding:6px 6px var(--sab)!important;border-radius:0!important;border:0!important;border-top:1px solid rgba(179,251,213,.18)!important;background:linear-gradient(0deg,rgba(18,22,21,.92),rgba(12,14,13,.82))!important;backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);box-shadow:0 -8px 24px rgba(0,0,0,.35)!important}
+ main{top:calc(66px + var(--sat))!important;bottom:calc(70px + var(--sab))!important;left:12px!important;right:12px!important}
+ .toast{bottom:calc(78px + var(--sab))!important}
+ .ptr{top:calc(70px + var(--sat))!important}
+ .nav button:active{transform:scale(.92);transition:transform .12s var(--ease2)}
+ .sheet{padding-bottom:calc(16px + var(--sab))!important}
+ body{-webkit-touch-callout:none;overscroll-behavior:none}
+ main{-webkit-overflow-scrolling:touch}
+}
+/* one orchestrated moment: cards rise in on tab change */
+@keyframes cardIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:no-preference){
+ .cx-card,.co-card{animation:cardIn .42s var(--ease2) both}
+ .cx-card:nth-child(2),.co-card:nth-child(2){animation-delay:.04s}.cx-card:nth-child(3),.co-card:nth-child(3){animation-delay:.08s}
+ .cx-card:nth-child(4),.co-card:nth-child(4){animation-delay:.12s}.cx-card:nth-child(n+5),.co-card:nth-child(n+5){animation-delay:.16s}
+}
+.cx-card:active,.co-card:active{transform:scale(.96);transition:transform .12s var(--ease2)}
