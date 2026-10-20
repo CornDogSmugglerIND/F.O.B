@@ -14,8 +14,22 @@ export function renderSettings(host) {
     <section class="card-panel set"><h3>Connections</h3><div id="conn" class="conn"><span class="sub">Checking…</span></div></section>
     <section class="card-panel set"><h3>Put it on your phone</h3>
       <ol class="how"><li>Open this page in <b>Safari</b> (iPhone) or <b>Chrome</b> (Android).</li><li>iPhone: tap Share, then <b>Add to Home Screen</b>. Android: tap the menu, then <b>Install app</b>.</li><li>Open it from the new icon. It fills the whole screen.</li></ol></section>
-    <section class="card-panel set"><h3>Space on this device</h3><div class="meter"><i style="width:${pct}%"></i></div><p class="sub">${mb} MB of about 5 MB used. Photos you scout are shrunk to save room. eBay photos are links and take none.</p></section>
-    <section class="card-panel set"><img class="k-tilt set-plate" src="img/plate.jpg" alt=""><img class="k-tilt set-word" src="img/wordmark.jpg" alt="CornDogSmuggler Coalition"></section></div>`;
+    <section class="card-panel set"><h3>Space on this device</h3><div class="meter"><i style="width:${pct}%"></i></div><p class="sub" id="spMsg">${mb} MB of about 5 MB used. Photos you scout are shrunk to save room. eBay photos are links and take none.</p><button class="btn" id="spFree" type="button">Free up space</button></section>
+    <section class="card-panel set"><h3>eBay</h3><p class="sub">Pull your live listings, sold orders and photos from eBay.</p><button class="btn go" id="spSync" type="button">Sync with eBay now</button></section>
+</div>`;
+  host.querySelector("#spSync").addEventListener("click", () => document.querySelector("#syncBtn")?.click());
+  host.querySelector("#spFree").addEventListener("click", async (e) => {
+    const btn = e.currentTarget, msg = host.querySelector("#spMsg"); btn.disabled = true; btn.textContent = "Working…";
+    const shrink = (u) => new Promise((res) => { const im = new Image(); im.onload = () => { const k = Math.min(1, 480 / Math.max(im.naturalWidth, im.naturalHeight)); const c = document.createElement("canvas"); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL("image/jpeg", 0.6)); }; im.onerror = () => res(u); im.src = u; });
+    try {
+      const raw = localStorage.getItem("coalition-items-v4") || "[]", list = JSON.parse(raw); let n = 0;
+      for (const it of list) { if (!it.channels?.ebay?.listingId || it.ended) continue; for (const p of it.photos || []) { const u = p.dataUrl || ""; if (u.startsWith("data:") && u.length > 40000) { p.dataUrl = await shrink(u); n++; } } }
+      const out = JSON.stringify(list); localStorage.setItem("coalition-items-v4", out);
+      const freed = Math.max(0, (raw.length - out.length) * 2 / 1048576).toFixed(1);
+      msg.textContent = n ? `Shrunk ${n} photos on items that are already live. Freed about ${freed} MB.` : "Nothing to shrink. Only photos of items already live on eBay get shrunk.";
+    } catch { msg.textContent = "Couldn't free space right now."; }
+    btn.disabled = false; btn.textContent = "Free up space";
+  });
   host.querySelector("#chg").addEventListener("click", () => document.querySelector("#avatarBtn")?.click());
   const names = { ebay: "eBay", misprint: "Misprint", double_holo: "Double Holo" };
   fetch("/api/channels/status").then((r) => r.json()).then((d) => {

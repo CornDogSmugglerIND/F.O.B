@@ -5,7 +5,7 @@ import { renderCollection } from "./collection.js?v=10";
 import { photoManager } from "./photos.js?v=3";
 import { renderSpaces } from "./spaces.js?v=11";
 import { renderChannels, buildListing, variationListing } from "./channels.js?v=23";
-import { renderSettings } from "./settings.js?v=3";
+import { renderSettings } from "./settings.js?v=4";
 import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=2";
 
@@ -16,7 +16,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const money = (n) => "$" + (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const nameOf = (it) => { const t = it.title || it.productName || ""; return !t ? "Untitled" : /^sku-\d+$/i.test(t.trim()) ? `Draft listing …${t.trim().slice(-4)}` : t; };
 const photoOf = (it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "";
-const worth = (it) => (Number(it.price) || 0) * (Number(it.quantity) || 1);
+const worth = (it) => it._order ? (Number(it.price) || 0) : (Number(it.price) || 0) * (Number(it.quantity) || 1);
 
 /* ---------- data ---------- */
 function loadItems() { try { const v = JSON.parse(localStorage.getItem(LS_ITEMS) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } }
@@ -167,7 +167,7 @@ function pileHtml(list, cls, emptyMsg) {
   if (!list.length) return emptyMsg ? `<button type="button" class="empty ${cls}" data-goto="scouter" style="font:inherit;color:inherit;cursor:pointer">${esc(emptyMsg)}</button>` : `<div class="empty ${cls}">Nothing here yet</div>`;
   const top = list[0]; const src = photoOf(top);
   const face = (it, k) => { const p = photoOf(it); return `<div class="pc ${k === "" ? "k-tilt" : k}" ${k === "" ? `data-item="${esc(it.id)}"` : ""}>${p ? `<img src="${esc(p)}" alt="" draggable="false">` : `<div class="ini">${esc(nameOf(it).charAt(0).toUpperCase())}</div>`}${k === "" ? `<span class="cap"><span>${esc(nameOf(it))}</span><em>${money(worth(it))}</em></span>` : ""}</div>`; };
-  return `<div class="pile ${cls}">${list[2] ? face(list[2], "b2") : ""}${list[1] ? face(list[1], "b1") : ""}${face(top, "")}${list.length > 1 ? `<span class="more" data-stage="${""}">+${list.length - 1} more · tap to see</span>` : ""}</div>`;
+  return `<div class="pile ${cls}">${list[2] ? face(list[2], "b2") : ""}${list[1] ? face(list[1], "b1") : ""}${face(top, "")}${list.length > 1 ? `<span class="more" data-stage="${""}">+${list.length - 1} more</span>` : ""}</div>`;
 }
 function renderCommand() {
   const g = groups(); const main = $("#main");
