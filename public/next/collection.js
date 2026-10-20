@@ -1,16 +1,18 @@
+import { photoManager } from "./photos.js?v=2";
 import { openCard } from "./kit.js?v=2";
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=4";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=5";
 
 let ctx = null;
-const S = { q: "", stage: "all", sort: "value", sel: new Set(), selecting: false, tab: "sealed", zoom: null, trash: null, menu: false };
+const S = { q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 90 };
 const phoneNow = () => matchMedia("(max-width:820px)").matches;
 
 function rows() {
   const q = S.q.trim().toLowerCase();
-  return loadItems().filter(onHand).filter((it) => {
+  return peekItems().filter(onHand).filter((it) => {
     if (S.stage === "ready" && it.phase !== "staged") return false;
     if (S.stage === "live" && it.phase !== "listed") return false;
     if (S.stage === "new" && it.phase !== "intake") return false;
+    if (S.cat !== "All" && catOf(it) !== S.cat) return false;
     return !q || nameOf(it).toLowerCase().includes(q) || gameOf(it).toLowerCase().includes(q);
   }).sort((a, b) => S.sort === "name" ? nameOf(a).localeCompare(nameOf(b)) : S.sort === "new" ? String(b.createdAt || "").localeCompare(String(a.createdAt || "")) : (Number(b.price) || 0) - (Number(a.price) || 0));
 }
@@ -24,61 +26,49 @@ function card(it) {
     <div class="co-cap"><span>${esc(nameOf(it))}</span></div></article>`;
 }
 const val = (l) => l.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
-function portfolio(all, sealed, singles) {
-  const total = val(all), by = new Map(); for (const i of all) { const g = gameOf(i) || "Other"; by.set(g, (by.get(g) || 0) + (Number(i.price) || 0) * (Number(i.quantity) || 1)); }
-  const top = [...by.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5), hue = ["#B3FBD5", "#90FFEE", "#7fb7a3", "#9195A0", "#6c7079"];
-  return `<div class="co-port"><div class="co-big"><em>Collection value at market</em><b id="coTotal" data-v="${total.toFixed(2)}">${money(total)}</b><span>${all.length} items · ${sealed.length} sealed · ${singles.length} singles</span><span>${["Live on eBay", "eBay draft", "On Double Holo", "Not listed"].map((w) => `${w} ${money(val(all.filter((i) => where(i) === w)))}`).join(" · ")}</span></div>
-    <div class="co-split" aria-label="Value by game">${top.map(([g, v], i) => `<i style="flex:${Math.max(v, 1)};background:${hue[i]}" title="${esc(g)}"></i>`).join("")}</div>
-    <div class="co-legend">${top.map(([g, v], i) => `<span><u style="background:${hue[i]}"></u>${esc(g)} <b>${money(v)}</b></span>`).join("")}</div></div>`;
-}
 function paint() {
-  const host = ctx.host, all = rows(); const sealed = all.filter((i) => laneOf(i) === "sealed"), singles = all.filter((i) => laneOf(i) === "singles");
-  const total = all.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
-  const lane = (id, label, hint, list) => `<section class="co-lane${phoneNow() && S.tab !== id ? " hide" : ""}" data-lane="${id}"><h3>${label} <em>${list.length}</em></h3><p class="co-hint">${hint}</p><div class="co-grid">${list.length ? list.map(card).join("") : `<div class="co-empty">Nothing here. ${all.length ? "Drag a card in, or change the filter." : "Add items in Scouter."}</div>`}</div></section>`;
-  host.innerHTML = `<div class="co-wrap">
-    ${portfolio(all, sealed, singles)}
-    <div class="co-bar2"><input id="coQ" type="search" placeholder="Search your collection" value="${esc(S.q)}">
-      <button class="btn${S.selecting ? " go" : ""}" id="coSel" type="button">${S.selecting ? "Done selecting" : "Select"}</button>
-      <button class="btn" id="coIO" type="button">Import / Export</button>
-      <button class="btn co-view${S.menu ? " go" : ""}" id="coMenuBtn" type="button" aria-expanded="${!!S.menu}">View ▾</button>
-      ${S.menu ? `<div class="co-menu" id="coMenu"><div class="co-mrow"><span>Show</span><div class="co-chips" role="group" aria-label="Stage filter">${[["all", "All"], ["new", "Intake"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<button class="chip${S.stage === k ? " on" : ""}" data-stage="${k}" type="button">${l}</button>`).join("")}</div></div>
-      <div class="co-mrow"><span>Sort</span><select id="coSort" aria-label="Sort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest value</option><option value="new"${S.sort === "new" ? " selected" : ""}>Newest</option><option value="name"${S.sort === "name" ? " selected" : ""}>A to Z</option></select></div></div>` : ""}</div>
-    ${phoneNow() ? `<div class="co-tabs"><button class="chip${S.tab === "sealed" ? " on" : ""}" data-tab="sealed" type="button">Sealed ${sealed.length}</button><button class="chip${S.tab === "singles" ? " on" : ""}" data-tab="singles" type="button">Singles ${singles.length}</button></div>` : ""}
-    <div class="co-lanes">${lane("sealed", "Sealed", "Boxes, packs, decks, tins. " + (phoneNow() ? "Tap a card, then Move to Singles." : "Drag a card to Singles to move it."), sealed)}${lane("singles", "Singles", "Individual cards and slabs. " + (phoneNow() ? "Tap a card, then Move to Sealed." : "Drag a card to Sealed to move it."), singles)}</div>
+  const host = ctx.host, keep = host.querySelector(".cx-grid")?.parentElement?.scrollTop;
+  const base = peekItems().filter(onHand), cats = new Map(); base.forEach((i) => { const c = catOf(i); cats.set(c, (cats.get(c) || 0) + 1); });
+  const all = rows(), shown = all.slice(0, S.more), total = val(all), binName = (id) => loadSpaces().find((x) => x.id === id)?.name || "";
+  host.innerHTML = `<div class="co-wrap cx">
+    <header class="cx-top"><div class="cx-val"><em>${S.cat === "All" ? "Everything on hand" : esc(S.cat)}</em><b>${money(total)}</b><span>${all.length} item${all.length === 1 ? "" : "s"} at market value</span></div>
+      <div class="cx-tools"><button class="cx-btn${S.selecting ? " on" : ""}" id="coSel" type="button">${S.selecting ? "Done" : "Select"}</button><button class="cx-btn" id="coMenuBtn" type="button" aria-expanded="${!!S.menu}">⋯</button></div></header>
+    ${S.menu ? `<div class="cx-menu"><label><span>Sort</span><select id="coSort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest value</option><option value="new"${S.sort === "new" ? " selected" : ""}>Newest</option><option value="name"${S.sort === "name" ? " selected" : ""}>Name</option></select></label>
+      <label><span>Show</span><select id="coStage">${[["all", "All"], ["new", "Intake"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<option value="${k}"${S.stage === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+      <button class="cx-btn" id="coIO" type="button">Import / Export</button></div>` : ""}
+    <div class="cx-chips" role="tablist"><button type="button" class="${S.cat === "All" ? "on" : ""}" data-cat="All">All <em>${base.length}</em></button>${[...cats.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => `<button type="button" class="${S.cat === c ? "on" : ""}" data-cat="${esc(c)}">${esc(c)} <em>${n}</em></button>`).join("")}</div>
+    <input id="coQ" class="cx-q" type="search" placeholder="Search your collection" value="${esc(S.q)}">
+    <div class="cx-scroll"><div class="cx-grid">${shown.map((it) => { const src = photoOf(it), on = S.sel.has(String(it.id)), bn = binName(it.spaceId); return `<article class="cx-card${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0">
+      <div class="cx-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<span class="cx-price">${money(it.price)}</span>${Number(it.quantity) > 1 ? `<span class="cx-qty">x${Number(it.quantity)}</span>` : ""}${S.selecting ? `<i class="cx-ck"></i>` : ""}</div>
+      <div class="cx-cap"><span>${esc(nameOf(it))}</span><em>${esc(where(it))}${bn ? " · " + esc(bn) : ""}</em></div></article>`; }).join("") || `<div class="co-empty">Nothing matches.</div>`}${all.length > S.more ? `<button type="button" class="cx-more" id="coMore">Show more (${all.length - S.more})</button>` : ""}</div></div>
     ${S.selecting ? bar() : ""}</div>`;
   wire();
 }
 function bar() {
   const n = S.sel.size, spaces = loadSpaces();
-  return `<div class="co-bar"><b>${n} selected</b>
-    <button class="btn" data-bulk="sealed" type="button" ${n ? "" : "disabled"}>To Sealed</button><button class="btn" data-bulk="singles" type="button" ${n ? "" : "disabled"}>To Singles</button>
-    <select id="coBin" ${n ? "" : "disabled"} aria-label="Send to bin"><option value="">Send to bin…</option>${spaces.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")}</select>
-    <span class="co-pct"><input id="coPct" inputmode="numeric" placeholder="±%" aria-label="Percent change"><button class="btn" data-bulk="pct" type="button" ${n ? "" : "disabled"}>Change price</button></span>
-    <button class="btn warn" data-bulk="del" type="button" ${n ? "" : "disabled"}>Remove from app</button><small>Price and remove change this app only, not eBay.</small></div>`;
+  return `<div class="cx-bar"><div class="cx-bh"><b>${n ? `${n} selected` : "Tap cards to select"}</b><button type="button" class="cx-link" id="coAll">Select all ${rows().length}</button></div>
+    <div class="cx-bins">${spaces.map((s) => `<button class="cx-bin" data-bin="${esc(s.id)}" type="button" ${n ? "" : "disabled"}>${esc(s.name)}</button>`).join("")}</div>
+    <div class="cx-row"><span class="co-pct"><input id="coPct" inputmode="numeric" placeholder="±%" aria-label="Percent change"><button class="cx-btn" data-bulk="pct" type="button" ${n ? "" : "disabled"}>Change price</button></span><button class="cx-btn warn" data-bulk="del" type="button" ${n ? "" : "disabled"}>Remove</button></div><small>Price and remove change this app only, not eBay.</small></div>`;
 }
 function commit(mut) { const list = loadItems(); mut(list); if (!saveItems(list)) { ctx.toast("Couldn't save. Storage is full."); return false; } ctx.refresh(); return true; }
 function wire() {
-  const h = ctx.host; const $ = (s) => h.querySelector(s);
-  $("#coQ").addEventListener("input", (e) => { S.q = e.target.value; const p = e.target.selectionStart; paint(); const q = h.querySelector("#coQ"); q.focus(); q.setSelectionRange(p, p); });
+  const h = ctx.host; const $ = (q) => h.querySelector(q);
+  $("#coQ").addEventListener("input", (e) => { S.q = e.target.value; S.more = 90; const p = e.target.selectionStart; paint(); const q = h.querySelector("#coQ"); q.focus(); q.setSelectionRange(p, p); });
   $("#coMenuBtn").addEventListener("click", () => { S.menu = !S.menu; paint(); });
   $("#coSort")?.addEventListener("change", (e) => { S.sort = e.target.value; paint(); });
-  $("#coIO").addEventListener("click", ioSheet);
+  $("#coStage")?.addEventListener("change", (e) => { S.stage = e.target.value; S.more = 90; paint(); });
+  $("#coIO")?.addEventListener("click", ioSheet);
+  $("#coMore")?.addEventListener("click", () => { S.more += 90; paint(); });
   $("#coSel").addEventListener("click", () => { S.selecting = !S.selecting; if (!S.selecting) S.sel.clear(); paint(); });
-  h.querySelectorAll("[data-stage]").forEach((b) => b.addEventListener("click", () => { S.stage = b.dataset.stage; paint(); }));
-  h.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { S.tab = b.dataset.tab; paint(); }));
-  h.querySelectorAll(".co-card").forEach((c) => {
+  $("#coAll")?.addEventListener("click", () => { rows().forEach((i) => S.sel.add(String(i.id))); paint(); });
+  h.querySelectorAll("[data-cat]").forEach((b) => b.addEventListener("click", () => { S.cat = b.dataset.cat; S.more = 90; paint(); }));
+  h.querySelectorAll(".cx-card").forEach((c) => {
     const id = c.dataset.id;
-    c.addEventListener("click", () => { if (S.selecting) { S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); paint(); } else openZoom(id, c.querySelector(".co-img")); });
+    c.addEventListener("click", () => { if (S.selecting) { S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); c.classList.toggle("sel", S.sel.has(id)); const bh = h.querySelector(".cx-bh b"); if (bh) bh.textContent = S.sel.size ? `${S.sel.size} selected` : "Tap cards to select"; h.querySelectorAll(".cx-bar [data-bin],.cx-bar [data-bulk]").forEach((x) => { x.disabled = !S.sel.size; }); } else openZoom(id, c.querySelector(".cx-img")); });
     c.addEventListener("keydown", (e) => { if (e.key === "Enter") c.click(); });
-    c.addEventListener("dragstart", (e) => { const ids = S.selecting && S.sel.has(id) ? [...S.sel] : [id]; e.dataTransfer.setData("text/plain", JSON.stringify(ids)); e.dataTransfer.effectAllowed = "move"; c.classList.add("drag"); });
-    c.addEventListener("dragend", () => c.classList.remove("drag"));
-  });
-  h.querySelectorAll(".co-lane").forEach((l) => {
-    l.addEventListener("dragover", (e) => { e.preventDefault(); l.classList.add("over"); }); l.addEventListener("dragleave", (e) => { if (!l.contains(e.relatedTarget)) l.classList.remove("over"); });
-    l.addEventListener("drop", (e) => { e.preventDefault(); l.classList.remove("over"); let ids = []; try { ids = JSON.parse(e.dataTransfer.getData("text/plain")); } catch { /* ignore */ } if (!ids.length) return; setLane(ids, l.dataset.lane); });
   });
   h.querySelectorAll("[data-bulk]").forEach((b) => b.addEventListener("click", () => bulk(b.dataset.bulk)));
-  $("#coBin")?.addEventListener("change", (e) => { const v = e.target.value; if (!v) return; if (assign([...S.sel], v)) { ctx.toast(`Sent ${S.sel.size} to ${loadSpaces().find((s) => s.id === v)?.name || "bin"}`); S.sel.clear(); ctx.refresh(); } });
+  h.querySelectorAll(".cx-bin").forEach((b) => b.addEventListener("click", () => { const v = b.dataset.bin, n = S.sel.size; if (n && assign([...S.sel], v)) { ctx.toast(`Put ${n} in ${loadSpaces().find((s) => s.id === v)?.name || "bin"}`); S.sel.clear(); ctx.refresh(); paint(); } }));
 }
 function setLane(ids, lane) { const set = new Set(ids.map(String)); if (commit((l) => l.forEach((i) => { if (set.has(String(i.id))) i.lane = lane; }))) { ctx.toast(`Moved ${ids.length} to ${lane === "sealed" ? "Sealed" : "Singles"}`); paint(); } }
 function bulk(kind) {
@@ -93,7 +83,7 @@ function openZoom(id, fromEl) {
   openCard(list, { index: i, from: fromEl || null, photo: photoOf, name: nameOf,
     info: (it) => { const profit = it.purchasePrice != null && it.purchasePrice !== "" ? (Number(it.price) || 0) - Number(it.purchasePrice) : null, sp = loadSpaces().find((s) => s.id === it.spaceId);
       return `<div class="sub">${esc(where(it))} · ${esc(laneOf(it) === "sealed" ? "Sealed" : "Single")} · ${esc(gameOf(it))}</div><div class="row"><span>Market value</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${profit != null ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div><div class="row"><span>Profit</span><span>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div><button class="btn" id="zLane" type="button">Move to ${laneOf(it) === "sealed" ? "Singles" : "Sealed"}</button>`; },
-    wire: (root, it, api) => root.querySelector("#zLane")?.addEventListener("click", () => { api.close(); setLane([it.id], laneOf(it) === "sealed" ? "singles" : "sealed"); }) });
+    wire: (root, it, api) => { { const d = document.createElement("div"); (root.querySelector(".k-zinfo") || root).appendChild(d); photoManager(d, it.id, { toast: ctx.toast, refresh: ctx.refresh }); } return root.querySelector("#zLane")?.addEventListener("click", () => { api.close(); setLane([it.id], laneOf(it) === "sealed" ? "singles" : "sealed"); }); } });
 }
 export function renderCollection(host, api) { ctx = { host, ...api }; if (!host.querySelector(".co-wrap")) S.sel.clear(); paint(); }
 export function repaintCollection() { if (ctx && ctx.host.querySelector(".co-wrap")) paint(); }

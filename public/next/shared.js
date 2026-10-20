@@ -23,6 +23,9 @@ export function gameOf(it) {
   const hit = order.find(([, re]) => re.test(t)); return hit ? hit[0] : "Other";
 }
 export function loadItems() { try { const v = JSON.parse(localStorage.getItem(LS_ITEMS) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } }
+/* Read-only view of the items: parsed once per change. Never mutate what this returns. */
+let _pr = null, _pv = null;
+export function peekItems() { try { const raw = localStorage.getItem(LS_ITEMS) || "[]"; if (raw !== _pr) { const v = JSON.parse(raw); _pv = Array.isArray(v) ? v : []; _pr = raw; } return _pv; } catch { return []; } }
 export function saveItems(list) { try { localStorage.setItem(LS_ITEMS, JSON.stringify(list)); return true; } catch { return false; } }
 /* store-style categories, used to sort things when putting away */
 const BOW = /bow|arrow|broadhead|archery|hunting|quiver|camo/i;

@@ -1,7 +1,7 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=4";
-import { photoManager } from "./photos.js?v=1";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=5";
+import { photoManager } from "./photos.js?v=2";
 import { openCard } from "./kit.js?v=2";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=3";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=4";
 
 let ctx = null;
 const S = { stage: "listed", view: "cards", group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
@@ -14,10 +14,12 @@ const STAGES = [
 ];
 const SOLD = ["sold", "packed", "shipped", "delivered"];
 const SHOWN = (it) => !(["intake", "staged"].includes(it.phase || "intake") && !(it.source === "scouter" || it.source === "app"));
-const shown = () => loadItems().filter(SHOWN);
+const shown = () => peekItems().filter(SHOWN);
 /* One row per eBay listing: variation children share a listing id, so they collapse into one card. */
 let GROUP = new Map();
+let _liveSrc = null, _liveOut = null, _liveGrp = null;
 function live() {
+  const src = peekItems(); if (src === _liveSrc && _liveOut) { GROUP = _liveGrp; return _liveOut; }
   const out = [], seen = new Map(); GROUP = new Map();
   for (const it of shown()) {
     if (it.ended || SOLD.includes(it.phase) || /^(demo-|mp-)/.test(String(it.id))) continue;
@@ -26,6 +28,7 @@ function live() {
     if (lid && !/^demo/.test(lid)) { const g = seen.get(lid); if (g) { g._kids.push(it); continue; } const rep = Object.assign({}, it, { _kids: [it] }); seen.set(lid, rep); out.push(rep); } else out.push(it);
   }
   for (const r of out) if (r._kids) { r._n = r._kids.length; if (r._n > 1) { const gi = r._kids.find((k) => k.groupImage), gt = r._kids.find((k) => k.groupTitle); if (gi) r.photos = [{ id: "grp-cover", dataUrl: gi.groupImage }]; if (gt) r.title = gt.groupTitle; } GROUP.set(String(r.id), r._kids.map((k) => String(k.id))); if (r._n > 1) { const ps = r._kids.map((k) => Number(k.price) || 0); r._lo = Math.min(...ps); r._hi = Math.max(...ps); r.quantity = r._kids.reduce((a, k) => a + (Number(k.quantity) || 1), 0); } }
+  _liveSrc = src; _liveOut = out; _liveGrp = GROUP;
   return out;
 }
 const pool = (stage) => ["sold", "shipped", "delivered"].includes(stage) ? orderItems().filter((o) => o.phase === stage) : live().filter((i) => stageOf(i) === stage);

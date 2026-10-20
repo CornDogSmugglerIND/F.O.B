@@ -1,5 +1,5 @@
 /* Real eBay orders (last 90 days), kept apart from inventory so Sold and Shipped are always current. */
-import { loadItems, esc } from "./shared.js?v=4";
+import { peekItems, esc } from "./shared.js?v=5";
 const LS = "coalition-orders-v1";
 export const saveOrders = (list) => { try { localStorage.setItem(LS, JSON.stringify(list)); return true; } catch { return false; } };
 export const loadOrders = () => { try { const v = JSON.parse(localStorage.getItem(LS) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
@@ -11,7 +11,7 @@ export const whenLabel = (iso) => { const d = Date.now() - Date.parse(iso || 0);
 export const dayText = (iso) => { const t = Date.parse(iso || ""); return Number.isFinite(t) ? new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""; };
 export function orderItems(days = 90) {
   const bySku = new Map(), byTitle = new Map(), norm = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 60);
-  for (const it of loadItems()) { if (!it.photos?.length) continue; const s = it.sku || it.channels?.ebay?.sku; if (s && !bySku.has(s)) bySku.set(s, it); const t = norm(it.title); if (t && !byTitle.has(t)) byTitle.set(t, it); }
+  for (const it of peekItems()) { if (!it.photos?.length) continue; const s = it.sku || it.channels?.ebay?.sku; if (s && !bySku.has(s)) bySku.set(s, it); const t = norm(it.title); if (t && !byTitle.has(t)) byTitle.set(t, it); }
   const cut = Date.now() - days * 864e5;
   return loadOrders().filter((o) => Date.parse(o.createdAt || 0) >= cut).map((o) => {
     const li = o.items || [], first = li[0] || {}, hit = bySku.get(first.sku) || byTitle.get(norm(first.title)), shipped = o.status !== "label_created";

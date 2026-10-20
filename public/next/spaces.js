@@ -1,4 +1,4 @@
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=4";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=5";
 import { fly, rectOf, sleep, openCard } from "./kit.js?v=2";
 
 /* Spaces = his real storage, as a camera you fly through:
@@ -39,7 +39,7 @@ const shelfNames = () => { try { return JSON.parse(localStorage.getItem(SHELVES_
 const shelfName = (sh) => shelfNames()[sh.id] || sh.name;
 const val = (its) => its.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
 function world() {
-  const spaces = ensureBins(), hand = loadItems().filter(onHand);
+  const spaces = ensureBins(), hand = peekItems().filter(onHand);
   return { spaces, hand, inBin: (id) => hand.filter((i) => i.spaceId === id), un: hand.filter((i) => !i.spaceId || !spaces.some((s) => s.id === i.spaceId)) };
 }
 const snapshot = () => ({ items: localStorage.getItem("coalition-items-v4"), spaces: localStorage.getItem("coalition-spaces-v4") });
