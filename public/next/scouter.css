@@ -69,3 +69,5 @@
 .sc-vf{height:clamp(320px,46vh,560px)}
 }
 .more{white-space:nowrap}
+.sc-q{position:relative}.sc-qx{position:absolute;top:6px;right:6px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(10,12,11,.82);border:1px solid rgba(255,140,120,.7);color:#ff9d8a;font:700 20px/1 var(--disp,inherit);text-decoration:none;z-index:3;backdrop-filter:blur(6px)}
+.sc-qx:active{transform:scale(.88)}

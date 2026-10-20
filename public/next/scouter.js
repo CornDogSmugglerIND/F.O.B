@@ -144,7 +144,7 @@ function pkgs() {
 function queue_() {
   const all = ctx.getItems().filter((i) => !i.ended && i.listingStatus !== "listed");
   const wait = all.filter((i) => i.phase === "intake"), ready = all.filter((i) => i.phase === "staged" && i.source === "scouter");
-  const tile = (i, k) => `<button class="sc-q k-tilt" data-q="${esc(i.id)}" data-k="${k}" type="button">${i.photos?.[0] ? `<img src="${esc(i.photos[0].dataUrl || i.photos[0].url || "")}" alt="" loading="lazy" draggable="false">` : "<i></i>"}<span>${esc(i.title || "Untitled item")}</span></button>`;
+  const tile = (i, k) => `<button class="sc-q k-tilt" data-q="${esc(i.id)}" data-k="${k}" type="button">${i.photos?.[0] ? `<img src="${esc(i.photos[0].dataUrl || i.photos[0].url || "")}" alt="" loading="lazy" draggable="false">` : "<i></i>"}<span>${esc(i.title || "Untitled item")}</span><u class="sc-qx" data-qdel="${esc(i.id)}" role="button" aria-label="Delete this item">×</u></button>`;
   const row = (t, sub, l, k) => l.length ? `<div class="sc-qh"><h3>${t}</h3><em>${l.length}</em><small>${sub}</small></div><div class="sc-qs">${l.slice(0, 30).map((i) => tile(i, k)).join("")}</div>` : "";
   const out = row("Waiting to identify", "Tap one to read it", wait, "wait") + row("Ready to list", "Tap one to build the listing", ready, "ready");
   return out ? `<section class="sc-queue">${out}</section>` : "";
@@ -245,6 +245,13 @@ function paintSaved() {
   $("#scNext")?.addEventListener("click", () => { if (ready) { ctx.build(it.id); } else { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); ctx.toast("Add the photos again to identify, or open it from Command."); } });
 }
 function wireQueue() {
+  ctx.host.querySelectorAll("[data-qdel]").forEach((x) => x.addEventListener("click", (e) => {
+    e.stopPropagation(); e.preventDefault();
+    const id = x.dataset.qdel, prev = ctx.getItems(), it = prev.find((i) => String(i.id) === String(id)); if (!it) return;
+    ctx.setItems(prev.filter((i) => String(i.id) !== String(id))); paintAll();
+    const undo = () => { ctx.setItems(prev); paintAll(); };
+    if (ctx.toastUndo) ctx.toastUndo("Deleted " + (it.title || "item"), undo); else ctx.toast("Deleted " + (it.title || "item"));
+  }));
   ctx.host.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.k === "ready") ctx.build(b.dataset.q); else loadForId(b.dataset.q); try { document.getElementById("main").scrollTo({ top: 0 }); } catch { /* ignore */ } }));
 }
 function wire() {
