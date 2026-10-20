@@ -24,7 +24,7 @@ if (nav) {
 const money = (n) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const seen = new WeakMap();
 const mo = new MutationObserver(() => {
-  document.querySelectorAll(".cx-val b, .stat b").forEach((el) => {
+  document.querySelectorAll(".cx-val b, .stat b, .cm-big, .cm-two b, .cm-big, .cm-two b").forEach((el) => {
     const txt = el.textContent.trim(); if (seen.get(el) === txt || el.dataset.anim) return;
     const isMoney = txt.startsWith("$"), to = parseFloat(txt.replace(/[^0-9.\-]/g, "")); if (!Number.isFinite(to)) return;
     const from = Number(el.dataset.last ?? 0); el.dataset.last = String(to); seen.set(el, txt);

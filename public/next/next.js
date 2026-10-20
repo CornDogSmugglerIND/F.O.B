@@ -178,20 +178,15 @@ function renderCommand() {
   ].map(([n, t, v, st]) => `<button class="pill" data-goto="${v}" ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto"; main.style.overflowX = "hidden";
-    const H = 2230, W = 390, PX = [27, 73, 27, 73, 27, 73, 27], PY = [260, 550, 840, 1130, 1420, 1710, 2000];
-    const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
-    let path = `M${pts[0][0]},${pts[0][1]}`;
-    for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], m = (y0 + y1) / 2; path += ` C${x0},${m} ${x1},${m} ${x1},${y1}`; }
-    main.innerHTML = `<div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
-      <defs><linearGradient id="rgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
-      <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".4" stroke-width="11" style="filter:blur(7px)"/>
-      <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/>
-      <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 34"/>
-      ${[0, 1, 2].map((k) => `<circle r="6" fill="#B3FBD5" style="filter:drop-shadow(0 0 7px #90FFCC)"><animateMotion dur="12s" begin="${k * 4}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
-      ${STOPS.map((s, i) => `<div class="stop" data-drop="${s.id}" style="left:${PX[i]}%;top:${PY[i]}px;--c:${s.c}">
-        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
-        <div class="tag" data-stage="${s.id}"><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small><b>${g[s.id].length}</b> item${g[s.id].length === 1 ? "" : "s"} · ${s.note}</small></div></div>`).join("")}
-      <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[6] - 17}%;top:${PY[6] + 8}px"><i></i>Done</div></div>`;
+    const open = mine(items).filter((i) => !["ended", "sold", "packed", "shipped", "delivered"].includes(phaseFromItem(i)));
+    const value = open.reduce((a, i) => a + worth(i), 0);
+    const need = g.intake.length + g.staged.length, live = g.listed.length + g.stored.length;
+    const acts = [[g.intake.length, "Identify", "new photos", "scouter"], [g.staged.length, "Build", "and publish", "channels", "staged"], [g.sold.length, "Pack", "and ship", "channels", "sold"]]
+      .map(([n, t, u, v, st]) => `<button type="button" class="cm-act${n ? " hot" : ""}" data-goto="${v}" ${st ? `data-pst="${st}"` : ""}><b>${n}</b><span>${t}</span><small>${u}</small></button>`).join("");
+    const rows = STOPS.map((s, i) => { const l = g[s.id]; const th = l.slice(0, 4).map((it) => { const p = photoOf(it); return `<i class="cm-th">${p ? `<img src="${esc(p)}" alt="" loading="lazy" draggable="false">` : esc(nameOf(it).charAt(0).toUpperCase())}</i>`; }).join("");
+      return `<button type="button" class="cm-row${l.length ? " has" : ""}" data-stage="${s.id}" style="--c:${s.c}" aria-label="${esc(s.label)}, ${l.length} items"><i class="cm-dot"></i><span class="cm-t"><em>Step ${i + 1} of ${STOPS.length}</em><b>${esc(s.label)}</b><small>${esc(s.note)}</small></span><span class="cm-stack">${th}${l.length > 4 ? `<i class="cm-th cm-more">+${l.length - 4}</i>` : ""}</span><span class="cm-n">${l.length}</span></button>`; }).join("");
+    main.innerHTML = `<div class="cm"><section class="cm-hero"><span class="cm-k">Total value in progress</span><b class="cm-big">${money(value)}</b><div class="cm-two"><div><b>${need}</b><span>Need action</span></div><div><b>${live}</b><span>Live on eBay</span></div></div></section>
+      <div class="cm-acts">${acts}</div><h3 class="cm-h">Your line</h3><div class="cm-rail">${rows}</div></div>`;
   } else {
     main.style.overflowY = "hidden"; main.style.overflowX = "";
     const W = Math.max(600, main.clientWidth || 1000), H = Math.max(420, main.clientHeight || 600);
