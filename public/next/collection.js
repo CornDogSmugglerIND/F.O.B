@@ -75,7 +75,7 @@ function setLane(ids, lane) { const set = new Set(ids.map(String)); if (commit((
 function bulk(kind) {
   const ids = [...S.sel]; if (!ids.length) return; const set = new Set(ids);
   if (kind === "sealed" || kind === "singles") { setLane(ids, kind); S.sel.clear(); paint(); }
-  else if (kind === "pct") { const p = parseFloat(String(ctx.host.querySelector("#coPct").value).replace(/[^0-9.\-+]/g, "")); if (!Number.isFinite(p) || !p) { ctx.toast("Type a percent, like -10 or 15."); return; } if (commit((l) => l.forEach((i) => { if (set.has(String(i.id))) i.price = Math.max(0, Math.round((Number(i.price) || 0) * (1 + p / 100) * 100) / 100); }))) { ctx.toast(`Changed ${ids.length} prices by ${p > 0 ? "+" : ""}${p}% (this app only)`); S.sel.clear(); paint(); } }
+  else if (kind === "pct") { const p = parseFloat(String(ctx.host.querySelector("#coPct").value).replace(/[^0-9.\-+]/g, "")); if (!Number.isFinite(p) || !p) { ctx.toast("Type a percent, like -10 or 15."); return; } const prevRaw = localStorage.getItem("coalition-items-v4"); if (commit((l) => l.forEach((i) => { if (set.has(String(i.id))) i.price = Math.max(0, Math.round((Number(i.price) || 0) * (1 + p / 100) * 100) / 100); }))) { (ctx.toastUndo || ctx.toast)(`Changed ${ids.length} prices by ${p > 0 ? "+" : ""}${p}% (this app only)`, () => { try { localStorage.setItem("coalition-items-v4", prevRaw); } catch { /* ignore */ } ctx.refresh(); paint(); }); S.sel.clear(); paint(); } }
   else if (kind === "del") { const before = loadItems(); const removed = before.filter((i) => set.has(String(i.id))); if (commit((l) => { for (let k = l.length - 1; k >= 0; k--) if (set.has(String(l[k].id))) l.splice(k, 1); })) { S.sel.clear(); undo(before, `Removed ${removed.length} from this app`); paint(); } }
 }
 function undo(prev, msg) { ctx.toastUndo(msg, () => { saveItems(prev); ctx.refresh(); paint(); ctx.toast("Restored"); }); }
@@ -103,7 +103,7 @@ function ioSheet() {
   $("#ioX").addEventListener("click", async () => {
     const items = rows(); if (!items.length) { msg("Nothing to export.", true); return; }
     try {
-      const r = await fetch("/api/csv/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: $("#ioXs").value, items }) });
+      const r = await fetch("/api/csv/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: $("#ioXs").value, items: items.map((x) => Object.assign({}, x, { photos: (x.photos || []).map((p) => ({ url: p.url || p.dataUrl || "" })).filter((p) => /^https?:/.test(p.url)) })) }) });
       if (!r.ok) { const b = await r.json().catch(() => ({})); msg(b.error || "Export failed.", true); return; }
       const url = URL.createObjectURL(await r.blob()), a = document.createElement("a"); a.href = url; a.download = `collection-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); msg(`Exported ${items.length} items.`);
     } catch { msg("Couldn't reach the server.", true); }

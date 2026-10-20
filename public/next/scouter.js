@@ -219,7 +219,7 @@ function paintFlow() {
   $("#scRe")?.addEventListener("click", () => identify());
   $("#scMan")?.addEventListener("click", () => { d.manual = true; paintFlow(); });
   f.querySelectorAll("[data-c]").forEach((b) => b.addEventListener("click", () => applyIdentity(d.candidates[+b.dataset.c])));
-  $("#scMF")?.addEventListener("submit", (e) => { e.preventDefault(); const g = (k) => $(`#scMF [name=${k}]`).value.trim(); if (!g("n")) { ctx.toast("Type the name first."); return; } identify({ product_name: g("n"), collector_number: g("c") || null, set_name: g("s") || null, game: g("g") || null, finish: null }); });
+  $("#scMF")?.addEventListener("submit", (e) => { e.preventDefault(); const g = (k) => $(`#scMF [name=${k}]`).value.trim(); if (!g("n")) { ctx.toast("Type the name first."); return; } applyIdentity({ product_name: g("n"), collector_number: g("c") || "", set_name: g("s") || "", game: g("g") || "", finish: "", confidence: 1 }); d.manual = false; d.identity.typed = true; paintFlow(); });
   $("#scPaid")?.addEventListener("input", (e) => { d.paid = e.target.value; refreshProfit(); });
   $("#scMkt")?.addEventListener("input", (e) => { d.market = e.target.value; refreshProfit(); });
   $("#scQty")?.addEventListener("input", (e) => { d.qty = e.target.value; });
