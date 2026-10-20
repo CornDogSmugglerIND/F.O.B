@@ -16,7 +16,7 @@ if (nav) nav.addEventListener("click", (e) => {
 if (nav) {
   const ind = document.createElement("i"); ind.className = "nav-ind"; nav.prepend(ind);
   const place = () => { const on = nav.querySelector("button.on"); if (!on) return; ind.style.opacity = "1"; ind.style.width = on.offsetWidth + "px"; ind.style.height = on.offsetHeight + "px"; ind.style.transform = `translate(${on.offsetLeft}px,${on.offsetTop}px)`; };
-  nav.addEventListener("click", () => setTimeout(place, 0)); addEventListener("resize", place); new MutationObserver(place).observe(nav, { subtree: true, attributes: true, attributeFilter: ["class"] });
+  nav.addEventListener("click", () => setTimeout(place, 0)); addEventListener("resize", place); new MutationObserver(() => requestAnimationFrame(place)).observe(nav, { subtree: true, attributes: true, attributeFilter: ["class"] });
   setTimeout(place, 50); setTimeout(place, 600);
 }
 
@@ -86,4 +86,19 @@ const tag = document.createElement("div"); tag.className = "build-tag"; tag.text
   i.tabIndex = -1;
   document.addEventListener("click", (e) => { if (!e.isTrusted || lab.contains(e.target)) return; if (e.target.closest && e.target.closest("button,.cm-row,.cm-act,.cx-card,.co-card,.ch-tile,.sc-q,.tile,.pk-tile,.sib,[role=button],.chip")) { const a = document.activeElement; tick(); try { a && a !== document.body && a.focus({ preventScroll: true }); } catch { /* ignore */ } } });
   window.__tick = tick;
+})();
+
+/* press and hold a listing to select it (like Photos); once one is selected, taps on circles add more */
+(() => {
+  let t = null, sx = 0, sy = 0, fired = false;
+  document.addEventListener("pointerdown", (e) => {
+    const tile = e.target.closest && e.target.closest(".ch-tile"); if (!tile || e.target.closest(".co-pick")) return;
+    sx = e.clientX; sy = e.clientY; fired = false; clearTimeout(t);
+    t = setTimeout(() => { const p = tile.querySelector(".co-pick"); if (!p) return; p.click(); fired = true; window.__tick && window.__tick(); }, 480);
+  }, { passive: true });
+  const cancel = () => clearTimeout(t);
+  document.addEventListener("pointermove", (e) => { if (Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel(); }, { passive: true });
+  document.addEventListener("pointerup", cancel, { passive: true }); document.addEventListener("pointercancel", cancel, { passive: true });
+  document.addEventListener("click", (e) => { if (fired && e.isTrusted && e.target.closest && e.target.closest(".ch-tile")) { e.stopPropagation(); e.preventDefault(); fired = false; } }, true);
+  document.addEventListener("contextmenu", (e) => { if (e.target.closest && e.target.closest(".ch-tile")) e.preventDefault(); });
 })();

@@ -3,7 +3,7 @@ import { openCard } from "./kit.js?v=2";
 import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=5";
 
 let ctx = null;
-const S = { q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 90 };
+const S = { q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 48 };
 const phoneNow = () => matchMedia("(max-width:820px)").matches;
 
 function rows() {
@@ -58,7 +58,8 @@ function wire() {
   $("#coSort")?.addEventListener("change", (e) => { S.sort = e.target.value; paint(); });
   $("#coStage")?.addEventListener("change", (e) => { S.stage = e.target.value; S.more = 90; paint(); });
   $("#coIO")?.addEventListener("click", ioSheet);
-  $("#coMore")?.addEventListener("click", () => { S.more += 90; paint(); });
+  $("#coMore")?.addEventListener("click", () => { S.more += 60; paint(); });
+  { const mb = $("#coMore"); if (mb && "IntersectionObserver" in window) { const io = new IntersectionObserver((es) => { if (es.some((x) => x.isIntersecting)) { io.disconnect(); mb.click(); } }, { rootMargin: "600px" }); io.observe(mb); } }
   $("#coSel").addEventListener("click", () => { S.selecting = !S.selecting; if (!S.selecting) S.sel.clear(); paint(); });
   $("#coAll")?.addEventListener("click", () => { rows().forEach((i) => S.sel.add(String(i.id))); paint(); });
   h.querySelectorAll("[data-cat]").forEach((b) => b.addEventListener("click", () => { S.cat = b.dataset.cat; S.more = 90; paint(); }));

@@ -1,10 +1,10 @@
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=4";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=5";
 import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=13";
-import { renderCollection } from "./collection.js?v=12";
+import { renderCollection } from "./collection.js?v=13";
 import { photoManager } from "./photos.js?v=3";
 import { renderSpaces } from "./spaces.js?v=11";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=23";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=24";
 import { renderSettings } from "./settings.js?v=6";
 import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=2";
@@ -24,7 +24,7 @@ function saveItems(items) { try { localStorage.setItem(LS_ITEMS, JSON.stringify(
 const isDemo = (i) => i.demo || /^demo/.test(String(i.channels?.ebay?.listingId || "")) || (i.photos || []).some((p) => String(p.dataUrl || "").startsWith("/demo/"));
 function purgeDemo() { const l = loadItems(), k = l.filter((i) => !isDemo(i)); if (k.length !== l.length) saveItems(k); }
 purgeDemo();
-let items = loadItems();
+let items = loadItems(); let lastRaw = null; document.body.dataset.view = "command";
 
 const STOPS = [
   { id: "intake", label: "Intake", note: "not identified yet", phases: ["intake"], c: "#B3FBD5", pos: [6, 76], movable: true },
@@ -56,7 +56,7 @@ function groups() {
     const s = stopFor(it);
     if (s) g[s.id].push(it);
   }
-  for (const o of orderItems(30)) g[o.phase].push(o);
+  for (const o of orderItems(90)) g[o.phase].push(o);
   return g;
 }
 
@@ -118,7 +118,7 @@ function orderSheet(it) {
   s.querySelector("[data-ov]")?.addEventListener("click", (e) => { setOv(o.orderId, e.currentTarget.dataset.ov); closeSheet(); render(); toast(e.currentTarget.dataset.ov === "delivered" ? "Moved to Delivered" : "Moved back to Shipped"); });
 }
 function itemSheet(id) {
-  if (String(id).startsWith("ord-")) { const o = orderItems(30).find((x) => x.id === String(id)); if (o) orderSheet(o); return; }
+  if (String(id).startsWith("ord-")) { const o = orderItems(90).find((x) => x.id === String(id)); if (o) orderSheet(o); return; }
   const it = items.find((i) => String(i.id) === String(id)); if (!it) return;
   const src = photoOf(it); const ph = phaseFromItem(it); const st = stopFor(it);
   const s = openSheet(`
@@ -208,22 +208,20 @@ function renderCommand() {
     main.innerHTML = `<div class="cm"><section class="cm-hero"><span class="cm-k">Total value in progress</span><b class="cm-big">${money(value)}</b><div class="cm-two"><div><b>${need}</b><span>Need action</span></div><div><b>${live}</b><span>Live on eBay</span></div></div></section>
       <div class="cm-acts">${acts}</div><h3 class="cm-h">Your line</h3><div class="cm-rail">${rows}</div></div>`;
   } else {
-    main.style.overflowY = "hidden"; main.style.overflowX = "";
-    const W = Math.max(600, main.clientWidth || 1000), H = Math.max(420, main.clientHeight || 600);
-    const pts = STOPS.map((s) => [s.pos[0] / 100 * W, s.pos[1] / 100 * H]);
-    let path = `M${pts[0][0]},${pts[0][1]}`;
-    for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], m = (x0 + x1) / 2; path += ` C${m},${y0} ${m},${y1} ${x1},${y1}`; }
-    main.innerHTML = `<div class="road"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
-      <defs><linearGradient id="rg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${W}" y2="0"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
-      <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".45" stroke-width="16" stroke-linecap="round" style="filter:blur(9px)"/>
-      <path d="${path}" fill="none" stroke="url(#rg)" stroke-width="4" stroke-linecap="round"/>
-      <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 34"/>
-      ${[0, 1, 2, 3].map((k) => `<circle r="7" fill="#B3FBD5" style="filter:drop-shadow(0 0 9px #90FFCC)"><animateMotion dur="14s" begin="${k * 3.5}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
-      ${STOPS.map((s) => `<div class="stop" data-drop="${s.id}" style="left:${s.pos[0]}%;top:${s.pos[1]}%;--c:${s.c}">
-        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "")}<div class="dot" data-stage="${s.id}" role="button" tabindex="0" aria-label="${s.label}, ${g[s.id].length} items"></div>
-        <div class="tag" data-stage="${s.id}"><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small><b>${g[s.id].length}</b> item${g[s.id].length === 1 ? "" : "s"} · ${s.note}</small></div></div>`).join("")}
-      <div class="flag start" style="left:${STOPS[0].pos[0] - 6}%;top:${STOPS[0].pos[1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${STOPS[STOPS.length - 1].pos[0] - 2}%;top:${STOPS[STOPS.length - 1].pos[1] + 12}%"><i></i>Done</div>
-      <div class="dock">${pills}</div><div class="hint">Tap a stop to open it · hold a card and drop it on a stop to move it</div></div>`;
+    main.style.overflowY = "auto"; main.style.overflowX = "hidden";
+    const open = mine(items).filter((i) => !["ended", "sold", "packed", "shipped", "delivered"].includes(phaseFromItem(i)));
+    const value = open.reduce((a, i) => a + worth(i), 0);
+    const need = g.intake.length + g.staged.length, live = g.listed.length + g.stored.length;
+    const soldVal = [...g.sold, ...g.shipped, ...g.delivered].reduce((a, i) => a + worth(i), 0);
+    const kpi = [[money(value), "Value in progress"], [need, "Need action"], [live, "Live on eBay"], [g.sold.length, "To ship"], [money(soldVal), "Sold, last 90 days"]]
+      .map(([v, l], i) => `<div class="hk${i === 0 ? " big" : ""}"><b class="cm-two-b">${v}</b><span>${l}</span></div>`).join("");
+    const acts = [[g.intake.length, "Identify new photos", "scouter"], [g.staged.length, "Build and publish", "channels", "staged"], [g.sold.length, "Pack and ship", "channels", "sold"]]
+      .map(([k, t, v, st]) => `<button type="button" class="cm-act${k ? " hot" : ""}" data-goto="${v}" ${st ? `data-pst="${st}"` : ""}><b>${k}</b><span>${t}</span></button>`).join("");
+    const card = (it) => { const p = photoOf(it); return `<div class="pc hc" data-item="${esc(it.id)}" role="button" tabindex="0">${p ? `<img src="${esc(p)}" alt="" loading="lazy" draggable="false">` : `<div class="ini">${esc(nameOf(it).charAt(0).toUpperCase())}</div>`}<span class="hc-t"><span>${esc(nameOf(it))}</span><em>${money(worth(it))}</em></span></div>`; };
+    const cols = STOPS.map((s, i) => { const l = g[s.id], val = l.reduce((a, x) => a + worth(x), 0), cap = 6;
+      return `<section class="stop hcol" data-drop="${s.id}" style="--c:${s.c}"><header class="hh" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${l.length} items"><i class="dot"></i><em>Step ${i + 1}</em><b>${esc(s.label)}</b><span><strong>${l.length}</strong> · ${money(val)}</span></header>
+        <div class="hlist">${l.slice(0, cap).map(card).join("") || (s.id === "intake" ? `<button type="button" class="hempty" data-goto="scouter">Add photos in Scouter</button>` : `<div class="hempty">Drop items here</div>`)}${l.length > cap ? `<button type="button" class="hmore" data-stage="${s.id}">See all ${l.length}</button>` : ""}</div></section>`; }).join("");
+    main.innerHTML = `<div class="hud"><div class="hud-top"><div class="hks">${kpi}</div><div class="hacts">${acts}</div></div><div class="hboard">${cols}</div><div class="hint">Tap a card to open it · drag a card onto another stage to move it</div></div>`;
   }
   // wire up
   main.querySelectorAll(".pc.b1,.pc.b2").forEach((m) => { m.dataset.stage = m.closest(".stop").dataset.drop; m.style.cursor = "pointer"; });
@@ -274,7 +272,7 @@ function go(v) {
   } else run();
 }
 function go_(v) {
-  view = v; closeSheet();
+  view = v; closeSheet(); document.body.dataset.view = v;
   document.querySelectorAll("#nav button").forEach((b) => { b.classList.toggle("on", b.dataset.view === v); if (b.dataset.view === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   try { history.replaceState(null, "", v === "command" ? "./" : `#${v}`); } catch { /* ignore */ }
   render();
@@ -291,7 +289,9 @@ function softRender() {
   const m = $("#main"), y = m.scrollTop; render(); m.scrollTop = y;
 }
 function render() {
-  purgeDemo(); items = loadItems(); renderStats(); sig = sigOf(items);
+  { let raw = ""; try { raw = localStorage.getItem(LS_ITEMS) || "[]"; } catch { /* ignore */ }
+    if (raw !== lastRaw || !items) { const l = loadItems(), k = l.filter((i) => !isDemo(i)); if (k.length !== l.length) saveItems(k); items = k; try { lastRaw = localStorage.getItem(LS_ITEMS) || "[]"; } catch { lastRaw = raw; } } }
+  renderStats(); sig = sigOf(items);
   if (view === "command") renderCommand(); else if (view === "settings") renderSettings($("#main")); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { build: (id) => buildListing(id, chApi()), getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, toastUndo, go }); } else if (view === "collection" || view === "spaces" || view === "channels") { $("#main").style.overflowY = "auto"; const sel = view === "collection" ? ".co-wrap" : ".sp-wrap"; $("#main").innerHTML = ""; (view === "collection" ? renderCollection : view === "channels" ? renderChannels : renderSpaces)($("#main"), { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); } }); } else renderCommand();
 }
 document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));

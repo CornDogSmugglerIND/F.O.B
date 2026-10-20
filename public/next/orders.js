@@ -30,6 +30,7 @@ export const STEPS = ["Label made", "Shipped", "In transit", "Out for delivery",
 export function track(o) {
   const ov = rd(OV)[o.orderId];
   if (o.status === "label_created") return { step: 0, pct: 0, est: false, days: 0 };
+  if ((o.status === "delivered" || o.deliveredAt) && ov !== "transit") return { step: 4, pct: 100, est: false, days: Math.floor(Math.max(0, (Date.now() - Date.parse(o.shippedAt || o.createdAt || 0)) / 864e5)), real: true, at: o.deliveredAt };
   const days = Math.max(0, (Date.now() - Date.parse(o.shippedAt || o.createdAt || 0)) / 864e5), exp = 3.5, f = days / exp;
   let step = f < 0.12 ? 1 : f < 0.8 ? 2 : f < 1.3 ? 3 : 4;
   if (ov === "delivered") step = 4; else if (ov === "transit" && step === 4) step = 2;
@@ -40,6 +41,6 @@ export function trackerHtml(o) {
   const t = track(o), from = "Menomonie, WI", to = o.shipTo || "Buyer";
   return `<div class="trk"><div class="trk-ends"><span>${esc(from)}</span><span>${esc(to)}</span></div><div class="trk-bar"><i style="width:${t.pct}%"></i><b style="left:${t.pct}%"></b></div>
   <ol class="trk-steps">${STEPS.map((s, i) => `<li class="${i < t.step ? "done" : i === t.step ? "now" : ""}">${s}</li>`).join("")}</ol>
-  <p class="sub">${t.step === 0 ? "Label made, not shipped yet." : t.est ? `Day ${t.days} since it shipped. Position is estimated from the ship date until a carrier tracking feed is connected.` : "Moved by hand."}</p>
-  ${t.step === 4 ? `<button class="btn" data-ov="transit" type="button">Not delivered yet</button>` : t.step > 0 ? `<button class="btn" data-ov="delivered" type="button">Mark delivered</button>` : ""}</div>`;
+  <p class="sub">${t.step === 0 ? "Label made, not shipped yet." : t.real ? `Delivered${t.at ? " " + new Date(t.at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}, confirmed by eBay.` : t.est ? `Day ${t.days} since it shipped. Position is estimated from the ship date until a carrier tracking feed is connected.` : "Moved by hand."}</p>
+  ${t.real ? "" : t.step === 4 ? `<button class="btn" data-ov="transit" type="button">Not delivered yet</button>` : t.step > 0 ? `<button class="btn" data-ov="delivered" type="button">Mark delivered</button>` : ""}</div>`;
 }

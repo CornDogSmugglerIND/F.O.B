@@ -1,7 +1,7 @@
 import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=5";
 import { photoManager } from "./photos.js?v=3";
 import { openCard } from "./kit.js?v=2";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=4";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=5";
 
 let ctx = null;
 const S = { stage: "listed", view: "cards", group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
