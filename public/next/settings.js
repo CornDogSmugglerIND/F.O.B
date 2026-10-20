@@ -18,7 +18,7 @@ export function renderSettings(host) {
       <div class="st-row"><span>Pulls live listings, sold orders and photos</span></div></section>
     <h3 class="st-h">Storage</h3><section class="st-grp"><div class="st-row st-col"><div class="meter"><i style="width:${pct}%"></i></div><p class="sub" id="spMsg">${mb} MB of about 5 MB used. eBay photos are links and take none.</p></div>
       <button class="st-row st-btn" id="spFree" type="button"><span>Free up space</span><u>›</u></button></section>
-    ${standalone ? "" : `<h3 class="st-h">Install</h3><section class="st-grp"><div class="st-row st-col"><span>Safari, Share, Add to Home Screen. Then open it from the new icon.</span></div></section>`}
+    ${standalone || !matchMedia("(max-width:820px)").matches ? "" : `<h3 class="st-h">Install</h3><section class="st-grp"><div class="st-row st-col"><span>Safari, Share, Add to Home Screen. Then open it from the new icon.</span></div></section>`}
     <div class="badges"><img src="img/veteran.jpg" alt="Veteran-Owned Coalition"><img src="img/pristine.jpg" alt="Pristine 10"></div>
     <p class="st-ver">App build ${esc(build)}</p>
 </div>`;

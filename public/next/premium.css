@@ -196,3 +196,4 @@ button.hempty{cursor:pointer;color:var(--sea)}
 .ghost.hc{width:260px;height:auto}
 .hud .hint{max-width:none!important;align-self:center}
 @media (min-width:821px){body[data-view=command] .stats{visibility:hidden}}
+@media (min-width:2200px){html{zoom:1.25}}

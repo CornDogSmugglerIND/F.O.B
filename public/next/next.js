@@ -5,7 +5,7 @@ import { renderCollection } from "./collection.js?v=14";
 import { photoManager } from "./photos.js?v=3";
 import { renderSpaces } from "./spaces.js?v=11";
 import { renderChannels, buildListing, variationListing } from "./channels.js?v=27";
-import { renderSettings } from "./settings.js?v=6";
+import { renderSettings } from "./settings.js?v=7";
 import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=2";
 
