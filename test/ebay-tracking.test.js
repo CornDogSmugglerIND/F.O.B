@@ -70,6 +70,14 @@ function mockFetch() {
       if (!u.includes("12-34567-89012")) return jsonResponse(200, { fulfillments: [], total: 0 });
       return jsonResponse(200, { fulfillments: [SHIP_1], total: 1 });
     }
+    if (u.includes("/ws/api.dll")) {
+      const body = String(init.body || "");
+      const xml = body.includes("12-34567-89013") && !globalThis.__noScan
+        ? `<GetOrdersResponse><OrderArray><Order><OrderID>12-34567-89013</OrderID><ShippedTime>2026-09-21T10:00:00.000Z</ShippedTime><TransactionArray><Transaction><ShippingServiceSelected><ShippingPackageInfo><ActualDeliveryTime>2026-09-24T15:00:00.000Z</ActualDeliveryTime></ShippingPackageInfo></ShippingServiceSelected></Transaction></TransactionArray></Order><Order><OrderID>12-34567-89012</OrderID><ShippedTime>2026-10-02T10:00:00.000Z</ShippedTime></Order></OrderArray></GetOrdersResponse>`
+        : `<GetOrdersResponse><OrderArray><Order><OrderID>12-34567-89012</OrderID></Order><Order><OrderID>12-34567-89013</OrderID></Order></OrderArray></GetOrdersResponse>`;
+      return { ok: true, status: 200, async text() { return xml; }, async json() { return {}; } };
+    }
+    if (u.includes("/sell/inventory/v1/inventory_item")) return jsonResponse(404, {});
     if (u.includes("/sell/fulfillment/v1/order")) {
       const offset = Number(new URL(u).searchParams.get("offset") || 0);
       const orders = offset === 0 ? [ORDER_1, ORDER_2] : [];
@@ -112,9 +120,25 @@ test("getEbayTracking normalizes tracking cards", async () => {
   assert.equal(c1.deliveredAt, null);
 
   const c2 = cards[1];
-  assert.equal(c2.status, "delivered");
+  assert.equal(c2.status, "delivered", "delivered only from a real eBay delivery scan");
   assert.equal(c2.trackingNumber, "");
-  assert.equal(c2.deliveredAt, "2026-09-25T12:00:00.000Z");
+  assert.equal(c2.deliveredAt, "2026-09-24T15:00:00.000Z");
+});
+
+test("FULFILLED without a delivery scan is in transit, never delivered", async () => {
+  globalThis.__noScan = true;
+  try {
+    const { fetchImpl } = mockFetch();
+    const cards = await getEbayTracking({ days: 30, fetchImpl });
+    const c2 = cards.find((c) => c.orderId === "12-34567-89013");
+    assert.equal(c2.status, "in_transit");
+    assert.equal(c2.deliveredAt, null);
+  } finally { delete globalThis.__noScan; }
+});
+
+test("mapFulfillmentStatus: FULFILLED alone is in_transit", () => {
+  assert.equal(mapFulfillmentStatus({ orderFulfillmentStatus: "FULFILLED" }, null), "in_transit");
+  assert.equal(mapFulfillmentStatus({ orderFulfillmentStatus: "FULFILLED" }, null, { deliveredAt: "2026-09-24T15:00:00.000Z" }), "delivered");
 });
 
 test("mapFulfillmentStatus: tracking without IN_PROGRESS still in_transit", () => {

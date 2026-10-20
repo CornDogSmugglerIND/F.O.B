@@ -30,17 +30,19 @@ export const STEPS = ["Label made", "Shipped", "In transit", "Out for delivery",
 export function track(o) {
   const ov = rd(OV)[o.orderId];
   if (o.status === "label_created") return { step: 0, pct: 0, est: false, days: 0 };
-  if ((o.status === "delivered" || o.deliveredAt) && ov !== "transit") return { step: 4, pct: 100, est: false, days: Math.floor(Math.max(0, (Date.now() - Date.parse(o.shippedAt || o.createdAt || 0)) / 864e5)), real: true, at: o.deliveredAt };
-  const days = Math.max(0, (Date.now() - Date.parse(o.shippedAt || o.createdAt || 0)) / 864e5), exp = 3.5, f = days / exp;
-  let step = f < 0.12 ? 1 : f < 0.8 ? 2 : f < 1.3 ? 3 : 4;
-  if (ov === "delivered") step = 4; else if (ov === "transit" && step === 4) step = 2;
-  const pct = step === 4 ? 100 : Math.max(6, Math.min(94, Math.round(f * 100)));
-  return { step, pct, est: !ov, days: Math.floor(days), ov };
+  const days = Math.max(0, (Date.now() - Date.parse(o.shippedAt || o.createdAt || 0)) / 864e5);
+  /* Delivered ONLY from a real eBay delivery scan (server sets deliveryKnown) or when Sawyer marks it by hand. */
+  const scanned = o.status === "delivered" && o.deliveryKnown === true && o.deliveredAt;
+  if ((scanned && ov !== "transit") || ov === "delivered") return { step: 4, pct: 100, est: false, days: Math.floor(days), real: Boolean(scanned), at: scanned ? o.deliveredAt : null, ov };
+  const step = days < 1 ? 1 : 2;
+  const late = o.estDeliveryAt && Date.now() > Date.parse(o.estDeliveryAt) + 2 * 864e5;
+  const pct = Math.max(8, Math.min(85, Math.round(days / 5 * 85)));
+  return { step, pct, est: true, days: Math.floor(days), estAt: o.estDeliveryAt || null, late, ov };
 }
 export function trackerHtml(o) {
   const t = track(o), from = "Menomonie, WI", to = o.shipTo || "Buyer";
   return `<div class="trk"><div class="trk-ends"><span>${esc(from)}</span><span>${esc(to)}</span></div><div class="trk-bar"><i style="width:${t.pct}%"></i><b style="left:${t.pct}%"></b></div>
   <ol class="trk-steps">${STEPS.map((s, i) => `<li class="${i < t.step ? "done" : i === t.step ? "now" : ""}">${s}</li>`).join("")}</ol>
-  <p class="sub">${t.step === 0 ? "Label made, not shipped yet." : t.real ? `Delivered${t.at ? " " + new Date(t.at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}, confirmed by eBay.` : t.est ? `Day ${t.days} since it shipped. Position is estimated from the ship date until a carrier tracking feed is connected.` : "Moved by hand."}</p>
+  <p class="sub">${t.step === 0 ? "Label made, not shipped yet." : t.real ? `Delivered${t.at ? " " + new Date(t.at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}. Confirmed by eBay's carrier scan.` : t.step === 4 ? "You marked this delivered." : `${t.days === 0 ? "Shipped today" : `Shipped ${t.days} day${t.days === 1 ? "" : "s"} ago`}. No delivery scan from eBay yet.${t.estAt ? ` eBay expects it by ${new Date(t.estAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.` : ""}${t.late ? " It's past that date, so check tracking." : ""}`}</p>
   ${t.real ? "" : t.step === 4 ? `<button class="btn" data-ov="transit" type="button">Not delivered yet</button>` : t.step > 0 ? `<button class="btn" data-ov="delivered" type="button">Mark delivered</button>` : ""}</div>`;
 }

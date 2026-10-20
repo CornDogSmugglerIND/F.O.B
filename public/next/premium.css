@@ -195,5 +195,54 @@ button.hempty{cursor:pointer;color:var(--sea)}
 .hud .hint{position:static;text-align:center;color:var(--mute);font-size:13px;background:none;border:0}
 .ghost.hc{width:260px;height:auto}
 .hud .hint{max-width:none!important;align-self:center}
-@media (min-width:821px){body[data-view=command] .stats{visibility:hidden}}
 @media (min-width:2200px){html{zoom:1.25}}
+/* ===== v19: premium roadmap (Command) — same roadmap, upgraded finish ===== */
+.road .tag{position:absolute;min-width:178px;padding:12px 18px 12px;border-radius:20px;background:linear-gradient(160deg,rgba(52,60,57,.82),rgba(10,13,12,.92));border:1px solid color-mix(in srgb,var(--c) 35%,rgba(255,255,255,.08));box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 0 0 1px rgba(0,0,0,.3),0 16px 36px rgba(0,0,0,.55);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);transition:transform .45s var(--spring),border-color .2s,box-shadow .25s;overflow:visible}
+.road .tag::before{content:"";position:absolute;left:18px;right:18px;top:0;height:2px;border-radius:2px;background:var(--c);box-shadow:0 0 12px var(--c);opacity:.85}
+.road .tag.has{border-color:color-mix(in srgb,var(--c) 60%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 0 26px color-mix(in srgb,var(--c) 28%,transparent),0 16px 36px rgba(0,0,0,.55)}
+.road .stop:hover .tag,.road .tag:active{transform:translateX(-50%) translateY(-3px)}
+.road .tag .stepn{font-size:11px;letter-spacing:.14em;color:color-mix(in srgb,var(--c) 85%,#fff)}
+.road .tag span{display:block;font:700 21px/1.1 var(--disp);color:#fff;margin:2px 0 1px}
+.road .tag small{font-size:12.5px;color:var(--mute)}
+.road .tag .tc{position:absolute;right:-12px;top:-14px;min-width:38px;height:38px;padding:0 9px;border-radius:999px;display:flex;align-items:center;justify-content:center;margin:0;font:700 19px var(--disp);color:#0b1210;background:radial-gradient(circle at 35% 30%,#fff 0,color-mix(in srgb,var(--c) 85%,#fff) 35%,var(--c) 75%);box-shadow:0 0 0 3px rgba(0,0,0,.65),0 0 18px var(--c)}
+.road .tag:not(.has) .tc{background:#1b201e;color:var(--mute);box-shadow:0 0 0 3px rgba(0,0,0,.65)}
+.road .tag .tv{display:block;margin-top:4px;font:700 15px var(--disp);color:color-mix(in srgb,var(--c) 80%,#fff)}
+.road .tag:not(.has) .tv{color:var(--mute);opacity:.6}
+/* glossy stop dots, pulse when the stage has items */
+.road .dot{background:radial-gradient(circle at 35% 30%,#fff 0,color-mix(in srgb,var(--c) 80%,#fff) 30%,var(--c) 70%);box-shadow:0 0 0 4px rgba(0,0,0,.7),0 0 22px var(--c),0 0 46px color-mix(in srgb,var(--c) 40%,transparent);width:22px;height:22px;position:relative}
+.road .stop.has .dot::after{content:"";position:absolute;inset:-10px;border-radius:50%;border:2px solid var(--c);opacity:0;animation:dotPulse 2.6s var(--ease2) infinite}
+@keyframes dotPulse{0%{transform:scale(.6);opacity:.7}100%{transform:scale(1.9);opacity:0}}
+/* photo stacks: framed glass */
+.road .pc{border-radius:18px;border:1px solid rgba(255,255,255,.14);background:linear-gradient(165deg,#2c3331,#0f1211);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 20px 40px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.4)}
+.road .pc::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(120deg,rgba(255,255,255,.16),transparent 38%);pointer-events:none}
+.road .pc .cap{padding:34px 11px 10px;background:linear-gradient(rgba(12,14,13,0),rgba(10,12,11,.96) 45%)}
+.road .pc .cap span{font:700 13.5px/1.18 var(--disp)}
+.road .pc .cap em{display:inline-block;margin-top:5px;padding:2px 9px;border-radius:999px;font:700 14px var(--disp);color:#0b1210;background:linear-gradient(180deg,#B3FBD5,#6fe3a8)}
+.road .more{padding:5px 13px;border-radius:999px;font:700 13.5px var(--disp);background:linear-gradient(180deg,#d4ffe9,#8ff0bf);color:#0b1210;box-shadow:0 0 0 3px rgba(0,0,0,.55),0 6px 16px rgba(0,0,0,.5);z-index:3}
+/* empty stops: frosted, quiet */
+.road .empty{border:1px solid rgba(255,255,255,.08);border-radius:18px;background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,.01));backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);flex-direction:column;gap:6px;color:rgba(228,233,230,.42);font:600 13px var(--disp);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.road .empty i{font-style:normal;font-size:22px;line-height:1;opacity:.6}
+.road .empty.go{cursor:pointer;color:var(--sea);border-color:rgba(179,251,213,.35);background:linear-gradient(160deg,rgba(179,251,213,.12),rgba(179,251,213,.03))}
+.road .empty.go i{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(179,251,213,.16);border:1px solid rgba(179,251,213,.45);opacity:1;font-size:24px}
+.road .empty.go span{padding:0 10px;line-height:1.2}
+/* action pills */
+.road .pill{background:linear-gradient(160deg,rgba(52,60,57,.85),rgba(10,13,12,.92));border:1px solid rgba(179,251,213,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 10px 24px rgba(0,0,0,.5);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-family:var(--disp);transition:transform .45s var(--spring),border-color .2s}
+.road .pill:active{transform:scale(.95)}
+.road .pill b{color:var(--mute)}
+.road .pill.hot{border-color:rgba(179,251,213,.65);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 0 22px rgba(80,185,126,.35),0 10px 24px rgba(0,0,0,.5)}
+.road .pill.hot b{color:var(--sea);text-shadow:0 0 12px rgba(179,251,213,.7)}
+/* flags */
+.road .flag{padding:5px 11px;border-radius:999px;background:rgba(10,12,11,.7);border:1px solid rgba(255,255,255,.1);font:700 13px var(--disp);backdrop-filter:blur(8px)}
+/* one orchestrated entrance along the line */
+@media (prefers-reduced-motion:no-preference){
+ .road .stop{animation:stopIn .6s var(--spring) both}
+ .road .stop:nth-of-type(2){animation-delay:.05s}.road .stop:nth-of-type(3){animation-delay:.1s}.road .stop:nth-of-type(4){animation-delay:.15s}.road .stop:nth-of-type(5){animation-delay:.2s}.road .stop:nth-of-type(6){animation-delay:.25s}.road .stop:nth-of-type(7){animation-delay:.3s}.road .stop:nth-of-type(8){animation-delay:.35s}
+}
+@keyframes stopIn{from{opacity:0;translate:0 18px}to{opacity:1;translate:0 0}}
+@media (max-width:820px){.road .tag{min-width:150px;padding:10px 14px}.road .tag span{font-size:18px}.road .tag .tc{min-width:32px;height:32px;font-size:16px;right:-10px;top:-12px}}
+.road .flag.start{transform:translate(0,-50%)}
+@media (max-width:820px){
+ .road .dock{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-left:0!important;overflow:visible!important;padding:2px 0 12px}
+ .road .dock .pill{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px!important;border-radius:18px;white-space:normal;text-align:left;font-size:13.5px!important;line-height:1.15;min-width:0}
+ .road .dock .pill b{font-size:24px;margin:0}
+}

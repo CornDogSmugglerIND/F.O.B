@@ -1,10 +1,10 @@
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=5";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=6";
 import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=14";
 import { renderCollection } from "./collection.js?v=14";
 import { photoManager } from "./photos.js?v=3";
 import { renderSpaces } from "./spaces.js?v=11";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=27";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=28";
 import { renderSettings } from "./settings.js?v=7";
 import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=2";
@@ -184,46 +184,58 @@ function initAvatar() {
 /* ---------- Command ---------- */
 const phone = () => matchMedia("(max-width:820px)").matches;
 function pileHtml(list, cls, emptyMsg) {
-  if (!list.length) return emptyMsg ? `<button type="button" class="empty ${cls}" data-goto="scouter" style="font:inherit;color:inherit;cursor:pointer">${esc(emptyMsg)}</button>` : `<div class="empty ${cls}">Nothing here yet</div>`;
+  if (!list.length) return emptyMsg ? `<button type="button" class="empty go ${cls}" data-goto="scouter"><i>+</i><span>${esc(emptyMsg)}</span></button>` : `<div class="empty ${cls}"><i>○</i><span>Empty</span></div>`;
   const top = list[0]; const src = photoOf(top);
   const face = (it, k) => { const p = photoOf(it); return `<div class="pc ${k === "" ? "k-tilt" : k}" ${k === "" ? `data-item="${esc(it.id)}"` : ""}>${p ? `<img src="${esc(p)}" alt="" draggable="false">` : `<div class="ini">${esc(nameOf(it).charAt(0).toUpperCase())}</div>`}${k === "" ? `<span class="cap"><span>${esc(nameOf(it))}</span><em>${money(worth(it))}</em></span>` : ""}</div>`; };
   return `<div class="pile ${cls}">${list[2] ? face(list[2], "b2") : ""}${list[1] ? face(list[1], "b1") : ""}${face(top, "")}${list.length > 1 ? `<span class="more" data-stage="${""}">+${list.length - 1} more</span>` : ""}</div>`;
 }
 function renderCommand() {
   const g = groups(); const main = $("#main");
+  const pills = [
+    [g.intake.length, "Identify new photos", "scouter"],
+    [g.staged.length, "Build and publish", "@staged"],
+    [g.sold.length, "Pack and ship", "channels", "sold"],
+  ].map(([n, t, v, st]) => `<button class="pill${n ? " hot" : ""}" ${v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto"; main.style.overflowX = "hidden";
-    const open = mine(items).filter((i) => !["ended", "sold", "packed", "shipped", "delivered"].includes(phaseFromItem(i)));
-    const value = open.reduce((a, i) => a + worth(i), 0);
-    const need = g.intake.length + g.staged.length, live = g.listed.length + g.stored.length;
-    const acts = [[g.intake.length, "Identify", "new photos", "scouter"], [g.staged.length, "Build", "and publish", "@staged"], [g.sold.length, "Pack", "and ship", "channels", "sold"]]
-      .map(([n, t, u, v, st]) => `<button type="button" class="cm-act${n ? " hot" : ""}" ${v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b><span>${t}</span><small>${u}</small></button>`).join("");
-    const rows = STOPS.map((s, i) => { const l = g[s.id]; const th = l.slice(0, 4).map((it) => { const p = photoOf(it); return `<i class="cm-th">${p ? `<img src="${esc(p)}" alt="" loading="lazy" draggable="false">` : esc(nameOf(it).charAt(0).toUpperCase())}</i>`; }).join("");
-      return `<button type="button" class="cm-row${l.length ? " has" : ""}" data-stage="${s.id}" style="--c:${s.c}" aria-label="${esc(s.label)}, ${l.length} items"><i class="cm-dot"></i><span class="cm-t"><em>Step ${i + 1} of ${STOPS.length}</em><b>${esc(s.label)}</b><small>${esc(s.note)}</small></span><span class="cm-stack">${th}${l.length > 4 ? `<i class="cm-th cm-more">+${l.length - 4}</i>` : ""}</span><span class="cm-n">${l.length}</span></button>`; }).join("");
-    main.innerHTML = `<div class="cm"><section class="cm-hero"><span class="cm-k">Total value in progress</span><b class="cm-big">${money(value)}</b><div class="cm-two"><div><b>${need}</b><span>Need action</span></div><div><b>${live}</b><span>Live on eBay</span></div></div></section>
-      <div class="cm-acts">${acts}</div><h3 class="cm-h">Your line</h3><div class="cm-rail">${rows}</div></div>`;
+    const H = 2270, W = 390, PX = [27, 73, 27, 73, 27, 73, 27], PY = [300, 590, 880, 1170, 1460, 1750, 2040];
+    const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
+    let path = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], m = (y0 + y1) / 2; path += ` C${x0},${m} ${x1},${m} ${x1},${y1}`; }
+    main.innerHTML = `<div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
+      <defs><linearGradient id="rgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
+      <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".4" stroke-width="11" style="filter:blur(7px)"/>
+      <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/>
+      <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 34"/>
+      ${[0, 1, 2].map((k) => `<circle r="6" fill="#B3FBD5" style="filter:drop-shadow(0 0 7px #90FFCC)"><animateMotion dur="12s" begin="${k * 4}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
+      ${STOPS.map((s, i) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${PX[i]}%;top:${PY[i]}px;--c:${s.c}">
+        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "")}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
+        <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div></div>`).join("")}
+      <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[6] - 17}%;top:${PY[6] + 8}px"><i></i>Done</div></div>`;
   } else {
-    main.style.overflowY = "auto"; main.style.overflowX = "hidden";
-    const open = mine(items).filter((i) => !["ended", "sold", "packed", "shipped", "delivered"].includes(phaseFromItem(i)));
-    const value = open.reduce((a, i) => a + worth(i), 0);
-    const need = g.intake.length + g.staged.length, live = g.listed.length + g.stored.length;
-    const soldVal = [...g.sold, ...g.shipped, ...g.delivered].reduce((a, i) => a + worth(i), 0);
-    const kpi = [[money(value), "Value in progress"], [need, "Need action"], [live, "Live on eBay"], [g.sold.length, "To ship"], [money(soldVal), "Sold, last 90 days"]]
-      .map(([v, l], i) => `<div class="hk${i === 0 ? " big" : ""}"><b class="cm-two-b">${v}</b><span>${l}</span></div>`).join("");
-    const acts = [[g.intake.length, "Identify new photos", "scouter"], [g.staged.length, "Build and publish", "@staged"], [g.sold.length, "Pack and ship", "channels", "sold"]]
-      .map(([k, t, v, st]) => `<button type="button" class="cm-act${k ? " hot" : ""}" ${v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${k}</b><span>${t}</span></button>`).join("");
-    const card = (it) => { const p = photoOf(it); return `<div class="pc hc" data-item="${esc(it.id)}" role="button" tabindex="0">${p ? `<img src="${esc(p)}" alt="" loading="lazy" draggable="false">` : `<div class="ini">${esc(nameOf(it).charAt(0).toUpperCase())}</div>`}<span class="hc-t"><span>${esc(nameOf(it))}</span><em>${money(worth(it))}</em></span></div>`; };
-    const cols = STOPS.map((s, i) => { const l = g[s.id], val = l.reduce((a, x) => a + worth(x), 0), cap = 6;
-      return `<section class="stop hcol" data-drop="${s.id}" style="--c:${s.c}"><header class="hh" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${l.length} items"><i class="dot"></i><em>Step ${i + 1}</em><b>${esc(s.label)}</b><span><strong>${l.length}</strong> · ${money(val)}</span></header>
-        <div class="hlist">${l.slice(0, cap).map(card).join("") || (s.id === "intake" ? `<button type="button" class="hempty" data-goto="scouter">Add photos in Scouter</button>` : `<div class="hempty">Drop items here</div>`)}${l.length > cap ? `<button type="button" class="hmore" data-stage="${s.id}">See all ${l.length}</button>` : ""}</div></section>`; }).join("");
-    main.innerHTML = `<div class="hud"><div class="hud-top"><div class="hks">${kpi}</div><div class="hacts">${acts}</div></div><div class="hboard">${cols}</div><div class="hint">Tap a card to open it · drag a card onto another stage to move it</div></div>`;
+    main.style.overflowY = "hidden"; main.style.overflowX = "";
+    const W = Math.max(600, main.clientWidth || 1000), H = Math.max(420, main.clientHeight || 600);
+    const pts = STOPS.map((s) => [s.pos[0] / 100 * W, s.pos[1] / 100 * H]);
+    let path = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], m = (x0 + x1) / 2; path += ` C${m},${y0} ${m},${y1} ${x1},${y1}`; }
+    main.innerHTML = `<div class="road"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+      <defs><linearGradient id="rg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${W}" y2="0"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
+      <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".45" stroke-width="16" stroke-linecap="round" style="filter:blur(9px)"/>
+      <path d="${path}" fill="none" stroke="url(#rg)" stroke-width="4" stroke-linecap="round"/>
+      <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 34"/>
+      ${[0, 1, 2, 3].map((k) => `<circle r="7" fill="#B3FBD5" style="filter:drop-shadow(0 0 9px #90FFCC)"><animateMotion dur="14s" begin="${k * 3.5}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
+      ${STOPS.map((s) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${s.pos[0]}%;top:${s.pos[1]}%;--c:${s.c}">
+        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "")}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
+        <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div></div>`).join("")}
+      <div class="flag start" style="left:${STOPS[0].pos[0] - 6}%;top:${STOPS[0].pos[1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${STOPS[STOPS.length - 1].pos[0] - 2}%;top:${STOPS[STOPS.length - 1].pos[1] + 12}%"><i></i>Done</div>
+      <div class="dock">${pills}</div><div class="hint">Tap a stop to open it · hold a card and drop it on a stop to move it</div></div>`;
   }
   // wire up
   main.querySelectorAll(".pc.b1,.pc.b2").forEach((m) => { m.dataset.stage = m.closest(".stop").dataset.drop; m.style.cursor = "pointer"; });
   main.querySelectorAll(".more").forEach((m) => { const st = m.closest(".stop"); m.dataset.stage = st.dataset.drop; });
   main.querySelectorAll("[data-stage]").forEach((el) => el.addEventListener("click", () => stageSheet(el.dataset.stage)));
   main.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.pst) window.__chStage = b.dataset.pst; go(b.dataset.goto); }));
-  main.querySelectorAll(".stop .dot").forEach((d) => d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); stageSheet(d.dataset.stage); } }));
+  main.querySelectorAll(".stop .tag").forEach((d) => d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); stageSheet(d.dataset.stage); } }));
   main.querySelectorAll(".pc[data-item]").forEach(bindDrag);
 }
 function bindDrag(el) {

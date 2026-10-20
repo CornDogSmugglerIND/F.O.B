@@ -730,12 +730,39 @@ function pickShipmentField(shipment, ...names) {
 }
 
 /** eBay fulfillment status -> tracking card status. */
-export function mapFulfillmentStatus(order, shipment) {
+export function mapFulfillmentStatus(order, shipment, delivery) {
+  // FULFILLED only means tracking was uploaded (shipped). Delivered needs a real carrier delivery scan from eBay.
+  if (delivery && delivery.deliveredAt) return "delivered";
   const tracking = pickShipmentField(shipment, "shipmentTrackingNumber", "trackingNumber");
   const fs = (order?.orderFulfillmentStatus || "").toUpperCase();
-  if (fs === "FULFILLED") return "delivered";
-  if (fs === "IN_PROGRESS" || tracking) return "in_transit";
+  if (fs === "FULFILLED" || fs === "IN_PROGRESS" || tracking) return "in_transit";
   return "label_created";
+}
+
+/** Real delivery scans: Trading GetOrders -> ShippingPackageInfo.ActualDeliveryTime (what Seller Hub shows as Delivered). */
+export async function getEbayDeliveries(orderIds, opts = {}) {
+  const fetchImpl = opts.fetchImpl || fetch;
+  const out = new Map(); const ids = [...new Set(orderIds.filter(Boolean))];
+  if (!ids.length) return out;
+  let token; try { token = await getEbayAccessToken({ fetchImpl }); } catch { return out; }
+  const host = ebayApiBase();
+  for (let i = 0; i < ids.length; i += 20) {
+    const chunk = ids.slice(i, i + 20);
+    try {
+      const r = await fetchImpl(`${host}/ws/api.dll`, { method: "POST", signal: AbortSignal.timeout(12000), headers: { "X-EBAY-API-SITEID": "0", "X-EBAY-API-COMPATIBILITY-LEVEL": "1193", "X-EBAY-API-CALL-NAME": "GetOrders", "X-EBAY-API-IAF-TOKEN": token, "Content-Type": "text/xml" },
+        body: `<?xml version="1.0" encoding="utf-8"?><GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents"><OrderIDArray>${chunk.map((x) => `<OrderID>${String(x).replace(/[^0-9A-Za-z-]/g, "")}</OrderID>`).join("")}</OrderIDArray><OrderRole>Seller</OrderRole><DetailLevel>ReturnAll</DetailLevel></GetOrdersRequest>` });
+      const x = await r.text();
+      for (const block of x.split("<Order>").slice(1)) {
+        const id = (/<OrderID>([^<]+)<\/OrderID>/.exec(block) || [])[1]; if (!id) continue;
+        const del = (/<ActualDeliveryTime>([^<]+)<\/ActualDeliveryTime>/.exec(block) || [])[1] || null;
+        const shipped = (/<ShippedTime>([^<]+)<\/ShippedTime>/.exec(block) || [])[1] || null;
+        const est = (/<EstimatedDeliveryTimeMax>([^<]+)<\/EstimatedDeliveryTimeMax>/.exec(block) || /<ScheduledDeliveryTimeMax>([^<]+)<\/ScheduledDeliveryTimeMax>/.exec(block) || [])[1] || null;
+        out.set(id, { deliveredAt: del, shippedAt: shipped, estDeliveryAt: est });
+        const ext = (/<ExtendedOrderID>([^<]+)<\/ExtendedOrderID>/.exec(block) || [])[1]; if (ext) out.set(ext, out.get(id));
+      }
+    } catch { /* leave unknown: never guess delivered */ }
+  }
+  return out;
 }
 
 /**
@@ -771,9 +798,11 @@ export async function getEbayTracking(opts = {}) {
     orders.map((o) => o.orderId).filter(Boolean),
     { fetchImpl },
   );
+  const deliveries = await getEbayDeliveries(orders.map((o) => o.orderId), { fetchImpl });
   return orders.map((o) => {
     const shipment = shipments.get(o.orderId) || null;
-    const status = mapFulfillmentStatus(o, shipment);
+    const dv = deliveries.get(o.orderId) || deliveries.get(o.legacyOrderId) || null;
+    const status = mapFulfillmentStatus(o, shipment, dv);
     return {
       orderId: o.orderId,
       items: (o.lineItems || []).map((li) => ({
@@ -789,8 +818,10 @@ export async function getEbayTracking(opts = {}) {
       total: Number(o.pricingSummary?.total?.value) || 0,
       shipTo: (() => { const ad = o.fulfillmentStartInstructions?.[0]?.shippingStep?.shipTo?.contactAddress; return ad ? [ad.city, ad.stateOrProvince].filter(Boolean).join(", ") : ""; })(),
       createdAt: o.creationDate || null,
-      shippedAt: status === "label_created" ? null : pickShipmentField(shipment, "shippedDate") || o.lastModifiedDate || null,
-      deliveredAt: status === "delivered" ? o.lastModifiedDate || null : null,
+      shippedAt: status === "label_created" ? null : pickShipmentField(shipment, "shippedDate") || (dv && dv.shippedAt) || o.lastModifiedDate || null,
+      deliveredAt: status === "delivered" ? dv.deliveredAt : null,
+      estDeliveryAt: (dv && dv.estDeliveryAt) || null,
+      deliveryKnown: Boolean(dv),
       buyer: o.buyer?.username || "",
     };
   });
