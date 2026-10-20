@@ -526,6 +526,7 @@ function toRecord(inv, offer, offerKnown) {
     listingId: offer.listing?.listingId || offer.listingId || null,
     status: offer.status || offer.listing?.listingStatus || "active",
     imageUrl: product.imageUrls?.[0] || null,
+    imageUrls: (product.imageUrls || []).slice(0, 12),
     // false = eBay never answered for this SKU's offer; callers must NOT change its state.
     offerKnown,
     // Truth from eBay: only a PUBLISHED offer is live. UNPUBLISHED = never listed or already ended/sold.

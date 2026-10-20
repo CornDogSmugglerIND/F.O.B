@@ -17,7 +17,7 @@ const isLive = (it) => Boolean(it.channels?.ebay?.listingId) && !it.ended && it.
 export function photoManager(box, id, api) {
   let dirty = false, busy = "";
   const get = () => loadItems().find((x) => String(x.id) === String(id));
-  const edit = (mut) => { const l = loadItems(), it = l.find((x) => String(x.id) === String(id)); if (!it) return; it.photos = it.photos || []; mut(it.photos); it.updatedAt = new Date().toISOString(); if (!saveItems(l)) { api.toast("Couldn't save. Storage is full."); return; } dirty = true; api.refresh && api.refresh(); draw(); };
+  const edit = (mut) => { const l = loadItems(), it = l.find((x) => String(x.id) === String(id)); if (!it) return; it.photos = it.photos || []; mut(it.photos); it.updatedAt = new Date().toISOString(); if (isLive(it)) it.photosDirty = true; if (!saveItems(l)) { api.toast("Couldn't save. Storage is full."); return; } dirty = true; api.refresh && api.refresh(); draw(); };
   function draw() {
     const it = get(); if (!it) { box.innerHTML = ""; return; }
     const list = it.photos || [], live = isLive(it) && skuOf(it);
@@ -41,7 +41,7 @@ export function photoManager(box, id, api) {
         const r = await fetch("/api/channels/ebay/update-photos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sku: skuOf(cur), photos: (cur.photos || []).map(src) }) });
         const out = await r.json().catch(() => ({}));
         if (!r.ok || !out.ok) throw new Error(out.error || "eBay said no.");
-        dirty = false; busy = ""; api.toast("Photos updated on eBay."); draw();
+        dirty = false; busy = ""; { const l = loadItems(), x = l.find((y) => String(y.id) === String(id)); if (x) { delete x.photosDirty; saveItems(l); } } api.toast("Photos updated on eBay."); draw();
       } catch (e) { busy = ""; api.toast(String(e.message || "Couldn't reach eBay.").slice(0, 90)); draw(); }
     });
   }

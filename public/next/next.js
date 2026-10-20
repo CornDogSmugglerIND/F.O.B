@@ -2,9 +2,9 @@ import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenId
 import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=11";
 import { renderCollection } from "./collection.js?v=10";
-import { photoManager } from "./photos.js?v=2";
+import { photoManager } from "./photos.js?v=3";
 import { renderSpaces } from "./spaces.js?v=11";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=22";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=23";
 import { renderSettings } from "./settings.js?v=3";
 import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=2";
@@ -39,7 +39,17 @@ const stopFor = (it) => { const ph = phaseFromItem(it); return ph === "listed" &
 const MOVE_TO = { intake: "intake", staged: "staged", sold: "sold", shipped: "shipped", delivered: "delivered" };
 
 /* The roadmap tracks what you bring in through the app (Scouter). Your eBay inventory lives in Collection, Channels and Spaces. */
-const mine = (list) => list.filter((i) => i.source === "scouter" || i.source === "app");
+const app = (i) => i.source === "scouter" || i.source === "app";
+const realLive = (i) => i.phase === "listed" && !i.ended && !/^(demo-|mp-)/.test(String(i.id)) && !!i.channels?.ebay?.listingId && !/^demo/.test(String(i.channels.ebay.listingId));
+/* Command shows what you scout, plus every real live eBay listing (one card per listing), so nothing is in limbo. */
+function mine(list) {
+  const seen = new Set(), out = [];
+  for (const i of list) {
+    if (realLive(i)) { const k = i.channels.ebay.listingId; if (seen.has(k)) continue; seen.add(k); out.push(i); }
+    else if (app(i)) out.push(i);
+  }
+  return out;
+}
 function groups() {
   const g = Object.fromEntries(STOPS.map((s) => [s.id, []]));
   for (const it of mine(items)) {
@@ -130,7 +140,7 @@ function renderStats() {
   const g = groups();
   const open = mine(items).filter((i) => !["ended", "sold", "packed", "shipped", "delivered"].includes(phaseFromItem(i)));
   const value = open.reduce((a, i) => a + worth(i), 0);
-  $("#stats").innerHTML = [[money(value), "Total value in progress"], [g.intake.length + g.staged.length, "Items need action"], [new Set(items.filter((i) => i.phase === "listed" && !i.ended && !/^demo/.test(String(i.id))).map((i) => i.channels?.ebay?.listingId || i.id)).size, "Live on eBay"]]
+  $("#stats").innerHTML = [[money(value), "Total value in progress"], [g.intake.length + g.staged.length, "Items need action"], [g.listed.length + g.stored.length, "Live on eBay"]]
     .map(([b, l]) => `<div class="stat"><b>${b}</b><span>${l}</span></div>`).join("");
 }
 function initAvatar() {
@@ -317,7 +327,8 @@ async function syncAll(auto) {
       if (!photos.length && r.imageUrl) photos.push({ id: `img-${sku}`, dataUrl: r.imageUrl });
       const mapped = { id: r.id || `ebay-${sku}`, title: r.title || r.productName, productName: r.productName || r.title, sku, quantity: r.quantity || 1, price: r.price,
         phase: r.phase || (live === "listed" ? "listed" : "staged"), ended: Boolean(r.ended), listingStatus: r.ended ? "draft" : live, staged: false, spaceId: r.spaceId || null, channels: r.channels, photos, groupImage: r.groupImage || null, groupTitle: r.groupTitle || null };
-      if (idx >= 0) { const keep = list[idx]; list[idx] = { ...keep, ...mapped, spaceId: keep.spaceId || mapped.spaceId, photos: keep.photos?.length ? keep.photos : mapped.photos }; }
+      if (idx >= 0) { const keep = list[idx]; list[idx] = { ...keep, ...mapped, spaceId: keep.spaceId || mapped.spaceId, photos: (keep.photos?.length ? keep.photos : mapped.photos) };
+        { const u = list[idx]; const eb = (r.imageUrls || []).filter((x) => /^https:/.test(x)); if (!u.photosDirty && live === "listed" && eb.length && eb.length === (u.photos || []).length && (u.photos || []).some((p) => String(p.dataUrl || "").startsWith("data:"))) u.photos = eb.map((x, k) => ({ id: `eb-${k}`, dataUrl: x })); } }
       else list.unshift(mapped);
     }
     if (!body.partial && !body.truncated && rows.length) {

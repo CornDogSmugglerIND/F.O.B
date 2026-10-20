@@ -1,5 +1,5 @@
 import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=5";
-import { photoManager } from "./photos.js?v=2";
+import { photoManager } from "./photos.js?v=3";
 import { openCard } from "./kit.js?v=2";
 import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=4";
 
@@ -251,7 +251,7 @@ function buildSheet(it) {
     clearTimeout(armed); armed = null; busy(true); msg("Listing on eBay…");
     const out = await call(false); busy(false); $("#blGo").textContent = "List on eBay";
     if (!out) return;
-    patchItem(it.id, (i) => { i.phase = "listed"; i.listingStatus = "active"; i.staged = false; i.channels = Object.assign({}, i.channels, { ebay: { listingId: out.listingId, offerId: out.offerId, sku: out.sku, at: new Date().toISOString() } }); });
+    patchItem(it.id, (i) => { i.phase = "listed"; i.listingStatus = "active"; i.staged = false; i.channels = Object.assign({}, i.channels, { ebay: { listingId: out.listingId, offerId: out.offerId, sku: out.sku, at: new Date().toISOString() } }); if ((out.imageUrls || []).length >= (i.photos || []).length) i.photos = out.imageUrls.map((u, k) => ({ id: `eb-${k}`, dataUrl: u })); });
     const wantDH = $("#blDH").checked, dhItem = Object.assign({}, it, f, { id: it.id });
     ctx.closeSheet(); S.stage = "listed"; paint(); ctx.rerender?.(); ctx.toast("Listed on eBay. Next: put it away in its bin.");
     if (wantDH) {

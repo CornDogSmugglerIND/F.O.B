@@ -1,4 +1,4 @@
-import { photoManager } from "./photos.js?v=2";
+import { photoManager } from "./photos.js?v=3";
 import { openCard } from "./kit.js?v=2";
 import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=5";
 
