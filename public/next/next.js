@@ -1,11 +1,12 @@
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=6";
+import { isArchived, archive, unarchive, archMap } from "./shared.js?v=6";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=7";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=16";
-import { renderCollection } from "./collection.js?v=15";
-import { photoManager } from "./photos.js?v=3";
-import { renderSpaces } from "./spaces.js?v=11";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=29";
-import { renderSettings } from "./settings.js?v=8";
+import { renderScouter } from "./scouter.js?v=17";
+import { renderCollection } from "./collection.js?v=16";
+import { photoManager } from "./photos.js?v=4";
+import { renderSpaces } from "./spaces.js?v=12";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=31";
+import { renderSettings } from "./settings.js?v=9";
 import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=2";
 
@@ -45,6 +46,7 @@ const realLive = (i) => i.phase === "listed" && !i.ended && !/^(demo-|mp-)/.test
 function mine(list) {
   const seen = new Set(), out = [];
   for (const i of list) {
+    if (isArchived(i.id)) continue;
     if (realLive(i)) { const k = i.channels.ebay.listingId; if (seen.has(k)) continue; seen.add(k); out.push(i); }
     else if (app(i)) out.push(i);
   }
@@ -78,6 +80,14 @@ const sheetIsOpen = () => !!modal || !$("#sheet").hidden;
 function closeSheet() { const m = modal; modal = null; if (m) { const kill = () => { if (m.isConnected) m.remove(); }; try { Promise.resolve(m.dismiss()).finally(kill); } catch { kill(); } setTimeout(kill, 900); } $("#sheet").hidden = true; $("#sheetBack").hidden = true; }
 function openSheet(html) {
   if (window.customElements && customElements.get("ion-modal")) {
+    if (modal && modal.isConnected && modal.classList.contains("show-modal")) {
+      const s = modal.querySelector(".shx");
+      s.innerHTML = `<button class="x" aria-label="Close" data-close type="button">×</button>${html}`;
+      s.classList.remove("swap"); void s.offsetWidth; s.classList.add("swap");
+      try { modal.querySelector("ion-content").scrollToTop(0); } catch { /* ignore */ }
+      s.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", (e) => { e.preventDefault(); closeSheet(); }));
+      return s;
+    }
     if (modal) { const old = modal; modal = null; old.remove(); }
     const m = document.createElement("ion-modal"); const ph = phone();
     if (ph) { m.breakpoints = [0, 0.55, 0.94]; m.initialBreakpoint = 0.94; m.handle = true; m.handleBehavior = "cycle"; m.expandToScroll = false; }
@@ -97,6 +107,7 @@ function openSheet(html) {
   return s;
 }
 $("#sheetBack").addEventListener("click", closeSheet);
+window.__fob = { openSheet: (h) => openSheet(h), closeSheet: () => closeSheet(), toast: (t) => toast(t), render: () => render() };
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
 
 function nextAction(ph, it) {
@@ -108,13 +119,41 @@ function nextAction(ph, it) {
   if (["sold", "packed"].includes(ph)) return `<p class="sub" style="margin-top:12px">Next: pack it and print the label in eBay.</p><a class="btn go" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener">Open eBay orders</a>`;
   return "";
 }
+/* ---------- item viewer: Back, "3 of 28", previous / next, swipe ---------- */
+let NAV = null; // { sid, ids }
+const navFor = (sid) => { NAV = { sid, ids: (groups()[sid] || []).map((x) => String(x.id)) }; };
+function navBar(id) {
+  const i = NAV ? NAV.ids.indexOf(String(id)) : -1;
+  if (i < 0) return `<div class="iv-bar"><button type="button" class="iv-back" data-close>‹ Back</button></div>`;
+  const st = STOPS.find((s) => s.id === NAV.sid);
+  return `<div class="iv-bar"><button type="button" class="iv-back" data-ivback>‹ ${esc(st ? st.label : "Back")}</button><span class="iv-n">${i + 1} of ${NAV.ids.length}</span><button type="button" class="iv-btn" data-ivprev aria-label="Previous item"${i === 0 ? " disabled" : ""}>‹</button><button type="button" class="iv-btn" data-ivnext aria-label="Next item"${i === NAV.ids.length - 1 ? " disabled" : ""}>›</button></div>`;
+}
+function wireNav(s, id) {
+  if (!NAV) return; const i = NAV.ids.indexOf(String(id)); if (i < 0) return;
+  const to = (k) => { const nid = NAV.ids[k]; if (nid) itemSheet(nid); };
+  s.querySelector("[data-ivback]")?.addEventListener("click", () => stageSheet(NAV.sid));
+  s.querySelector("[data-ivprev]")?.addEventListener("click", () => to(i - 1));
+  s.querySelector("[data-ivnext]")?.addEventListener("click", () => to(i + 1));
+  let sx = null, sy = 0;
+  s.addEventListener("touchstart", (e) => { if (e.touches.length !== 1 || e.target.closest(".ph-row,.sib,input,textarea,.trk")) { sx = null; return; } sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  s.addEventListener("touchend", (e) => { if (sx == null) return; const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; sx = null; if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.6) to(dx < 0 ? i + 1 : i - 1); }, { passive: true });
+}
+/* archive one thing (item or order) and move on like a person would: next item, else back to the list */
+function archiveOne(it) {
+  const i = NAV ? NAV.ids.indexOf(String(it.id)) : -1, nextId = i >= 0 ? (NAV.ids[i + 1] || NAV.ids[i - 1]) : null, sid = NAV && NAV.sid;
+  archive([it]); render();
+  toastUndo(`Archived ${nameOf(it)}`, () => { unarchive([it.id]); render(); });
+  if (sid) { navFor(sid); if (nextId && NAV.ids.includes(String(nextId))) itemSheet(nextId); else stageSheet(sid); } else closeSheet();
+}
+
 function orderSheet(it) {
   const o = it._order, u = trackUrl(o), src = photoOf(it);
-  const s = openSheet(`<a class="back" href="#" data-close>‹ Back</a>${src ? `<img src="${esc(src)}" alt="" style="width:100%;max-height:220px;object-fit:contain;border-radius:14px;background:#0f1211;margin-bottom:12px">` : ""}<h2>${esc(nameOf(it))}</h2><div class="sub">${it.phase === "sold" ? "Sold, needs shipping" : it.phase === "delivered" ? "Delivered" : "Shipped"}</div>
+  const s = openSheet(`${navBar(it.id)}${src ? `<img src="${esc(src)}" alt="" style="width:100%;height:240px;object-fit:contain;border-radius:14px;background:#0f1211;margin-bottom:12px">` : ""}<h2>${esc(nameOf(it))}</h2><div class="sub">${it.phase === "sold" ? "Sold, needs shipping" : it.phase === "delivered" ? "Delivered" : "Shipped"}</div>
     ${it.phase === "sold" ? "" : trackerHtml(o)}
     <div class="row"><span>Total</span><span>${money(o.total)}</span></div><div class="row"><span>Buyer</span><span>${esc(o.buyer || "—")}</span></div><div class="row"><span>Sold</span><span>${dayText(o.createdAt) || "—"}</span></div><div class="row"><span>Carrier</span><span>${esc(o.carrier || "—")}</span></div><div class="row"><span>Tracking</span><span>${o.trackingNumber ? esc(o.trackingNumber) : "No label yet"}</span></div>
-    ${u ? `<a class="btn go" href="${esc(u)}" target="_blank" rel="noopener" style="margin-top:12px">Open carrier tracking</a>` : `<a class="btn go" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener" style="margin-top:12px">Open eBay orders</a>`}`);
-  s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
+    ${u ? `<a class="btn go" href="${esc(u)}" target="_blank" rel="noopener" style="margin-top:12px">Open carrier tracking</a>` : `<a class="btn go" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener" style="margin-top:12px">Open eBay orders</a>`}
+    <button class="btn iv-arch" data-arch type="button">Archive this order</button>`);
+  wireNav(s, it.id); s.querySelector("[data-arch]").addEventListener("click", () => archiveOne(it));
   s.querySelector("[data-ov]")?.addEventListener("click", (e) => { setOv(o.orderId, e.currentTarget.dataset.ov); closeSheet(); render(); toast(e.currentTarget.dataset.ov === "delivered" ? "Moved to Delivered" : "Moved back to Shipped"); });
 }
 function itemSheet(id) {
@@ -122,7 +161,7 @@ function itemSheet(id) {
   const it = items.find((i) => String(i.id) === String(id)); if (!it) return;
   const src = photoOf(it); const ph = phaseFromItem(it); const st = stopFor(it);
   const s = openSheet(`
-    <a class="back" href="#" data-close>‹ Back</a>
+    ${navBar(it.id)}
     ${src ? `<img id="sheetMain" src="${esc(src)}" alt="" style="width:100%;height:300px;object-fit:contain;border-radius:20px;background:#0f1211;margin-bottom:14px;box-shadow:0 14px 34px rgba(0,0,0,.5)">` : ""}
 <div class="it-info">
     <h2>${esc(nameOf(it))}</h2>
@@ -134,8 +173,9 @@ function itemSheet(id) {
 </div>
     <div id="phMgr" style="margin-top:18px"></div>${(() => { const g = groups()[st && st.id] || []; const others = g.filter((x) => String(x.id) !== String(it.id)).slice(0, 24); return others.length ? `<div class="ph-head" style="margin-top:6px"><b>Also in ${esc(st.label)}</b><span>${g.length} total</span></div><div class="ph-row">${others.map((x) => { const p = photoOf(x); return `<button type="button" class="sib" data-sib="${esc(x.id)}">${p ? `<img src="${esc(p)}" alt="" loading="lazy">` : `<i>${esc(nameOf(x).charAt(0))}</i>`}<span>${esc(nameOf(x))}</span></button>`; }).join("")}</div>` : ""; })()}
 
-    ${String(it.id).startsWith("ebay-") ? "" : `<button class="btn warn" data-del type="button" style="margin-top:14px">Delete this item</button>`}`);
-  s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
+    <button class="btn iv-arch" data-arch type="button">Archive this item</button>
+    ${String(it.id).startsWith("ebay-") ? "" : `<button class="btn warn" data-del type="button" style="margin-top:10px">Delete this item</button>`}`);
+  wireNav(s, it.id); s.querySelector("[data-arch]").addEventListener("click", () => archiveOne(it));
   photoManager(s.querySelector("#phMgr"), it.id, { toast, refresh: () => { items = loadItems(); renderStats(); const m = s.querySelector("#sheetMain"); const c = items.find((i) => String(i.id) === String(id)); if (m && c) m.src = photoOf(c); } });
   s.querySelectorAll("[data-sib]").forEach((b) => b.addEventListener("click", () => itemSheet(b.dataset.sib)));
   s.querySelector("[data-del]")?.addEventListener("click", () => { const prev = items.slice(); items = items.filter((i) => String(i.id) !== String(id)); saveItems(items); closeSheet(); render(); toastUndo(`Deleted ${nameOf(it)}`, () => { items = prev; saveItems(prev); render(); }); });
@@ -143,13 +183,13 @@ function itemSheet(id) {
 }
 function chApi() { return { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); }, rerender: () => render() }; }
 function stageSheet(sid) {
-  const stop = STOPS.find((x) => x.id === sid); const list = groups()[sid];
-  const cap = 60;
+  const stop = STOPS.find((x) => x.id === sid); const list = groups()[sid]; navFor(sid);
+  const cap = 60, canArch = ["sold", "shipped", "delivered"].includes(sid) && list.length;
   const s = openSheet(`
-    <a class="back" href="#" data-close>‹ Back</a>
+    <div class="iv-bar"><button type="button" class="iv-back" data-close>‹ Back to Command</button></div>
     <h2>${esc(stop.label)}</h2><div class="sub">${list.length} ${list.length === 1 ? "item" : "items"} · ${esc(stop.note)}</div>
-    ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : `<div class="tini">${esc(nameOf(it).replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "?")}</div>`}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}.</p>` : ""}${sid === "staged" ? `<button class="btn go" id="varAll" type="button" style="margin-top:12px">List several as one variation listing</button>` : sid === "intake" ? "" : `<button class="btn go" id="seeAll" type="button" style="margin-top:12px">Open ${esc(stop.label)} in Channels</button>`}` : `<p class="sub">Nothing here yet.</p>`}`);
-  s.querySelector(".back").addEventListener("click", (e) => { e.preventDefault(); closeSheet(); });
+    ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : `<div class="tini">${esc(nameOf(it).replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "?")}</div>`}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}.</p>` : ""}${sid === "staged" ? `<button class="btn go" id="varAll" type="button" style="margin-top:12px">List several as one variation listing</button>` : sid === "intake" ? "" : `<button class="btn go" id="seeAll" type="button" style="margin-top:12px">Open ${esc(stop.label)} in Channels</button>`}${canArch ? `<button class="btn iv-arch" id="archAll" type="button">Archive all ${list.length}</button>` : ""}` : `<p class="sub">Nothing here yet.</p>`}`);
+  s.querySelector("#archAll")?.addEventListener("click", (e) => { const b = e.currentTarget; if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = `Yes, archive all ${list.length}`; return; } archive(list); render(); stageSheet(sid); toastUndo(`Archived ${list.length} from ${stop.label}`, () => { unarchive(list.map((x) => x.id)); render(); }); });
   s.querySelectorAll("[data-item]").forEach((b) => b.addEventListener("click", () => itemSheet(b.dataset.item)));
   s.querySelector("#varAll")?.addEventListener("click", () => { closeSheet(); variationListing(chApi()); });
   s.querySelector("#seeAll")?.addEventListener("click", () => { window.__chStage = ({ intake: "intake", staged: "staged", listed: "listed", sold: "sold", shipped: "shipped", delivered: "delivered" })[sid] || "all"; go("channels"); });
@@ -252,7 +292,7 @@ function bindDrag(el) {
   const end = (e) => {
     if (!down) return; down = false;
     try { el.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
-    if (!moved) { itemSheet(el.dataset.item); return; }
+    if (!moved) { const st = el.closest(".stop"); if (st) navFor(st.dataset.drop); itemSheet(el.dataset.item); return; }
     const target = over && over.dataset.drop; if (over) over.classList.remove("drop"); if (ghost) ghost.remove(); el.style.opacity = "";
     if (!target) return;
     const it = items.find((i) => String(i.id) === String(el.dataset.item)); if (!it) return;
@@ -287,7 +327,13 @@ function go_(v) {
 /* Background updates (sync, other tab) must never move you: no re-render while you're in a sheet, card, bin or the Scouter, and scroll is kept. */
 let sig = "";
 const sigOf = (l) => (localStorage.getItem("coalition-orders-v1") || "").length + "|" + (localStorage.getItem("coalition-order-state-v1") || "") + "|" + l.length + ":" + l.reduce((m, i) => (i.updatedAt > m ? i.updatedAt : m), "");
+/* never redraw under a finger: a background refresh waits until the tap is finished */
+let pressing = false, pressT = 0;
+document.addEventListener("pointerdown", () => { pressing = true; clearTimeout(pressT); }, true);
+const release = () => { clearTimeout(pressT); pressT = setTimeout(() => { pressing = false; }, 350); };
+document.addEventListener("pointerup", release, true); document.addEventListener("pointercancel", release, true);
 function softRender() {
+  if (pressing) { setTimeout(softRender, 400); return; }
   purgeDemo();
   const l = loadItems(), n = sigOf(l); items = l; renderStats();
   if (n === sig) return; sig = n;

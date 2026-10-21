@@ -1,3 +1,4 @@
+import { isArchived } from "./shared.js?v=6";
 /* Scouter: one upload = one item. Photos preview instantly, get shrunk off the
  * hot path, nothing is saved until Save is pressed. */
 const MAX_PICK = 5;
@@ -177,7 +178,7 @@ function pkgs() {
   return `<div class="sc-pkgs"><h3>On this scouter</h3><div class="sc-pk">${session.slice(0, 12).map((x) => `<div class="sc-pkg k-tilt">${x.photo ? `<img src="${esc(x.photo)}" alt="" draggable="false">` : "<i></i>"}<span>${esc(x.title)}</span><em>${money(x.price)}</em>${x.qty > 1 ? `<u>x${x.qty}</u>` : ""}<s class="${x.staged ? "ok" : ""}">${x.staged ? "Staged" : "Intake"}</s></div>`).join("")}</div></div>`;
 }
 function queue_() {
-  const all = ctx.getItems().filter((i) => !i.ended && i.listingStatus !== "listed");
+  const all = ctx.getItems().filter((i) => !i.ended && i.listingStatus !== "listed" && !isArchived(i.id));
   const wait = all.filter((i) => i.phase === "intake"), ready = all.filter((i) => i.phase === "staged" && i.source === "scouter");
   const tile = (i, k) => `<button class="sc-q k-tilt" data-q="${esc(i.id)}" data-k="${k}" type="button">${i.photos?.[0] ? `<img src="${esc(i.photos[0].dataUrl || i.photos[0].url || "")}" alt="" loading="lazy" draggable="false">` : "<i></i>"}<span>${esc(i.title || "Untitled item")}</span><u class="sc-qx" data-qdel="${esc(i.id)}" role="button" aria-label="Delete this item">×</u></button>`;
   const row = (t, sub, l, k) => l.length ? `<div class="sc-qh"><h3>${t}</h3><em>${l.length}</em><small>${sub}</small></div><div class="sc-qs">${l.slice(0, 30).map((i) => tile(i, k)).join("")}</div>` : "";

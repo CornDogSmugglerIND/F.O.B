@@ -6,7 +6,14 @@ export const money = (n) => "$" + (Number(n) || 0).toLocaleString("en-US", { min
 export const nameOf = (it) => { const t = it.title || it.productName || ""; return !t ? "Untitled" : /^sku-\d+$/i.test(t.trim()) ? `Draft listing …${t.trim().slice(-4)}` : t; };
 export const photoOf = (it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "";
 const DONE = ["sold", "packed", "shipped", "delivered"];
-export const onHand = (it) => !it.ended && !DONE.includes(it.phase);
+export const onHand = (it) => !it.ended && !DONE.includes(it.phase) && !isArchived(it.id);
+/* Archive: things Sawyer is done looking at. Hidden from every tab, restorable from Settings. */
+export const LS_ARCH = "coalition-archive-v1";
+let _ar = null, _am = {};
+export function archMap() { try { const raw = localStorage.getItem(LS_ARCH) || "{}"; if (raw !== _ar) { _am = JSON.parse(raw) || {}; _ar = raw; } } catch { _am = {}; } return _am; }
+export function isArchived(id) { return Object.prototype.hasOwnProperty.call(archMap(), String(id)); }
+export function archive(list) { const m = { ...archMap() }; for (const it of list) { const p = photoOf(it); m[String(it.id)] = { at: new Date().toISOString(), title: nameOf(it), photo: p && !p.startsWith("data:") ? p : "", order: Boolean(it._order) }; } try { localStorage.setItem(LS_ARCH, JSON.stringify(m)); return true; } catch { return false; } }
+export function unarchive(ids) { const m = { ...archMap() }; ids.forEach((i) => { delete m[String(i)]; }); try { localStorage.setItem(LS_ARCH, JSON.stringify(m)); } catch { /* ignore */ } }
 const SEALED = /booster|\bbox\b|\betb\b|elite trainer|bundle|\btin\b|\bpacks?\b|sealed|\bcase\b|blister|display|collection box|starter deck|battle deck|theme deck|premium collection|build (&|and) battle|sleeved|\blot\b/i;
 
 export const laneOf = (it) => it.lane === "sealed" || it.lane === "singles" ? it.lane : (SEALED.test(nameOf(it)) && !/\bsingle\b/i.test(nameOf(it)) ? "sealed" : "singles");

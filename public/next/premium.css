@@ -275,3 +275,18 @@ body::after{content:"";position:fixed;inset:0;z-index:100;pointer-events:none;op
 .ch-tile .co-pick{z-index:4}
 /* the way out is always visible: close button pinned while the sheet scrolls */
 .shx>.x{position:sticky!important;top:10px;float:right;margin:-8px -6px 0 8px;right:auto!important;z-index:5;background:rgba(14,17,16,.85)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);width:40px!important;height:40px!important}
+/* ===== v27: item viewer bar (Back · n of N · prev/next) ===== */
+.iv-bar{position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:8px;margin:-10px -6px 14px;padding:10px 54px 10px 6px;background:linear-gradient(180deg,rgba(20,24,23,.96) 70%,rgba(20,24,23,0));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.iv-back{min-height:44px;padding:0 16px;border-radius:12px;background:rgba(179,251,213,.12);border:1px solid rgba(179,251,213,.45);color:var(--sea);font:700 16px var(--disp);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%}
+.iv-back:active{transform:scale(.96)}
+.iv-n{margin-left:auto;font:600 14px var(--disp);color:var(--mute);white-space:nowrap}
+.iv-btn{width:44px;height:44px;border-radius:12px;background:linear-gradient(160deg,rgba(52,60,57,.9),rgba(10,13,12,.95));border:1px solid rgba(179,251,213,.3);color:#fff;font:700 24px/1 var(--disp)}
+.iv-btn:disabled{opacity:.3}.iv-btn:not(:disabled):active{transform:scale(.92)}
+.iv-arch{margin-top:14px;width:100%;background:rgba(118,128,124,.16)!important;border:1px solid rgba(255,255,255,.14)!important;color:var(--ink)!important}
+.shx>.x{top:10px}
+@keyframes ivSwap{from{opacity:.25;transform:translateY(8px)}to{opacity:1;transform:none}}
+.shx.swap{animation:ivSwap .28s var(--ease2)}
+@media (prefers-reduced-motion:reduce){.shx.swap{animation:none}}
+ion-modal.fob-sheet{--background:linear-gradient(170deg,#262c2a,#111413 60%)!important}
+ion-modal.fob-sheet .shx-c{--background:transparent}
+ion-modal.fob-sheet::part(content){background:linear-gradient(170deg,#262c2a,#111413 60%)}

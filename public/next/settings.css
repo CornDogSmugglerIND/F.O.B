@@ -35,3 +35,8 @@
 .st-row .okk{color:var(--sea)}.st-row .bad{color:#ff9d8a}.st-row .sub,.st .sub{margin:0;font-size:13.5px;color:var(--mute);font-weight:500}
 .st .badges{display:flex;justify-content:center;gap:14px;margin-top:16px}.st .badges img{height:56px;border-radius:12px;width:auto}
 .st-ver{text-align:center;color:rgba(255,255,255,.3);font-size:12px;margin:6px 0 0}
+.ar-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.ar-row{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;padding:8px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+.ar-row img,.ar-row i{width:48px;height:62px;border-radius:8px;object-fit:cover;background:#1b201e;display:flex;align-items:center;justify-content:center;font-style:normal;color:var(--mute)}
+.ar-row b{display:block;font:600 14px/1.2 var(--disp);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.ar-row em{font-style:normal;font-size:12px;color:var(--mute)}
+.ar-row .btn{margin:0;min-height:40px}

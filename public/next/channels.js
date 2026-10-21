@@ -1,7 +1,7 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign } from "./shared.js?v=5";
-import { photoManager } from "./photos.js?v=3";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=6";
+import { photoManager } from "./photos.js?v=4";
 import { openCard } from "./kit.js?v=2";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=6";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=7";
 
 let ctx = null;
 const S = { stage: "listed", view: "cards", group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
@@ -17,18 +17,18 @@ const SHOWN = (it) => !(["intake", "staged"].includes(it.phase || "intake") && !
 const shown = () => peekItems().filter(SHOWN);
 /* One row per eBay listing: variation children share a listing id, so they collapse into one card. */
 let GROUP = new Map();
-let _liveSrc = null, _liveOut = null, _liveGrp = null;
+let _liveSrc = null, _liveOut = null, _liveGrp = null, _liveAk = null;
 function live() {
-  const src = peekItems(); if (src === _liveSrc && _liveOut) { GROUP = _liveGrp; return _liveOut; }
+  const src = peekItems(), ak = archMap(); if (src === _liveSrc && ak === _liveAk && _liveOut) { GROUP = _liveGrp; return _liveOut; }
   const out = [], seen = new Map(); GROUP = new Map();
   for (const it of shown()) {
-    if (it.ended || SOLD.includes(it.phase) || /^(demo-|mp-)/.test(String(it.id))) continue;
+    if (it.ended || SOLD.includes(it.phase) || /^(demo-|mp-)/.test(String(it.id)) || isArchived(it.id)) continue;
     const lid = it.phase === "listed" && it.channels?.ebay?.listingId;
     if (it.phase === "listed" && (!lid || /^demo/.test(lid))) continue; /* "Live on eBay" = has a real eBay listing id, nothing else */
     if (lid && !/^demo/.test(lid)) { const g = seen.get(lid); if (g) { g._kids.push(it); continue; } const rep = Object.assign({}, it, { _kids: [it] }); seen.set(lid, rep); out.push(rep); } else out.push(it);
   }
   for (const r of out) if (r._kids) { r._n = r._kids.length; if (r._n > 1) { const gi = r._kids.find((k) => k.groupImage), gt = r._kids.find((k) => k.groupTitle); if (gi) r.photos = [{ id: "grp-cover", dataUrl: gi.groupImage }]; if (gt) r.title = gt.groupTitle; } GROUP.set(String(r.id), r._kids.map((k) => String(k.id))); if (r._n > 1) { const ps = r._kids.map((k) => Number(k.price) || 0); r._lo = Math.min(...ps); r._hi = Math.max(...ps); r.quantity = r._kids.reduce((a, k) => a + (Number(k.quantity) || 1), 0); } }
-  _liveSrc = src; _liveOut = out; _liveGrp = GROUP;
+  _liveSrc = src; _liveAk = ak; _liveOut = out; _liveGrp = GROUP;
   return out;
 }
 const pool = (stage) => ["sold", "shipped", "delivered"].includes(stage) ? orderItems().filter((o) => o.phase === stage) : live().filter((i) => stageOf(i) === stage);
@@ -76,7 +76,7 @@ function paint() {
   }).join("");
   const n = S.sel.size;
   h.innerHTML = `<div class="co-wrap ch-wrap">
-    <div class="co-head"><div><h2>Channels</h2><p>${["sold", "shipped", "delivered"].includes(S.stage) ? `${all.length} order${all.length === 1 ? "" : "s"} from eBay, last 90 days · ${money(total)} sold` : `${all.length} listing${all.length === 1 ? "" : "s"} · ${money(total)} at list price`}</p></div></div>
+    <div class="co-head"><div><h2>Channels</h2><p>${["sold", "shipped", "delivered"].includes(S.stage) ? `${all.length} order${all.length === 1 ? "" : "s"} from eBay, last 90 days · ${money(total)} sold` : `${all.length} listing${all.length === 1 ? "" : "s"} · ${money(total)} at list price`}</p></div>${["sold", "shipped", "delivered"].includes(S.stage) && all.length ? `<button class="btn" id="chArchAll" type="button">Archive all ${all.length}</button>` : ""}</div>
     ${routeHtml(counts)}
     <div class="ch-bar2"><input id="chQ" type="search" placeholder="Search title or SKU" value="${esc(S.q)}" aria-label="Search title or SKU">
       <button class="btn ch-controls${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}">Controls</button></div>
@@ -133,6 +133,7 @@ function wire(all) {
   h.querySelectorAll(".ch-row input").forEach((c) => c.addEventListener("change", () => { toggle(c.dataset.id); paint(); }));
   $("#chBin")?.addEventListener("change", (e) => { const v = e.target.value; if (!v) return; const ids = [...S.sel], prev = snap(); if (assign(ids, v)) { S.sel.clear(); ctx.refresh(); paint(); ctx.toastUndo(`Filed ${ids.length} into ${loadSpaces().find((s) => s.id === v)?.name}`, () => { restore(prev); ctx.refresh(); paint(); }); } });
   h.querySelectorAll("[data-bulk]").forEach((b) => b.addEventListener("click", () => bulk(b.dataset.bulk)));
+  $("#chArchAll")?.addEventListener("click", (e) => { const b = e.currentTarget, list = rows(); if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = `Yes, archive all ${list.length}`; return; } archive(list); S.sel.clear(); paint(); ctx.rerender?.(); ctx.toastUndo(`Archived ${list.length}`, () => { unarchive(list.map((x) => x.id)); paint(); ctx.rerender?.(); }); });
 }
 const snap = () => ({ items: localStorage.getItem("coalition-items-v4"), spaces: localStorage.getItem("coalition-spaces-v4") });
 function restore(p) { try { if (p.items != null) localStorage.setItem("coalition-items-v4", p.items); if (p.spaces != null) localStorage.setItem("coalition-spaces-v4", p.spaces); } catch { /* ignore */ } }
@@ -143,6 +144,9 @@ function bulk(kind) {
   if (kind === "pct") {
     const p = parseFloat(String(ctx.host.querySelector("#chPct").value).replace(/[^0-9.\-+]/g, "")); if (!Number.isFinite(p) || !p) { ctx.toast("Type a percent, like -10 or 15."); return; }
     const prev = snap(); if (commit((l) => l.forEach((i) => { if (set.has(String(i.id))) i.price = Math.max(0, Math.round((Number(i.price) || 0) * (1 + p / 100) * 100) / 100); }))) { S.sel.clear(); paint(); ctx.toastUndo(`Changed ${ids.length} prices ${p > 0 ? "+" : ""}${p}% in this app`, () => { restore(prev); ctx.refresh(); paint(); }); }
+  } else if (kind === "del" && ids.some((x) => String(x).startsWith("ord-"))) {
+    const ords = orderItems().filter((o) => set.has(String(o.id))); archive(ords); S.sel.clear(); paint(); ctx.rerender?.();
+    ctx.toastUndo(`Archived ${ords.length} order${ords.length === 1 ? "" : "s"}`, () => { unarchive(ords.map((o) => o.id)); paint(); ctx.rerender?.(); });
   } else if (kind === "del") {
     const prev = snap(); if (commit((l) => { for (let k = l.length - 1; k >= 0; k--) if (set.has(String(l[k].id))) l.splice(k, 1); })) { S.sel.clear(); paint(); ctx.toastUndo(`Removed ${ids.length} from this app`, () => { restore(prev); ctx.refresh(); paint(); }); }
   } else if (kind === "end") {
