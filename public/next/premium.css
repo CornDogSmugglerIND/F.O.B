@@ -246,3 +246,32 @@ button.hempty{cursor:pointer;color:var(--sea)}
  .road .dock .pill{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px!important;border-radius:18px;white-space:normal;text-align:left;font-size:13.5px!important;line-height:1.15;min-width:0}
  .road .dock .pill b{font-size:24px;margin:0}
 }
+/* ===== v22: HUD identity — corner brackets + film grain ===== */
+:root{--tick:rgba(179,251,213,.75);--tk:14px}
+.road .pill,.st-grp,.sc-hud>div,.sc-step,.ch-drawer,.cx-bar,.shx{position:relative}
+.road .tag::after,.road .pill::after,.st-grp::after,.sc-hud>div::after,.sc-step::after,.ch-drawer::after,.cx-bar::after,.shx::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:2;
+ background:
+ linear-gradient(var(--tick),var(--tick)) left top/var(--tk) 2px no-repeat,linear-gradient(var(--tick),var(--tick)) left top/2px var(--tk) no-repeat,
+ linear-gradient(var(--tick),var(--tick)) right top/var(--tk) 2px no-repeat,linear-gradient(var(--tick),var(--tick)) right top/2px var(--tk) no-repeat,
+ linear-gradient(var(--tick),var(--tick)) left bottom/var(--tk) 2px no-repeat,linear-gradient(var(--tick),var(--tick)) left bottom/2px var(--tk) no-repeat,
+ linear-gradient(var(--tick),var(--tick)) right bottom/var(--tk) 2px no-repeat,linear-gradient(var(--tick),var(--tick)) right bottom/2px var(--tk) no-repeat;
+ -webkit-mask:linear-gradient(#000,#000);opacity:.85}
+.road .tag::after{--tick:color-mix(in srgb,var(--c) 85%,#fff)}
+.road .pill::after{--tk:10px;opacity:.6}
+.road .pill.hot::after{opacity:1}
+.shx::after{border-radius:28px;inset:6px;opacity:.5}
+/* film grain across the whole app (2-3%, per the visual spec) */
+body::after{content:"";position:fixed;inset:0;z-index:100;pointer-events:none;opacity:.05;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* angular HUD panels: corners tight so the brackets sit flush */
+.road .tag{border-radius:10px}.road .pill{border-radius:12px!important}.st-grp{border-radius:12px}.sc-hud>div{border-radius:10px!important}.sc-step{border-radius:12px!important}.ch-drawer,.cx-bar{border-radius:12px!important}
+.road .tag::before{left:14px;right:14px}
+.road .tag .tc{z-index:3}
+/* HUD brackets on item cards too (Collection / Channels), tighter angular corners */
+.cx-card,.co-card{border-radius:14px!important}.cx-card .cx-img,.co-card .co-img{border-radius:9px!important}
+.cx-card::after,.co-card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:2;opacity:.45;transition:opacity .2s;
+ background:linear-gradient(var(--tick),var(--tick)) left top/12px 2px no-repeat,linear-gradient(var(--tick),var(--tick)) left top/2px 12px no-repeat,linear-gradient(var(--tick),var(--tick)) right top/12px 2px no-repeat,linear-gradient(var(--tick),var(--tick)) right top/2px 12px no-repeat,linear-gradient(var(--tick),var(--tick)) left bottom/12px 2px no-repeat,linear-gradient(var(--tick),var(--tick)) left bottom/2px 12px no-repeat,linear-gradient(var(--tick),var(--tick)) right bottom/12px 2px no-repeat,linear-gradient(var(--tick),var(--tick)) right bottom/2px 12px no-repeat}
+.cx-card:hover::after,.co-card:hover::after,.ch-tile.sel::after,.cx-card.sel::after{opacity:1}
+.ch-tile .co-pick{z-index:4}
+/* the way out is always visible: close button pinned while the sheet scrolls */
+.shx>.x{position:sticky!important;top:10px;float:right;margin:-8px -6px 0 8px;right:auto!important;z-index:5;background:rgba(14,17,16,.85)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);width:40px!important;height:40px!important}

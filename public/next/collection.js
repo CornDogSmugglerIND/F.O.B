@@ -28,6 +28,7 @@ function card(it) {
 const val = (l) => l.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
 function paint() {
   const host = ctx.host, keep = host.querySelector(".cx-grid")?.parentElement?.scrollTop;
+  const typed = host.querySelector("#coPct")?.value || "", typedFocus = document.activeElement && document.activeElement.id === "coPct";
   const base = peekItems().filter(onHand), cats = new Map(); base.forEach((i) => { const c = catOf(i); cats.set(c, (cats.get(c) || 0) + 1); });
   const all = rows(), shown = all.slice(0, S.more), total = val(all), SP = new Map(loadSpaces().map((x) => [x.id, x.name])), binName = (id) => (id && SP.get(id)) || "";
   host.innerHTML = `<div class="co-wrap cx">
@@ -43,6 +44,7 @@ function paint() {
       <div class="cx-cap"><span>${esc(nameOf(it))}</span><em>${esc(where(it))}${bn ? " · " + esc(bn) : ""}</em></div></article>`; }).join("") || `<div class="co-empty">Nothing matches.</div>`}${all.length > S.more ? `<button type="button" class="cx-more" id="coMore">Show more (${all.length - S.more})</button>` : ""}</div></div>
     ${S.selecting ? bar() : ""}</div>`;
   wire();
+  { const pc = host.querySelector("#coPct"); if (pc && typed) { pc.value = typed; if (typedFocus) pc.focus(); } }
 }
 function bar() {
   const n = S.sel.size, spaces = loadSpaces();

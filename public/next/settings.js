@@ -39,6 +39,6 @@ export function renderSettings(host) {
   const names = { ebay: "eBay", misprint: "Misprint", double_holo: "Double Holo" };
   fetch("/api/channels/status").then((r) => r.json()).then((d) => {
     const el = host.querySelector("#conn"); if (!el) return;
-    el.innerHTML = (d.channels || []).map((c) => `<div class="st-row"><span>${esc(names[c.id] || c.id)}</span><b class="${c.configured ? "okk" : "bad"}">${c.configured ? "Connected" : "Not connected"}</b></div>`).join("") || `<span class="sub">No channels reported.</span>`;
-  }).catch(() => { const el = host.querySelector("#conn"); if (el) el.innerHTML = `<span class="sub">Couldn't check right now.</span>`; });
+    el.innerHTML = (d.channels || []).map((c) => `<div class="st-row"><span>${esc(names[c.id] || c.id)}</span><b class="${c.configured ? "okk" : "bad"}">${c.configured ? "Connected" : "Not connected"}</b></div>`).join("") || `<div class="st-row"><span class="sub">No channels reported.</span></div>`;
+  }).catch(() => { const el = host.querySelector("#conn"); if (el) el.innerHTML = `<div class="st-row"><span class="sub">Couldn't check right now. Tap Sync to retry.</span></div>`; });
 }

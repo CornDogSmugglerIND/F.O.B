@@ -65,6 +65,7 @@ function drawerHtml() {
 }
 function paint() {
   const all = rows(), h = ctx.host; const groups = new Map();
+  const typedPct = h.querySelector("#chPct")?.value || "", typedQ = document.activeElement && document.activeElement.id === "chQ";
   for (const it of all) { const k = keyOf(it); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(it); }
   const total = all.reduce((a, i) => a + (i._order ? Number(i.price) || 0 : valOf(i)), 0);
   const counts = Object.fromEntries(STAGES.map(([k]) => [k, pool(k).length]));
@@ -83,6 +84,7 @@ function paint() {
     ${sections || `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing here yet."}</div>`}
     ${n ? bar(n) : ""}</div>`;
   wire(all);
+  { const pc = h.querySelector("#chPct"); if (pc && typedPct) pc.value = typedPct; if (typedQ) { const q = h.querySelector("#chQ"); if (q) { q.focus(); const n = q.value.length; try { q.setSelectionRange(n, n); } catch { /* ignore */ } } } }
 }
 function bar(n) {
   const spaces = loadSpaces();

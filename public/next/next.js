@@ -1,11 +1,11 @@
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=6";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=14";
-import { renderCollection } from "./collection.js?v=14";
+import { renderScouter } from "./scouter.js?v=16";
+import { renderCollection } from "./collection.js?v=15";
 import { photoManager } from "./photos.js?v=3";
 import { renderSpaces } from "./spaces.js?v=11";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=28";
-import { renderSettings } from "./settings.js?v=7";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=29";
+import { renderSettings } from "./settings.js?v=8";
 import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=2";
 
@@ -80,7 +80,7 @@ function openSheet(html) {
   if (window.customElements && customElements.get("ion-modal")) {
     if (modal) { const old = modal; modal = null; old.remove(); }
     const m = document.createElement("ion-modal"); const ph = phone();
-    if (ph) { m.breakpoints = [0, 0.55, 0.94]; m.initialBreakpoint = 0.94; m.handle = true; m.handleBehavior = "cycle"; }
+    if (ph) { m.breakpoints = [0, 0.55, 0.94]; m.initialBreakpoint = 0.94; m.handle = true; m.handleBehavior = "cycle"; m.expandToScroll = false; }
     m.className = "fob-sheet" + (ph ? " is-phone" : "");
     m.innerHTML = `<ion-content class="shx-c"><div class="shx"><button class="x" aria-label="Close" data-close type="button">×</button>${html}</div></ion-content>`;
     document.body.appendChild(m); modal = m;
@@ -279,7 +279,7 @@ function go(v) {
   } else run();
 }
 function go_(v) {
-  view = v; closeSheet(); document.body.dataset.view = v;
+  view = v; closeSheet(); document.body.dataset.view = v; try { dispatchEvent(new CustomEvent("fob:view", { detail: v })); } catch { /* ignore */ }
   document.querySelectorAll("#nav button").forEach((b) => { b.classList.toggle("on", b.dataset.view === v); if (b.dataset.view === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   try { history.replaceState(null, "", v === "command" ? "./" : `#${v}`); } catch { /* ignore */ }
   render();

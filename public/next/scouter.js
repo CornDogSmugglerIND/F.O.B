@@ -130,8 +130,43 @@ async function backup(item) {
 }
 
 /* ---------- painting ---------- */
-const $ = (s) => ctx.host.querySelector(s);
-function paintAll() { if (!ctx) return; ctx.host.innerHTML = shell(); wire(); paintTray(); paintFlow(); paintSaved(); }
+const $ = (s) => (ctx && ctx.host ? ctx.host.querySelector(s) : null);
+/* ---------- live camera: the handheld scanner ---------- */
+let stream = null, camTried = false, camDenied = false;
+const camOk = () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+const isPhone = () => matchMedia("(max-width:820px)").matches;
+async function startCam() {
+  if (stream || camDenied || !camOk() || !isPhone() || d.saved) { attachCam(); return; }
+  camTried = true;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1440 } } });
+    if (document.body.dataset.view !== "scouter") { stopCam(); return; }
+  } catch { camDenied = true; stream = null; }
+  attachCam();
+}
+function attachCam() {
+  const v = $("#scLive"), dz = $("#scDrop"); if (!v || !dz) return;
+  if (stream) {
+    if (v.srcObject !== stream) v.srcObject = stream;
+    v.hidden = false; v.play?.().catch(() => {}); dz.classList.add("live");
+    const t = stream.getVideoTracks()[0], cap = t && t.getCapabilities ? t.getCapabilities() : {};
+    const tb = $("#scTorch"); if (tb) tb.hidden = !cap.torch;
+  } else { v.hidden = true; dz.classList.remove("live"); }
+}
+function stopCam() { if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; } const v = $("#scLive"); if (v) { v.srcObject = null; v.hidden = true; } $("#scDrop")?.classList.remove("live"); }
+async function snap() {
+  const v = $("#scLive"); if (!stream || !v || !v.videoWidth) return false;
+  if (d.photos.filter((p) => p.picked).length >= MAX_PICK && d.photos.length >= MAX_PICK) { ctx.toast(`That's ${MAX_PICK} photos. Tap Identify.`); return true; }
+  const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext("2d").drawImage(v, 0, 0);
+  const dz = $("#scDrop"); dz?.classList.remove("flash"); void dz?.offsetWidth; dz?.classList.add("flash");
+  const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9)); if (!blob) return false;
+  addFiles([new File([blob], `scan-${Date.now()}.jpg`, { type: "image/jpeg" })]);
+  return true;
+}
+addEventListener("fob:view", (e) => { if (e.detail !== "scouter") stopCam(); else setTimeout(startCam, 50); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopCam(); else if (document.body.dataset.view === "scouter" && ctx?.host.isConnected) startCam(); });
+
+function paintAll() { if (!ctx) return; if (d.saved) stopCam(); ctx.host.innerHTML = shell(); wire(); paintTray(); paintFlow(); paintSaved(); }
 const online = () => { const l = document.getElementById("link"); return !!(l && l.classList.contains("on")); };
 function hud() {
   const n = session.reduce((a, x) => a + (Number(x.qty) || 1), 0), v = session.reduce((a, x) => a + (Number(x.price) || 0) * (Number(x.qty) || 1), 0);
@@ -163,12 +198,14 @@ function shell() {
   return `<div class="sc-wrap hh"><div class="pg-title"><h2>Scouter</h2><span>One set of photos is one item. Identify it, set the money, stage it.</span></div>${hud()}
     <section class="sc-left">
       <div class="sc-drop sc-vf" id="scDrop" tabindex="0" role="button" aria-label="Add photos">
-        <img id="scVfImg" alt="" hidden draggable="false"><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
+        <video id="scLive" playsinline muted autoplay hidden></video><img id="scVfImg" alt="" hidden draggable="false"><i class="k-reticle" aria-hidden="true"></i><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
         <div class="sc-aim"><b>Aim at the item</b><span>Take a photo, or drop and paste photos here.</span></div><div class="sc-scanmsg">Identifying…</div>
       </div>
       <input type="file" id="scFile" accept="image/*" multiple hidden><input type="file" id="scCamFile" accept="image/*" capture="environment" hidden>
-      <div class="sc-twin"><button class="sc-big snap" id="scCam" type="button"><i></i>Take photo</button><button class="sc-big scan" id="scId" type="button" disabled><i></i>Identify</button></div>
-      <button class="sc-lib" id="scPick" type="button">Choose photos from library</button>
+      <div class="sc-deck"><button class="sc-side" id="scPick" type="button" aria-label="Choose photos from library"><i class="ic-lib"></i><span>Library</span></button>
+        <button class="sc-big snap sc-trig" id="scCam" type="button" aria-label="Take photo"><i></i><span>Take photo</span><em id="scShotN"></em></button>
+        <button class="sc-side scan" id="scId" type="button" disabled aria-label="Identify"><i class="ic-id"></i><span>Identify</span></button></div>
+      <div class="sc-tools"><button class="sc-tool" id="scTorch" type="button" hidden aria-pressed="false">Light</button><button class="sc-tool" id="scType" type="button">Type it instead</button></div>
       <div class="sc-tray" id="scTray"></div>
     </section>
     <section class="sc-right" id="scFlow"></section>${pkgs()}${queue_()}</div>`;
@@ -189,7 +226,9 @@ function paintTray() {
   }));
   t.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => { const i = d.photos.findIndex((x) => x.id === b.dataset.del); if (i >= 0) { URL.revokeObjectURL(d.photos[i].preview); d.photos.splice(i, 1); } paintTray(); paintFlow(); }));
   const dz = $("#scDrop"); if (dz) dz.classList.toggle("small", d.photos.length > 0);
-  const vi = $("#scVfImg"), first = mainOf() || d.photos[0]; if (vi) { vi.hidden = !first; if (first) vi.src = first.data || first.preview; dz && dz.classList.toggle("has", !!first); }
+  const vi = $("#scVfImg"), first = mainOf() || d.photos[0]; if (vi) { vi.hidden = !first || !!stream; if (first) vi.src = first.data || first.preview; dz && dz.classList.toggle("has", !!first && !stream); }
+  if (dz && stream) dz.classList.remove("small");
+  { const sn = $("#scShotN"); if (sn) sn.textContent = d.photos.length ? String(d.photos.length) : ""; }
 }
 function paintFlow() {
   const f = $("#scFlow"); if (!f) return;
@@ -259,9 +298,12 @@ function wire() {
   const dz = $("#scDrop"); if (!dz) return;
   const file = $("#scFile"), cam = $("#scCamFile");
   const choose = () => file.click();
-  dz.addEventListener("click", (e) => { if (e.target.closest("button")) return; choose(); });
+  dz.addEventListener("click", async (e) => { if (e.target.closest("button")) return; if (stream && await snap()) return; choose(); });
   dz.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(); } });
-  $("#scPick").addEventListener("click", choose); $("#scCam").addEventListener("click", () => cam.click());
+  $("#scPick").addEventListener("click", choose); $("#scCam").addEventListener("click", async () => { if (stream && await snap()) return; cam.click(); });
+  $("#scType")?.addEventListener("click", () => { d.manual = true; paintFlow(); $("#scFlow")?.scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => $("#scMF [name=n]")?.focus(), 350); });
+  $("#scTorch")?.addEventListener("click", async (e) => { const t = stream && stream.getVideoTracks()[0]; if (!t) return; const on = e.currentTarget.getAttribute("aria-pressed") !== "true"; try { await t.applyConstraints({ advanced: [{ torch: on }] }); e.currentTarget.setAttribute("aria-pressed", String(on)); } catch { ctx.toast("This camera has no light."); } });
+  startCam();
   file.addEventListener("change", () => { addFiles(file.files); file.value = ""; }); cam.addEventListener("change", () => { addFiles(cam.files); cam.value = ""; });
   ["dragenter", "dragover"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("over"); }));
   ["dragleave", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("over"); }));
