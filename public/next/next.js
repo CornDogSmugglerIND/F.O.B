@@ -75,7 +75,7 @@ function toastUndo(msg, fn) {
 /* Sheets: real iOS sheets (Ionic ion-modal with detents + swipe) when Ionic is loaded; plain panel otherwise. */
 let modal = null;
 const sheetIsOpen = () => !!modal || !$("#sheet").hidden;
-function closeSheet() { const m = modal; modal = null; if (m) { try { Promise.resolve(m.dismiss()).finally(() => m.remove()); } catch { m.remove(); } } $("#sheet").hidden = true; $("#sheetBack").hidden = true; }
+function closeSheet() { const m = modal; modal = null; if (m) { const kill = () => { if (m.isConnected) m.remove(); }; try { Promise.resolve(m.dismiss()).finally(kill); } catch { kill(); } setTimeout(kill, 900); } $("#sheet").hidden = true; $("#sheetBack").hidden = true; }
 function openSheet(html) {
   if (window.customElements && customElements.get("ion-modal")) {
     if (modal) { const old = modal; modal = null; old.remove(); }
