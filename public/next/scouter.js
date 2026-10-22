@@ -220,13 +220,13 @@ function paintAll() { if (!ctx) return; if (d.saved || focus) stopCam(); ctx.hos
 const online = () => { const l = document.getElementById("link"); return !!(l && l.classList.contains("on")); };
 function hud() {
   const n = session.reduce((a, x) => a + (Number(x.qty) || 1), 0), v = session.reduce((a, x) => a + (Number(x.price) || 0) * (Number(x.qty) || 1), 0);
-  return `<div class="sc-hud" id="scHud"><div><em>On scouter</em><b>${n}</b></div><div><em>Value</em><b>${money(v)}</b></div><div class="live"><i></i>Live</div><div class="net${online() ? " on" : ""}"><i></i>${online() ? "eBay online" : "eBay offline"}</div></div>`;
+  return `<div class="sc-hud" id="scHud"><div><em>Scanned today</em><b>${n}</b></div><div><em>Value</em><b>${money(v)}</b></div><div class="live"><i></i>Live</div><div class="net${online() ? " on" : ""}"><i></i>${online() ? "eBay online" : "eBay offline"}</div></div>`;
 }
 function pkgs() {
   const cur = ctx.getItems(), byId = new Map(cur.map((i) => [String(i.id), i]));
   const list = session.filter((x) => !x.id || byId.has(String(x.id))).slice(0, 12);
   if (!list.length) return "";
-  return `<div class="sc-pkgs"><h3>On this scouter</h3><div class="sc-pk">${list.map((x) => { const it = x.id && byId.get(String(x.id)); const st = it ? (it.listingStatus === "listed" ? "Live" : it.phase === "staged" ? "Staged" : "Intake") : x.staged ? "Staged" : "Intake"; return `<button type="button" class="sc-pkg k-tilt"${x.id ? ` data-open="${esc(x.id)}"` : ""}>${x.photo ? `<img src="${esc(x.photo)}" alt="" draggable="false">` : "<i></i>"}<span>${esc(it ? it.title : x.title)}</span><em>${money(it ? it.price : x.price)}</em>${x.qty > 1 ? `<u>x${x.qty}</u>` : ""}<s class="${st !== "Intake" ? "ok" : ""}">${st}</s></button>`; }).join("")}</div></div>`;
+  return `<div class="sc-pkgs"><h3>Scanned today</h3><div class="sc-pk">${list.map((x) => { const it = x.id && byId.get(String(x.id)); const st = it ? (it.listingStatus === "listed" ? "Live" : it.phase === "staged" ? "Staged" : "Intake") : x.staged ? "Staged" : "Intake"; return `<button type="button" class="sc-pkg k-tilt"${x.id ? ` data-open="${esc(x.id)}"` : ""}>${x.photo ? `<img src="${esc(x.photo)}" alt="" draggable="false">` : "<i></i>"}<span>${esc(it ? it.title : x.title)}</span><em>${money(it ? it.price : x.price)}</em>${x.qty > 1 ? `<u>x${x.qty}</u>` : ""}<s class="${st !== "Intake" ? "ok" : ""}">${st}</s></button>`; }).join("")}</div></div>`;
 }
 function queue_() {
   /* exactly what Command shows at Intake and Ready to list, so the two never disagree */
@@ -305,7 +305,7 @@ function loadForId(id) {
 function shell() {
   if (focus) return `<div class="sc-wrap hh">${hud()}<div class="sc-card" id="scCard">${focusPanel()}</div>${pkgs()}${queue_()}</div>`;
   if (d.saved) return `<div class="sc-wrap hh">${hud()}<div class="sc-saved" id="scSaved"></div>${pkgs()}${queue_()}</div>`;
-  return `<div class="sc-wrap hh"><div class="pg-title"><h2>Scouter</h2><span>One set of photos is one item. Identify it, set the money, stage it.</span></div>${hud()}
+  return `<div class="sc-wrap hh"><div class="pg-title"><h2>Scouter</h2><span>Snap a few photos of one item, tap Identify, save it.</span></div>${hud()}
     <section class="sc-left">
       <div class="sc-drop sc-vf" id="scDrop" tabindex="0" role="button" aria-label="Add photos">
         <video id="scLive" playsinline muted autoplay hidden></video><img id="scVfImg" alt="" hidden draggable="false"><div class="sc-lock" id="scLock" data-mode="seek" aria-hidden="true"><i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i><svg class="sc-core" viewBox="0 0 40 40"><circle cx="20" cy="20" r="13" class="ring"/><path d="M20 3v7M20 30v7M3 20h7M30 20h7" class="tk"/><circle cx="20" cy="20" r="1.6" class="dot"/></svg><span class="sc-lk" id="scLk">Seeking</span></div><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
@@ -350,7 +350,7 @@ function paintFlow() {
   else if (d.idState === "ok") step1 = `<div class="sc-step ok"><span>Identified</span><b>${esc(d.title)}</b><button class="btn" id="scRe" type="button">Identify again</button></div>`;
   else if (d.idState === "pick") step1 = `<div class="sc-step"><b>Not sure. Which one is it?</b><span>${esc(d.idMsg)}</span>${d.candidates.map((c, i) => `<button class="sc-cand" data-c="${i}" type="button">${esc([c.product_name, c.collector_number, c.set_name, c.finish].filter(Boolean).join(" · "))}</button>`).join("")}<button class="btn" id="scMan" type="button">None of these. I'll type it</button></div>`;
   else if (d.idState === "fail" || d.manual) step1 = d.manual ? manualForm() : `<div class="sc-step"><b>Couldn't identify it</b><span>${esc(d.idMsg)}</span><button class="btn" id="scRe" type="button">Try again</button><button class="btn" id="scMan" type="button">I'll type it</button></div>`;
-  else step1 = `<div class="sc-step idle"><b>${picked ? "Ready to identify" : "Nothing in the viewfinder"}</b><span>${picked ? `${picked} photo${picked > 1 ? "s" : ""} ready. Tap Identify to read it.` : "Take a photo to start."}</span><button class="btn" id="scMan" type="button">Type it instead</button></div>`;
+  else step1 = `<div class="sc-step idle"><b>${picked ? "Ready to identify" : "No photos yet"}</b><span>${picked ? `${picked} photo${picked > 1 ? "s" : ""} ready. Tap Identify to read it.` : "Take a photo to start."}</span><button class="btn" id="scMan" type="button">Type it instead</button></div>`;
   const mkNote = d.marketState === "loading" ? "Looking up value…" : d.marketNote;
   f.innerHTML = `${step1}
     <div class="sc-step money"><b>Money</b>
@@ -389,7 +389,7 @@ function paintSaved() {
   const it = d.saved.item, b = d.saved.backup, ready = it.phase === "staged";
   s.innerHTML = `<div class="sc-done"><i>✓</i><h2>Saved</h2><p><b>${esc(it.title)}</b> is in <b>${ready ? "Ready to list" : "Intake"}</b>${it.price ? ` · market ${money(it.price)}` : ""}.</p>
     <small class="sc-note">${b.state === "run" ? `Backing up photos ${b.done}/${b.total}…` : b.state === "ok" ? "Photos backed up." : "Saved on this device. Backup skipped."}</small>
-    <div class="sc-next"><button class="btn go" id="scNext" type="button">${ready ? "Build the listing" : "Identify it now"}</button>${ready ? `<button class="btn" id="scOpen" type="button">Put it in a bin or fix it</button>` : ""}<button class="btn" id="scAgain" type="button">Scout another item</button></div></div>`;
+    <div class="sc-next"><button class="btn go" id="scNext" type="button">${ready ? "Build the listing" : "Identify it now"}</button>${ready ? `<button class="btn" id="scOpen" type="button">Put it in a bin or fix it</button>` : ""}<button class="btn" id="scAgain" type="button">Scan the next item</button></div></div>`;
   $("#scOpen")?.addEventListener("click", () => { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); openFocus(it.id, [String(it.id)]); });
   $("#scAgain")?.addEventListener("click", () => { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); });
   $("#scNext")?.addEventListener("click", () => { if (ready) { ctx.build(it.id); } else { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); ctx.toast("Add the photos again to identify, or open it from Command."); } });

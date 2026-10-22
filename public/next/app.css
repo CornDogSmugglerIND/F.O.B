@@ -1,0 +1,51 @@
+/* ===== App feel (Oct 22): floating dock, type with character, text that never sinks into the wallpaper ===== */
+:root{
+  --disp:"Space Grotesk","SF Pro Display",system-ui,sans-serif;
+  --text:"Inter","SF Pro Text",system-ui,sans-serif;
+  --ink:#F1F5F3;--mute:#A9B6B0;
+  --dock-h:68px;
+}
+body{font-family:var(--text);font-weight:500;letter-spacing:-.005em;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.btn,.cx-btn,.sc-big,.tag span,.stat b,.sc-hud b,.cm-big{font-family:var(--disp);letter-spacing:-.015em}
+h1,h2{font-weight:700;color:var(--ink)}
+h2{font-size:clamp(22px,2.4vw,30px);line-height:1.15}
+h3{font-weight:700;color:var(--ink)}
+.sub,small,.pg-title span{color:var(--mute)}
+/* words on top of the smoke get a soft backing so they read */
+.pg-title h2,.pg-title span,.sc-qh h3,.sc-qh small,.sc-pkgs h3,.cx-head h2,.ch-head h2,.spx-head h2{text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 18px rgba(0,0,0,.6)}
+/* dim the wallpaper behind the content column so text never bleeds into it */
+body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse 70% 85% at 50% 45%,rgba(14,17,16,.78),rgba(14,17,16,.35) 70%,rgba(14,17,16,0))}
+main,.top,.nav{z-index:6}
+
+/* ---- the dock: one floating bar at the bottom on every screen ---- */
+.nav,html .nav{position:fixed!important;top:auto!important;left:50%!important;right:auto!important;bottom:calc(14px + var(--sab,0px))!important;transform:translateX(-50%);width:auto!important;height:var(--dock-h)!important;
+  flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:4px!important;padding:6px 10px!important;border-radius:999px!important;
+  background:linear-gradient(180deg,rgba(38,44,42,.86),rgba(14,17,16,.94))!important;border:1px solid rgba(255,255,255,.1)!important;
+  box-shadow:0 18px 44px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.1)!important;backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3);z-index:30!important}
+.nav button{width:auto!important;min-width:64px;flex:none!important;height:54px;padding:6px 10px!important;border-radius:999px!important;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font:600 11px var(--disp)!important;letter-spacing:.01em!important;color:var(--mute)}
+.nav button i{margin:0!important}
+.nav button.on{color:var(--ink)!important}
+/* Scan: the big button in the middle, like a scanner trigger */
+.nav button[data-view=scouter]{min-width:76px;height:76px;margin:-22px 6px 0;border-radius:50%!important;color:#05130c!important;
+  background:radial-gradient(circle at 50% 30%,#E2FFF0,#9BF0C7 60%,#5FCF98)!important;box-shadow:0 10px 26px rgba(90,230,160,.35),0 0 0 5px rgba(14,17,16,.95),inset 0 1px 0 rgba(255,255,255,.7)!important;font-weight:700!important}
+.nav button[data-view=scouter] i svg{stroke:#05130c!important;filter:none!important}
+.nav button[data-view=scouter].on{box-shadow:0 10px 30px rgba(90,230,160,.55),0 0 0 5px rgba(14,17,16,.95),0 0 0 7px rgba(179,251,213,.5)!important}
+.nav .nav-ind{display:none!important}
+.nav button.on:not([data-view=scouter])::after{content:"";position:absolute;left:50%;bottom:3px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--sea);box-shadow:0 0 8px var(--sea)}
+
+/* content now uses the full width; leave room for the dock */
+@media (min-width:821px){
+  .top{left:20px!important}
+  main{left:20px!important;bottom:calc(var(--dock-h) + 30px)!important}
+}
+@media (max-width:820px){
+  .nav,html .nav{left:50%!important;width:calc(100% - 20px)!important;max-width:460px;justify-content:space-between!important;padding:6px 8px!important;border-top:1px solid rgba(255,255,255,.1)!important}
+  .nav button{min-width:0;flex:1!important;padding:6px 2px!important;font-size:10.5px!important}
+  .nav button[data-view=scouter]{flex:none!important;width:68px;min-width:68px;height:68px;margin:-24px 2px 0}
+  main{bottom:calc(var(--dock-h) + 22px + var(--sab,0px))!important}
+}
+@media (prefers-reduced-motion:no-preference){.nav button{transition:color .2s,transform .2s}.nav button:active{transform:scale(.94)}}
+/* toasts and the roadmap's action pills sit above the dock */
+.toast{bottom:calc(var(--dock-h) + 34px + var(--sab,0px))!important}
+@media (min-width:821px){.dock{bottom:12px!important}.hint{bottom:12px!important}}

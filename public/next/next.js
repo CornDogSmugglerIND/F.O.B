@@ -1,7 +1,7 @@
 import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=6";
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=7";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=21";
+import { renderScouter } from "./scouter.js?v=22";
 import { renderCollection, openImport } from "./collection.js?v=18";
 import { photoManager } from "./photos.js?v=4";
 import { renderSpaces } from "./spaces.js?v=13";
