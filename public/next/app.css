@@ -49,3 +49,6 @@ main,.top,.nav{z-index:6}
 /* toasts and the roadmap's action pills sit above the dock */
 .toast{bottom:calc(var(--dock-h) + 34px + var(--sab,0px))!important}
 @media (min-width:821px){.dock{bottom:12px!important}.hint{bottom:12px!important}}
+/* selection bars float just above the dock */
+.co-bar,.cx-bar{left:50%!important;right:auto!important;transform:translateX(-50%);width:min(1100px,calc(100% - 24px));bottom:calc(var(--dock-h) + 30px + var(--sab,0px))!important;z-index:31!important}
+body:has(.co-bar) .toast,body:has(.cx-bar) .toast{bottom:calc(var(--dock-h) + 150px + var(--sab,0px))!important}

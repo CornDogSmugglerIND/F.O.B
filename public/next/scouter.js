@@ -220,7 +220,7 @@ function paintAll() { if (!ctx) return; if (d.saved || focus) stopCam(); ctx.hos
 const online = () => { const l = document.getElementById("link"); return !!(l && l.classList.contains("on")); };
 function hud() {
   const n = session.reduce((a, x) => a + (Number(x.qty) || 1), 0), v = session.reduce((a, x) => a + (Number(x.price) || 0) * (Number(x.qty) || 1), 0);
-  return `<div class="sc-hud" id="scHud"><div><em>Scanned today</em><b>${n}</b></div><div><em>Value</em><b>${money(v)}</b></div><div class="live"><i></i>Live</div><div class="net${online() ? " on" : ""}"><i></i>${online() ? "eBay online" : "eBay offline"}</div></div>`;
+  return `<div class="sc-hud" id="scHud"><div class="sc-tally"><b>${n}</b><em>${n === 1 ? "item" : "items"} scanned</em><i></i><b>${money(v)}</b><em>total</em></div><div class="net${online() ? " on" : ""}"><i></i>${online() ? "eBay connected" : "eBay not connected"}</div></div>`;
 }
 function pkgs() {
   const cur = ctx.getItems(), byId = new Map(cur.map((i) => [String(i.id), i]));
@@ -307,15 +307,16 @@ function shell() {
   if (d.saved) return `<div class="sc-wrap hh">${hud()}<div class="sc-saved" id="scSaved"></div>${pkgs()}${queue_()}</div>`;
   return `<div class="sc-wrap hh"><div class="pg-title"><h2>Scouter</h2><span>Snap a few photos of one item, tap Identify, save it.</span></div>${hud()}
     <section class="sc-left">
-      <div class="sc-drop sc-vf" id="scDrop" tabindex="0" role="button" aria-label="Add photos">
+      <div class="sc-drop sc-vf" id="scDrop" aria-label="Camera">
         <video id="scLive" playsinline muted autoplay hidden></video><img id="scVfImg" alt="" hidden draggable="false"><div class="sc-lock" id="scLock" data-mode="seek" aria-hidden="true"><i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i><svg class="sc-core" viewBox="0 0 40 40"><circle cx="20" cy="20" r="13" class="ring"/><path d="M20 3v7M20 30v7M3 20h7M30 20h7" class="tk"/><circle cx="20" cy="20" r="1.6" class="dot"/></svg><span class="sc-lk" id="scLk">Seeking</span></div><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
-        <div class="sc-aim"><b>Aim at the item</b><span>Take a photo, or drop and paste photos here.</span></div><div class="sc-scanmsg">Identifying…</div>
-      </div>
-      <input type="file" id="scFile" accept="image/*" multiple hidden><input type="file" id="scCamFile" accept="image/*" capture="environment" hidden>
-      <div class="sc-deck"><button class="sc-side" id="scPick" type="button" aria-label="Choose photos from library"><i class="ic-lib"></i><span>Library</span></button>
+        <div class="sc-aim"><b>Point at the item</b><span>Tap the big button to take a photo. On a computer, drop or paste photos here.</span></div><div class="sc-scanmsg">Identifying…</div>
+        <div class="sc-tools"><button class="sc-tool" id="scType" type="button">Type it in</button><button class="sc-tool" id="scTorch" type="button" hidden aria-pressed="false">Light</button></div>
+        <div class="sc-deck"><button class="sc-side" id="scPick" type="button" aria-label="Choose photos from your library"><i class="ic-lib"></i><span>Photos</span></button>
         <button class="sc-big snap sc-trig" id="scCam" type="button" aria-label="Take photo"><i></i><span>Take photo</span><em id="scShotN"></em></button>
         <button class="sc-side scan" id="scId" type="button" disabled aria-label="Identify"><i class="ic-id"></i><span>Identify</span></button></div>
-      <div class="sc-tools"><button class="sc-tool" id="scTorch" type="button" hidden aria-pressed="false">Light</button><button class="sc-tool" id="scType" type="button">Type it instead</button></div>
+      </div>
+      <input type="file" id="scFile" accept="image/*" multiple hidden><input type="file" id="scCamFile" accept="image/*" capture="environment" hidden>
+
       <div class="sc-tray" id="scTray"></div>
     </section>
     <section class="sc-right" id="scFlow"></section>${pkgs()}${queue_()}</div>`;

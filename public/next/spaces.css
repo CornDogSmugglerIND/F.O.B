@@ -109,3 +109,17 @@
 .pk-bins{display:flex;gap:8px;flex-wrap:wrap}.pk-bin{flex:1 1 90px;min-height:48px;border-radius:12px;border:1px solid var(--chrome);background:#121413;color:var(--ink);font:inherit;font-weight:700}
 .pk-bin:disabled{opacity:.4}.pk-bar.on .pk-bin{background:#1b2a22;border-color:var(--sea,#B3FBD5)}.pk-bin.over{background:var(--sea,#B3FBD5);color:#06110b}
 .pk-grid{grid-auto-rows:max-content}.pk-tile{width:100%;height:auto;min-height:136px;display:block}.pk-tile img{position:absolute;inset:0}
+/* zoomed onto one bin (Oct 22) */
+.spx-cam{position:relative;height:min(62vh,640px);border-radius:26px;overflow:hidden;background:#070908;box-shadow:0 24px 54px rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.08);touch-action:pan-x}
+.spx-pan{position:absolute;inset:0;transform-origin:50% 50%;will-change:transform}
+.spx-pan>img{width:100%;height:100%;object-fit:contain;display:block}
+.spx-fhot{position:absolute;border-radius:14px;border:2px solid transparent;background:rgba(0,0,0,.35);transition:background .3s,border-color .3s,box-shadow .3s;cursor:pointer}
+.spx-fhot.on{background:transparent;border-color:rgba(179,251,213,.85);box-shadow:0 0 0 2000px rgba(0,0,0,.45),0 0 26px rgba(120,255,190,.45)}
+.spx-fnav{position:absolute;right:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;z-index:3}
+.spx-fbtn{appearance:none;width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#F1F5F3;font:700 20px/1 var(--disp);cursor:pointer}
+.spx-fbtn:disabled{opacity:.3}
+.spx-fcard{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;padding:14px 16px;border-radius:20px;background:linear-gradient(170deg,rgba(30,36,34,.94),rgba(14,17,16,.97));border:1px solid rgba(255,255,255,.08)}
+.spx-fcard b{display:block;font:700 22px var(--disp);color:#F1F5F3}
+.spx-fcard em{display:block;font-style:normal;color:var(--mute);margin-top:2px}
+.spx-fcard .btn{flex:none;min-width:120px}
+@media (max-width:820px){.spx-cam{height:52vh}}

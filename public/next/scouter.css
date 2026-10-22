@@ -182,3 +182,36 @@
 .sc-card{grid-column:1/-1}
 .scc-go,.scc-go span{color:#04130b!important;opacity:1!important}
 .scc-tag{color:#04130b!important;opacity:1!important}
+/* ===== scanner (Oct 22): the camera IS the screen; controls sit on it; no wires ===== */
+.sc-vf{position:relative}
+.sc-vf::before,.sc-vf .k-br,.sc-beam{display:none!important}
+.sc-vf,.sc-vf.live{border:1px solid rgba(255,255,255,.08)!important;box-shadow:0 22px 50px rgba(0,0,0,.6)!important;background:#060807!important}
+.sc-vf .sc-deck{position:absolute;left:0;right:0;bottom:0;margin:0;padding:18px 18px 20px;z-index:4;background:linear-gradient(0deg,rgba(0,0,0,.72),rgba(0,0,0,0));grid-template-columns:1fr auto 1fr}
+.sc-vf .sc-tools{position:absolute;top:14px;right:14px;z-index:4;margin:0;flex-direction:column;align-items:flex-end;gap:8px}
+.sc-vf .sc-tool{background:rgba(0,0,0,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.16);font:600 14px var(--disp)}
+.sc-vf .sc-side{color:#EAF2EE}
+.sc-vf .sc-side span{font:600 13px var(--disp);text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.sc-vf .sc-side i{background:rgba(0,0,0,.5)!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.2)!important}
+.sc-vf .sc-trig{background:none!important;border:4px solid rgba(255,255,255,.92)!important;box-shadow:0 6px 20px rgba(0,0,0,.5)!important}
+.sc-vf .sc-trig i{background:radial-gradient(circle at 50% 35%,#F2FFF8,#A6F2CD 70%,#6FD8A3)!important;box-shadow:none!important}
+.sc-aim{padding-bottom:110px}
+.sc-aim b{font:700 21px var(--disp)!important;color:#F1F5F3}
+.sc-aim span{color:#B9C4BF!important;max-width:280px;margin:0 auto}
+/* one simple readout instead of four boxes */
+.sc-hud{display:flex!important;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.sc-hud>div::after{display:none!important}
+.sc-hud>div{border:0!important;background:none!important;padding:0!important}
+.sc-tally{flex-direction:row!important;align-items:baseline!important;gap:6px;flex-wrap:wrap}
+.sc-tally b{font:700 24px var(--disp)!important;color:#F1F5F3!important}
+.sc-tally em{font:500 14px var(--text)!important;letter-spacing:0!important;text-transform:none!important;color:var(--mute)!important}
+.sc-tally i{width:1px;height:18px;background:rgba(255,255,255,.18);margin:0 6px;align-self:center}
+.sc-hud .net{flex-direction:row!important;gap:7px;font:600 12px var(--disp)!important;letter-spacing:0!important;text-transform:none!important;color:var(--mute)}
+.sc-hud .net i{width:8px;height:8px;border-radius:50%;background:#6b7570}
+.sc-hud .net.on i{background:#7CF0B5;box-shadow:0 0 8px #7CF0B5}
+.sc-step::after{display:none!important}
+.sc-step{border:1px solid rgba(255,255,255,.08)!important;border-radius:20px!important;background:linear-gradient(170deg,rgba(30,36,34,.92),rgba(14,17,16,.96))!important}
+@media (max-width:820px){
+  .sc-wrap .pg-title{display:none}
+  .sc-vf{height:calc(100dvh - var(--sat,0px) - var(--sab,0px) - 66px - var(--dock-h) - 120px)!important;min-height:360px;border-radius:30px}
+}
+@media (min-width:821px){.sc-vf .sc-deck{padding:16px 22px}}

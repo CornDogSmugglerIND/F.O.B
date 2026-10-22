@@ -1,10 +1,10 @@
 import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=6";
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=7";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=22";
+import { renderScouter } from "./scouter.js?v=23";
 import { renderCollection, openImport } from "./collection.js?v=18";
 import { photoManager } from "./photos.js?v=4";
-import { renderSpaces } from "./spaces.js?v=13";
+import { renderSpaces } from "./spaces.js?v=14";
 import { renderChannels, buildListing, variationListing } from "./channels.js?v=32";
 import { renderSettings } from "./settings.js?v=9";
 import { initSync } from "./sync.js?v=4";
