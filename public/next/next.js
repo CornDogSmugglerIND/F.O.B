@@ -76,8 +76,8 @@ function toastUndo(msg, fn) {
 }
 /* Sheets: real iOS sheets (Ionic ion-modal with detents + swipe) when Ionic is loaded; plain panel otherwise. */
 let modal = null;
-const sheetIsOpen = () => !!modal || !$("#sheet").hidden;
-function closeSheet() { const m = modal; modal = null; if (m) { const kill = () => { if (m.isConnected) m.remove(); }; try { Promise.resolve(m.dismiss()).finally(kill); } catch { kill(); } setTimeout(kill, 900); } $("#sheet").hidden = true; $("#sheetBack").hidden = true; }
+const sheetIsOpen = () => !!(modal && modal.isConnected) || !$("#sheet").hidden;
+function closeSheet() { const m = modal; modal = null; if (m) { const kill = () => { if (m.isConnected) m.remove(); }; try { Promise.resolve(m.__p).catch(() => {}).then(() => m.dismiss()).finally(kill); } catch { kill(); } setTimeout(kill, 1100); } $("#sheet").hidden = true; $("#sheetBack").hidden = true; }
 function openSheet(html) {
   if (window.customElements && customElements.get("ion-modal")) {
     if (modal && modal.isConnected && modal.classList.contains("show-modal")) {
@@ -92,13 +92,15 @@ function openSheet(html) {
     const m = document.createElement("ion-modal"); const ph = phone();
     if (ph) { m.breakpoints = [0, 0.55, 0.94]; m.initialBreakpoint = 0.94; m.handle = true; m.handleBehavior = "cycle"; m.expandToScroll = false; }
     m.className = "fob-sheet" + (ph ? " is-phone" : "");
+    /* Reduce Motion: no slide, the sheet is there and tappable instantly */
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) m.animated = false;
     m.innerHTML = `<ion-content class="shx-c"><div class="shx"><button class="x" aria-label="Close" data-close type="button">×</button>${html}</div></ion-content>`;
     document.body.appendChild(m); modal = m;
     const gone = () => { if (modal === m) modal = null; m.remove(); };
     m.addEventListener("ionModalDidDismiss", gone); m.addEventListener("didDismiss", gone);
     const s = m.querySelector(".shx");
     s.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", closeSheet));
-    m.present();
+    m.__p = m.present();
     return s;
   }
   const s = $("#sheet"); s.innerHTML = `<button class="x" aria-label="Close" data-close>×</button>${html}`; s.hidden = false; $("#sheetBack").hidden = false;
@@ -339,12 +341,15 @@ let pressing = false, pressT = 0;
 document.addEventListener("pointerdown", () => { pressing = true; clearTimeout(pressT); }, true);
 const release = () => { clearTimeout(pressT); pressT = setTimeout(() => { pressing = false; }, 350); };
 document.addEventListener("pointerup", release, true); document.addEventListener("pointercancel", release, true);
+let softT = 0;
 function softRender() {
   if (pressing) { setTimeout(softRender, 400); return; }
   purgeDemo();
   const l = loadItems(), n = sigOf(l); items = l; renderStats();
-  if (n === sig) return; sig = n;
-  if (sheetIsOpen() || document.querySelector(".k-zoom") || document.querySelector(".ghost")) return;
+  if (n === sig) return;
+  /* busy (sheet open, dragging): keep the change and redraw once you're back */
+  if (sheetIsOpen() || document.querySelector(".k-zoom") || document.querySelector(".ghost")) { clearTimeout(softT); softT = setTimeout(softRender, 1200); return; }
+  sig = n;
   if (view === "scouter" || view === "settings" || view === "spaces") return;
   const m = $("#main"), y = m.scrollTop; render(); m.scrollTop = y;
 }
@@ -386,7 +391,7 @@ async function pullOrders() {
     const o = await fetch("/api/channels/ebay/orders?days=90");
     if (o.ok) {
       const ob = await o.json().catch(() => ({})); const ords = (ob.orders || []).filter((x) => x.orderId);
-      if (ords.length || ob.ok) saveOrders(ords);
+      if (Array.isArray(ob.orders)) saveOrders(ords);
       for (const ord of ords) for (const li of ord.items || []) { if (li.sku) bySku.set(li.sku, ord.status === "label_created" ? "sold" : "shipped"); }
     }
   } catch { /* orders optional */ }
@@ -429,6 +434,8 @@ async function syncAll(auto) {
 }
 $("#syncBtn").addEventListener("click", () => syncAll(false));
 initKit(); initAvatar();
+/* warm up the sheet engine so the first sheet opens instantly (and Back works right away) */
+customElements.whenDefined("ion-modal").then(() => { const w = document.createElement("div"); w.hidden = true; w.setAttribute("aria-hidden", "true"); w.innerHTML = "<ion-modal class=\"fob-warm\"><ion-content></ion-content></ion-modal>"; document.body.appendChild(w); const m = w.firstChild; Promise.resolve(m.componentOnReady?.()).then(() => m.querySelector("ion-content")?.componentOnReady?.()).finally(() => setTimeout(() => w.remove(), 50)); }).catch(() => {});
 const h = (location.hash || "").slice(1);
 go(["scouter", "collection", "channels", "spaces", "settings"].includes(h) ? h : "command");
 initSync(() => softRender());
