@@ -1,4 +1,5 @@
-import { isArchived } from "./shared.js?v=6";
+import { isArchived, loadSpaces, assign } from "./shared.js?v=6";
+import { phaseFromItem } from "/visor/phases.js?v=3";
 /* Scouter: one upload = one item. Photos preview instantly, get shrunk off the
  * hot path, nothing is saved until Save is pressed. */
 const MAX_PICK = 5;
@@ -18,6 +19,7 @@ function blank() {
   return { photos: [], main: null, paid: "", market: "", marketNote: "", marketState: "idle", qty: 1, title: "", identity: null, idState: "idle", idMsg: "", candidates: [], manual: false, saved: null, reid: null };
 }
 let d = blank();
+let focus = null; // a staged item open on the scanner: { id, ids }
 const session = []; // this sitting's scans, shown as little package cards
 let ctx = null; // { host, getItems, setItems, toast, go }
 
@@ -86,8 +88,9 @@ async function fetchMarket() {
   const q = [id.product_name, id.collector_number, id.set_name].filter(Boolean).join(" ");
   d.marketState = "loading"; paintFlow();
   try {
-    const r = await (await fetch(`/api/scouter/comps?q=${encodeURIComponent(q)}`)).json();
-    if (r.ok) { d.market = String(r.value); d.marketNote = `from ${r.count} ${r.basis}`; d.marketState = "ok"; }
+    const qs = new URLSearchParams({ q, name: id.product_name || "", number: id.collector_number || "", set: id.set_name || "", finish: id.finish || "", game: id.game || "" });
+    const r = await (await fetch(`/api/scouter/comps?${qs}`)).json();
+    if (r.ok) { d.market = String(r.value); d.marketNote = r.basis === "TCGplayer market" ? `TCGplayer market${r.matched ? ` · ${r.matched}` : ""}` : `from ${r.count} ${r.basis}`; d.marketState = "ok"; }
     else { d.marketState = "miss"; d.marketNote = r.reason === "no matching listings" ? "No matching listings found. Type a value." : "Couldn't look up a value. Type one."; }
   } catch { d.marketState = "miss"; d.marketNote = "Couldn't look up a value. Type one."; }
   paintFlow();
@@ -115,7 +118,7 @@ async function save() {
   if (d.reid) { const old = list.find((x) => String(x.id) === String(d.reid)); if (old) { Object.assign(item, { id: old.id, createdAt: old.createdAt, notes: old.notes || "", collections: old.collections || [], spaceId: old.spaceId || null, sku: old.sku, channels: old.channels || {} }); list = list.filter((x) => x !== old); } }
   try { ctx.setItems([item, ...list]); } catch { ctx.toast("Couldn't save. Storage is full."); if (btn) { btn.disabled = false; btn.textContent = "Save item"; } return; }
   try { let u = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); u += (k.length + (localStorage.getItem(k) || "").length) * 2; } if (u > 4.2 * 1048576) ctx.toast("Device storage is about " + Math.round(u / 52428.8) + "% full. List or remove items soon."); } catch { /* ignore */ }
-  session.unshift({ title: item.title, qty: item.quantity, price: item.price, photo: stored[0] && stored[0].dataUrl, staged: item.phase === "staged" });
+  session.unshift({ id: item.id, title: item.title, qty: item.quantity, price: item.price, photo: stored[0] && stored[0].dataUrl, staged: item.phase === "staged" });
   d.saved = { item, backup: { done: 0, total: stored.length, state: "run" } };
   paintAll(); backup(item);
 }
@@ -137,7 +140,7 @@ let stream = null, camTried = false, camDenied = false;
 const camOk = () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 const isPhone = () => matchMedia("(max-width:820px)").matches;
 async function startCam() {
-  if (stream || camDenied || !camOk() || !isPhone() || d.saved) { attachCam(); return; }
+  if (focus) return; if (stream || camDenied || !camOk() || !isPhone() || d.saved) { attachCam(); return; }
   camTried = true;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1440 } } });
@@ -213,25 +216,84 @@ async function snap() {
 addEventListener("fob:view", (e) => { if (e.detail !== "scouter") stopCam(); else setTimeout(startCam, 50); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopCam(); else if (document.body.dataset.view === "scouter" && ctx?.host.isConnected) startCam(); });
 
-function paintAll() { if (!ctx) return; if (d.saved) stopCam(); ctx.host.innerHTML = shell(); wire(); paintTray(); paintFlow(); paintSaved(); }
+function paintAll() { if (!ctx) return; if (d.saved || focus) stopCam(); ctx.host.innerHTML = shell(); wire(); paintTray(); paintFlow(); paintSaved(); wireCard(); }
 const online = () => { const l = document.getElementById("link"); return !!(l && l.classList.contains("on")); };
 function hud() {
   const n = session.reduce((a, x) => a + (Number(x.qty) || 1), 0), v = session.reduce((a, x) => a + (Number(x.price) || 0) * (Number(x.qty) || 1), 0);
   return `<div class="sc-hud" id="scHud"><div><em>On scouter</em><b>${n}</b></div><div><em>Value</em><b>${money(v)}</b></div><div class="live"><i></i>Live</div><div class="net${online() ? " on" : ""}"><i></i>${online() ? "eBay online" : "eBay offline"}</div></div>`;
 }
 function pkgs() {
-  if (!session.length) return "";
-  return `<div class="sc-pkgs"><h3>On this scouter</h3><div class="sc-pk">${session.slice(0, 12).map((x) => `<div class="sc-pkg k-tilt">${x.photo ? `<img src="${esc(x.photo)}" alt="" draggable="false">` : "<i></i>"}<span>${esc(x.title)}</span><em>${money(x.price)}</em>${x.qty > 1 ? `<u>x${x.qty}</u>` : ""}<s class="${x.staged ? "ok" : ""}">${x.staged ? "Staged" : "Intake"}</s></div>`).join("")}</div></div>`;
+  const cur = ctx.getItems(), byId = new Map(cur.map((i) => [String(i.id), i]));
+  const list = session.filter((x) => !x.id || byId.has(String(x.id))).slice(0, 12);
+  if (!list.length) return "";
+  return `<div class="sc-pkgs"><h3>On this scouter</h3><div class="sc-pk">${list.map((x) => { const it = x.id && byId.get(String(x.id)); const st = it ? (it.listingStatus === "listed" ? "Live" : it.phase === "staged" ? "Staged" : "Intake") : x.staged ? "Staged" : "Intake"; return `<button type="button" class="sc-pkg k-tilt"${x.id ? ` data-open="${esc(x.id)}"` : ""}>${x.photo ? `<img src="${esc(x.photo)}" alt="" draggable="false">` : "<i></i>"}<span>${esc(it ? it.title : x.title)}</span><em>${money(it ? it.price : x.price)}</em>${x.qty > 1 ? `<u>x${x.qty}</u>` : ""}<s class="${st !== "Intake" ? "ok" : ""}">${st}</s></button>`; }).join("")}</div></div>`;
 }
 function queue_() {
-  const all = ctx.getItems().filter((i) => !i.ended && i.listingStatus !== "listed" && !isArchived(i.id));
-  const wait = all.filter((i) => i.phase === "intake"), ready = all.filter((i) => i.phase === "staged" && i.source === "scouter");
-  const tile = (i, k) => `<button class="sc-q k-tilt" data-q="${esc(i.id)}" data-k="${k}" type="button">${i.photos?.[0] ? `<img src="${esc(i.photos[0].dataUrl || i.photos[0].url || "")}" alt="" loading="lazy" draggable="false">` : "<i></i>"}<span>${esc(i.title || "Untitled item")}</span><u class="sc-qx" data-qdel="${esc(i.id)}" role="button" aria-label="Delete this item">×</u></button>`;
-  const row = (t, sub, l, k) => l.length ? `<div class="sc-qh"><h3>${t}</h3><em>${l.length}</em><small>${sub}</small></div><div class="sc-qs">${l.slice(0, 30).map((i) => tile(i, k)).join("")}</div>` : "";
-  const out = row("Waiting to identify", "Tap one to read it", wait, "wait") + row("Ready to list", "Tap one to build the listing", ready, "ready");
-  return out ? `<section class="sc-queue">${out}</section>` : "";
+  /* exactly what Command shows at Intake and Ready to list, so the two never disagree */
+  const all = ctx.getItems().filter((i) => (i.source === "scouter" || i.source === "app") && !i.ended && !isArchived(i.id));
+  const wait = all.filter((i) => phaseFromItem(i) === "intake"), ready = all.filter((i) => phaseFromItem(i) === "staged");
+  const tile = (i, k) => `<button class="sc-q k-tilt" data-q="${esc(i.id)}" data-k="${k}" type="button">${i.photos?.[0] ? `<img src="${esc(i.photos[0].dataUrl || i.photos[0].url || "")}" alt="" loading="lazy" draggable="false">` : "<i></i>"}<span>${esc(i.title || "Untitled item")}</span>${i.price ? `<em>${money(i.price)}</em>` : ""}<u class="sc-qx" data-qdel="${esc(i.id)}" role="button" aria-label="Delete this item">×</u></button>`;
+  const row = (t, sub, l, k, acts = "") => l.length ? `<div class="sc-qh"><h3>${t}</h3><em>${l.length}</em><small>${sub}</small>${acts}</div><div class="sc-qs">${l.slice(0, 30).map((i) => tile(i, k)).join("")}</div>` : "";
+  const out = row("Waiting to identify", "Tap one to read it", wait, "wait") + row("Ready to list", "Tap one to list it, bin it or fix it", ready, "ready", ready.length > 1 ? `<button type="button" class="sc-qa" id="scVar">List several as one</button>` : "");
+  const tools = `<div class="sc-qtools"><button type="button" class="sc-qa" id="scCsv">Import a CSV</button></div>`;
+  return `<section class="sc-queue">${out}${tools}</section>`;
+}
+function repaintLists() {
+  if (!ctx || !ctx.host.isConnected) return;
+  const q = ctx.host.querySelector(".sc-queue"), p = ctx.host.querySelector(".sc-pkgs"), tmp = document.createElement("div");
+  tmp.innerHTML = pkgs() + queue_();
+  const np = tmp.querySelector(".sc-pkgs"), nq = tmp.querySelector(".sc-queue");
+  if (p) { if (np) p.replaceWith(np); else p.remove(); } else if (np && q) q.before(np);
+  if (q && nq) q.replaceWith(nq);
+  const h = ctx.host.querySelector("#scHud"); if (h) { tmp.innerHTML = hud(); h.replaceWith(tmp.firstElementChild); }
+  wireQueue();
+}
+window.__fobScRepaint = () => { if (focus && !ctx.getItems().some((i) => String(i.id) === focus.id && phaseFromItem(i) === "staged")) { nextFocus(); return; } if (focus) { const c = ctx.host.querySelector("#scCard"); if (c) { c.innerHTML = focusPanel(); wireCard(); } } repaintLists(); };
+/* ---------- a staged card open on the scanner: list it, bin it, fix it, flip to the next ---------- */
+function openFocus(id, ids) { focus = { id: String(id), ids: (ids && ids.length ? ids : [id]).map(String) }; d.saved = null; paintAll(); try { document.getElementById("main").scrollTo({ top: 0, behavior: "smooth" }); } catch { /* ignore */ } }
+function nextFocus() {
+  if (!focus) return; const live = new Set(ctx.getItems().filter((i) => phaseFromItem(i) === "staged" && !isArchived(i.id)).map((i) => String(i.id)));
+  const k = focus.ids.indexOf(focus.id); const rest = focus.ids.filter((x) => live.has(x));
+  const nxt = focus.ids.slice(k + 1).find((x) => live.has(x)) || focus.ids.slice(0, k).reverse().find((x) => live.has(x));
+  if (nxt) { focus = { id: nxt, ids: rest }; } else focus = null;
+  paintAll();
+}
+function focusPanel() {
+  const it = ctx.getItems().find((x) => String(x.id) === focus.id); if (!it) return "";
+  const i = focus.ids.indexOf(focus.id), n = focus.ids.length, ph = it.photos?.[0] ? (it.photos[0].dataUrl || it.photos[0].url) : "";
+  const bins = loadSpaces().filter((b) => b.phys), bin = bins.find((b) => b.id === it.spaceId);
+  return `<div class="scc-bar"><button type="button" class="scc-back" id="sccBack">‹ Scanner</button>${n > 1 ? `<span class="scc-n">${i + 1} of ${n} ready</span><button type="button" class="scc-nav" id="sccPrev" aria-label="Previous card"${i === 0 ? " disabled" : ""}>‹</button><button type="button" class="scc-nav" id="sccNext" aria-label="Next card"${i === n - 1 ? " disabled" : ""}>›</button>` : ""}</div>
+    <div class="scc-shot">${ph ? `<img src="${esc(ph)}" alt="" draggable="false">` : "<i></i>"}<span class="scc-tag">Ready to list</span></div>
+    <h2 class="scc-t">${esc(it.title || "Untitled item")}</h2>
+    <div class="scc-read"><div><em>Market</em><b>${money(it.price)}</b></div><div><em>Qty</em><b>${Number(it.quantity) || 1}</b></div><div><em>Paid</em><b>${it.purchasePrice != null && it.purchasePrice !== "" ? money(it.purchasePrice) : "—"}</b></div><div><em>Bin</em><b>${bin ? esc(bin.name) : "None"}</b></div></div>
+    <button type="button" class="scc-go" id="sccList"><i></i><span>Build the listing</span></button>
+    ${bins.length ? `<div class="scc-h">Put it in a bin</div><div class="scc-bins">${bins.map((b) => `<button type="button" class="scc-bin${b.id === it.spaceId ? " on" : ""}" data-sccbin="${esc(b.id)}"><b>${esc(b.name)}</b>${b.sub ? `<small>${esc(b.sub)}</small>` : ""}</button>`).join("")}</div>` : ""}
+    <div class="scc-row"><button type="button" class="scc-sec" id="sccFix">Fix name or price</button><button type="button" class="scc-sec warn" id="sccDel">Delete</button></div>`;
+}
+function wireCard() {
+  const c = ctx && ctx.host.querySelector("#scCard"); if (!c || !focus) return;
+  const id = focus.id, i = focus.ids.indexOf(id), go = (k) => { const nid = focus.ids[k]; if (nid) { focus.id = nid; c.innerHTML = focusPanel(); wireCard(); } };
+  c.querySelector("#sccBack")?.addEventListener("click", () => { focus = null; paintAll(); });
+  c.querySelector("#sccPrev")?.addEventListener("click", () => go(i - 1));
+  c.querySelector("#sccNext")?.addEventListener("click", () => go(i + 1));
+  c.querySelector("#sccList")?.addEventListener("click", () => ctx.build(id));
+  c.querySelector("#sccFix")?.addEventListener("click", () => { focus = null; loadForId(id); });
+  c.querySelectorAll("[data-sccbin]").forEach((b) => b.addEventListener("click", () => {
+    const it = ctx.getItems().find((x) => String(x.id) === id); const to = it && it.spaceId === b.dataset.sccbin ? null : b.dataset.sccbin;
+    assign([id], to); ctx.setItems(ctx.getItems()); ctx.toast(to ? `Put in ${b.querySelector("b").textContent}` : "Taken out of the bin"); c.innerHTML = focusPanel(); wireCard();
+  }));
+  c.querySelector("#sccDel")?.addEventListener("click", () => {
+    const prev = ctx.getItems(), it = prev.find((x) => String(x.id) === id); if (!it) return;
+    ctx.setItems(prev.filter((x) => String(x.id) !== id)); nextFocus();
+    const undo = () => { ctx.setItems(prev); repaintLists(); };
+    if (ctx.toastUndo) ctx.toastUndo("Deleted " + (it.title || "item"), undo); else ctx.toast("Deleted");
+  });
+  let sx = null, sy = 0;
+  c.addEventListener("touchstart", (e) => { if (e.touches.length !== 1 || e.target.closest(".scc-bins")) { sx = null; return; } sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  c.addEventListener("touchend", (e) => { if (sx == null) return; const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; sx = null; if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.6) go(dx < 0 ? i + 1 : i - 1); }, { passive: true });
 }
 function loadForId(id) {
+  focus = null;
   const it = ctx.getItems().find((x) => String(x.id) === String(id)); if (!it) return;
   d.photos.forEach((p) => p.preview && p.preview.startsWith("blob:") && URL.revokeObjectURL(p.preview));
   d = blank(); d.reid = it.id; d.title = /^untitled/i.test(it.title || "") ? "" : (it.title || ""); d.qty = it.quantity || 1; d.paid = it.purchasePrice ? String(it.purchasePrice) : ""; d.market = it.price ? String(it.price) : "";
@@ -241,6 +303,7 @@ function loadForId(id) {
   ctx.toast("Loaded. Tap Identify.");
 }
 function shell() {
+  if (focus) return `<div class="sc-wrap hh">${hud()}<div class="sc-card" id="scCard">${focusPanel()}</div>${pkgs()}${queue_()}</div>`;
   if (d.saved) return `<div class="sc-wrap hh">${hud()}<div class="sc-saved" id="scSaved"></div>${pkgs()}${queue_()}</div>`;
   return `<div class="sc-wrap hh"><div class="pg-title"><h2>Scouter</h2><span>One set of photos is one item. Identify it, set the money, stage it.</span></div>${hud()}
     <section class="sc-left">
@@ -292,7 +355,7 @@ function paintFlow() {
   f.innerHTML = `${step1}
     <div class="sc-step money"><b>Money</b>
       <label class="sc-f"><span>You paid</span><input id="scPaid" inputmode="decimal" placeholder="0.00" value="${esc(paid)}"></label>
-      <label class="sc-f"><span>Market value <small>median of active eBay listings</small></span><input id="scMkt" inputmode="decimal" placeholder="${d.marketState === "loading" ? "looking up…" : "0.00"}" value="${esc(mk)}"></label>
+      <label class="sc-f"><span>Market value <small>TCGplayer market, or cleaned eBay listings</small></span><input id="scMkt" inputmode="decimal" placeholder="${d.marketState === "loading" ? "looking up…" : "0.00"}" value="${esc(mk)}"></label>
       ${mkNote ? `<small class="sc-note">${esc(mkNote)}</small>` : ""}
       ${profit != null ? `<div class="sc-profit ${profit >= 0 ? "pos" : "neg"}">Profit if it sells at market: <b>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</b></div>` : ""}
       <label class="sc-f"><span>Quantity</span><input id="scQty" inputmode="numeric" value="${esc(d.qty)}"></label>
@@ -326,7 +389,8 @@ function paintSaved() {
   const it = d.saved.item, b = d.saved.backup, ready = it.phase === "staged";
   s.innerHTML = `<div class="sc-done"><i>✓</i><h2>Saved</h2><p><b>${esc(it.title)}</b> is in <b>${ready ? "Ready to list" : "Intake"}</b>${it.price ? ` · market ${money(it.price)}` : ""}.</p>
     <small class="sc-note">${b.state === "run" ? `Backing up photos ${b.done}/${b.total}…` : b.state === "ok" ? "Photos backed up." : "Saved on this device. Backup skipped."}</small>
-    <div class="sc-next"><button class="btn go" id="scNext" type="button">${ready ? "Build the listing" : "Identify it now"}</button><button class="btn" id="scAgain" type="button">Scout another item</button></div></div>`;
+    <div class="sc-next"><button class="btn go" id="scNext" type="button">${ready ? "Build the listing" : "Identify it now"}</button>${ready ? `<button class="btn" id="scOpen" type="button">Put it in a bin or fix it</button>` : ""}<button class="btn" id="scAgain" type="button">Scout another item</button></div></div>`;
+  $("#scOpen")?.addEventListener("click", () => { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); openFocus(it.id, [String(it.id)]); });
   $("#scAgain")?.addEventListener("click", () => { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); });
   $("#scNext")?.addEventListener("click", () => { if (ready) { ctx.build(it.id); } else { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); ctx.toast("Add the photos again to identify, or open it from Command."); } });
 }
@@ -338,7 +402,18 @@ function wireQueue() {
     const undo = () => { ctx.setItems(prev); paintAll(); };
     if (ctx.toastUndo) ctx.toastUndo("Deleted " + (it.title || "item"), undo); else ctx.toast("Deleted " + (it.title || "item"));
   }));
-  ctx.host.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.k === "ready") ctx.build(b.dataset.q); else loadForId(b.dataset.q); try { document.getElementById("main").scrollTo({ top: 0 }); } catch { /* ignore */ } }));
+  ctx.host.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.k === "ready") { const ids = [...ctx.host.querySelectorAll('[data-q][data-k="ready"]')].map((x) => x.dataset.q); openFocus(b.dataset.q, ids); return; }
+    loadForId(b.dataset.q); try { document.getElementById("main").scrollTo({ top: 0 }); } catch { /* ignore */ }
+  }));
+  ctx.host.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
+    const it = ctx.getItems().find((x) => String(x.id) === b.dataset.open); if (!it) return;
+    if (phaseFromItem(it) === "intake") { loadForId(it.id); return; }
+    if (phaseFromItem(it) === "staged") { const ids = [...ctx.host.querySelectorAll("[data-open]")].map((x) => x.dataset.open).filter((x) => { const y = ctx.getItems().find((z) => String(z.id) === x); return y && phaseFromItem(y) === "staged"; }); openFocus(it.id, ids); return; }
+    ctx.open?.(it.id, [String(it.id)]);
+  }));
+  ctx.host.querySelector("#scVar")?.addEventListener("click", () => ctx.variation?.());
+  ctx.host.querySelector("#scCsv")?.addEventListener("click", () => ctx.importCsv?.());
 }
 function wire() {
   wireQueue();
@@ -365,4 +440,7 @@ function bindGlobals() {
   addEventListener("drop", (e) => { if (ctx?.host.querySelector("#scDrop") && e.dataTransfer?.files?.length) { e.preventDefault(); addFiles(e.dataTransfer.files); } });
 }
 
-export function renderScouter(host, api) { ctx = { host, ...api }; bindGlobals(); paintAll(); }
+export function renderScouter(host, api) {
+  ctx = { host, ...api }; bindGlobals(); paintAll();
+  if (window.__scReid) { const id = window.__scReid; window.__scReid = null; if (d.saved) d.saved = null; loadForId(id); }
+}

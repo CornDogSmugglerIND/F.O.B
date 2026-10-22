@@ -3,7 +3,7 @@ import multer from "multer";
 import { randomUUID } from "node:crypto";
 import { lookupBarcode } from "../lookup.js";
 import { runIdentify, identityToItemPatch } from "../identify/router.js";
-import { activeComps } from "../comps.js";
+import { activeComps, marketValue } from "../comps.js";
 import { runBarcodeScan } from "../identify/barcode.js";
 import { visionKeyStatus } from "../identify/vision.js";
 import {
@@ -234,7 +234,9 @@ export function scouterRouter() {
   });
 
   router.get("/comps", async (req, res) => {
-    res.json(await activeComps(req.query.q));
+    const q = req.query || {};
+    if (q.name) return res.json(await marketValue({ name: q.name, number: q.number, set: q.set, finish: q.finish, game: q.game, q: q.q }));
+    res.json(await activeComps(q.q));
   });
 
   router.post("/barcode", async (req, res, next) => {

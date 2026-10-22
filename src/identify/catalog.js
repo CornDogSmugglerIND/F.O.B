@@ -97,22 +97,44 @@ export async function searchCatalogs(input = {}) {
   const name = String(input.name || "").trim();
   const number = String(input.number || "").trim();
   const set = String(input.set || "").trim();
+  const setName = String(input.setName || "").trim();
   const query = String(input.query || "").trim();
+  const numHead = number.split("/")[0].trim();
+  const nk = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+  /* exact hit first: set name + number straight from TCGdex (it has every new set) */
+  if (setName && numHead) {
+    try {
+      const sets = await getJson(`https://api.tcgdex.net/v2/en/sets?name=${encodeURIComponent(setName)}`);
+      const ranked = (Array.isArray(sets) ? sets : []).sort((a, b) => (nk(b.name) === nk(setName)) - (nk(a.name) === nk(setName))).slice(0, 3);
+      const forms = [...new Set([numHead, numHead.replace(/^0+(?=\d)/, ""), numHead.replace(/^(\d+)$/, (m) => m.padStart(3, "0"))])];
+      outer: for (const st of ranked) {
+        for (const f of forms) {
+          const url = `${TCGDEX}/${encodeURIComponent(st.id)}-${encodeURIComponent(f)}`; networkCalls.push(url);
+          const card = await getJson(url).catch(() => null);
+          if (card?.name && (!name || nk(card.name).includes(nk(name).split(" ")[0]))) {
+            candidates.push(normalizeIdentity({ product_name: card.name, collector_number: number.includes("/") ? number : card.localId, set_name: card.set?.name || st.name, set_code: st.id, game: "Pokemon", rarity: card.rarity || null, finish: null, language: "English", condition: "NM", confidence: "high", image: card.image ? `${card.image}/low.webp` : null, source: "tcgdex" }));
+            break outer;
+          }
+        }
+      }
+    } catch { /* next catalog */ }
+  }
 
   if (number || name || query) {
     const parts = [];
     if (name) parts.push(`name:"${name.replace(/"/g, "")}"`);
     if (number) parts.push(`number:"${number.replace(/"/g, "")}"`);
-    if (set) parts.push(`set.id:${set.replace(/[^a-zA-Z0-9-]/g, "")}`);
+    if (number) parts[parts.length - 1] = `number:"${numHead.replace(/^0+(?=\d)/, "").replace(/"/g, "")}"`;
     if (!parts.length && query) parts.push(`name:"${query.replace(/"/g, "")}"`);
     const q = encodeURIComponent(parts.join(" "));
     const url = `${POKE_API}?q=${q}&pageSize=5`;
     networkCalls.push(url);
     try {
       const data = await getJson(url);
-      for (const card of data?.data || []) {
-        candidates.push(fromPokemonTcg(card));
-      }
+      const all = data?.data || [];
+      const inSet = setName ? all.filter((c) => nk(c.set?.name) === nk(setName)) : all;
+      for (const card of inSet.length ? inSet : all) candidates.push(fromPokemonTcg(card));
     } catch {
       // next catalog
     }
@@ -130,16 +152,14 @@ export async function searchCatalogs(input = {}) {
     }
   }
 
-  if (name || query || number) {
-    const term = encodeURIComponent(name || query || number);
+  if (!numHead && (name || query)) {
+    const term = encodeURIComponent(name || query);
     const url = `${TCGDEX}?name=${term}`;
     networkCalls.push(url);
     try {
       const data = await getJson(url);
       const list = Array.isArray(data) ? data.slice(0, 5) : [];
-      for (const card of list) {
-        candidates.push(fromTcgdex(card));
-      }
+      for (const card of list) candidates.push({ ...fromTcgdex(card), confidence: "low" });
     } catch {
       // done
     }

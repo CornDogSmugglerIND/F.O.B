@@ -216,6 +216,7 @@ export async function identifyFromPhotos(input = {}) {
       name: vision.product_name || undefined,
       number: vision.collector_number || undefined,
       set: vision.set_code || undefined,
+      setName: vision.set_name || undefined,
       query: searchQuery,
     });
     networkCalls.push(...catalog.networkCalls);
@@ -248,15 +249,27 @@ export async function identifyFromPhotos(input = {}) {
     });
   }
 
-  candidates.sort((a, b) => {
-    const score = (c) =>
-      (c.confidence === "high" ? 2 : 0) +
-      (c.source?.includes("pokemon") || c.source === "scryfall" || c.source === "tcgdex" ? 1 : 0) +
-      (c.collector_number ? 1 : 0);
-    return score(b) - score(a);
-  });
+  /* What's printed on the card wins. A catalog card only counts when it agrees with
+     the name + number the photo shows; then it fills in the exact set and picture. */
+  const nk = (x) => String(x || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const numK = (x) => String(x || "").split("/")[0].trim().replace(/^0+(?=\d)/, "").toLowerCase();
+  const vNum = numK(vision.collector_number), vName = nk(vision.product_name), vSet = nk(vision.set_name);
+  const agrees = (c) => (!vNum || numK(c.collector_number) === vNum) && (!vName || nk(c.product_name).split(" ")[0] === vName.split(" ")[0]);
+  const isCatalog = (c) => c.source?.includes("pokemon") || c.source === "scryfall" || c.source === "tcgdex";
+  const score = (c) => {
+    if (isCatalog(c)) return agrees(c) ? 5 + (vSet && nk(c.set_name) === vSet ? 2 : 0) + (c.set_name ? 1 : 0) : -5;
+    return (c.source === "anthropic_vision" ? 4 : 1) + (c.confidence === "high" ? 2 : 0) + (c.collector_number ? 1 : 0);
+  };
+  for (const c of candidates) if (isCatalog(c) && !agrees(c)) c.confidence = "low";
+  candidates.sort((a, b) => score(b) - score(a));
 
-  const top = candidates[0];
+  let top = candidates[0];
+  /* keep the finish the photo shows; catalogs guess it from rarity */
+  if (isCatalog(top) && candidates.find((c) => c.source === "anthropic_vision")) {
+    const v0 = candidates.find((c) => c.source === "anthropic_vision");
+    top = normalizeIdentity({ ...top, finish: v0.finish || top.finish, rarity: top.rarity || v0.rarity, set_name: top.set_name || v0.set_name, confidence: "high" }, qty);
+    candidates[0] = top;
+  }
   const fromPlaceholder = String(top.source || "").includes("placeholder");
   const multi = candidates.length > 1 && top.confidence !== "high";
 

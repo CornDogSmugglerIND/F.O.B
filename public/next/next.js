@@ -1,8 +1,8 @@
-import { isArchived, archive, unarchive, archMap } from "./shared.js?v=6";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=6";
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=7";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=18";
-import { renderCollection } from "./collection.js?v=17";
+import { renderScouter } from "./scouter.js?v=21";
+import { renderCollection, openImport } from "./collection.js?v=18";
 import { photoManager } from "./photos.js?v=4";
 import { renderSpaces } from "./spaces.js?v=13";
 import { renderChannels, buildListing, variationListing } from "./channels.js?v=32";
@@ -126,6 +126,14 @@ function nextAction(ph, it) {
   if (["sold", "packed"].includes(ph)) return `<p class="sub" style="margin-top:12px">Next: pack it and print the label in eBay.</p><a class="btn go" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener">Open eBay orders</a>`;
   return "";
 }
+/* the other things you can do with an item, right here */
+function moreActions(ph, it) {
+  if (["sold", "packed", "shipped", "delivered", "ended"].includes(ph)) return "";
+  const bins = loadSpaces().filter((b) => b.phys);
+  const fix = ph === "intake" || ph === "staged" ? `<button class="btn" data-reid type="button">${ph === "intake" ? "Identify it in Scouter" : "Fix the name or price in Scouter"}</button>` : "";
+  const binRow = bins.length ? `<div class="it-binh">Put it in a bin</div><div class="it-bins">${bins.map((b) => `<button type="button" class="it-bin${it.spaceId === b.id ? " on" : ""}" data-bin-to="${esc(b.id)}">${esc(b.name)}${b.sub ? `<small>${esc(b.sub)}</small>` : ""}</button>`).join("")}</div>` : "";
+  return `<div class="it-more">${fix}${binRow}</div>`;
+}
 /* ---------- item viewer: Back, "3 of 28", previous / next, swipe ---------- */
 let NAV = null; // { sid, ids }
 const navFor = (sid) => { NAV = { sid, ids: (groups()[sid] || []).map((x) => String(x.id)) }; };
@@ -133,12 +141,12 @@ function navBar(id) {
   const i = NAV ? NAV.ids.indexOf(String(id)) : -1;
   if (i < 0) return `<div class="iv-bar"><button type="button" class="iv-back" data-close>‹ Back</button></div>`;
   const st = STOPS.find((s) => s.id === NAV.sid);
-  return `<div class="iv-bar"><button type="button" class="iv-back" data-ivback>‹ ${esc(st ? st.label : "Back")}</button><span class="iv-n">${i + 1} of ${NAV.ids.length}</span><button type="button" class="iv-btn" data-ivprev aria-label="Previous item"${i === 0 ? " disabled" : ""}>‹</button><button type="button" class="iv-btn" data-ivnext aria-label="Next item"${i === NAV.ids.length - 1 ? " disabled" : ""}>›</button></div>`;
+  return `<div class="iv-bar"><button type="button" class="iv-back" data-ivback>‹ ${esc(NAV.sid === "scouter" ? "Scouter" : st ? st.label : "Back")}</button><span class="iv-n">${i + 1} of ${NAV.ids.length}</span><button type="button" class="iv-btn" data-ivprev aria-label="Previous item"${i === 0 ? " disabled" : ""}>‹</button><button type="button" class="iv-btn" data-ivnext aria-label="Next item"${i === NAV.ids.length - 1 ? " disabled" : ""}>›</button></div>`;
 }
 function wireNav(s, id) {
   if (!NAV) return; const i = NAV.ids.indexOf(String(id)); if (i < 0) return;
   const to = (k) => { const nid = NAV.ids[k]; if (nid) itemSheet(nid); };
-  s.querySelector("[data-ivback]")?.addEventListener("click", () => stageSheet(NAV.sid));
+  s.querySelector("[data-ivback]")?.addEventListener("click", () => { if (NAV.sid === "scouter" || !STOPS.some((x) => x.id === NAV.sid)) closeSheet(); else stageSheet(NAV.sid); });
   s.querySelector("[data-ivprev]")?.addEventListener("click", () => to(i - 1));
   s.querySelector("[data-ivnext]")?.addEventListener("click", () => to(i + 1));
   let sx = null, sy = 0;
@@ -177,18 +185,21 @@ function itemSheet(id) {
     <div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>
     ${it.purchasePrice ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div>` : ""}
     ${nextAction(ph, it)}
+    ${moreActions(ph, it)}
 </div>
     <div id="phMgr" style="margin-top:18px"></div>${(() => { const g = groups()[st && st.id] || []; const others = g.filter((x) => String(x.id) !== String(it.id)).slice(0, 24); return others.length ? `<div class="ph-head" style="margin-top:6px"><b>Also in ${esc(st.label)}</b><span>${g.length} total</span></div><div class="ph-row">${others.map((x) => { const p = photoOf(x); return `<button type="button" class="sib" data-sib="${esc(x.id)}">${p ? `<img src="${esc(p)}" alt="" loading="lazy">` : `<i>${esc(nameOf(x).charAt(0))}</i>`}<span>${esc(nameOf(x))}</span></button>`; }).join("")}</div>` : ""; })()}
 
     <button class="btn iv-arch" data-arch type="button">Archive this item</button>
     ${String(it.id).startsWith("ebay-") ? "" : `<button class="btn warn" data-del type="button" style="margin-top:10px">Delete this item</button>`}`);
   wireNav(s, it.id); s.querySelector("[data-arch]").addEventListener("click", () => archiveOne(it));
+  s.querySelector("[data-reid]")?.addEventListener("click", () => { closeSheet(); window.__scReid = String(it.id); if (view === "scouter") { const m = $("#main"); m.innerHTML = ""; render(); } else go("scouter"); });
+  s.querySelectorAll("[data-bin-to]").forEach((b) => b.addEventListener("click", () => { const to = b.dataset.binTo === it.spaceId ? null : b.dataset.binTo; assign([it.id], to); items = loadItems(); const nm = loadSpaces().find((x) => x.id === to)?.name; toast(to ? `Put in ${nm}` : "Taken out of the bin"); itemSheet(it.id); if (view !== "scouter") softRender(); else window.__fobScRepaint?.(); }));
   photoManager(s.querySelector("#phMgr"), it.id, { toast, refresh: () => { items = loadItems(); renderStats(); const m = s.querySelector("#sheetMain"); const c = items.find((i) => String(i.id) === String(id)); if (m && c) m.src = photoOf(c); } });
   s.querySelectorAll("[data-sib]").forEach((b) => b.addEventListener("click", () => itemSheet(b.dataset.sib)));
   s.querySelector("[data-del]")?.addEventListener("click", () => { const prev = items.slice(); items = items.filter((i) => String(i.id) !== String(id)); saveItems(items); closeSheet(); render(); toastUndo(`Deleted ${nameOf(it)}`, () => { items = prev; saveItems(prev); render(); }); });
   s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "spaces") { closeSheet(); go("spaces"); } else if (a === "channels") { window.__chStage = e.currentTarget.dataset.st || "listed"; if (e.currentTarget.dataset.st === "staged") { closeSheet(); buildListing(id, chApi()); } else go("channels"); } });
 }
-function chApi() { return { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); }, rerender: () => render() }; }
+function chApi() { return { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); window.__fobScRepaint?.(); }, rerender: () => render() }; }
 const EMPTY_HINT = { intake: "No cards waiting. Snap or drop photos in Scouter to start.", staged: "Nothing ready to list. Identify cards in Scouter first.", listed: "Nothing live on eBay right now.", stored: "Nothing filed in a bin yet.", sold: "No sales waiting to ship.", shipped: "Nothing in transit.", delivered: "No deliveries in the last 90 days." };
 function stageSheet(sid) {
   if (!STOPS.some((x) => x.id === sid)) return;
@@ -355,14 +366,15 @@ function softRender() {
   /* busy (sheet open, dragging): keep the change and redraw once you're back */
   if (sheetIsOpen() || document.querySelector(".k-zoom") || document.querySelector(".ghost")) { clearTimeout(softT); softT = setTimeout(softRender, 1200); return; }
   sig = n;
-  if (view === "scouter" || view === "settings" || view === "spaces") return;
+  if (view === "scouter") { window.__fobScRepaint?.(); return; }
+  if (view === "settings" || view === "spaces") return;
   const m = $("#main"), y = m.scrollTop; render(); m.scrollTop = y;
 }
 function render() {
   { let raw = ""; try { raw = localStorage.getItem(LS_ITEMS) || "[]"; } catch { /* ignore */ }
     if (raw !== lastRaw || !items) { const l = loadItems(), k = l.filter((i) => !isDemo(i)); if (k.length !== l.length) saveItems(k); items = k; try { lastRaw = localStorage.getItem(LS_ITEMS) || "[]"; } catch { lastRaw = raw; } } }
   renderStats(); sig = sigOf(items);
-  if (view === "command") renderCommand(); else if (view === "settings") renderSettings($("#main")); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { build: (id) => buildListing(id, chApi()), getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, toastUndo, go }); } else if (view === "collection" || view === "spaces" || view === "channels") { $("#main").style.overflowY = "auto"; const sel = view === "collection" ? ".co-wrap" : ".sp-wrap"; $("#main").innerHTML = ""; (view === "collection" ? renderCollection : view === "channels" ? renderChannels : renderSpaces)($("#main"), { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); } }); } else renderCommand();
+  if (view === "command") renderCommand(); else if (view === "settings") renderSettings($("#main")); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { build: (id) => buildListing(id, chApi()), open: (id, ids) => { items = loadItems(); NAV = { sid: "scouter", ids: (ids || [id]).map(String) }; itemSheet(id); }, variation: () => variationListing(chApi()), importCsv: () => openImport({ toast, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); window.__fobScRepaint?.(); } }), getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, toastUndo, go });  else window.__fobScRepaint?.();} else if (view === "collection" || view === "spaces" || view === "channels") { $("#main").style.overflowY = "auto"; const sel = view === "collection" ? ".co-wrap" : ".sp-wrap"; $("#main").innerHTML = ""; (view === "collection" ? renderCollection : view === "channels" ? renderChannels : renderSpaces)($("#main"), { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); } }); } else renderCommand();
 }
 document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));
 addEventListener("resize", (() => { let t; let last = phone(); return () => { clearTimeout(t); t = setTimeout(() => { if (phone() !== last) { last = phone(); render(); } else if (!phone() && document.querySelector(".road")) render(); }, 150); }; })());

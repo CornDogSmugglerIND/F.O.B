@@ -16,3 +16,36 @@ test("activeComps is honest on failure", async () => {
   assert.equal((await activeComps("pikachu vmax", { request: async () => { throw new Error("not connected"); } })).ok, false);
   assert.equal((await activeComps("zzzz qqqq", { request: async () => ({ itemSummaries: [] }) })).ok, false);
 });
+
+import { cleanComps, numberForms, pickTcgPrice, marketValue } from "../src/comps.js";
+test("numberForms handles padded and plain numbers", () => {
+  assert.deepEqual(numberForms("046/128").sort(), ["046", "46"].sort());
+  assert.ok(numberForms("6").includes("006"));
+});
+test("pickTcgPrice follows the finish", () => {
+  const p = { normal: { marketPrice: 0.2 }, "reverse-holofoil": { marketPrice: 0.58 } };
+  assert.equal(pickTcgPrice(p, "Reverse Holo").value, 0.58);
+  assert.equal(pickTcgPrice(p, "Normal").value, 0.2);
+  assert.equal(pickTcgPrice({ holofoil: { marketPrice: 7.83 } }, "Normal").value, 7.83);
+});
+test("cleanComps drops slabs, lots, proxies and other cards", () => {
+  const items = [
+    { title: "Pikachu 046/128 30th Celebration NM", price: { value: "2.00" } },
+    { title: "Pikachu 046/128 PSA 10 30th Celebration", price: { value: "80.00" } },
+    { title: "Pikachu lot x10 30th Celebration", price: { value: "15.00" } },
+    { title: "Pikachu 034/128 30th Celebration", price: { value: "2.50" } },
+    { title: "PIKACHU #46 30th celebration mint", price: { value: "1.80" } },
+  ];
+  assert.deepEqual(cleanComps(items, { name: "Pikachu", number: "046/128" }), [2, 1.8]);
+});
+test("marketValue prefers TCGplayer market from TCGdex", async () => {
+  const fetchImpl = async (url) => ({ ok: true, json: async () => url.includes("/sets?") ? [{ id: "sv08", name: "Surging Sparks" }] : url.includes("/cards/sv08-238") ? { name: "Pikachu ex", localId: "238", pricing: { tcgplayer: { holofoil: { marketPrice: 274.44 } } } } : null });
+  const r = await marketValue({ name: "Pikachu ex", number: "238/191", set: "Surging Sparks", finish: "Holo", game: "Pokemon" }, { fetchImpl, request: async () => ({ itemSummaries: [] }) });
+  assert.equal(r.ok, true); assert.equal(r.value, 274.44); assert.equal(r.basis, "TCGplayer market");
+});
+test("marketValue falls back to cleaned eBay when no TCGplayer price", async () => {
+  const fetchImpl = async () => ({ ok: false, json: async () => ({}) });
+  const request = async () => ({ itemSummaries: [1.5, 1.8, 2, 2.2, 9].map((v) => ({ title: `Pikachu 046/128 30th Celebration`, price: { value: String(v) } })) });
+  const r = await marketValue({ name: "Pikachu", number: "046/128", set: "30th Celebration", game: "Pokemon" }, { fetchImpl, request });
+  assert.equal(r.ok, true); assert.ok(r.value >= 1.5 && r.value <= 2.2, String(r.value)); assert.match(r.basis, /eBay/);
+});

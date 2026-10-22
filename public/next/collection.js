@@ -89,6 +89,8 @@ function openZoom(id, fromEl) {
     wire: (root, it, api) => { { const d = document.createElement("div"); (root.querySelector(".k-zinfo") || root).appendChild(d); photoManager(d, it.id, { toast: ctx.toast, refresh: ctx.refresh }); } return root.querySelector("#zLane")?.addEventListener("click", () => { api.close(); setLane([it.id], laneOf(it) === "sealed" ? "singles" : "sealed"); }); } });
 }
 export function renderCollection(host, api) { ctx = { host, ...api }; if (!host.querySelector(".co-wrap")) S.sel.clear(); paint(); }
+/* Import / Export from anywhere (Scouter has an Import button too) */
+export function openImport(api) { if (!ctx || !ctx.host || !ctx.host.isConnected || !ctx.host.querySelector(".co-wrap")) ctx = { host: document.createElement("div"), ...api }; ioSheet(); }
 export function repaintCollection() { if (ctx && ctx.host.querySelector(".co-wrap")) paint(); }
 
 /* Import / Export CSV (uses the server's /api/csv converters) */

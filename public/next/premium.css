@@ -314,3 +314,9 @@ ion-modal.fob-sheet::part(content){background:linear-gradient(170deg,#262c2a,#11
 
 .st-empty{display:flex;flex-direction:column;gap:14px;padding:18px 0 6px}.st-empty p{margin:0;color:var(--mute,#9aa5a0);font-size:15px;line-height:1.4}
 ion-modal.fob-sheet.closing{opacity:0;transition:opacity .16s ease-out;pointer-events:none}
+.it-more{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.it-binh{font:600 13px var(--disp,system-ui);color:var(--mute,#9aa5a0);margin-top:6px}
+.it-bins{display:flex;flex-wrap:wrap;gap:8px}
+.it-bin{appearance:none;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:92px;min-height:48px;padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:inherit;font:600 14px var(--disp,system-ui);cursor:pointer}
+.it-bin small{font-weight:500;font-size:11.5px;color:var(--mute,#9aa5a0)}
+.it-bin.on{border-color:rgba(179,251,213,.7);background:rgba(179,251,213,.14);box-shadow:0 0 14px rgba(144,255,204,.2)}
