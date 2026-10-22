@@ -1,11 +1,11 @@
 import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=6";
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=7";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=23";
-import { renderCollection, openImport } from "./collection.js?v=18";
+import { renderScouter } from "./scouter.js?v=24";
+import { renderCollection, openImport } from "./collection.js?v=19";
 import { photoManager } from "./photos.js?v=4";
-import { renderSpaces } from "./spaces.js?v=14";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=32";
+import { renderSpaces } from "./spaces.js?v=15";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=33";
 import { renderSettings } from "./settings.js?v=9";
 import { initSync } from "./sync.js?v=4";
 import { initKit } from "./kit.js?v=3";
@@ -251,6 +251,18 @@ function pileHtml(list, cls, emptyMsg, sid = "") {
   const face = (it, k) => { const p = photoOf(it); return `<div class="pc ${k === "" ? "k-tilt" : k}" ${k === "" ? `data-item="${esc(it.id)}"` : ""}>${p ? `<img src="${esc(p)}" alt="" draggable="false">` : `<div class="ini">${esc(nameOf(it).charAt(0).toUpperCase())}</div>`}${k === "" ? `<span class="cap"><span>${esc(nameOf(it))}</span><em>${money(worth(it))}</em></span>` : ""}</div>`; };
   return `<div class="pile ${cls}">${list[2] ? face(list[2], "b2") : ""}${list[1] ? face(list[1], "b1") : ""}${face(top, "")}${list.length > 1 ? `<span class="more" data-stage="${sid}">+${list.length - 1} more</span>` : ""}</div>`;
 }
+/* HUD widgets: the numbers you check first, tap to jump there */
+function widgets(g) {
+  const ord = orderItems(90), day = 864e5, now = Date.now(), bars = [];
+  for (let k = 6; k >= 0; k--) { const a = now - (k + 1) * day, b = now - k * day; bars.push(ord.filter((o) => { const t = Date.parse(o._order?.createdAt || o.when || 0); return t > a && t <= b; }).reduce((x, o) => x + (Number(o.price) || 0), 0)); }
+  const wk = bars.reduce((a, b) => a + b, 0), mx = Math.max(1, ...bars);
+  const live = g.listed.length + g.stored.length, liveV = [...g.listed, ...g.stored].reduce((a, x) => a + worth(x), 0);
+  return `<div class="hudw" role="group" aria-label="At a glance">
+    <button type="button" class="hw hw-sales" data-goto="channels" data-pst="sold"><em>Sold this week</em><b>${money(wk)}</b><span class="hw-bars">${bars.map((v) => `<i style="height:${Math.max(6, Math.round(v / mx * 100))}%"></i>`).join("")}</span></button>
+    <button type="button" class="hw hw-ship" data-stage="sold"><em>To ship</em><b>${g.sold.length}</b><span>${g.sold.length ? "Tap to pack" : "All caught up"}</span></button>
+    <button type="button" class="hw hw-way" data-stage="shipped"><em>On the way</em><b>${g.shipped.length}</b><span>${g.delivered.length} delivered</span></button>
+    <button type="button" class="hw hw-live" data-goto="channels" data-pst="listed"><em>Live on eBay</em><b>${live}</b><span>${money(liveV)}</span></button></div>`;
+}
 function renderCommand() {
   const g = groups(); const main = $("#main");
   const pills = [
@@ -264,7 +276,7 @@ function renderCommand() {
     const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
     let path = `M${pts[0][0]},${pts[0][1]}`;
     for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], m = (y0 + y1) / 2; path += ` C${x0},${m} ${x1},${m} ${x1},${y1}`; }
-    main.innerHTML = `<div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
+    main.innerHTML = `${widgets(g)}<div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
       <defs><linearGradient id="rgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
       <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".4" stroke-width="11" style="filter:blur(7px)"/>
       <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/>
@@ -280,7 +292,7 @@ function renderCommand() {
     const pts = STOPS.map((s) => [s.pos[0] / 100 * W, s.pos[1] / 100 * H]);
     let path = `M${pts[0][0]},${pts[0][1]}`;
     for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], m = (x0 + x1) / 2; path += ` C${m},${y0} ${m},${y1} ${x1},${y1}`; }
-    main.innerHTML = `<div class="road"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    main.innerHTML = `${widgets(g)}<div class="road"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
       <defs><linearGradient id="rg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${W}" y2="0"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
       <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".45" stroke-width="16" stroke-linecap="round" style="filter:blur(9px)"/>
       <path d="${path}" fill="none" stroke="url(#rg)" stroke-width="4" stroke-linecap="round"/>

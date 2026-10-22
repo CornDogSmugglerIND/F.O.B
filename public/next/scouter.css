@@ -215,3 +215,47 @@
   .sc-vf{height:calc(100dvh - var(--sat,0px) - var(--sab,0px) - 66px - var(--dock-h) - 120px)!important;min-height:360px;border-radius:30px}
 }
 @media (min-width:821px){.sc-vf .sc-deck{padding:16px 22px}}
+/* Face ID style lock ring around the target */
+.sc-ring{position:absolute;left:50%;top:50%;width:92px;height:92px;transform:translate(-50%,-50%) rotate(-90deg);overflow:visible;pointer-events:none}
+.sc-ring .bg{fill:none;stroke:rgba(255,255,255,.18);stroke-width:4}
+.sc-ring .fg{fill:none;stroke:#fff;stroke-width:4.5;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:100;filter:drop-shadow(0 0 4px rgba(124,240,181,.7));transition:stroke .2s}
+.sc-lock[data-mode=lock] .sc-ring .fg{filter:drop-shadow(0 0 8px rgba(124,240,181,.95))}
+.sc-lock[data-mode=lock] .sc-ring{animation:ringPop .45s cubic-bezier(.2,.8,.2,1)}
+@keyframes ringPop{0%{transform:translate(-50%,-50%) rotate(-90deg) scale(1)}50%{transform:translate(-50%,-50%) rotate(-90deg) scale(1.12)}100%{transform:translate(-50%,-50%) rotate(-90deg) scale(1)}}
+@media (prefers-reduced-motion:reduce){.sc-lock[data-mode=lock] .sc-ring{animation:none}}
+/* ===== one floating result card under the camera ===== */
+#scFlow{display:block!important}
+.scr-card{position:relative;border-radius:26px;padding:18px;background:linear-gradient(170deg,#1C2220,#121614);box-shadow:0 22px 50px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.06);margin-top:14px}
+.scr-card .sc-step{background:none!important;box-shadow:none!important;padding:0!important;margin:0!important}
+.scr-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.scr-tag{font:800 12px var(--disp);padding:5px 10px;border-radius:999px;background:var(--mint,#9FF2C9);color:#05140C}
+.scr-tag.dim{background:#2A312E;color:#E8EEEA}
+.scr-link{appearance:none;background:none;border:0;color:#B9F7D8;font:700 14px var(--disp);padding:8px 0;cursor:pointer}
+.scr-t{margin:2px 0 6px;font:800 22px/1.2 var(--disp)!important;color:#F3F6F4}
+.scr-p{margin:0 0 12px;color:#9DA9A3}
+.scr-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.scr-chips i{font-style:normal;font:700 12.5px var(--disp);padding:5px 10px;border-radius:999px;background:#262D2A;color:#DDE5E1}
+.scr-money{display:grid;gap:12px;margin:6px 0 16px}
+.scr-mkt{display:flex;flex-direction:column;gap:2px;padding:14px 16px;border-radius:20px;background:#0E1211}
+.scr-mkt em,.scr-mini em{font-style:normal;font:600 13px var(--text,system-ui);color:#9DA9A3}
+.scr-mkt input{all:unset;font:800 40px/1.1 var(--disp);color:#F3F6F4;width:100%;font-variant-numeric:tabular-nums}
+.scr-mkt small{color:#8E9B95;font-size:12.5px}
+.scr-mini{display:grid;grid-template-columns:2fr 1fr;gap:10px}
+.scr-mini label{display:flex;flex-direction:column;gap:4px;padding:10px 14px;border-radius:16px;background:#0E1211}
+.scr-mini input{all:unset;font:800 20px var(--disp);color:#F3F6F4;width:100%}
+.scr-card .sc-profit{font:700 14px var(--disp);padding:10px 14px;border-radius:14px;background:rgba(124,240,181,.1);color:#AFF5D3}
+.scr-card .sc-profit.neg{background:rgba(255,120,100,.12);color:#FFB4A6}
+.scr-go{width:100%;min-height:58px;font-size:17px!important}
+@media (max-width:820px){.scr-card.idle{display:none}}
+.sc-ring{width:118px;height:118px}
+.sc-ring .bg{stroke:rgba(255,255,255,.32)!important;stroke-width:5!important}
+.sc-ring .fg{stroke-width:6!important}
+.sc-vf .sc-trig{box-shadow:0 0 0 4px rgba(255,255,255,.95),0 8px 22px rgba(0,0,0,.55)!important}
+.sc-vf .sc-tools{top:auto!important;bottom:132px!important;right:14px}
+.scr-card{text-align:left!important}
+.scr-card input{background:none!important;box-shadow:none!important;text-align:left!important;padding:0!important;border-radius:0!important}
+.scr-card .scr-tag{color:#05140C!important}
+.scr-card .scr-tag.dim{color:#E8EEEA!important}
+.scr-mkt em,.scr-mini em{text-align:left!important}
+#main .scr-card input{background:none!important;box-shadow:none!important;padding:0!important;border-radius:0!important}
+.sc-vf .sc-deck{background:linear-gradient(0deg,rgba(0,0,0,.6),rgba(0,0,0,0))!important;box-shadow:none!important}

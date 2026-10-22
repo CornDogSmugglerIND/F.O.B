@@ -4,7 +4,7 @@ import { openCard } from "./kit.js?v=3";
 import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=7";
 
 let ctx = null;
-const S = { stage: "listed", view: "cards", group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
+const S = { stage: "listed", view: "rows", group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
 /* Stage selector follows the Command roadmap: same stops, same order, same colors. */
 const STAGES = [
   ["listed", "Live on eBay", "#90FFEE"],
@@ -49,15 +49,21 @@ function rows() {
 function tile(it) {
   const src = photoOf(it), on = S.sel.has(String(it.id));
   if (S.view === "list") return `<label class="sp-row ch-row${on ? " on" : ""}" data-id="${esc(it.id)}"><input type="checkbox" data-id="${esc(it.id)}" ${on ? "checked" : ""}>${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : "<i></i>"}<span>${esc(nameOf(it))}</span><em>${esc(STAGE_LABEL[stageOf(it)] || "")}</em><b>${ptxt(it)}</b><small>x${Number(it.quantity) || 1}</small></label>`;
+  if (S.view === "rows") {
+    const sub = it._order ? [it._order.buyer ? `Buyer ${it._order.buyer}` : "", dt(it.when)].filter(Boolean).join(" · ") : it._n > 1 ? `${it._n} cards in one listing` : [it.setName, it.sku].filter(Boolean).join(" · ") || "Live on eBay";
+    return `<article class="co-card ch-tile rows${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0"><i class="co-pick${on ? " on" : ""}" data-pick="${esc(it.id)}" role="checkbox" aria-checked="${on}" aria-label="Select">${on ? "✓" : ""}</i><div class="co-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}</div>
+      <div class="chr-mid"><b>${esc(nameOf(it))}</b><span>${esc(sub)}</span>${badge(it) ? `<i class="chr-chip">${esc(badge(it))}</i>` : ""}</div>
+      <div class="chr-end"><b>${ptxt(it)}</b>${!it._order && (Number(it.quantity) || 1) > 1 ? `<span>${Number(it.quantity)} in stock</span>` : ""}</div></article>`;
+  }
   return `<article class="co-card ch-tile k-tilt ${S.view}${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0"><div class="co-art"><div class="co-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i></div>${badge(it) ? `<i class="ch-badge">${esc(badge(it))}</i>` : ""}<i class="co-pick${on ? " on" : ""}" data-pick="${esc(it.id)}">${on ? "✓" : ""}</i></div>${S.view === "cards" ? `<div class="co-cap"><span>${esc(nameOf(it))}</span><b>${ptxt(it)}</b></div>` : `<div class="ch-price">${ptxt(it)}</div>`}</article>`;
 }
 function routeHtml(counts) {
-  return `<div class="ch-route" role="group" aria-label="Stage">${STAGES.map(([k, l, c]) => `<button class="ch-stop${S.stage === k ? " on" : ""}" data-stage="${k}" type="button" style="--c:${c}"><i class="ch-dot"></i><span>${l}</span><em>${counts[k]}</em></button>`).join("")}</div>`;
+  return `<div class="ch-route chs-tiles" role="group" aria-label="Stage">${STAGES.map(([k, l, c]) => `<button class="ch-stop${S.stage === k ? " on" : ""}" data-stage="${k}" type="button" style="--c:${c}"><em>${counts[k]}</em><span>${l}</span></button>`).join("")}</div>`;
 }
 function drawerHtml() {
   if (!S.drawer) return "";
   return `<div class="ch-drawer">
-    <div class="ch-drow"><span>View</span><div class="seg" role="group" aria-label="View">${[["cards", "Cards"], ["grid", "Grid"], ["list", "List"]].map(([k, l]) => `<button class="${S.view === k ? "on" : ""}" data-view="${k}" type="button">${l}</button>`).join("")}</div></div>
+    <div class="ch-drow"><span>View</span><div class="seg" role="group" aria-label="View">${[["rows", "List"], ["cards", "Cards"], ["grid", "Grid"]].map(([k, l]) => `<button class="${S.view === k ? "on" : ""}" data-view="${k}" type="button">${l}</button>`).join("")}</div></div>
     <div class="ch-drow"><span>Group by</span><select id="chGroup" aria-label="Group by">${[["game", "Game"], ["stage", "Stage"], ["type", "Sealed / Singles"], ["bin", "Bin"], ["none", "Nothing"]].map(([k, l]) => `<option value="${k}"${S.group === k ? " selected" : ""}>${l}</option>`).join("")}</select></div>
     <div class="ch-drow"><span>Sort</span><select id="chSort" aria-label="Sort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest price</option><option value="low"${S.sort === "low" ? " selected" : ""}>Lowest price</option><option value="name"${S.sort === "name" ? " selected" : ""}>A to Z</option></select></div>
     <div class="ch-drow"><span>Select</span><button class="btn" id="chAll" type="button">Select everything shown</button></div>
@@ -72,11 +78,11 @@ function paint() {
   const sections = [...groups.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, list]) => {
     const shown = list.slice(0, S.more[k] || 120), closed = S.closed.has(k);
     return `<section class="ch-group"><header><button class="ch-fold" data-fold="${esc(k)}" type="button" aria-expanded="${!closed}">${closed ? "▸" : "▾"} ${esc(k)} <em>${list.length}</em></button><span>${money(list.reduce((a, i) => a + (i._order ? Number(i.price) || 0 : valOf(i)), 0))}</span><button class="chip" data-selgrp="${esc(k)}" type="button">Select this group (${list.length})</button></header>
-      ${closed ? "" : `<div class="${S.view === "list" ? "sp-list" : "co-grid ch-grid " + S.view}">${shown.map(tile).join("")}</div>${list.length > shown.length ? `<button class="btn" data-more="${esc(k)}" type="button">Show ${Math.min(120, list.length - shown.length)} more of ${list.length - shown.length}</button>` : ""}`}</section>`;
+      ${closed ? "" : `<div class="${S.view === "list" ? "sp-list" : S.view === "rows" ? "chr-list" : "co-grid ch-grid " + S.view}">${shown.map(tile).join("")}</div>${list.length > shown.length ? `<button class="btn" data-more="${esc(k)}" type="button">Show ${Math.min(120, list.length - shown.length)} more of ${list.length - shown.length}</button>` : ""}`}</section>`;
   }).join("");
   const n = S.sel.size;
   h.innerHTML = `<div class="co-wrap ch-wrap">
-    <div class="co-head"><div><h2>Channels</h2><p>${["sold", "shipped", "delivered"].includes(S.stage) ? `${all.length} order${all.length === 1 ? "" : "s"} from eBay, last 90 days · ${money(total)} sold` : `${all.length} listing${all.length === 1 ? "" : "s"} · ${money(total)} at list price`}</p></div>${["sold", "shipped", "delivered"].includes(S.stage) && all.length ? `<button class="btn" id="chArchAll" type="button">Archive all ${all.length}</button>` : ""}</div>
+    <div class="co-head chs-hero"><div><p class="chs-k">${({ listed: "Live on eBay", sold: "Sold, needs shipping", shipped: "On the way", delivered: "Delivered" })[S.stage] || "Channels"}</p><h2 class="chs-big">${money(total)}</h2><p>${["sold", "shipped", "delivered"].includes(S.stage) ? `${all.length} order${all.length === 1 ? "" : "s"} · last 90 days` : `${all.length} listing${all.length === 1 ? "" : "s"} at list price`}</p></div>${["sold", "shipped", "delivered"].includes(S.stage) && all.length ? `<button class="btn" id="chArchAll" type="button">Archive all ${all.length}</button>` : ""}</div>
     ${routeHtml(counts)}
     <div class="ch-bar2"><input id="chQ" type="search" placeholder="Search title or SKU" value="${esc(S.q)}" aria-label="Search title or SKU">
       <button class="btn ch-controls${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}">Controls</button></div>

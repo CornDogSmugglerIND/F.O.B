@@ -192,6 +192,8 @@ function wireFocus() {
   $("#fNext")?.addEventListener("click", () => stepBin(1));
   $("#fOpen")?.addEventListener("click", openBin);
   $("[data-up]")?.addEventListener("click", up);
+  /* swipe in from the left edge = back, like iPhone */
+  { const st = $(".spx-stage"); if (st && S.level !== "area") { let x0 = null, y0 = 0; st.addEventListener("touchstart", (e) => { const t = e.touches[0]; x0 = t.clientX < 34 ? t.clientX : null; y0 = t.clientY; }, { passive: true }); st.addEventListener("touchend", (e) => { if (x0 == null) return; const t = e.changedTouches[0]; if (t.clientX - x0 > 80 && Math.abs(t.clientY - y0) < 60) up(); x0 = null; }, { passive: true }); } }
   h.querySelectorAll("[data-crumb]").forEach((b) => b.addEventListener("click", () => { if (Number(b.dataset.crumb) === 0) camera({ level: "area", shelf: null, bin: null, open: false }, b); }));
 }
 function wire(w) {

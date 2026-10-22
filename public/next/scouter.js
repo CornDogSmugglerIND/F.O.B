@@ -198,7 +198,11 @@ function track() {
       if (mv > .012) { st.tx = t.x; st.ty = t.y; st.tw = t.w; st.th = t.h; }
       st.still = tg && mv < .05 ? st.still + 1 : 0;
     }
-    const mode = !tg ? "seek" : st.still >= 4 ? "lock" : "track";
+    const mode = !tg ? "seek" : st.still >= 6 ? "lock" : "track";
+    /* Face ID style ring: fills white -> green as the lock holds steady */
+    const want = !tg ? 0 : mode === "lock" ? 1 : Math.min(.92, .12 + st.still / 6 * .8);
+    st.ring = (st.ring || 0) + (want - (st.ring || 0)) * .35;
+    const fg = $("#scRingFg"); if (fg) { const r = st.ring; fg.style.strokeDashoffset = String(100 - r * 100); const g = Math.round(255 - r * (255 - 124)), b2 = Math.round(255 - r * (255 - 181)); fg.style.stroke = `rgb(${g},${Math.round(255 - r * 15)},${b2})`; }
     if (mode !== st.mode) { st.mode = mode; box.dataset.mode = mode; const lk = $("#scLk"); if (lk) lk.textContent = mode === "lock" ? "Locked" : mode === "track" ? "Tracking" : "Seeking"; if (mode === "lock") ctx?.haptic?.(); }
   };
   trk = requestAnimationFrame(step);
@@ -308,7 +312,7 @@ function shell() {
   return `<div class="sc-wrap hh"><div class="pg-title"><h2>Scouter</h2><span>Snap a few photos of one item, tap Identify, save it.</span></div>${hud()}
     <section class="sc-left">
       <div class="sc-drop sc-vf" id="scDrop" aria-label="Camera">
-        <video id="scLive" playsinline muted autoplay hidden></video><img id="scVfImg" alt="" hidden draggable="false"><div class="sc-lock" id="scLock" data-mode="seek" aria-hidden="true"><i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i><svg class="sc-core" viewBox="0 0 40 40"><circle cx="20" cy="20" r="13" class="ring"/><path d="M20 3v7M20 30v7M3 20h7M30 20h7" class="tk"/><circle cx="20" cy="20" r="1.6" class="dot"/></svg><span class="sc-lk" id="scLk">Seeking</span></div><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
+        <video id="scLive" playsinline muted autoplay hidden></video><img id="scVfImg" alt="" hidden draggable="false"><div class="sc-lock" id="scLock" data-mode="seek" aria-hidden="true"><i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i><svg class="sc-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="bg" cx="50" cy="50" r="44"/><circle class="fg" id="scRingFg" cx="50" cy="50" r="44" pathLength="100"/></svg><svg class="sc-core" viewBox="0 0 40 40"><circle cx="20" cy="20" r="13" class="ring"/><path d="M20 3v7M20 30v7M3 20h7M30 20h7" class="tk"/><circle cx="20" cy="20" r="1.6" class="dot"/></svg><span class="sc-lk" id="scLk">Seeking</span></div><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
         <div class="sc-aim"><b>Point at the item</b><span>Tap the big button to take a photo. On a computer, drop or paste photos here.</span></div><div class="sc-scanmsg">Identifying…</div>
         <div class="sc-tools"><button class="sc-tool" id="scType" type="button">Type it in</button><button class="sc-tool" id="scTorch" type="button" hidden aria-pressed="false">Light</button></div>
         <div class="sc-deck"><button class="sc-side" id="scPick" type="button" aria-label="Choose photos from your library"><i class="ic-lib"></i><span>Photos</span></button>
@@ -353,16 +357,23 @@ function paintFlow() {
   else if (d.idState === "fail" || d.manual) step1 = d.manual ? manualForm() : `<div class="sc-step"><b>Couldn't identify it</b><span>${esc(d.idMsg)}</span><button class="btn" id="scRe" type="button">Try again</button><button class="btn" id="scMan" type="button">I'll type it</button></div>`;
   else step1 = `<div class="sc-step idle"><b>${picked ? "Ready to identify" : "No photos yet"}</b><span>${picked ? `${picked} photo${picked > 1 ? "s" : ""} ready. Tap Identify to read it.` : "Take a photo to start."}</span><button class="btn" id="scMan" type="button">Type it instead</button></div>`;
   const mkNote = d.marketState === "loading" ? "Looking up value…" : d.marketNote;
-  f.innerHTML = `${step1}
-    <div class="sc-step money"><b>Money</b>
-      <label class="sc-f"><span>You paid</span><input id="scPaid" inputmode="decimal" placeholder="0.00" value="${esc(paid)}"></label>
-      <label class="sc-f"><span>Market value <small>TCGplayer market, or cleaned eBay listings</small></span><input id="scMkt" inputmode="decimal" placeholder="${d.marketState === "loading" ? "looking up…" : "0.00"}" value="${esc(mk)}"></label>
-      ${mkNote ? `<small class="sc-note">${esc(mkNote)}</small>` : ""}
-      ${profit != null ? `<div class="sc-profit ${profit >= 0 ? "pos" : "neg"}">Profit if it sells at market: <b>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</b></div>` : ""}
-      <label class="sc-f"><span>Quantity</span><input id="scQty" inputmode="numeric" value="${esc(d.qty)}"></label>
-    </div>
-    <div class="sc-step stage"><b>Stage it</b><span>${d.identity || d.title.trim() ? "It goes to Ready to list." : "Not identified yet, so it goes to Intake."}</span>
-      <button class="btn go" id="scSave" type="button" ${picked ? "" : "disabled"}>Save item</button></div>`;
+  const id = d.identity || {};
+  const chips = [id.set_name, id.collector_number, id.finish].filter(Boolean).map((c) => `<i>${esc(c)}</i>`).join("");
+  const money_ = `<div class="scr-money">
+      <div class="scr-mkt"><em>Market value</em><input id="scMkt" inputmode="decimal" placeholder="${d.marketState === "loading" ? "…" : "0.00"}" value="${esc(mk)}" aria-label="Market value">${mkNote ? `<small>${esc(mkNote)}</small>` : ""}</div>
+      <div class="scr-mini"><label><em>You paid</em><input id="scPaid" inputmode="decimal" placeholder="0.00" value="${esc(paid)}"></label><label><em>Qty</em><input id="scQty" inputmode="numeric" value="${esc(d.qty)}"></label></div>
+      ${profit != null ? `<div class="sc-profit ${profit >= 0 ? "pos" : "neg"}">${profit >= 0 ? "Profit" : "Loss"} at market <b>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</b></div>` : ""}</div>`;
+  const ready = d.identity || d.title.trim();
+  /* one floating card at a time: only what the next step needs */
+  let card;
+  if (d.idState === "ok" || d.manual && false) card = `<div class="scr-card ok"><div class="scr-top"><span class="scr-tag">Identified</span><button class="scr-link" id="scRe" type="button">Not right? Identify again</button></div><h3 class="scr-t">${esc(d.title)}</h3>${chips ? `<div class="scr-chips">${chips}</div>` : ""}${money_}
+      <button class="btn go scr-go" id="scSave" type="button" ${picked ? "" : "disabled"}>Save to Ready to list</button></div>`;
+  else if (d.idState === "working" || d.idState === "pick" || d.idState === "fail" || d.manual) card = `<div class="scr-card">${step1}</div>`;
+  else if (picked) card = `<div class="scr-card"><div class="scr-top"><span class="scr-tag dim">${picked} photo${picked > 1 ? "s" : ""} ready</span><button class="scr-link" id="scMan" type="button">Type it in</button></div><h3 class="scr-t">Tap Identify on the camera</h3><p class="scr-p">It reads the card and fills in the name and price.</p>${money_}
+      <button class="btn scr-go" id="scSave" type="button">Save without identifying</button></div>`;
+  else card = `<div class="scr-card idle"><h3 class="scr-t">No photos yet</h3><p class="scr-p">Take a photo of one item, or drop photos here.</p><button class="scr-link" id="scMan" type="button">Type it in instead</button><button class="btn" id="scSave" type="button" disabled hidden>Save item</button></div>`;
+  f.innerHTML = card;
+  void ready;
   const sid = $("#scId"); if (sid) { sid.disabled = !picked || d.idState === "working"; if (!sid.dataset.on) { sid.dataset.on = "1"; sid.addEventListener("click", () => identify()); } }
   $("#scDrop")?.classList.toggle("scanning", d.idState === "working");
   const hd = $("#scHud"); if (hd) hd.outerHTML = hud();
