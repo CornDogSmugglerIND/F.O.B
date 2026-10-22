@@ -77,7 +77,12 @@ function toastUndo(msg, fn) {
 /* Sheets: real iOS sheets (Ionic ion-modal with detents + swipe) when Ionic is loaded; plain panel otherwise. */
 let modal = null;
 const sheetIsOpen = () => !!(modal && modal.isConnected) || !$("#sheet").hidden;
-function closeSheet() { const m = modal; modal = null; if (m) { const kill = () => { if (m.isConnected) m.remove(); }; try { Promise.resolve(m.__p).catch(() => {}).then(() => m.dismiss()).finally(kill); } catch { kill(); } setTimeout(kill, 1100); } $("#sheet").hidden = true; $("#sheetBack").hidden = true; }
+function closeSheet() { const m = modal; modal = null; if (m) {
+    /* Back always works at once: if the sheet engine stalls, the sheet is pulled anyway */
+    const kill = () => { if (m.isConnected) { m.remove(); if (!document.querySelector("ion-modal.show-modal")) document.body.classList.remove("backdrop-no-scroll"); } };
+    try { Promise.resolve(m.__p).catch(() => {}).then(() => m.dismiss()).finally(kill); } catch { kill(); }
+    setTimeout(() => { if (m.isConnected) { m.classList.add("closing"); setTimeout(kill, 180); } }, 650);
+  } $("#sheet").hidden = true; $("#sheetBack").hidden = true; }
 function openSheet(html) {
   if (window.customElements && customElements.get("ion-modal")) {
     if (modal && modal.isConnected && modal.classList.contains("show-modal")) {
@@ -325,7 +330,7 @@ function go(v) {
   } else run();
 }
 let introT = 0;
-function intro() { const h = document.documentElement; h.classList.add("intro"); clearTimeout(introT); introT = setTimeout(() => h.classList.remove("intro"), 1100); }
+function intro() { if (matchMedia("(prefers-reduced-motion: reduce)").matches) return; const h = document.documentElement; h.classList.add("intro"); clearTimeout(introT); introT = setTimeout(() => h.classList.remove("intro"), 1100); }
 function go_(v) {
   if (v !== view || !document.querySelector("#main > *")) intro();
   view = v; closeSheet(); document.body.dataset.view = v; try { dispatchEvent(new CustomEvent("fob:view", { detail: v })); } catch { /* ignore */ }

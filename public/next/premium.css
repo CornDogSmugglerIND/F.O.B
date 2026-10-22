@@ -313,3 +313,4 @@ ion-modal.fob-sheet::part(content){background:linear-gradient(170deg,#262c2a,#11
 .k-zinfo .btn{margin-top:8px}
 
 .st-empty{display:flex;flex-direction:column;gap:14px;padding:18px 0 6px}.st-empty p{margin:0;color:var(--mute,#9aa5a0);font-size:15px;line-height:1.4}
+ion-modal.fob-sheet.closing{opacity:0;transition:opacity .16s ease-out;pointer-events:none}
