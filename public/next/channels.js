@@ -1,6 +1,6 @@
 import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=6";
 import { photoManager } from "./photos.js?v=4";
-import { openCard } from "./kit.js?v=2";
+import { openCard } from "./kit.js?v=3";
 import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=7";
 
 let ctx = null;
@@ -104,15 +104,26 @@ function orderInfo(it) {
 }
 function varInfo(it) {
   if (!(it._n > 1)) return "";
-  return `<div class="row"><span>Variations</span><span>${it._n} options</span></div><div class="bl-vars">${it._kids.slice(0, 40).map((k) => `<div><span>${esc(nameOf(k))}</span><b>${money(k.price)}</b></div>`).join("")}${it._n > 40 ? `<div><span>and ${it._n - 40} more</span></div>` : ""}</div>`;
+  const kids = it._kids.slice().sort((x, y) => (Number(y.price) || 0) - (Number(x.price) || 0));
+  const names = kids.map((k) => nameOf(k));
+  /* drop the words every card shares (set name etc.) so each row says what's different */
+  const words = names.map((t) => t.split(/\s+/)); let cut = 0;
+  while (cut < 12 && words.every((w) => w[cut] && w[cut].toLowerCase() === words[0][cut].toLowerCase())) cut++;
+  const short = (k, j) => { const w = words[j]; const r = w.slice(cut).join(" "); return r.length > 2 ? r : names[j]; };
+  const qty = kids.reduce((a, k) => a + (Number(k.quantity) || 1), 0), val = kids.reduce((a, k) => a + (Number(k.price) || 0) * (Number(k.quantity) || 1), 0);
+  const row = (k, j) => { const p = photoOf(k); return `<div class="vx-row">${p ? `<img src="${esc(p)}" alt="" loading="lazy">` : `<i>${esc(names[j].charAt(0))}</i>`}<span>${esc(short(k, j))}</span><b>${money(k.price)}</b><em>×${Number(k.quantity) || 1}</em></div>`; };
+  return `<div class="vx-chips"><span class="vx-live">● Live on eBay</span><span>One listing · ${it._n} cards</span></div>
+    <div class="vx-stats"><div><b>${ptxt(it)}</b><span>Price range</span></div><div><b>${qty}</b><span>In stock</span></div><div><b>${money(val)}</b><span>Total value</span></div></div>
+    <h3 class="vx-h">Cards in this listing</h3><div class="vx-list">${kids.slice(0, 12).map(row).join("")}${kids.length > 12 ? `<div class="vx-more" data-vxall>${kids.slice(12).map((k, j) => row(k, j + 12)).join("")}</div><button class="btn" type="button" data-vxshow>Show all ${kids.length}</button>` : ""}</div>`;
 }
 function zoom(list, el) {
   const id = el.dataset.id, idx = list.findIndex((i) => String(i.id) === String(id)); if (idx < 0) return;
   openCard(list, {
     index: idx, from: el, photo: photoOf, name: nameOf,
-    info: (it) => it._order ? orderInfo(it) : varInfo(it) + (() => { const sp = loadSpaces().find((s) => s.id === it.spaceId); const on = S.sel.has(String(it.id));
+    backLabel: STAGE_LABEL[S.stage] || "Channels",
+    info: (it) => it._order ? orderInfo(it) : it._n > 1 ? varInfo(it) + `<div class="vx-act"><button class="btn" data-sel type="button">${S.sel.has(String(it.id)) ? "Deselect" : "Select for bulk actions"}</button><button class="btn warn" data-rm type="button">Hide from this app (stays on eBay)</button></div>` : (() => { const sp = loadSpaces().find((s) => s.id === it.spaceId); const on = S.sel.has(String(it.id));
       return `<div class="sub">${esc(STAGE_LABEL[stageOf(it)] || "")}</div><div class="row"><span>Price</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${(it.photos || []).length > 1 ? `<div class="row"><span>Photos</span><span>${it.photos.length}, all kept together</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div>${stageOf(it) === "staged" ? `<button class="btn go" data-build type="button">Build the listing</button>` : ""}<button class="btn" data-sel type="button">${on ? "Deselect" : "Select for bulk actions"}</button><button class="btn warn" data-rm type="button">${String(it.id).startsWith("ebay-") ? "Hide from this app (stays on eBay)" : "Delete this item"}</button>`; })(),
-    wire: (root, it, api) => { if (!it._order) { const d = document.createElement("div"); (root.querySelector(".k-zinfo") || root).appendChild(d); photoManager(d, it.id, { toast: ctx.toast, refresh: ctx.refresh }); } root.querySelector("[data-ov]")?.addEventListener("click", (e) => { setOv(it._order.orderId, e.currentTarget.dataset.ov); api.close(); ctx.toast(e.currentTarget.dataset.ov === "delivered" ? "Moved to Delivered" : "Moved back to Shipped"); paint(); }); root.querySelector("[data-build]")?.addEventListener("click", () => { api.close(); buildSheet(it); }); root.querySelector("[data-rm]")?.addEventListener("click", () => removeItem(it, api.close)); root.querySelector("[data-sel]")?.addEventListener("click", () => { toggle(String(it.id)); paint(); root.querySelector("[data-sel]").textContent = S.sel.has(String(it.id)) ? "Deselect" : "Select for bulk actions"; }); },
+    wire: (root, it, api) => { root.querySelector("[data-vxshow]")?.addEventListener("click", (e) => { root.querySelector("[data-vxall]").classList.add("on"); e.currentTarget.remove(); }); if (!it._order && !(it._n > 1)) { const d = document.createElement("div"); (root.querySelector(".k-zinfo") || root).appendChild(d); photoManager(d, it.id, { toast: ctx.toast, refresh: ctx.refresh }); } root.querySelector("[data-ov]")?.addEventListener("click", (e) => { setOv(it._order.orderId, e.currentTarget.dataset.ov); api.close(); ctx.toast(e.currentTarget.dataset.ov === "delivered" ? "Moved to Delivered" : "Moved back to Shipped"); paint(); }); root.querySelector("[data-build]")?.addEventListener("click", () => { api.close(); buildSheet(it); }); root.querySelector("[data-rm]")?.addEventListener("click", () => removeItem(it, api.close)); root.querySelector("[data-sel]")?.addEventListener("click", () => { toggle(String(it.id)); paint(); root.querySelector("[data-sel]").textContent = S.sel.has(String(it.id)) ? "Deselect" : "Select for bulk actions"; }); },
   });
 }
 function wire(all) {

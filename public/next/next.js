@@ -1,14 +1,14 @@
 import { isArchived, archive, unarchive, archMap } from "./shared.js?v=6";
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=7";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=17";
-import { renderCollection } from "./collection.js?v=16";
+import { renderScouter } from "./scouter.js?v=18";
+import { renderCollection } from "./collection.js?v=17";
 import { photoManager } from "./photos.js?v=4";
-import { renderSpaces } from "./spaces.js?v=12";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=31";
+import { renderSpaces } from "./spaces.js?v=13";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=32";
 import { renderSettings } from "./settings.js?v=9";
 import { initSync } from "./sync.js?v=4";
-import { initKit } from "./kit.js?v=2";
+import { initKit } from "./kit.js?v=3";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -81,9 +81,9 @@ function closeSheet() { const m = modal; modal = null; if (m) { const kill = () 
 function openSheet(html) {
   if (window.customElements && customElements.get("ion-modal")) {
     if (modal && modal.isConnected && modal.classList.contains("show-modal")) {
-      const s = modal.querySelector(".shx");
-      s.innerHTML = `<button class="x" aria-label="Close" data-close type="button">×</button>${html}`;
-      s.classList.remove("swap"); void s.offsetWidth; s.classList.add("swap");
+      /* a fresh element each time, so old swipe/tap handlers never pile up */
+      const old = modal.querySelector(".shx"), s = document.createElement("div"); s.className = "shx swap";
+      s.innerHTML = `<button class="x" aria-label="Close" data-close type="button">×</button>${html}`; old.replaceWith(s);
       try { modal.querySelector("ion-content").scrollToTop(0); } catch { /* ignore */ }
       s.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", (e) => { e.preventDefault(); closeSheet(); }));
       return s;
@@ -182,16 +182,20 @@ function itemSheet(id) {
   s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "spaces") { closeSheet(); go("spaces"); } else if (a === "channels") { window.__chStage = e.currentTarget.dataset.st || "listed"; if (e.currentTarget.dataset.st === "staged") { closeSheet(); buildListing(id, chApi()); } else go("channels"); } });
 }
 function chApi() { return { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); }, rerender: () => render() }; }
+const EMPTY_HINT = { intake: "No cards waiting. Snap or drop photos in Scouter to start.", staged: "Nothing ready to list. Identify cards in Scouter first.", listed: "Nothing live on eBay right now.", stored: "Nothing filed in a bin yet.", sold: "No sales waiting to ship.", shipped: "Nothing in transit.", delivered: "No deliveries in the last 90 days." };
 function stageSheet(sid) {
+  if (!STOPS.some((x) => x.id === sid)) return;
+  if (sid === "intake" && !groups().intake.length) { go("scouter"); return; }
   const stop = STOPS.find((x) => x.id === sid); const list = groups()[sid]; navFor(sid);
   const cap = 60, canArch = ["sold", "shipped", "delivered"].includes(sid) && list.length;
   const s = openSheet(`
     <div class="iv-bar"><button type="button" class="iv-back" data-close>‹ Back to Command</button></div>
     <h2>${esc(stop.label)}</h2><div class="sub">${list.length} ${list.length === 1 ? "item" : "items"} · ${esc(stop.note)}</div>
-    ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : `<div class="tini">${esc(nameOf(it).replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "?")}</div>`}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}.</p>` : ""}${sid === "staged" ? `<button class="btn go" id="varAll" type="button" style="margin-top:12px">List several as one variation listing</button>` : sid === "intake" ? "" : `<button class="btn go" id="seeAll" type="button" style="margin-top:12px">Open ${esc(stop.label)} in Channels</button>`}${canArch ? `<button class="btn iv-arch" id="archAll" type="button">Archive all ${list.length}</button>` : ""}` : `<p class="sub">Nothing here yet.</p>`}`);
+    ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : `<div class="tini">${esc(nameOf(it).replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "?")}</div>`}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}.</p>` : ""}${sid === "staged" ? `<button class="btn go" id="varAll" type="button" style="margin-top:12px">List several as one variation listing</button>` : sid === "intake" ? `<button class="btn go" id="toSc" type="button" style="margin-top:12px">Identify these in Scouter</button>` : `<button class="btn go" id="seeAll" type="button" style="margin-top:12px">Open ${esc(stop.label)} in Channels</button>`}${canArch ? `<button class="btn iv-arch" id="archAll" type="button">Archive all ${list.length}</button>` : ""}` : `<div class="st-empty"><p>${esc(EMPTY_HINT[sid] || "Nothing here yet.")}</p>${sid === "intake" || sid === "staged" ? `<button class="btn go" id="toSc" type="button">Open Scouter</button>` : `<button class="btn go" id="seeAll" type="button">Open Channels</button>`}</div>`}`);
   s.querySelector("#archAll")?.addEventListener("click", (e) => { const b = e.currentTarget; if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = `Yes, archive all ${list.length}`; return; } archive(list); render(); stageSheet(sid); toastUndo(`Archived ${list.length} from ${stop.label}`, () => { unarchive(list.map((x) => x.id)); render(); }); });
   s.querySelectorAll("[data-item]").forEach((b) => b.addEventListener("click", () => itemSheet(b.dataset.item)));
   s.querySelector("#varAll")?.addEventListener("click", () => { closeSheet(); variationListing(chApi()); });
+  s.querySelector("#toSc")?.addEventListener("click", () => { closeSheet(); go("scouter"); });
   s.querySelector("#seeAll")?.addEventListener("click", () => { window.__chStage = ({ intake: "intake", staged: "staged", listed: "listed", sold: "sold", shipped: "shipped", delivered: "delivered" })[sid] || "all"; go("channels"); });
 }
 
@@ -223,11 +227,11 @@ function initAvatar() {
 
 /* ---------- Command ---------- */
 const phone = () => matchMedia("(max-width:820px)").matches;
-function pileHtml(list, cls, emptyMsg) {
-  if (!list.length) return emptyMsg ? `<button type="button" class="empty go ${cls}" data-goto="scouter"><i>+</i><span>${esc(emptyMsg)}</span></button>` : `<div class="empty ${cls}"><i>○</i><span>Empty</span></div>`;
+function pileHtml(list, cls, emptyMsg, sid = "") {
+  if (!list.length) return emptyMsg ? `<button type="button" class="empty go ${cls}" data-goto="scouter"><i>+</i><span>${esc(emptyMsg)}</span></button>` : (sid ? `<button type="button" class="empty ${cls}" data-stage="${sid}"><i>○</i><span>Empty</span></button>` : `<div class="empty ${cls}"><i>○</i><span>Empty</span></div>`);
   const top = list[0]; const src = photoOf(top);
   const face = (it, k) => { const p = photoOf(it); return `<div class="pc ${k === "" ? "k-tilt" : k}" ${k === "" ? `data-item="${esc(it.id)}"` : ""}>${p ? `<img src="${esc(p)}" alt="" draggable="false">` : `<div class="ini">${esc(nameOf(it).charAt(0).toUpperCase())}</div>`}${k === "" ? `<span class="cap"><span>${esc(nameOf(it))}</span><em>${money(worth(it))}</em></span>` : ""}</div>`; };
-  return `<div class="pile ${cls}">${list[2] ? face(list[2], "b2") : ""}${list[1] ? face(list[1], "b1") : ""}${face(top, "")}${list.length > 1 ? `<span class="more" data-stage="${""}">+${list.length - 1} more</span>` : ""}</div>`;
+  return `<div class="pile ${cls}">${list[2] ? face(list[2], "b2") : ""}${list[1] ? face(list[1], "b1") : ""}${face(top, "")}${list.length > 1 ? `<span class="more" data-stage="${sid}">+${list.length - 1} more</span>` : ""}</div>`;
 }
 function renderCommand() {
   const g = groups(); const main = $("#main");
@@ -249,7 +253,7 @@ function renderCommand() {
       <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 34"/>
       ${[0, 1, 2].map((k) => `<circle r="6" fill="#B3FBD5" style="filter:drop-shadow(0 0 7px #90FFCC)"><animateMotion dur="12s" begin="${k * 4}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
       ${STOPS.map((s, i) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${PX[i]}%;top:${PY[i]}px;--c:${s.c}">
-        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "")}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
+        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
         <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div></div>`).join("")}
       <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[6] - 17}%;top:${PY[6] + 8}px"><i></i>Done</div></div>`;
   } else {
@@ -265,7 +269,7 @@ function renderCommand() {
       <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 34"/>
       ${[0, 1, 2, 3].map((k) => `<circle r="7" fill="#B3FBD5" style="filter:drop-shadow(0 0 9px #90FFCC)"><animateMotion dur="14s" begin="${k * 3.5}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
       ${STOPS.map((s) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${s.pos[0]}%;top:${s.pos[1]}%;--c:${s.c}">
-        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "")}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
+        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
         <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div></div>`).join("")}
       <div class="flag start" style="left:${STOPS[0].pos[0] - 6}%;top:${STOPS[0].pos[1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${STOPS[STOPS.length - 1].pos[0] - 2}%;top:${STOPS[STOPS.length - 1].pos[1] + 12}%"><i></i>Done</div>
       <div class="dock">${pills}</div><div class="hint">Tap a stop to open it · hold a card and drop it on a stop to move it</div></div>`;
@@ -318,7 +322,10 @@ function go(v) {
     const t = document.startViewTransition(run); t.finished.finally(() => { delete document.documentElement.dataset.vt; });
   } else run();
 }
+let introT = 0;
+function intro() { const h = document.documentElement; h.classList.add("intro"); clearTimeout(introT); introT = setTimeout(() => h.classList.remove("intro"), 1100); }
 function go_(v) {
+  if (v !== view || !document.querySelector("#main > *")) intro();
   view = v; closeSheet(); document.body.dataset.view = v; try { dispatchEvent(new CustomEvent("fob:view", { detail: v })); } catch { /* ignore */ }
   document.querySelectorAll("#nav button").forEach((b) => { b.classList.toggle("on", b.dataset.view === v); if (b.dataset.view === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   try { history.replaceState(null, "", v === "command" ? "./" : `#${v}`); } catch { /* ignore */ }

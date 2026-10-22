@@ -149,12 +149,58 @@ function attachCam() {
   const v = $("#scLive"), dz = $("#scDrop"); if (!v || !dz) return;
   if (stream) {
     if (v.srcObject !== stream) v.srcObject = stream;
-    v.hidden = false; v.play?.().catch(() => {}); dz.classList.add("live");
+    v.hidden = false; v.play?.().catch(() => {}); dz.classList.add("live"); track();
     const t = stream.getVideoTracks()[0], cap = t && t.getCapabilities ? t.getCapabilities() : {};
     const tb = $("#scTorch"); if (tb) tb.hidden = !cap.torch;
   } else { v.hidden = true; dz.classList.remove("live"); }
 }
-function stopCam() { if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; } const v = $("#scLive"); if (v) { v.srcObject = null; v.hidden = true; } $("#scDrop")?.classList.remove("live"); }
+/* lock-on: find the card in the frame and follow it */
+let trk = null;
+function track() {
+  if (trk) return;
+  const cv = document.createElement("canvas"), g = cv.getContext("2d", { willReadFrequently: true });
+  const st = { x: .23, y: .2, w: .54, h: .6, tx: .23, ty: .2, tw: .54, th: .6, last: 0, seen: 0, still: 0, mode: "seek" };
+  const def = { x: .23, y: .2, w: .54, h: .6 };
+  const step = (now) => {
+    const v = $("#scLive"), box = $("#scLock"), dz = $("#scDrop");
+    if (!stream || !v || !box || !dz) { trk = null; return; }
+    trk = requestAnimationFrame(step);
+    const W = dz.clientWidth, H = dz.clientHeight; if (!W || !H) return;
+    /* glide toward the target every frame; detect every ~70ms */
+    const k = matchMedia("(prefers-reduced-motion: reduce)").matches ? 1 : .4;
+    st.x += (st.tx - st.x) * k; st.y += (st.ty - st.y) * k; st.w += (st.tw - st.w) * k; st.h += (st.th - st.h) * k;
+    box.style.transform = `translate3d(${(st.x * W).toFixed(1)}px,${(st.y * H).toFixed(1)}px,0)`; box.style.width = (st.w * W).toFixed(1) + "px"; box.style.height = (st.h * H).toFixed(1) + "px";
+    if (now - st.last < 70 || !v.videoWidth) return; st.last = now;
+    const sc = Math.max(W / v.videoWidth, H / v.videoHeight), cw = W / sc, chh = H / sc, sx = (v.videoWidth - cw) / 2, sy = (v.videoHeight - chh) / 2;
+    const w = 96, h = Math.max(24, Math.round(96 * H / W)); cv.width = w; cv.height = h;
+    g.drawImage(v, sx, sy, cw, chh, 0, 0, w, h);
+    const px = g.getImageData(0, 0, w, h).data, L = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) L[i] = px[i * 4] * .3 + px[i * 4 + 1] * .59 + px[i * 4 + 2] * .11;
+    const E = new Float32Array(w * h); let sum = 0, sq = 0, n = 0;
+    for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) { const i = y * w + x, e = Math.abs(L[i + 1] - L[i - 1]) + Math.abs(L[i + w] - L[i - w]); E[i] = e; sum += e; sq += e * e; n++; }
+    const mean = sum / n, sd = Math.sqrt(Math.max(0, sq / n - mean * mean)), th = mean + 1.2 * sd;
+    const cx = new Float32Array(w), cy = new Float32Array(h); let tot = 0;
+    for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) { const e = E[y * w + x]; if (e > th && e > 14) { const dx = (x / w - .5) * 2, dy = (y / h - .5) * 2, wt = Math.exp(-(dx * dx + dy * dy) * .9); cx[x] += wt; cy[y] += wt; tot += wt; } }
+    const pct = (arr, len, q) => { let a = 0; const t = tot * q; for (let i = 0; i < len; i++) { a += arr[i]; if (a >= t) return i; } return len - 1; };
+    let tg = null;
+    if (tot > w * h * .012) {
+      const x0 = pct(cx, w, .05) / w, x1 = (pct(cx, w, .95) + 1) / w, y0 = pct(cy, h, .05) / h, y1 = (pct(cy, h, .95) + 1) / h;
+      const bw = x1 - x0, bh = y1 - y0;
+      if (bw > .14 && bh > .14 && bw < .97 && bh < .97) { const pad = .018; tg = { x: Math.max(.02, x0 - pad), y: Math.max(.02, y0 - pad), w: Math.min(.96, bw + pad * 2), h: Math.min(.96, bh + pad * 2) }; }
+    }
+    if (tg) st.seen = now; const t = tg || (now - st.seen > 700 ? def : null);
+    if (t) {
+      const mv = Math.abs(t.x - st.tx) + Math.abs(t.y - st.ty) + Math.abs(t.w - st.tw) + Math.abs(t.h - st.th);
+      /* small jitter is ignored so a held card sits dead still */
+      if (mv > .012) { st.tx = t.x; st.ty = t.y; st.tw = t.w; st.th = t.h; }
+      st.still = tg && mv < .05 ? st.still + 1 : 0;
+    }
+    const mode = !tg ? "seek" : st.still >= 4 ? "lock" : "track";
+    if (mode !== st.mode) { st.mode = mode; box.dataset.mode = mode; const lk = $("#scLk"); if (lk) lk.textContent = mode === "lock" ? "Locked" : mode === "track" ? "Tracking" : "Seeking"; if (mode === "lock") ctx?.haptic?.(); }
+  };
+  trk = requestAnimationFrame(step);
+}
+function stopCam() { if (trk) { cancelAnimationFrame(trk); trk = null; } if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; } const v = $("#scLive"); if (v) { v.srcObject = null; v.hidden = true; } $("#scDrop")?.classList.remove("live"); }
 async function snap() {
   const v = $("#scLive"); if (!stream || !v || !v.videoWidth) return false;
   if (d.photos.filter((p) => p.picked).length >= MAX_PICK && d.photos.length >= MAX_PICK) { ctx.toast(`That's ${MAX_PICK} photos. Tap Identify.`); return true; }
@@ -199,7 +245,7 @@ function shell() {
   return `<div class="sc-wrap hh"><div class="pg-title"><h2>Scouter</h2><span>One set of photos is one item. Identify it, set the money, stage it.</span></div>${hud()}
     <section class="sc-left">
       <div class="sc-drop sc-vf" id="scDrop" tabindex="0" role="button" aria-label="Add photos">
-        <video id="scLive" playsinline muted autoplay hidden></video><img id="scVfImg" alt="" hidden draggable="false"><i class="k-reticle" aria-hidden="true"></i><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
+        <video id="scLive" playsinline muted autoplay hidden></video><img id="scVfImg" alt="" hidden draggable="false"><div class="sc-lock" id="scLock" data-mode="seek" aria-hidden="true"><i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i><svg class="sc-core" viewBox="0 0 40 40"><circle cx="20" cy="20" r="13" class="ring"/><path d="M20 3v7M20 30v7M3 20h7M30 20h7" class="tk"/><circle cx="20" cy="20" r="1.6" class="dot"/></svg><span class="sc-lk" id="scLk">Seeking</span></div><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
         <div class="sc-aim"><b>Aim at the item</b><span>Take a photo, or drop and paste photos here.</span></div><div class="sc-scanmsg">Identifying…</div>
       </div>
       <input type="file" id="scFile" accept="image/*" multiple hidden><input type="file" id="scCamFile" accept="image/*" capture="environment" hidden>

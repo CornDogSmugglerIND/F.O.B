@@ -57,7 +57,31 @@ export function closeCard(instant) {
   z.classList.add("out"); setTimeout(() => z.remove(), 220);
 }
 /** items: array of item objects. opts: {index, from:Element|Rect, info:(it)=>html, wire:(root,it,api)=>void, photo:(it)=>src, name:(it)=>str, price:(it)=>str} */
+/* Same item viewer as Command: an iOS sheet with ‹ Back, "n of N", ‹ › arrows and swipe. */
+function openCardSheet(items, opts, f) {
+  let i = Math.max(0, Math.min(items.length - 1, opts.index || 0));
+  const photo = opts.photo || ((it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "");
+  const name = opts.name || ((it) => it.title || it.productName || "Untitled");
+  let s = null;
+  const go = (k) => { if (k < 0 || k >= items.length || k === i) return; i = k; paint(); };
+  const key = (e) => { if (!s || !s.isConnected) { document.removeEventListener("keydown", key); return; } if (e.key === "ArrowRight") go(i + 1); else if (e.key === "ArrowLeft") go(i - 1); };
+  const paint = () => {
+    const it = items[i], p = photo(it), n = items.length;
+    s = f.openSheet(`<div class="iv-bar"><button type="button" class="iv-back" data-close>‹ ${esc(opts.backLabel || "Back")}</button>${n > 1 ? `<span class="iv-n">${i + 1} of ${n}</span><button type="button" class="iv-btn" data-prev aria-label="Previous"${i === 0 ? " disabled" : ""}>‹</button><button type="button" class="iv-btn" data-next aria-label="Next"${i === n - 1 ? " disabled" : ""}>›</button>` : ""}</div>
+      ${p ? `<div class="iv-hero"><img src="${esc(p)}" alt="" draggable="false"></div>` : ""}<div class="k-zinfo it-info"><h2>${esc(name(it))}</h2>${opts.info ? opts.info(it) : ""}</div>`);
+    s.querySelector("[data-prev]")?.addEventListener("click", () => go(i - 1));
+    s.querySelector("[data-next]")?.addEventListener("click", () => go(i + 1));
+    let sx = null, sy = 0;
+    s.addEventListener("touchstart", (e) => { if (e.touches.length !== 1 || e.target.closest(".ph-row,input,textarea,select,.bl-vars,.vx-list")) { sx = null; return; } sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+    s.addEventListener("touchend", (e) => { if (sx == null) return; const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; sx = null; if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.6) go(dx < 0 ? i + 1 : i - 1); }, { passive: true });
+    opts.wire && opts.wire(s, it, { close: () => f.closeSheet(), next: () => { if (i < n - 1) go(i + 1); else f.closeSheet(); } });
+  };
+  document.addEventListener("keydown", key);
+  paint();
+  return s;
+}
 export function openCard(items, opts = {}) {
+  const f = window.__fob; if (f && window.customElements && customElements.get("ion-modal")) { closeCard(true); return openCardSheet(items, opts, f); }
   closeCard(true);
   let i = Math.max(0, Math.min(items.length - 1, opts.index || 0));
   const photo = opts.photo || ((it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "");

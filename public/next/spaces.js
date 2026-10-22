@@ -1,5 +1,5 @@
 import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=6";
-import { fly, rectOf, sleep, openCard } from "./kit.js?v=2";
+import { fly, rectOf, sleep, openCard } from "./kit.js?v=3";
 
 /* Spaces = his real storage, as a camera you fly through:
    area -> shelf -> bin (closed, lid flips) -> bin (open, items inside). */
@@ -167,7 +167,7 @@ function wire(w) {
   $("[data-del]")?.addEventListener("click", () => { const its = w.inBin(S.bin), name = nm(w, S.bin), prev = snapshot(); assign(its.map((i) => i.id), null); saveSpaces(loadSpaces().filter((x) => x.id !== S.bin)); S.level = "area"; S.bin = null; S.open = false; ctx.refresh(); paint(); ctx.toastUndo(`Deleted ${name}`, () => { restore(prev); ctx.refresh(); paint(); }); });
   h.querySelectorAll("[data-item]").forEach((c) => c.addEventListener("click", () => {
     const list = w.inBin(S.bin), name = nm(w, S.bin);
-    openCard(list, { index: list.findIndex((i) => String(i.id) === c.dataset.item), from: c, photo: photoOf, name: nameOf,
+    openCard(list, { index: list.findIndex((i) => String(i.id) === c.dataset.item), from: c, photo: photoOf, name: nameOf, backLabel: name,
       info: (it) => `<div class="sub">In ${esc(name)}</div><div class="row"><span>Price</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div><button class="btn" data-takeout type="button">Take out of bin</button>`,
       wire: (root, it, api) => root.querySelector("[data-takeout]")?.addEventListener("click", () => { const prev = snapshot(); assign([it.id], null); api.close(); ctx.refresh(); paint(); ctx.toastUndo("Took it out of the bin", () => { restore(prev); ctx.refresh(); paint(); }); }) });
   }));
