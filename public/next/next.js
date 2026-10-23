@@ -244,7 +244,7 @@ function pileHtml(list, cls, emptyMsg, sid = "") {
   if (!list.length) return emptyMsg ? `<button type="button" class="empty go ${cls}" data-goto="scouter"><i>+</i><span>${esc(emptyMsg)}</span></button>` : (sid ? `<button type="button" class="empty ${cls}" data-stage="${sid}"><i>○</i><span>Empty</span></button>` : `<div class="empty ${cls}"><i>○</i><span>Empty</span></div>`);
   const top = list[0]; const src = photoOf(top);
   const face = (it, k) => { const p = photoOf(it); return `<div class="pc ${k === "" ? "k-tilt" : k}" ${k === "" ? `data-item="${esc(it.id)}"` : ""}>${p ? `<img src="${esc(p)}" alt="" draggable="false">` : `<div class="ini">${esc(nameOf(it).charAt(0).toUpperCase())}</div>`}${k === "" ? `<span class="cap"><span>${esc(nameOf(it))}</span><em>${money(worth(it))}</em></span>` : ""}</div>`; };
-  return `<div class="pile ${cls}">${list[2] ? face(list[2], "b2") : ""}${list[1] ? face(list[1], "b1") : ""}${face(top, "")}</div>`;
+  return `<div class="pile ${cls}">${list[2] ? face(list[2], "b2") : ""}${list[1] ? face(list[1], "b1") : ""}${face(top, "")}${list.length > 1 ? `<span class="more" data-stage="${sid}">+${list.length - 1} more</span>` : ""}</div>`;
 }
 /* HUD widgets: the numbers you check first, tap to jump there */
 function widgets(g) {
@@ -276,31 +276,19 @@ function wireArrange(main, kind, W, H) {
   const points = () => stops.map((st) => { const x = parseFloat(st.style.left) / 100 * W; const y = kind === "phone" ? parseFloat(st.style.top) : parseFloat(st.style.top) / 100 * H; return [x, y]; });
   const redraw = () => { const d = routePath(points(), kind === "phone"); road.querySelectorAll("svg path").forEach((p) => p.setAttribute("d", d)); road.querySelectorAll("svg animateMotion").forEach((a) => a.setAttribute("path", d)); };
   stops.forEach((st) => {
-    if (!st.querySelector(".tag")) return;
-    /* Grab the whole stop, in the capture phase so the card drag underneath never starts.
-       The stop keeps the exact spot where you grabbed it: your finger's offset from the
-       stop's center is remembered, and the road's box is re-measured on every move, so
-       the stop tracks your finger 1:1 instead of snapping its center to it. */
-    st.addEventListener("pointerdown", (e) => {
-      e.preventDefault(); e.stopPropagation();
-      try { st.setPointerCapture(e.pointerId); } catch { /* ignore */ }
-      st.classList.add("moving");
-      const r0 = road.getBoundingClientRect();
-      const cx = parseFloat(st.style.left) / 100 * r0.width;
-      const cy = kind === "phone" ? parseFloat(st.style.top) : parseFloat(st.style.top) / 100 * r0.height;
-      const dx = e.clientX - (r0.left + cx), dy = e.clientY - (r0.top + cy);
-      const lo = kind === "phone" ? 24 : 6;
+    const grip = st.querySelector(".tag"); if (!grip) return;
+    grip.addEventListener("pointerdown", (e) => {
+      e.preventDefault(); e.stopPropagation(); grip.setPointerCapture(e.pointerId); st.classList.add("moving");
+      const r = road.getBoundingClientRect();
       const mv = (ev) => {
-        const r = road.getBoundingClientRect();
-        st.style.left = Math.max(lo, Math.min(100 - lo, (ev.clientX - dx - r.left) / r.width * 100)) + "%";
-        if (kind === "phone") st.style.top = Math.max(110, Math.min(H - 90, ev.clientY - dy - r.top)) + "px";
-        else st.style.top = Math.max(8, Math.min(92, (ev.clientY - dy - r.top) / r.height * 100)) + "%";
-        redraw();
+        const lo = kind === "phone" ? 24 : 6, xp = Math.max(lo, Math.min(100 - lo, (ev.clientX - r.left) / r.width * 100));
+        if (kind === "phone") st.style.top = Math.max(120, Math.min(H - 80, ev.clientY - r.top)) + "px"; else st.style.top = Math.max(10, Math.min(90, (ev.clientY - r.top) / r.height * 100)) + "%";
+        st.style.left = xp + "%"; redraw();
       };
-      const up = () => { st.removeEventListener("pointermove", mv); st.removeEventListener("pointerup", up); st.removeEventListener("pointercancel", up); st.classList.remove("moving");
+      const up = () => { grip.removeEventListener("pointermove", mv); grip.removeEventListener("pointerup", up); grip.removeEventListener("pointercancel", up); st.classList.remove("moving");
         const map = routeSaved(kind); map[st.dataset.drop] = [parseFloat(st.style.left), parseFloat(st.style.top)]; routeSave(kind, map); };
-      st.addEventListener("pointermove", mv); st.addEventListener("pointerup", up); st.addEventListener("pointercancel", up);
-    }, true);
+      grip.addEventListener("pointermove", mv); grip.addEventListener("pointerup", up); grip.addEventListener("pointercancel", up);
+    });
   });
 }
 function renderCommand() {
@@ -383,7 +371,7 @@ function bindDrag(el) {
 
 /* ---------- router ---------- */
 let view = "command";
-const ORDER = ["command", "spaces", "scouter", "channels", "collection", "settings"];
+const ORDER = ["command", "scouter", "spaces", "channels", "collection", "settings"];
 function go(v) {
   const run = () => go_(v);
   const reduce = matchMedia("(prefers-reduced-motion:reduce)").matches;

@@ -2,7 +2,7 @@
 const $ = (s) => document.querySelector(s);
 const phone = () => matchMedia("(max-width:820px)").matches;
 const reduce = () => matchMedia("(prefers-reduced-motion:reduce)").matches;
-const ORDER = ["command", "spaces", "scouter", "channels", "collection", "settings"];
+const ORDER = ["command", "scouter", "spaces", "channels", "collection", "settings"];
 
 /* tab direction */
 const nav = $("#nav");
@@ -20,9 +20,20 @@ if (nav) {
   setTimeout(place, 50); setTimeout(place, 600);
 }
 
-/* Numbers are NOT animated. Every re-render used to restart a count-up from $0, so the
-   header, the cards and the totals never agreed and the numbers never sat still.
-   A number on screen is the number, the moment it renders. */
+/* numbers count up/down instead of jumping */
+const money = (n) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const seen = new WeakMap();
+const mo = new MutationObserver(() => {
+  document.querySelectorAll(".cx-val b, .stat b, .cm-big, .cm-two b, .cm-big, .cm-two b").forEach((el) => {
+    const txt = el.textContent.trim(); if (seen.get(el) === txt || el.dataset.anim) return;
+    const isMoney = txt.startsWith("$"), to = parseFloat(txt.replace(/[^0-9.\-]/g, "")); if (!Number.isFinite(to)) return;
+    const from = Number(el.dataset.last ?? 0); el.dataset.last = String(to); seen.set(el, txt);
+    if (from === to) return; el.dataset.anim = "1"; const t0 = performance.now(), dur = 600;
+    const step = (t) => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3), v = from + (to - from) * e; el.textContent = isMoney ? money(v) : String(Math.round(v)); if (k < 1) requestAnimationFrame(step); else { el.textContent = txt; seen.set(el, txt); delete el.dataset.anim; } };
+    requestAnimationFrame(step);
+  });
+});
+mo.observe(document.body, { childList: true, subtree: true, characterData: true });
 
 /* swipe a sheet down to close (phone) */
 const sheet = $("#sheet"), back = $("#sheetBack");
