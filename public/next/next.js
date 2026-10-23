@@ -1,14 +1,14 @@
 import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=6";
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=7";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=24";
-import { renderCollection, openImport } from "./collection.js?v=19";
+import { renderScouter } from "./scouter.js?v=25";
+import { renderCollection, openImport } from "./collection.js?v=20";
 import { photoManager } from "./photos.js?v=4";
-import { renderSpaces } from "./spaces.js?v=15";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=33";
+import { renderSpaces } from "./spaces.js?v=17";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=34";
 import { renderSettings } from "./settings.js?v=9";
 import { initSync } from "./sync.js?v=4";
-import { initKit } from "./kit.js?v=3";
+import { initKit, itemTabs, wireTabs } from "./kit.js?v=4";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -119,7 +119,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet
 
 function nextAction(ph, it) {
   if (ph === "listed" && it && it.spaceId) return `<p class="sub" style="margin-top:12px">Live on eBay and put away in its bin.</p><button class="btn" data-act="spaces" type="button">Open Spaces</button>`;
-  if (ph === "listed") return `<p class="sub" style="margin-top:12px">Live on eBay. Next: put it away in its bin.</p><button class="btn go" data-act="spaces" type="button">Put it in a bin</button>`;
+  if (ph === "listed") return `<p class="sub" style="margin-top:12px">Live on eBay. Next: pick its bin below.</p>`;
   if (ph === "intake") return `<p class="sub" style="margin-top:12px">Next: identify it from its photos.</p><button class="btn go" data-act="scouter" type="button">Identify it in Scouter</button>`;
   if (ph === "staged") return `<p class="sub" style="margin-top:12px">Next: build the eBay listing.</p><button class="btn go" data-act="channels" data-st="staged" type="button">Build the listing</button>`;
   if (ph === "listed") return `<p class="sub" style="margin-top:12px">Selling on eBay now.</p><button class="btn" data-act="channels" type="button">See all live listings</button>`;
@@ -180,18 +180,13 @@ function itemSheet(id) {
     ${src ? `<img id="sheetMain" src="${esc(src)}" alt="" style="width:100%;height:300px;object-fit:contain;border-radius:20px;background:#0f1211;margin-bottom:14px;box-shadow:0 14px 34px rgba(0,0,0,.5)">` : ""}
 <div class="it-info">
     <h2>${esc(nameOf(it))}</h2>
-    <div class="sub">${st ? esc(st.label) : ph === "ended" ? "Ended on eBay" : ""}</div>
-    <div class="row"><span>Price</span><span>${money(it.price)}</span></div>
-    <div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>
-    ${it.purchasePrice ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div>` : ""}
-    ${nextAction(ph, it)}
-    ${moreActions(ph, it)}
+    ${itemTabs(it, `<div class="ip-big">${money(it.price)}</div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${it.purchasePrice ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div>` : ""}${nextAction(ph, it)}${moreActions(ph, it)}`)}
 </div>
     <div id="phMgr" style="margin-top:18px"></div>${(() => { const g = groups()[st && st.id] || []; const others = g.filter((x) => String(x.id) !== String(it.id)).slice(0, 24); return others.length ? `<div class="ph-head" style="margin-top:6px"><b>Also in ${esc(st.label)}</b><span>${g.length} total</span></div><div class="ph-row">${others.map((x) => { const p = photoOf(x); return `<button type="button" class="sib" data-sib="${esc(x.id)}">${p ? `<img src="${esc(p)}" alt="" loading="lazy">` : `<i>${esc(nameOf(x).charAt(0))}</i>`}<span>${esc(nameOf(x))}</span></button>`; }).join("")}</div>` : ""; })()}
 
     <button class="btn iv-arch" data-arch type="button">Archive this item</button>
     ${String(it.id).startsWith("ebay-") ? "" : `<button class="btn warn" data-del type="button" style="margin-top:10px">Delete this item</button>`}`);
-  wireNav(s, it.id); s.querySelector("[data-arch]").addEventListener("click", () => archiveOne(it));
+  wireNav(s, it.id); wireTabs(s); s.querySelector("[data-arch]").addEventListener("click", () => archiveOne(it));
   s.querySelector("[data-reid]")?.addEventListener("click", () => { closeSheet(); window.__scReid = String(it.id); if (view === "scouter") { const m = $("#main"); m.innerHTML = ""; render(); } else go("scouter"); });
   s.querySelectorAll("[data-bin-to]").forEach((b) => b.addEventListener("click", () => { const to = b.dataset.binTo === it.spaceId ? null : b.dataset.binTo; assign([it.id], to); items = loadItems(); const nm = loadSpaces().find((x) => x.id === to)?.name; toast(to ? `Put in ${nm}` : "Taken out of the bin"); itemSheet(it.id); if (view !== "scouter") softRender(); else window.__fobScRepaint?.(); }));
   photoManager(s.querySelector("#phMgr"), it.id, { toast, refresh: () => { items = loadItems(); renderStats(); const m = s.querySelector("#sheetMain"); const c = items.find((i) => String(i.id) === String(id)); if (m && c) m.src = photoOf(c); } });
@@ -463,6 +458,32 @@ async function syncAll(auto) {
 }
 $("#syncBtn").addEventListener("click", () => syncAll(false));
 initKit(); initAvatar();
+/* ---------- Tools: everything you can do, one tap away (blurred overlay) ---------- */
+function openTools() {
+  if (document.getElementById("tools")) return;
+  const g = groups();
+  const sec = (t, rows) => `<section><h4>${t}</h4>${rows.map(([k, label, sub]) => `<button type="button" class="tl" data-tool="${k}"><span><b>${label}</b>${sub ? `<small>${sub}</small>` : ""}</span><i>›</i></button>`).join("")}</section>`;
+  const el = document.createElement("div"); el.id = "tools"; el.className = "tools"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Tools");
+  el.innerHTML = `<div class="tools-in"><header><h3>Tools</h3><button type="button" class="tools-x" data-tool="close" aria-label="Close">×</button></header>
+    ${sec("Scan", [["scan", "Scan cards", "Open the camera"], ["type", "Type it in", "Name, number, set"]])}
+    ${sec("Sell", [["build", "Build a listing", `${g.staged.length} ready to list`], ["var", "List several as one", "One eBay listing, many cards"], ["ship", "Pack and ship", `${g.sold.length} waiting`], ["ebay", "Open eBay orders", "Print labels in eBay"]])}
+    ${sec("Inventory", [["csv", "Import or export a CSV", "Double Holo, Shiny Pro, eBay"], ["bins", "Put things in bins", "Spaces"], ["coll", "Collection", "Everything you own"]])}
+    ${sec("App", [["sync", "Sync with eBay", "Pull listings and orders now"], ["settings", "Settings", "Archive, storage, account"]])}</div>`;
+  document.body.appendChild(el); document.body.classList.add("tools-open");
+  requestAnimationFrame(() => el.classList.add("on"));
+  const close = () => { el.classList.remove("on"); document.body.classList.remove("tools-open"); setTimeout(() => el.remove(), 220); document.removeEventListener("keydown", esc_); };
+  const esc_ = (e) => { if (e.key === "Escape") close(); }; document.addEventListener("keydown", esc_);
+  el.addEventListener("click", (e) => {
+    if (e.target === el) { close(); return; }
+    const b = e.target.closest("[data-tool]"); if (!b) return; const k = b.dataset.tool; close();
+    if (k === "scan") go("scouter"); else if (k === "type") { go("scouter"); setTimeout(() => document.getElementById("scMan")?.click() || document.getElementById("scType")?.click(), 400); }
+    else if (k === "build") stageSheet("staged"); else if (k === "var") variationListing(chApi());
+    else if (k === "ship") { window.__chStage = "sold"; go("channels"); } else if (k === "ebay") window.open("https://www.ebay.com/sh/ord", "_blank", "noopener");
+    else if (k === "csv") openImport({ toast, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); window.__fobScRepaint?.(); } });
+    else if (k === "bins") go("spaces"); else if (k === "coll") go("collection"); else if (k === "sync") syncAll(false); else if (k === "settings") go("settings");
+  });
+}
+$("#toolsBtn")?.addEventListener("click", openTools);
 /* warm up the sheet engine so the first sheet opens instantly (and Back works right away) */
 customElements.whenDefined("ion-modal").then(() => { const w = document.createElement("div"); w.hidden = true; w.setAttribute("aria-hidden", "true"); w.innerHTML = "<ion-modal class=\"fob-warm\"><ion-content></ion-content></ion-modal>"; document.body.appendChild(w); const m = w.firstChild; Promise.resolve(m.componentOnReady?.()).then(() => m.querySelector("ion-content")?.componentOnReady?.()).finally(() => setTimeout(() => w.remove(), 50)); }).catch(() => {});
 const h = (location.hash || "").slice(1);

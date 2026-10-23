@@ -57,6 +57,31 @@ export function closeCard(instant) {
   z.classList.add("out"); setTimeout(() => z.remove(), 220);
 }
 /** items: array of item objects. opts: {index, from:Element|Rect, info:(it)=>html, wire:(root,it,api)=>void, photo:(it)=>src, name:(it)=>str, price:(it)=>str} */
+
+/* ---------- the item page: chips + tabs (Pricing / Financials / Channels / Activity) ---------- */
+const $m = (n) => "$" + (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const day = (iso) => { const t = Date.parse(iso || ""); return Number.isFinite(t) ? new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""; };
+export function itemTabs(it, pricingHtml) {
+  const o = it._order || null, eb = (it.channels && it.channels.ebay) || {}, q = Number(it.quantity) || 1;
+  const price = Number(o ? o.total ?? it.price : it.price) || 0, paid = it.purchasePrice != null && it.purchasePrice !== "" ? Number(it.purchasePrice) : null;
+  const fee = price ? Math.round((price * 0.1325 + 0.3) * 100) / 100 : 0, ship = price ? 0.78 : 0, net = Math.max(0, Math.round((price - fee - ship) * 100) / 100);
+  const where = o ? (it.phase === "sold" ? "Sold, needs shipping" : it.phase === "delivered" ? "Delivered" : "Shipped") : String(it.id).startsWith("mp-") ? "On Double Holo" : it.phase === "listed" ? "Live on eBay" : it.phase === "staged" ? "Ready to list" : it.phase === "intake" ? "Intake" : "";
+  const chips = [where, it.setName, it.collectorNumber, it.finish, it.condition, q > 1 ? `${q} in stock` : ""].filter(Boolean).map((c, k) => `<i class="ip-chip${k === 0 ? " st" : ""}">${esc(c)}</i>`).join("");
+  const row = (k, v, cls = "") => v === "" || v == null ? "" : `<div class="ip-row ${cls}"><span>${esc(k)}</span><b>${v}</b></div>`;
+  const fin = `${row(o ? "Sold for" : "List price", $m(price))}${row("You paid", paid != null ? $m(paid) : "Not entered")}${row("eBay fees (est. 13.25% + $0.30)", price ? "−" + $m(fee) : "")}${row("Shipping (Standard Envelope)", price ? "−" + $m(ship) : "")}${row("You keep", price ? $m(net) : "", "tot")}${paid != null && price ? row("Profit", `${net - paid >= 0 ? "+" : "−"}${$m(Math.abs(net - paid))}`, net - paid >= 0 ? "pos" : "neg") : ""}`;
+  const lid = eb.listingId && !/^demo/.test(String(eb.listingId)) ? String(eb.listingId) : "";
+  const chan = `${row("eBay", lid ? (it.phase === "listed" || o ? "Live" : "Ended") : eb.offerId ? "Draft" : "Not listed")}${lid ? `<a class="btn" href="https://www.ebay.com/itm/${esc(lid)}" target="_blank" rel="noopener">Open on eBay</a>` : ""}${row("Double Holo", String(it.id).startsWith("mp-") ? "Listed" : "Not listed")}${row("SKU", it.sku || eb.sku ? esc(it.sku || eb.sku) : "")}${o && o.orderId ? row("eBay order", esc(o.orderId)) : ""}${o && o.buyer ? row("Buyer", esc(o.buyer)) : ""}`;
+  const ev = [[o ? o.createdAt : "", "Sold"], [o ? o.shippedAt : "", "Shipped"], [o ? o.deliveredAt : "", "Delivered"], [eb.listedAt || (it.phase === "listed" ? it.updatedAt : ""), "Listed on eBay"], [it.createdAt, "Added to the app"]].filter(([d]) => day(d));
+  const act = ev.length ? `<ol class="ip-time">${ev.sort((a, b) => Date.parse(b[0]) - Date.parse(a[0])).map(([d, t]) => `<li><b>${esc(t)}</b><span>${esc(day(d))}</span></li>`).join("")}</ol>` : `<p class="sub">No history yet.</p>`;
+  return `${chips ? `<div class="ip-chips">${chips}</div>` : ""}<div class="ip-tabs" role="tablist"><button type="button" role="tab" class="on" data-ipt="p">Pricing</button><button type="button" role="tab" data-ipt="f">Financials</button><button type="button" role="tab" data-ipt="c">Channels</button><button type="button" role="tab" data-ipt="a">Activity</button></div>
+    <div class="ip-pane on" data-ipp="p">${pricingHtml || ""}</div><div class="ip-pane" data-ipp="f">${fin}<small class="ip-note">Fees and shipping are estimates.</small></div><div class="ip-pane" data-ipp="c">${chan}</div><div class="ip-pane" data-ipp="a">${act}</div>`;
+}
+export function wireTabs(root) {
+  root.querySelectorAll("[data-ipt]").forEach((b) => b.addEventListener("click", () => {
+    root.querySelectorAll("[data-ipt]").forEach((x) => x.classList.toggle("on", x === b));
+    root.querySelectorAll("[data-ipp]").forEach((x) => x.classList.toggle("on", x.dataset.ipp === b.dataset.ipt));
+  }));
+}
 /* Same item viewer as Command: an iOS sheet with ‹ Back, "n of N", ‹ › arrows and swipe. */
 function openCardSheet(items, opts, f) {
   let i = Math.max(0, Math.min(items.length - 1, opts.index || 0));
@@ -68,7 +93,8 @@ function openCardSheet(items, opts, f) {
   const paint = () => {
     const it = items[i], p = photo(it), n = items.length;
     s = f.openSheet(`<div class="iv-bar"><button type="button" class="iv-back" data-close>‹ ${esc(opts.backLabel || "Back")}</button>${n > 1 ? `<span class="iv-n">${i + 1} of ${n}</span><button type="button" class="iv-btn" data-prev aria-label="Previous"${i === 0 ? " disabled" : ""}>‹</button><button type="button" class="iv-btn" data-next aria-label="Next"${i === n - 1 ? " disabled" : ""}>›</button>` : ""}</div>
-      ${p ? `<div class="iv-hero"><img src="${esc(p)}" alt="" draggable="false"></div>` : ""}<div class="k-zinfo it-info"><h2>${esc(name(it))}</h2>${opts.info ? opts.info(it) : ""}</div>`);
+      ${p ? `<div class="iv-hero"><img src="${esc(p)}" alt="" draggable="false"></div>` : ""}<div class="k-zinfo it-info"><h2>${esc(name(it))}</h2>${itemTabs(it, opts.info ? opts.info(it) : "")}</div>`);
+    wireTabs(s);
     s.querySelector("[data-prev]")?.addEventListener("click", () => go(i - 1));
     s.querySelector("[data-next]")?.addEventListener("click", () => go(i + 1));
     let sx = null, sy = 0;

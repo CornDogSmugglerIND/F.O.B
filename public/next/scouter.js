@@ -230,7 +230,7 @@ function pkgs() {
   const cur = ctx.getItems(), byId = new Map(cur.map((i) => [String(i.id), i]));
   const list = session.filter((x) => !x.id || byId.has(String(x.id))).slice(0, 12);
   if (!list.length) return "";
-  return `<div class="sc-pkgs"><h3>Scanned today</h3><div class="sc-pk">${list.map((x) => { const it = x.id && byId.get(String(x.id)); const st = it ? (it.listingStatus === "listed" ? "Live" : it.phase === "staged" ? "Staged" : "Intake") : x.staged ? "Staged" : "Intake"; return `<button type="button" class="sc-pkg k-tilt"${x.id ? ` data-open="${esc(x.id)}"` : ""}>${x.photo ? `<img src="${esc(x.photo)}" alt="" draggable="false">` : "<i></i>"}<span>${esc(it ? it.title : x.title)}</span><em>${money(it ? it.price : x.price)}</em>${x.qty > 1 ? `<u>x${x.qty}</u>` : ""}<s class="${st !== "Intake" ? "ok" : ""}">${st}</s></button>`; }).join("")}</div></div>`;
+  return `<div class="sc-pkgs"><h3>Scanned today</h3><div class="sc-pk">${list.map((x) => { const it = x.id && byId.get(String(x.id)); const st = it ? (it.listingStatus === "listed" ? "Live" : it.phase === "staged" ? "Ready to list" : "Intake") : x.staged ? "Ready to list" : "Intake"; return `<button type="button" class="sc-pkg k-tilt"${x.id ? ` data-open="${esc(x.id)}"` : ""}>${x.photo ? `<img src="${esc(x.photo)}" alt="" draggable="false">` : "<i></i>"}<span>${esc(it ? it.title : x.title)}</span><em>${money(it ? it.price : x.price)}</em>${x.qty > 1 ? `<u>x${x.qty}</u>` : ""}<s class="${st !== "Intake" ? "ok" : ""}">${st}</s></button>`; }).join("")}</div></div>`;
 }
 function queue_() {
   /* exactly what Command shows at Intake and Ready to list, so the two never disagree */

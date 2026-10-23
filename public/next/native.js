@@ -92,13 +92,22 @@ const tag = document.createElement("div"); tag.className = "build-tag"; tag.text
 (() => {
   let t = null, sx = 0, sy = 0, fired = false;
   document.addEventListener("pointerdown", (e) => {
-    const tile = e.target.closest && e.target.closest(".ch-tile"); if (!tile || e.target.closest(".co-pick")) return;
+    const tile = e.target.closest && e.target.closest(".ch-tile,.cx-card"); if (!tile || e.target.closest(".co-pick")) return;
     sx = e.clientX; sy = e.clientY; fired = false; clearTimeout(t);
-    t = setTimeout(() => { const p = tile.querySelector(".co-pick"); if (!p) return; p.click(); fired = true; window.__tick && window.__tick(); }, 480);
+    t = setTimeout(() => {
+      if (tile.classList.contains("cx-card")) {
+        /* Collection: long-press starts select mode with this card picked */
+        const id = tile.dataset.id, sel = document.getElementById("coSel");
+        if (!document.querySelector(".cx-bar") && sel) { sel.click(); }
+        const card = document.querySelector(`.cx-card[data-id="${CSS.escape(id)}"]`); if (card && !card.classList.contains("sel")) card.click();
+        fired = true; window.__tick && window.__tick(); return;
+      }
+      const p = tile.querySelector(".co-pick"); if (!p) return; p.click(); fired = true; window.__tick && window.__tick();
+    }, 480);
   }, { passive: true });
   const cancel = () => clearTimeout(t);
   document.addEventListener("pointermove", (e) => { if (Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel(); }, { passive: true });
   document.addEventListener("pointerup", cancel, { passive: true }); document.addEventListener("pointercancel", cancel, { passive: true });
-  document.addEventListener("click", (e) => { if (fired && e.isTrusted && e.target.closest && e.target.closest(".ch-tile")) { e.stopPropagation(); e.preventDefault(); fired = false; } }, true);
-  document.addEventListener("contextmenu", (e) => { if (e.target.closest && e.target.closest(".ch-tile")) e.preventDefault(); });
+  document.addEventListener("click", (e) => { if (fired && e.isTrusted && e.target.closest && e.target.closest(".ch-tile,.cx-card")) { e.stopPropagation(); e.preventDefault(); fired = false; } }, true);
+  document.addEventListener("contextmenu", (e) => { if (e.target.closest && e.target.closest(".ch-tile,.cx-card")) e.preventDefault(); });
 })();

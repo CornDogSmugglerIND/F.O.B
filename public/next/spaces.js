@@ -1,5 +1,5 @@
 import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=6";
-import { fly, rectOf, sleep, openCard } from "./kit.js?v=3";
+import { fly, rectOf, sleep, openCard } from "./kit.js?v=4";
 
 /* Spaces = his real storage, as a camera you fly through:
    area -> shelf -> bin (closed, lid flips) -> bin (open, items inside). */
@@ -67,7 +67,7 @@ function areaView(w) {
   return `<div class="spx-stage"><div class="spx-areaview">${stacks}</div><p class="spx-hint">Tap a bin to zoom in</p></div>`;
 }
 /* zoomed onto one bin on its shelf; swipe up/down to the next bin, tap it to open */
-function focusTf(id) { const [x, y, ww, hh] = PHYS[id].rect; const k = Math.min(2.6, Math.max(1.15, 88 / Math.max(ww, hh * 1.15))); const cx = x + ww / 2, cy = y + hh / 2; return `translate(${(50 - cx) * k}%, ${(50 - cy) * k}%) scale(${k})`; }
+function focusTf(id) { const [x, y, ww, hh] = PHYS[id].rect; const k = Math.min(2.6, Math.max(1.15, 88 / Math.max(ww, hh * 1.15))); const cx = x + ww / 2, cy = y + hh / 2; return `translate(-50%,-50%) translate(${(50 - cx) * k}%, ${(50 - cy) * k}%) scale(${k})`; }
 function shelfFocusView(w) {
   const id = S.bin, sh = SHELVES.find((x) => x.id === PHYS[id].shelf), i = ORDER_BINS.indexOf(id), sp = w.spaces.find((x) => x.id === id) || {}, its = w.inBin(id);
   return `<div class="spx-stage"><div class="spx-cam" id="cam"><div class="spx-pan" id="pan" style="transform:${focusTf(id)}"><img src="${IMG}${sh.photo}" alt="${esc(shelfName(sh))}" draggable="false">
@@ -98,7 +98,7 @@ function paint() {
   const body = S.level === "area" ? areaView(w) : S.level === "shelf" && PHYS[S.bin] ? shelfFocusView(w) : binView(w);
   ctx.host.innerHTML = `<div class="sp-wrap spx" data-level="${S.level}">${head(w, crumbs)}${body}</div>`;
   if (S.level === "bin" && S.open) setLid(true, true);
-  wire(w);
+  wire(w); fitPan();
 }
 async function camera(next, fromEl) {
   if (busy) return; busy = true;
@@ -170,7 +170,7 @@ function focusOn(id, fromBin) {
   const first = S.level === "area"; Object.assign(S, { level: "shelf", shelf: PHYS[id].shelf, bin: id, open: false }); paint();
   const pan = ctx.host.querySelector("#pan"); if (!pan) return;
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  if (first) pan.animate([{ transform: "none" }, { transform: focusTf(id) }], { duration: 650, easing: "cubic-bezier(.2,.8,.2,1)" });
+  if (first) pan.animate([{ transform: "translate(-50%,-50%)" }, { transform: focusTf(id) }], { duration: 650, easing: "cubic-bezier(.2,.8,.2,1)" });
   else if (fromBin) ctx.host.querySelector(".spx-stage")?.animate([{ transform: "scale(1.25)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)" });
 }
 function stepBin(d) {
@@ -186,6 +186,7 @@ function stepBin(d) {
   } else { S.bin = nid; focusOn(nid); }
 }
 function openBin() { if (busy) return; const hot = ctx.host.querySelector(".spx-fhot.on") || ctx.host.querySelector("#cam"); camera({ level: "bin", shelf: S.shelf, bin: S.bin, open: false }, hot); }
+function fitPan() { const pan = ctx.host.querySelector("#pan"), im = pan && pan.querySelector("img"); if (!im) return; const set = () => { if (im.naturalWidth) pan.style.aspectRatio = `${im.naturalWidth} / ${im.naturalHeight}`; }; if (im.complete) set(); else im.addEventListener("load", set, { once: true }); }
 function wireFocus() {
   const h = ctx.host, $ = (q) => h.querySelector(q);
   $("#fPrev")?.addEventListener("click", () => stepBin(-1));

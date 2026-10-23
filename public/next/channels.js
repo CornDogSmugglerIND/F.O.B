@@ -1,6 +1,6 @@
 import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=6";
 import { photoManager } from "./photos.js?v=4";
-import { openCard } from "./kit.js?v=3";
+import { openCard } from "./kit.js?v=4";
 import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=7";
 
 let ctx = null;
