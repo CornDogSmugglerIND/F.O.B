@@ -33,9 +33,9 @@ h1,h2{font-weight:700!important}
 }
 
 /* ---- Command: air, and nothing sitting on the words ---- */
+.road .flag{display:none!important}
+.road .tag .stepn{display:none}
 @media (max-width:820px){
-  .road .flag{display:none!important}
-  .road.pv .tag .stepn{display:none}
   .road .dock{margin-left:0!important}
 }
 .dot::after{animation:none!important;opacity:0!important}
