@@ -290,17 +290,15 @@ function wireArrange(main, kind, W, H) {
       const cy = kind === "phone" ? parseFloat(st.style.top) : parseFloat(st.style.top) / 100 * r0.height;
       const dx = e.clientX - (r0.left + cx), dy = e.clientY - (r0.top + cy);
       const lo = kind === "phone" ? 24 : 6;
-      /* Save on every move, not just on release: if a background refresh rebuilds the
-         road mid-drag, the stop comes back where your finger left it, not where it started. */
-      const save = () => { const map = routeSaved(kind); map[st.dataset.drop] = [parseFloat(st.style.left), parseFloat(st.style.top)]; routeSave(kind, map); };
       const mv = (ev) => {
         const r = road.getBoundingClientRect();
         st.style.left = Math.max(lo, Math.min(100 - lo, (ev.clientX - dx - r.left) / r.width * 100)) + "%";
         if (kind === "phone") st.style.top = Math.max(110, Math.min(H - 90, ev.clientY - dy - r.top)) + "px";
         else st.style.top = Math.max(8, Math.min(92, (ev.clientY - dy - r.top) / r.height * 100)) + "%";
-        redraw(); save();
+        redraw();
       };
-      const up = () => { st.removeEventListener("pointermove", mv); st.removeEventListener("pointerup", up); st.removeEventListener("pointercancel", up); st.classList.remove("moving"); save(); };
+      const up = () => { st.removeEventListener("pointermove", mv); st.removeEventListener("pointerup", up); st.removeEventListener("pointercancel", up); st.classList.remove("moving");
+        const map = routeSaved(kind); map[st.dataset.drop] = [parseFloat(st.style.left), parseFloat(st.style.top)]; routeSave(kind, map); };
       st.addEventListener("pointermove", mv); st.addEventListener("pointerup", up); st.addEventListener("pointercancel", up);
     }, true);
   });
@@ -419,7 +417,7 @@ function softRender() {
   const l = loadItems(), n = sigOf(l); items = l; renderStats();
   if (n === sig) return;
   /* busy (sheet open, dragging): keep the change and redraw once you're back */
-  if (arranging || sheetIsOpen() || document.querySelector(".k-zoom") || document.querySelector(".ghost")) { clearTimeout(softT); softT = setTimeout(softRender, 1200); return; }
+  if (sheetIsOpen() || document.querySelector(".k-zoom") || document.querySelector(".ghost")) { clearTimeout(softT); softT = setTimeout(softRender, 1200); return; }
   sig = n;
   if (view === "scouter") { window.__fobScRepaint?.(); return; }
   if (view === "settings" || view === "spaces") return;
