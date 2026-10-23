@@ -258,6 +258,39 @@ function widgets(g) {
     <button type="button" class="hw hw-way" data-stage="shipped"><em>On the way</em><b>${g.shipped.length}</b><span>${g.delivered.length} delivered</span></button>
     <button type="button" class="hw hw-live" data-goto="channels" data-pst="listed"><em>Live on eBay</em><b>${live}</b><span>${money(liveV)}</span></button></div>`;
 }
+/* ---------- your route, your way: stops can be dragged anywhere, the line always runs in order ---------- */
+const ROUTE_KEY = "coalition-route-v1";
+let arranging = false;
+function routeSaved(kind) { try { return (JSON.parse(localStorage.getItem(ROUTE_KEY) || "{}") || {})[kind] || {}; } catch { return {}; } }
+function routeSave(kind, map) { try { const all = JSON.parse(localStorage.getItem(ROUTE_KEY) || "{}") || {}; all[kind] = map; localStorage.setItem(ROUTE_KEY, JSON.stringify(all)); } catch { /* ignore */ } }
+function routePath(pts, vertical) { let d = `M${pts[0][0]},${pts[0][1]}`; for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; if (vertical) { const m = (y0 + y1) / 2; d += ` C${x0},${m} ${x1},${m} ${x1},${y1}`; } else { const m = (x0 + x1) / 2; d += ` C${m},${y0} ${m},${y1} ${x1},${y1}`; } } return d; }
+function wireArrange(main, kind, W, H) {
+  const road = main.querySelector(".road"); if (!road) return;
+  const btn = main.querySelector("#arrBtn"), rst = main.querySelector("#arrReset");
+  btn?.addEventListener("click", () => { arranging = !arranging; renderCommand(); if (arranging) toast("Drag any stop. The route stays in order."); });
+  rst?.addEventListener("click", () => { routeSave(kind, {}); renderCommand(); toast("Route reset"); });
+  if (!arranging) return;
+  road.classList.add("arranging");
+  road.addEventListener("click", (e) => { if (e.target.closest(".stop")) { e.stopPropagation(); e.preventDefault(); } }, true);
+  const stops = [...road.querySelectorAll(".stop")];
+  const points = () => stops.map((st) => { const x = parseFloat(st.style.left) / 100 * W; const y = kind === "phone" ? parseFloat(st.style.top) : parseFloat(st.style.top) / 100 * H; return [x, y]; });
+  const redraw = () => { const d = routePath(points(), kind === "phone"); road.querySelectorAll("svg path").forEach((p) => p.setAttribute("d", d)); road.querySelectorAll("svg animateMotion").forEach((a) => a.setAttribute("path", d)); };
+  stops.forEach((st) => {
+    const grip = st.querySelector(".tag"); if (!grip) return;
+    grip.addEventListener("pointerdown", (e) => {
+      e.preventDefault(); e.stopPropagation(); grip.setPointerCapture(e.pointerId); st.classList.add("moving");
+      const r = road.getBoundingClientRect();
+      const mv = (ev) => {
+        const lo = kind === "phone" ? 24 : 6, xp = Math.max(lo, Math.min(100 - lo, (ev.clientX - r.left) / r.width * 100));
+        if (kind === "phone") st.style.top = Math.max(120, Math.min(H - 80, ev.clientY - r.top)) + "px"; else st.style.top = Math.max(10, Math.min(90, (ev.clientY - r.top) / r.height * 100)) + "%";
+        st.style.left = xp + "%"; redraw();
+      };
+      const up = () => { grip.removeEventListener("pointermove", mv); grip.removeEventListener("pointerup", up); grip.removeEventListener("pointercancel", up); st.classList.remove("moving");
+        const map = routeSaved(kind); map[st.dataset.drop] = [parseFloat(st.style.left), parseFloat(st.style.top)]; routeSave(kind, map); };
+      grip.addEventListener("pointermove", mv); grip.addEventListener("pointerup", up); grip.addEventListener("pointercancel", up);
+    });
+  });
+}
 function renderCommand() {
   const g = groups(); const main = $("#main");
   const pills = [
@@ -267,11 +300,10 @@ function renderCommand() {
   ].map(([n, t, v, st]) => `<button class="pill${n ? " hot" : ""}" ${v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto"; main.style.overflowX = "hidden";
-    const H = 2270, W = 390, PX = [27, 73, 27, 73, 27, 73, 27], PY = [300, 590, 880, 1170, 1460, 1750, 2040];
+    const H = 2270, W = 390, sv = routeSaved("phone"), PX = [27, 73, 27, 73, 27, 73, 27].map((x, i) => (sv[STOPS[i].id] || [])[0] ?? x), PY = [300, 590, 880, 1170, 1460, 1750, 2040].map((y, i) => (sv[STOPS[i].id] || [])[1] ?? y);
     const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
-    let path = `M${pts[0][0]},${pts[0][1]}`;
-    for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], m = (y0 + y1) / 2; path += ` C${x0},${m} ${x1},${m} ${x1},${y1}`; }
-    main.innerHTML = `${widgets(g)}<div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
+    const path = routePath(pts, true);
+    main.innerHTML = `${widgets(g)}<div class="arr-bar"><button type="button" class="arr-btn${arranging ? " on" : ""}" id="arrBtn">${arranging ? "Done arranging" : "Arrange route"}</button>${arranging ? `<button type="button" class="arr-btn" id="arrReset">Reset</button>` : ""}</div><div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
       <defs><linearGradient id="rgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
       <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".4" stroke-width="11" style="filter:blur(7px)"/>
       <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/>
@@ -284,20 +316,20 @@ function renderCommand() {
   } else {
     main.style.overflowY = "hidden"; main.style.overflowX = "";
     const W = Math.max(600, main.clientWidth || 1000), H = Math.max(420, main.clientHeight || 600);
-    const pts = STOPS.map((s) => [s.pos[0] / 100 * W, s.pos[1] / 100 * H]);
-    let path = `M${pts[0][0]},${pts[0][1]}`;
-    for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], m = (x0 + x1) / 2; path += ` C${m},${y0} ${m},${y1} ${x1},${y1}`; }
+    const sv = routeSaved("desk"), POS = STOPS.map((s) => sv[s.id] || s.pos);
+    const pts = POS.map((p) => [p[0] / 100 * W, p[1] / 100 * H]);
+    const path = routePath(pts, false);
     main.innerHTML = `${widgets(g)}<div class="road"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
       <defs><linearGradient id="rg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${W}" y2="0"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
       <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".45" stroke-width="16" stroke-linecap="round" style="filter:blur(9px)"/>
       <path d="${path}" fill="none" stroke="url(#rg)" stroke-width="4" stroke-linecap="round"/>
       <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 34"/>
       ${[0, 1, 2, 3].map((k) => `<circle r="7" fill="#B3FBD5" style="filter:drop-shadow(0 0 9px #90FFCC)"><animateMotion dur="14s" begin="${k * 3.5}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
-      ${STOPS.map((s) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${s.pos[0]}%;top:${s.pos[1]}%;--c:${s.c}">
+      ${STOPS.map((s, i) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${POS[i][0]}%;top:${POS[i][1]}%;--c:${s.c}">
         ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
         <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div></div>`).join("")}
-      <div class="flag start" style="left:${STOPS[0].pos[0] - 6}%;top:${STOPS[0].pos[1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${STOPS[STOPS.length - 1].pos[0] - 2}%;top:${STOPS[STOPS.length - 1].pos[1] + 12}%"><i></i>Done</div>
-      <div class="dock">${pills}</div><div class="hint">Tap a stop to open it · hold a card and drop it on a stop to move it</div></div>`;
+      <div class="flag start" style="left:${POS[0][0] - 6}%;top:${POS[0][1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${POS[6][0] - 2}%;top:${POS[6][1] + 12}%"><i></i>Done</div>
+      <div class="dock">${pills}</div><div class="hint">Tap a stop to open it · hold a card and drop it on a stop to move it</div><div class="arr-bar desk"><button type="button" class="arr-btn${arranging ? " on" : ""}" id="arrBtn">${arranging ? "Done arranging" : "Arrange route"}</button>${arranging ? `<button type="button" class="arr-btn" id="arrReset">Reset</button>` : ""}</div></div>`;
   }
   // wire up
   main.querySelectorAll(".pc.b1,.pc.b2").forEach((m) => { m.dataset.stage = m.closest(".stop").dataset.drop; m.style.cursor = "pointer"; });
@@ -306,6 +338,7 @@ function renderCommand() {
   main.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.pst) window.__chStage = b.dataset.pst; go(b.dataset.goto); }));
   main.querySelectorAll(".stop .tag").forEach((d) => d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); stageSheet(d.dataset.stage); } }));
   main.querySelectorAll(".pc[data-item]").forEach(bindDrag);
+  if (phone()) wireArrange(main, "phone", 390, 2270); else wireArrange(main, "desk", Math.max(600, main.clientWidth || 1000), Math.max(420, main.clientHeight || 600));
 }
 function bindDrag(el) {
   let ghost = null, sx = 0, sy = 0, moved = false, over = null, down = false;
@@ -351,6 +384,7 @@ let introT = 0;
 function intro() { if (matchMedia("(prefers-reduced-motion: reduce)").matches) return; const h = document.documentElement; h.classList.add("intro"); clearTimeout(introT); introT = setTimeout(() => h.classList.remove("intro"), 1100); }
 function go_(v) {
   if (v !== view || !document.querySelector("#main > *")) intro();
+  if (v !== view) arranging = false; /* never leave the route stuck in arrange mode */
   view = v; closeSheet(); document.body.dataset.view = v; try { dispatchEvent(new CustomEvent("fob:view", { detail: v })); } catch { /* ignore */ }
   document.querySelectorAll("#nav button").forEach((b) => { b.classList.toggle("on", b.dataset.view === v); if (b.dataset.view === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   try { history.replaceState(null, "", v === "command" ? "./" : `#${v}`); } catch { /* ignore */ }
