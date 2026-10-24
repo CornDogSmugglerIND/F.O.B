@@ -239,3 +239,128 @@ html.fx .ch-tile.rows{contain-intrinsic-size:auto 96px}
 #fxbg,#fxvisor .fv-scan{mix-blend-mode:normal!important}
 #fxvisor .fv-scan{opacity:.6}
 html.fx .hud-scan{display:none!important}
+
+/* ===================== TEXT: one crisp voice (Oct 24) ===================== */
+:root{--ink:#D3F2E4;--mute:#86A99B}
+html.fx :is(#main,.shx,.top,.tools) :is(h1,h2,h3,h4,b,strong,span,em,p,small,label,button,a,div,li){text-shadow:none!important}
+html.fx :is(#main,.shx) :is(h1,h2){font-weight:700!important;letter-spacing:-.015em!important;color:var(--ink)!important}
+html.fx :is(#main,.shx) :is(h3,h4){font-weight:650!important;color:var(--ink)!important}
+html.fx :is(#main,.shx,.top) b{font-variant-numeric:tabular-nums}
+html.fx :is(.hr b,#stats .stat b,.road .tag span,.chs-big,.cx-total,.ip-big){color:var(--ink)!important;font-weight:700!important}
+html.fx .hr.hot b{color:#F6C9A4!important}
+/* glow stays on graphics only: rings, dots, rails, the lock tags */
+html.fx .lk-r b{text-shadow:none!important}
+
+/* ===================== CHANNELS DECK ===================== */
+.cd{position:relative;margin:0 0 18px}
+.cd-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin:0 -2px 10px;padding:2px}
+.cd-tabs::-webkit-scrollbar{display:none}
+.cd-tab{flex:1 0 auto;appearance:none;border:0;background:none;cursor:pointer;padding:9px 12px 10px;border-radius:12px;display:flex;align-items:baseline;gap:7px;color:var(--mute);position:relative;white-space:nowrap}
+.cd-tab b{font:700 17px var(--disp);color:var(--ink);opacity:.7}
+.cd-tab span{font:600 13.5px var(--text)}
+.cd-tab::after{content:"";position:absolute;left:12px;right:12px;bottom:2px;height:2px;border-radius:2px;background:var(--c);opacity:0;transform:scaleX(.3);transition:transform .3s,opacity .3s;box-shadow:0 0 10px var(--c)}
+.cd-tab.on{color:var(--ink);background:linear-gradient(180deg,rgba(125,242,180,.10),rgba(125,242,180,.02))}
+.cd-tab.on b{opacity:1}
+.cd-tab.on::after{opacity:1;transform:none}
+.cd-sum{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:2px 4px 0}
+.cd-sum em{font:600 13px var(--text);font-style:normal;color:var(--mute);flex-basis:100%}
+.cd-sum b{font:700 34px/1.05 var(--disp);color:var(--ink);letter-spacing:-.02em}
+.cd-sum span{font:500 13px var(--text);color:var(--mute)}
+.cd-sum .btn{margin-left:auto;padding:8px 14px!important;font-size:13px!important}
+.cd-stage{position:relative;height:430px;margin-top:4px}
+.cd-ring{position:absolute;left:50%;top:44%;width:min(96vw,440px);aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none;fill:none;stroke:var(--holo);filter:drop-shadow(0 0 4px var(--logoGlow));z-index:1}
+.cd-ring .a1,.cd-ring .a2{stroke-width:1.2;opacity:.7}.cd-ring .hatch{stroke-width:12;stroke-dasharray:1.6 3.2;opacity:.75}
+.cd-ring .seg{stroke-width:1;stroke-dasharray:2 7;opacity:.4;transform-origin:150px 150px;animation:chSpin 30s linear infinite}.cd-ring .rule{stroke-width:6;stroke-dasharray:1 5;opacity:.45}
+.cd-flow{position:absolute;inset:0 0 70px;display:flex;align-items:center;gap:0;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;perspective:900px;padding:0 calc(50% - 82px);z-index:2;-webkit-mask:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)}
+.cd-flow::-webkit-scrollbar{display:none}
+.cd-c{flex:0 0 164px;height:228px;scroll-snap-align:center;appearance:none;border:0;padding:0;background:#0a1210;border-radius:10px;cursor:pointer;overflow:hidden;
+  transform:rotateY(calc(var(--d,0) * -38deg)) scale(calc(1 - var(--a,0) * .22)) translateZ(calc(var(--a,0) * -40px));opacity:calc(1 - var(--a,0) * .35);
+  box-shadow:0 18px 36px rgba(0,0,0,.65),0 0 0 1px rgba(125,242,180,.18);transition:box-shadow .3s}
+.cd-c img{width:100%;height:100%;object-fit:contain;background:#0a1210}
+.cd-c span{display:flex;align-items:center;justify-content:center;height:100%;font:700 48px var(--disp);color:var(--mute)}
+.cd-c.on{box-shadow:0 22px 44px rgba(0,0,0,.7),0 0 0 1.5px var(--holo),0 0 34px var(--logoGlow)}
+.cd-side{position:absolute;top:28%;z-index:3;width:calc(50% - 104px);pointer-events:none}
+.cd-side.l{left:0}.cd-side.r{right:0}
+.cd-name{position:absolute;left:0;right:0;bottom:36px;text-align:center;font:650 15px/1.25 var(--text);color:var(--ink);padding:0 24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:3}
+.cd-nav{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:18px;z-index:3;color:var(--mute);font:600 13px var(--text);font-variant-numeric:tabular-nums}
+.cd-arr{appearance:none;border:0;width:40px;height:34px;border-radius:10px;background:rgba(125,242,180,.08);color:var(--ink);font:600 22px/1 var(--text);cursor:pointer}
+.cd.hot{--holo:#E8924A;--logoGlow:rgba(232,146,74,.5)}
+@media (min-width:821px){.cd-stage{height:520px}.cd-c{flex-basis:220px;height:306px}.cd-flow{padding:0 calc(50% - 110px)}.cd-side{width:calc(50% - 180px);top:30%}.cd-ring{width:520px}}
+/* listings below the deck: hologram cards, not a spreadsheet */
+html.fx #main .ch-group > header{border:0!important;padding:14px 4px 8px!important}
+html.fx #main .ch-fold{font:650 16px var(--text)!important;color:var(--ink)!important}
+html.fx #main .ch-fold em{font-style:normal;color:var(--mute);font-weight:600;margin-left:4px}
+.cd-tab{padding:9px 8px 10px;gap:6px;justify-content:center}
+.cd-tab span{font-size:13px}
+.cd-flow{-webkit-mask:none;mask:none}
+.cd-c:not(.on){filter:brightness(.55) saturate(.7)}
+/* the hard dark line across card photos was a blurred caption edge: no blur, smooth fade instead */
+html.fx :is(#main,.shx) :is(.cx-card,.co-card,.ch-tile,.pc,.tile) *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+/* the dark seam across card photos: gradients were repeating into transparent borders */
+html.fx :is(#main,.shx) *{background-origin:border-box}
+.cd-side .lk-r b{white-space:normal;overflow:visible}
+.cd-sum .cx-tools{margin-left:auto;display:flex;gap:8px}
+
+/* ===================== COMMAND TOP: mission gauges ===================== */
+html.fx #main .road .dock{display:flex!important;justify-content:space-around;gap:6px}
+html.fx #main .road .dock .pill,html.fx #main .road .pill{display:flex!important;flex-direction:column;align-items:center;gap:8px;padding:0!important;background:none!important;min-width:0;flex:1;text-align:center;font:600 12.5px/1.2 var(--text)!important;color:var(--mute)!important}
+html.fx #main .road .pill::before{display:none!important}
+html.fx #main .road .pill b{position:relative;display:flex!important;align-items:center;justify-content:center;width:66px;height:66px;margin:0!important;border-radius:50%;font:700 24px var(--disp)!important;color:var(--ink)!important;
+  background:radial-gradient(circle,rgba(125,242,180,.12),rgba(5,12,10,.85) 68%)}
+html.fx #main .road .pill b::before{content:"";position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from -90deg,var(--holo) 0 22%,transparent 22% 25%,var(--holo) 25% 47%,transparent 47% 50%,var(--holo) 50% 72%,transparent 72% 75%,var(--holo) 75% 97%,transparent 97%);
+  -webkit-mask:radial-gradient(circle,transparent 60%,#000 61% 68%,transparent 69%);mask:radial-gradient(circle,transparent 60%,#000 61% 68%,transparent 69%);opacity:.35;transition:opacity .3s}
+html.fx #main .road .pill b::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:1px dashed rgba(125,242,180,.25)}
+html.fx #main .road .pill.hot b::before{opacity:1;filter:drop-shadow(0 0 6px var(--logoGlow));animation:chSpin 12s linear infinite}
+html.fx #main .road .pill.hot{color:var(--ink)!important}
+html.fx #main .road .pill:last-child.hot b::before{background:conic-gradient(from -90deg,#E8924A 0 22%,transparent 22% 25%,#E8924A 25% 47%,transparent 47% 50%,#E8924A 50% 72%,transparent 72% 75%,#E8924A 75% 97%,transparent 97%)}
+/* readouts: one quiet line under the header */
+@media (max-width:820px){
+  html.fx #main .holo-read .hr{padding-left:10px!important}
+  html.fx #main .holo-read .hr em{font-size:11.5px!important}
+  html.fx #main .holo-read .hr b{font-size:19px!important}
+}
+html.fx #main .arr-btn{padding:7px 14px!important;font-size:13px!important}
+/* arrange: no wobble; the whole stop is the handle */
+html.fx .road.arranging .stop{touch-action:none;cursor:grab}
+html.fx .road.arranging .stop .tag,html.fx .road.arranging .stop:not(.moving) .tag{animation:none!important}
+html.fx .road.arranging .stop .pile,html.fx .road.arranging .stop .pile::before{animation:none!important}
+html.fx .road.arranging .stop .dot{box-shadow:0 0 0 8px rgba(125,242,180,.18),0 0 24px var(--holo)!important}
+html.fx .road.arranging .stop.moving{cursor:grabbing;z-index:20}
+html.fx .road.arranging .stop.moving .dot{transform:scale(1.3)}
+
+/* ===================== SPACES: back always at the top, bin dial on the side ===================== */
+html.fx .spx .spx-head{position:sticky!important;top:0;z-index:30;padding:6px 0 10px!important;margin-bottom:6px;background:linear-gradient(180deg,rgba(6,12,10,.96) 70%,rgba(6,12,10,0))!important}
+html.fx .spx:not([data-level=area]) .spx-back{position:static!important;transform:none!important;width:auto!important;height:40px!important;padding:0 14px 0 10px!important;border-radius:12px!important;font:650 15px var(--text)!important;
+  background:rgba(125,242,180,.10)!important;color:var(--ink)!important;box-shadow:inset 0 0 0 1px rgba(125,242,180,.3)!important;display:inline-flex;align-items:center;gap:4px}
+html.fx .spx:not([data-level=area]) .spx-back::after{content:"Back";font-size:15px}
+.spx-dial{position:absolute;right:6px;top:8%;bottom:8%;width:112px;z-index:6;overflow-y:auto;scrollbar-width:none;scroll-snap-type:y mandatory;padding:40% 0;display:flex;flex-direction:column;gap:6px;
+  -webkit-mask:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent);mask:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent)}
+.spx-dial::-webkit-scrollbar{display:none}
+.spx-dl{scroll-snap-align:center;appearance:none;border:0;text-align:right;padding:7px 12px 7px 8px;border-radius:10px;background:rgba(5,12,10,.82);color:var(--mute);cursor:pointer;display:flex;flex-direction:column;align-items:flex-end;gap:1px;transition:transform .25s,background .25s,color .25s;transform:scale(.88)}
+.spx-dl b{font:650 13.5px var(--text);color:inherit;white-space:nowrap}
+.spx-dl em{font:500 11px var(--text);font-style:normal;opacity:.8}
+.spx-dl.on{transform:none;color:var(--ink);background:rgba(125,242,180,.16);box-shadow:inset -2px 0 0 var(--holo),0 0 18px rgba(60,220,140,.25)}
+html.fx .spx-fnav{right:auto!important;left:8px!important}
+
+/* ===================== SCOUTER SHUTTER: the logo plate, not a white button ===================== */
+html.fx .sc-vf .sc-deck{background:linear-gradient(0deg,rgba(2,8,6,.92),rgba(2,8,6,0))!important}
+html.fx .sc-vf .sc-trig{border:0!important;width:96px!important;height:96px!important;
+  background:radial-gradient(circle,rgba(5,14,11,.9) 58%,transparent 59%),conic-gradient(from -90deg,var(--holo) 0 22%,transparent 22% 25%,var(--holo) 25% 47%,transparent 47% 50%,var(--holo) 50% 72%,transparent 72% 75%,var(--holo) 75% 97%,transparent 97%)!important;
+  box-shadow:0 0 0 1px rgba(125,242,180,.35),0 0 26px var(--logoGlow),0 10px 26px rgba(0,0,0,.6)!important;animation:chSpin 14s linear infinite}
+html.fx .sc-vf .sc-trig i{width:64px!important;height:64px!important;animation:chSpin 14s linear infinite reverse;
+  background:url(img/wm-glyph.png?v=2) center/62% no-repeat,radial-gradient(circle at 50% 40%,#123d2c,#071712 70%)!important;box-shadow:inset 0 0 0 1.5px rgba(125,242,180,.6),inset 0 0 18px rgba(60,220,140,.35)!important}
+html.fx .sc-vf .sc-trig:active i{transform:scale(.88)}
+html.fx .sc-vf .sc-side{color:var(--ink)!important}
+html.fx .sc-vf .sc-side i{filter:drop-shadow(0 0 6px var(--logoGlow))}
+html.fx .sc-vf .sc-trig em{border-color:var(--holo)!important;color:var(--ink)!important}
+/* the lock box on live camera: logo green, thin, with the Face ID ring */
+html.fx .sc-lock .c{border-color:var(--holo)!important;filter:drop-shadow(0 0 5px var(--logoGlow))}
+.spx-dial{padding:0!important}
+.spx-dial::before,.spx-dial::after{content:"";flex:0 0 42%}
+@media (min-width:821px){html.fx #main .road .dock{gap:34px!important}html.fx #main .road .dock .pill{flex:0 0 auto;min-width:140px}.spx-dial{width:150px}}
+.cd-tab.ch-stop{flex:1 0 auto;min-width:0;flex-direction:row;align-items:baseline;gap:6px;padding:9px 8px 10px;background:none}
+.cd-tab.ch-stop.on{background:linear-gradient(180deg,rgba(125,242,180,.10),rgba(125,242,180,.02))}
+.cd-tab.ch-stop span{opacity:1;font-size:13px;text-shadow:none}
+.cd-tab.ch-stop em{display:none}
+.cd-ring{width:min(100%,440px)}

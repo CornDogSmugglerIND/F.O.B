@@ -2,13 +2,13 @@ import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./s
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=7";
 import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=26";
-import { renderCollection, openImport } from "./collection.js?v=21";
+import { renderCollection, openImport } from "./collection.js?v=22";
 import { photoManager } from "./photos.js?v=4";
-import { renderSpaces } from "./spaces.js?v=18";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=35";
+import { renderSpaces } from "./spaces.js?v=19";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=36";
 import { renderSettings } from "./settings.js?v=9";
 import { initSync } from "./sync.js?v=4";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=5";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=6";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -285,19 +285,27 @@ function wireArrange(main, kind, W, H) {
   const stops = [...road.querySelectorAll(".stop")];
   const points = () => stops.map((st) => { const x = parseFloat(st.style.left) / 100 * W; const y = kind === "phone" ? parseFloat(st.style.top) : parseFloat(st.style.top) / 100 * H; return [x, y]; });
   const redraw = () => { const d = routePath(points(), kind === "phone"); road.querySelectorAll("svg > path").forEach((p) => p.setAttribute("d", d)); road.querySelectorAll("svg animateMotion").forEach((a) => a.setAttribute("path", d)); };
-  stops.forEach((st) => {
-    const grip = st.querySelector(".tag"); if (!grip) return;
-    grip.addEventListener("pointerdown", (e) => {
-      e.preventDefault(); e.stopPropagation(); grip.setPointerCapture(e.pointerId); st.classList.add("moving");
-      const r = road.getBoundingClientRect();
+  /* whole stop is the handle; it keeps the spot you grabbed it by, and can't pass its neighbours, so the line never tangles */
+  stops.forEach((st, i) => {
+    st.addEventListener("pointerdown", (e) => {
+      if (e.button > 0) return; e.preventDefault(); e.stopPropagation(); st.setPointerCapture(e.pointerId); st.classList.add("moving");
+      const r = road.getBoundingClientRect(), s0 = main.scrollTop, sx = e.clientX, sy = e.clientY, ox = parseFloat(st.style.left), oy = parseFloat(st.style.top);
+      const prev = stops[i - 1], next = stops[i + 1], pv = (el) => parseFloat(el.style[kind === "phone" ? "top" : "left"]);
       const mv = (ev) => {
-        const lo = kind === "phone" ? 24 : 6, xp = Math.max(lo, Math.min(100 - lo, (ev.clientX - r.left) / r.width * 100));
-        if (kind === "phone") st.style.top = Math.max(120, Math.min(H - 80, ev.clientY - r.top)) + "px"; else st.style.top = Math.max(10, Math.min(90, (ev.clientY - r.top) / r.height * 100)) + "%";
+        const lo = kind === "phone" ? 18 : 5; let xp = ox + (ev.clientX - sx) / r.width * 100;
+        if (kind === "phone") {
+          let y = oy + (ev.clientY - sy) + (main.scrollTop - s0); const yMin = prev ? pv(prev) + 150 : 160, yMax = next ? pv(next) - 150 : H - 90; y = Math.max(yMin, Math.min(yMax, y));
+          st.style.top = y + "px"; xp = Math.max(lo, Math.min(100 - lo, xp));
+          const mr = main.getBoundingClientRect(); if (ev.clientY > mr.bottom - 70) main.scrollTop += 10; else if (ev.clientY < mr.top + 70) main.scrollTop -= 10;
+        } else {
+          let y = oy + (ev.clientY - sy) / r.height * 100; y = Math.max(14, Math.min(84, y)); st.style.top = y + "%";
+          const xMin = prev ? pv(prev) + 7 : lo, xMax = next ? pv(next) - 7 : 100 - lo; xp = Math.max(xMin, Math.min(xMax, xp));
+        }
         st.style.left = xp + "%"; redraw();
       };
-      const up = () => { grip.removeEventListener("pointermove", mv); grip.removeEventListener("pointerup", up); grip.removeEventListener("pointercancel", up); st.classList.remove("moving");
+      const up = () => { st.removeEventListener("pointermove", mv); st.removeEventListener("pointerup", up); st.removeEventListener("pointercancel", up); st.classList.remove("moving");
         const map = routeSaved(kind); map[st.dataset.drop] = [parseFloat(st.style.left), parseFloat(st.style.top)]; routeSave(kind, map); };
-      grip.addEventListener("pointermove", mv); grip.addEventListener("pointerup", up); grip.addEventListener("pointercancel", up);
+      st.addEventListener("pointermove", mv); st.addEventListener("pointerup", up); st.addEventListener("pointercancel", up);
     });
   });
 }

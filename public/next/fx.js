@@ -120,7 +120,7 @@
   /* 7. Power-on sweep on launch */
   function boot() {
     var sp = document.createElement("div"); sp.id = "fxsplash"; sp.setAttribute("aria-hidden", "true");
-    sp.innerHTML = '<img class="g" src="img/wm-glyph.png" alt=""><img class="w" src="img/wm-text.png" alt=""><i></i>';
+    sp.innerHTML = '<img class="g" src="img/wm-glyph.png?v=2" alt=""><img class="w" src="img/wm-text.png" alt=""><i></i>';
     document.body.appendChild(sp); setTimeout(function () { sp.remove(); }, 1750);
     setTimeout(function () { root.classList.add("fx-boot"); setTimeout(function () { root.classList.remove("fx-boot"); }, 1300); }, 1150);
   }

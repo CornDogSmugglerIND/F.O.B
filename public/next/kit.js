@@ -156,3 +156,28 @@ export function lockFrame(it, src, { id = "" } = {}) {
     <div class="lk-core">${src ? `<img${id ? ` id="${id}"` : ""} src="${esc(src)}" alt="" draggable="false">` : `<span class="lk-none">No photo</span>`}<i class="lk-c tl"></i><i class="lk-c tr"></i><i class="lk-c bl"></i><i class="lk-c br"></i></div>
     <div class="lk-side r">${Rt}</div></div>`;
 }
+
+/* Hologram deck: a 3D carousel with the centered item target-locked; readouts(it) -> {l, r} HTML. */
+export function holoDeck(list, { readouts, ring = true } = {}) {
+  const flow = list.slice(0, 16), ld = flow[0] ? readouts(flow[0]) : { l: "", r: "" };
+  const nm = (it) => it.title || it.productName || "Untitled", ph = (it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "";
+  if (!flow.length) return "";
+  return `<div class="cd-stage">
+    ${ring ? `<svg class="cd-ring" viewBox="0 0 300 300" aria-hidden="true"><path class="a1" d="M38 196 A118 118 0 0 1 150 32"/><path class="a2" d="M262 104 A118 118 0 0 1 150 268"/><path class="hatch" d="M52 108 A106 106 0 0 1 96 58"/><circle class="seg" cx="150" cy="150" r="134"/><path class="rule" d="M20 92 V208"/><path class="rule" d="M280 92 V208"/></svg>` : ""}
+    <div class="cd-side l lk-side" data-cdl>${ld.l}</div><div class="cd-side r lk-side" data-cdr>${ld.r}</div>
+    <div class="cd-flow hscroll" data-cdflow>${flow.map((it, i) => { const s = ph(it); return `<button type="button" class="cd-c" data-cd="${i}" data-id="${esc(it.id)}" aria-label="${esc(nm(it))}">${s ? `<img src="${esc(s)}" alt="" loading="lazy" draggable="false">` : `<span>${esc(nm(it).charAt(0))}</span>`}</button>`; }).join("")}</div>
+    <div class="cd-name" data-cdname>${esc(nm(flow[0]))}</div>
+    <div class="cd-nav"><button type="button" class="cd-arr" data-cdprev aria-label="Previous">‹</button><span data-cdn>1 / ${flow.length}</span><button type="button" class="cd-arr" data-cdnext aria-label="Next">›</button></div></div>`;
+}
+export function wireHoloDeck(root, list, { readouts, onOpen }) {
+  const fl = root.querySelector("[data-cdflow]"); if (!fl) return;
+  const flow = list.slice(0, 16), cards = [...fl.querySelectorAll(".cd-c")], nm = (it) => it.title || it.productName || "Untitled"; let cur = 0, raf = 0;
+  const center = () => { const r = fl.getBoundingClientRect(), mid = r.left + r.width / 2; let best = 0, bd = 1e9;
+    cards.forEach((c, i) => { const b = c.getBoundingClientRect(), d = (b.left + b.width / 2 - mid) / (b.width || 1), a = Math.min(2, Math.abs(d)); c.style.setProperty("--d", Math.max(-2, Math.min(2, d)).toFixed(3)); c.style.setProperty("--a", a.toFixed(3)); c.classList.toggle("on", a < .5); if (a < bd) { bd = a; best = i; } });
+    if (best !== cur) { cur = best; const ld = readouts(flow[cur]); root.querySelector("[data-cdl]").innerHTML = ld.l; root.querySelector("[data-cdr]").innerHTML = ld.r; root.querySelector("[data-cdname]").textContent = nm(flow[cur]); root.querySelector("[data-cdn]").textContent = `${cur + 1} / ${flow.length}`; } };
+  fl.addEventListener("scroll", () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(center); }, { passive: true });
+  const goTo = (i) => { const c = cards[Math.max(0, Math.min(cards.length - 1, i))]; if (c) fl.scrollTo({ left: c.offsetLeft - (fl.clientWidth - c.offsetWidth) / 2, behavior: "smooth" }); };
+  cards.forEach((c, i) => c.addEventListener("click", () => { if (i !== cur) return goTo(i); onOpen(flow[i], c); }));
+  root.querySelector("[data-cdprev]").addEventListener("click", () => goTo(cur - 1)); root.querySelector("[data-cdnext]").addEventListener("click", () => goTo(cur + 1));
+  (window.requestIdleCallback || ((f) => setTimeout(f, 60)))(center);
+}

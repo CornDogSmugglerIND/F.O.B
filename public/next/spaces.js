@@ -1,5 +1,5 @@
 import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=6";
-import { fly, rectOf, sleep, openCard } from "./kit.js?v=5";
+import { fly, rectOf, sleep, openCard } from "./kit.js?v=6";
 
 /* Spaces = his real storage, as a camera you fly through:
    area -> shelf -> bin (closed, lid flips) -> bin (open, items inside). */
@@ -72,9 +72,10 @@ function shelfFocusView(w) {
   const id = S.bin, sh = SHELVES.find((x) => x.id === PHYS[id].shelf), i = ORDER_BINS.indexOf(id), sp = w.spaces.find((x) => x.id === id) || {}, its = w.inBin(id);
   return `<div class="spx-stage"><div class="spx-cam" id="cam"><div class="spx-pan" id="pan" style="transform:${focusTf(id)}"><img src="${IMG}${sh.photo}" alt="${esc(shelfName(sh))}" draggable="false">
       ${sh.bins.map((b) => { const [x, y, ww, hh] = PHYS[b].rect; return `<button class="spx-fhot${b === id ? " on" : ""}" data-fbin="${b}" style="left:${x}%;top:${y}%;width:${ww}%;height:${hh}%" type="button" aria-label="Open ${esc(nm(w, b))}"></button>`; }).join("")}</div>
+      <div class="spx-dial" id="fDial" role="listbox" aria-label="Bins">${ORDER_BINS.map((b) => { const n = w.inBin(b).length; return `<button type="button" role="option" class="spx-dl${b === id ? " on" : ""}" data-dial="${b}" aria-selected="${b === id}"><b>${esc(nm(w, b))}</b><em>${n} item${n === 1 ? "" : "s"}</em></button>`; }).join("")}</div>
       <div class="spx-fnav"><button type="button" class="spx-fbtn" id="fPrev" aria-label="Bin above"${i <= 0 ? " disabled" : ""}>˄</button><button type="button" class="spx-fbtn" id="fNext" aria-label="Bin below"${i >= ORDER_BINS.length - 1 ? " disabled" : ""}>˅</button></div></div>
     <div class="spx-fcard"><div><b>${esc(sp.name || nm(w, id))}</b><em>${esc(sp.sub || PHYS[id].sub || "")} · ${its.length} item${its.length === 1 ? "" : "s"} · ${money(val(its))}</em></div><button class="btn go" id="fOpen" type="button">Open it</button></div>
-    <p class="spx-hint">Swipe up or down for the next bin. Tap the bin to open it.</p></div>`;
+    <p class="spx-hint">Turn the dial or swipe to change bins. Tap the bin to open it.</p></div>`;
 }
 function binView(w) {
   const sp = w.spaces.find((s) => s.id === S.bin); if (!sp) return `<div class="spx-stage"><p class="spx-empty">That bin is gone.</p></div>`;
@@ -173,8 +174,10 @@ function focusOn(id, fromBin) {
   if (first) pan.animate([{ transform: "translate(-50%,-50%)" }, { transform: focusTf(id) }], { duration: 650, easing: "cubic-bezier(.2,.8,.2,1)" });
   else if (fromBin) ctx.host.querySelector(".spx-stage")?.animate([{ transform: "scale(1.25)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)" });
 }
-function stepBin(d) {
-  const i = ORDER_BINS.indexOf(S.bin), nid = ORDER_BINS[i + d]; if (!nid) return;
+function stepBin(d) { const i = ORDER_BINS.indexOf(S.bin); jumpBin(ORDER_BINS[i + d]); }
+function dialSync() { const dl = ctx.host.querySelector("#fDial"); if (!dl) return; dl.querySelectorAll("[data-dial]").forEach((b) => { const on = b.dataset.dial === S.bin; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); if (on) { const d = b.getBoundingClientRect().top - dl.getBoundingClientRect().top - (dl.clientHeight - b.offsetHeight) / 2; dl.scrollBy({ top: d, behavior: "smooth" }); } }); }
+function jumpBin(nid) {
+  if (!nid || nid === S.bin) return;
   const pan = ctx.host.querySelector("#pan");
   if (pan && PHYS[nid].shelf === PHYS[S.bin].shelf) {
     S.bin = nid; pan.style.transition = matchMedia("(prefers-reduced-motion: reduce)").matches ? "none" : "transform .55s cubic-bezier(.2,.8,.2,1)"; pan.style.transform = focusTf(nid);
@@ -182,7 +185,7 @@ function stepBin(d) {
     const card = ctx.host.querySelector(".spx-fcard"), tmp = document.createElement("div"); tmp.innerHTML = shelfFocusView(w); const nc = tmp.querySelector(".spx-fcard"); if (card && nc) card.replaceWith(nc);
     const nav = ctx.host.querySelector(".spx-fnav"), nn = tmp.querySelector(".spx-fnav"); if (nav && nn) nav.replaceWith(nn);
     const cr = ctx.host.querySelector(".spx-crumbs"); tmp.innerHTML = head(w, [{ t: "Spaces", go: true }, { t: nm(w, nid) }]); const nh = tmp.querySelector(".spx-crumbs"); if (cr && nh) cr.replaceWith(nh);
-    wireFocus();
+    wireFocus(); dialSync();
   } else { S.bin = nid; focusOn(nid); }
 }
 function openBin() { if (busy) return; const hot = ctx.host.querySelector(".spx-fhot.on") || ctx.host.querySelector("#cam"); camera({ level: "bin", shelf: S.shelf, bin: S.bin, open: false }, hot); }
@@ -202,6 +205,8 @@ function wire(w) {
   h.querySelectorAll("[data-bin]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.bin; if (PHYS[id]) focusOn(id); else camera({ level: "bin", shelf: S.shelf, bin: id, open: false }, b); }));
   h.querySelectorAll("[data-fbin]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.fbin === S.bin) openBin(); else { const d = ORDER_BINS.indexOf(b.dataset.fbin) - ORDER_BINS.indexOf(S.bin); stepBin(d); } }));
   $("#fPrev")?.addEventListener("click", () => stepBin(-1)); $("#fNext")?.addEventListener("click", () => stepBin(1)); $("#fOpen")?.addEventListener("click", openBin);
+  h.querySelectorAll("[data-dial]").forEach((b) => { if (b.dataset.w) return; b.dataset.w = "1"; b.addEventListener("click", () => jumpBin(b.dataset.dial)); });
+  requestAnimationFrame(() => { const dl = h.querySelector("#fDial"), on = dl && dl.querySelector(".on"); if (on) dl.scrollTop += on.getBoundingClientRect().top - dl.getBoundingClientRect().top - (dl.clientHeight - on.offsetHeight) / 2; });
   const cam = $("#cam"); if (cam) { let sy = null, sx = 0; cam.addEventListener("touchstart", (e) => { if (e.touches.length !== 1) { sy = null; return; } sy = e.touches[0].clientY; sx = e.touches[0].clientX; }, { passive: true });
     cam.addEventListener("touchend", (e) => { if (sy == null) return; const dy = e.changedTouches[0].clientY - sy, dx = e.changedTouches[0].clientX - sx; sy = null; if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx) * 1.3) stepBin(dy < 0 ? 1 : -1); }, { passive: true });
     let wt = 0; cam.addEventListener("wheel", (e) => { if (Math.abs(e.deltaY) < 20) return; e.preventDefault(); const now = Date.now(); if (now - wt < 650) return; wt = now; stepBin(e.deltaY > 0 ? 1 : -1); }, { passive: false }); }

@@ -1,10 +1,10 @@
 import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=6";
 import { photoManager } from "./photos.js?v=4";
-import { openCard } from "./kit.js?v=5";
+import { openCard } from "./kit.js?v=6";
 import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=7";
 
 let ctx = null;
-const S = { stage: "listed", view: "rows", group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
+const S = { stage: "listed", view: "cards", group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
 /* Stage selector follows the Command roadmap: same stops, same order, same colors. */
 const STAGES = [
   ["listed", "Live on eBay", "#90FFEE"],
@@ -79,6 +79,44 @@ function drawerHtml() {
     <div class="ch-drow"><span>Select</span><button class="btn" id="chAll" type="button">Select everything shown</button></div>
   </div>`;
 }
+/* ---------- the deck: stage tabs, then a hologram carousel of this stage's listings with the centered one target-locked ---------- */
+const daysSince = (d) => { const t = Date.parse(d || ""); return t ? Math.max(0, Math.floor((Date.now() - t) / 864e5)) : null; };
+function lockData(it) {
+  if (!it) return { l: "", r: "" };
+  const R = (k, v, cls = "") => v === "" || v == null ? "" : `<div class="lk-r ${cls}"><em>${esc(k)}</em><b>${v}</b></div>`;
+  if (it._order) { const o = it._order, d = daysSince(o.createdAt);
+    return { l: `${R("Sold for", money(o.total ?? it.price), "money")}${R("Buyer", esc(o.buyer || "—"))}`, r: `${R("Status", esc(badge(it)), "hot")}${R("Sold", d == null ? "—" : d === 0 ? "Today" : d + "d ago")}` }; }
+  const d = daysSince(it.channels?.ebay?.listedAt || it.createdAt), sp = loadSpaces().find((x) => x.id === it.spaceId);
+  return { l: `${R("Price", ptxt(it), "money")}${R("Qty", String(it._n > 1 ? it._n + " var." : Number(it.quantity) || 1))}`, r: `${R("Live", d == null ? "—" : d + "d")}${R("Bin", esc(sp ? sp.name : "None"))}` };
+}
+function deckHtml(all, total, counts) {
+  const cur = STAGES.find(([k]) => k === S.stage) || STAGES[0], flow = all.slice(0, 16);
+  const tabs = STAGES.map(([k, l, c]) => `<button class="cd-tab ch-stop${S.stage === k ? " on" : ""}" data-stage="${k}" type="button" role="tab" aria-selected="${S.stage === k}" style="--c:${c}"><b>${counts[k] || 0}</b><span>${({ listed: "Live" })[k] || l}</span></button>`).join("");
+  const cards = flow.map((it, i) => { const src = photoOf(it); return `<button type="button" class="cd-c" data-cd="${i}" data-id="${esc(it.id)}" aria-label="${esc(nameOf(it))}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span>${esc(nameOf(it).charAt(0))}</span>`}</button>`; }).join("");
+  const ld = lockData(flow[0]);
+  return `<div class="cd${["sold", "shipped", "delivered"].includes(S.stage) ? " hot" : ""}">
+    <div class="cd-tabs hscroll" role="tablist" aria-label="Stage">${tabs}</div>
+    <div class="cd-sum"><b>${money(total)}</b><span>${all.length} ${["sold", "shipped", "delivered"].includes(S.stage) ? "order" : "listing"}${all.length === 1 ? "" : "s"}</span>${["sold", "shipped", "delivered"].includes(S.stage) && all.length ? `<button class="btn" id="chArchAll" type="button">Archive all</button>` : ""}</div>
+    ${flow.length ? `<div class="cd-stage">
+      <svg class="cd-ring" viewBox="0 0 300 300" aria-hidden="true"><path class="a1" d="M38 196 A118 118 0 0 1 150 32"/><path class="a2" d="M262 104 A118 118 0 0 1 150 268"/><path class="hatch" d="M52 108 A106 106 0 0 1 96 58"/><circle class="seg" cx="150" cy="150" r="134"/><path class="rule" d="M20 92 V208"/><path class="rule" d="M280 92 V208"/></svg>
+      <div class="cd-side l lk-side" id="cdL">${ld.l}</div><div class="cd-side r lk-side" id="cdR">${ld.r}</div>
+      <div class="cd-flow hscroll" id="cdFlow">${cards}</div>
+      <div class="cd-name" id="cdName">${esc(nameOf(flow[0]))}</div>
+      <div class="cd-nav"><button type="button" class="cd-arr" id="cdPrev" aria-label="Previous">‹</button><span id="cdN">1 / ${flow.length}</span><button type="button" class="cd-arr" id="cdNext" aria-label="Next">›</button></div>
+    </div>` : ""}</div>`;
+}
+function wireDeck(all) {
+  const h = ctx.host, fl = h.querySelector("#cdFlow"); if (!fl) return;
+  const cards = [...fl.querySelectorAll(".cd-c")], flow = all.slice(0, 16); let cur = 0, raf = 0;
+  const center = () => { const r = fl.getBoundingClientRect(), mid = r.left + r.width / 2; let best = 0, bd = 1e9;
+    cards.forEach((c, i) => { const b = c.getBoundingClientRect(), d = (b.left + b.width / 2 - mid) / (b.width || 1); const a = Math.min(2, Math.abs(d)); c.style.setProperty("--d", Math.max(-2, Math.min(2, d)).toFixed(3)); c.style.setProperty("--a", a.toFixed(3)); c.classList.toggle("on", a < .5); if (Math.abs(d) < bd) { bd = Math.abs(d); best = i; } });
+    if (best !== cur) { cur = best; const ld = lockData(flow[cur]); h.querySelector("#cdL").innerHTML = ld.l; h.querySelector("#cdR").innerHTML = ld.r; h.querySelector("#cdName").textContent = nameOf(flow[cur]); h.querySelector("#cdN").textContent = `${cur + 1} / ${flow.length}`; } };
+  fl.addEventListener("scroll", () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(center); }, { passive: true });
+  const goTo = (i) => { const c = cards[Math.max(0, Math.min(cards.length - 1, i))]; if (c) fl.scrollTo({ left: c.offsetLeft - (fl.clientWidth - c.offsetWidth) / 2, behavior: "smooth" }); };
+  cards.forEach((c, i) => c.addEventListener("click", () => { if (i !== cur) return goTo(i); zoom(all, c); }));
+  h.querySelector("#cdPrev").addEventListener("click", () => goTo(cur - 1)); h.querySelector("#cdNext").addEventListener("click", () => goTo(cur + 1));
+  (window.requestIdleCallback || ((f) => setTimeout(f, 60)))(center);
+}
 function paint() {
   const all = rows(), h = ctx.host; const groups = new Map();
   const typedPct = h.querySelector("#chPct")?.value || "", typedQ = document.activeElement && document.activeElement.id === "chQ";
@@ -92,14 +130,13 @@ function paint() {
   }).join("");
   const n = S.sel.size;
   h.innerHTML = `<div class="co-wrap ch-wrap">
-    <div class="co-head chs-hero"><div><p class="chs-k">${({ listed: "Live on eBay", sold: "Sold, needs shipping", shipped: "On the way", delivered: "Delivered" })[S.stage] || "Channels"}</p><h2 class="chs-big">${money(total)}</h2><p>${["sold", "shipped", "delivered"].includes(S.stage) ? `${all.length} order${all.length === 1 ? "" : "s"} · last 90 days` : `${all.length} listing${all.length === 1 ? "" : "s"} at list price`}</p></div>${["sold", "shipped", "delivered"].includes(S.stage) && all.length ? `<button class="btn" id="chArchAll" type="button">Archive all ${all.length}</button>` : ""}</div>
-    ${routeHtml(counts)}
+    ${deckHtml(all, total, counts)}
     <div class="ch-bar2"><input id="chQ" type="search" placeholder="Search title or SKU" value="${esc(S.q)}" aria-label="Search title or SKU">
       <button class="btn ch-controls${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}">Controls</button></div>
     ${drawerHtml()}
     ${sections || `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing here yet."}</div>`}
     ${n ? bar(n) : ""}</div>`;
-  wire(all);
+  wire(all); wireDeck(all);
   { const pc = h.querySelector("#chPct"); if (pc && typedPct) pc.value = typedPct; if (typedQ) { const q = h.querySelector("#chQ"); if (q) { q.focus(); const n = q.value.length; try { q.setSelectionRange(n, n); } catch { /* ignore */ } } } }
 }
 function bar(n) {

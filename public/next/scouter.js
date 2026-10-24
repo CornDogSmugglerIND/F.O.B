@@ -195,10 +195,14 @@ function track() {
     if (t) {
       const mv = Math.abs(t.x - st.tx) + Math.abs(t.y - st.ty) + Math.abs(t.w - st.tw) + Math.abs(t.h - st.th);
       /* small jitter is ignored so a held card sits dead still */
-      if (mv > .012) { st.tx = t.x; st.ty = t.y; st.tw = t.w; st.th = t.h; }
+      /* ease toward the new box (no snapping), and pull its shape toward a trading card (63:88) so the lock reads as "card" */
+      if (mv > .012) {
+        let { x, y, w: bw2, h: bh2 } = t; if (tg) { const ar = (W * bw2) / (H * bh2), want = 63 / 88, k2 = .5; const tw2 = ar > want ? bw2 * (1 - k2 + k2 * want / ar) : bw2, th2 = ar < want ? bh2 * (1 - k2 + k2 * ar / want) : bh2; x += (bw2 - tw2) / 2; y += (bh2 - th2) / 2; bw2 = tw2; bh2 = th2; }
+        const e = tg ? .45 : .25; st.tx += (x - st.tx) * e; st.ty += (y - st.ty) * e; st.tw += (bw2 - st.tw) * e; st.th += (bh2 - st.th) * e;
+      }
       st.still = tg && mv < .05 ? st.still + 1 : 0;
     }
-    const mode = !tg ? "seek" : st.still >= 6 ? "lock" : "track";
+    const mode = !tg ? "seek" : st.still >= 8 ? "lock" : "track";
     /* Face ID style ring: fills white -> green as the lock holds steady */
     const want = !tg ? 0 : mode === "lock" ? 1 : Math.min(.92, .12 + st.still / 6 * .8);
     st.ring = (st.ring || 0) + (want - (st.ring || 0)) * .35;
