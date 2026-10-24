@@ -1,6 +1,6 @@
 import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=6";
 import { photoManager } from "./photos.js?v=4";
-import { openCard } from "./kit.js?v=4";
+import { openCard } from "./kit.js?v=5";
 import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=7";
 
 let ctx = null;
@@ -58,7 +58,17 @@ function tile(it) {
   return `<article class="co-card ch-tile k-tilt ${S.view}${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0"><div class="co-art"><div class="co-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i></div>${badge(it) ? `<i class="ch-badge">${esc(badge(it))}</i>` : ""}<i class="co-pick${on ? " on" : ""}" data-pick="${esc(it.id)}">${on ? "✓" : ""}</i></div>${S.view === "cards" ? `<div class="co-cap"><span>${esc(nameOf(it))}</span><b>${ptxt(it)}</b></div>` : `<div class="ch-price">${ptxt(it)}</div>`}</article>`;
 }
 function routeHtml(counts) {
-  return `<div class="ch-route chs-tiles" role="group" aria-label="Stage">${STAGES.map(([k, l, c]) => `<button class="ch-stop${S.stage === k ? " on" : ""}" data-stage="${k}" type="button" style="--c:${c}"><em>${counts[k]}</em><span>${l}</span></button>`).join("")}</div>`;
+  /* Pipeline reticle: one ring, each arc = how much of your stock sits in that stage. The lit arc is the stage you're viewing. */
+  const tot = STAGES.reduce((a, [k]) => a + (counts[k] || 0), 0) || 1, C = 2 * Math.PI * 46, gap = 5;
+  let at = 0;
+  const share = STAGES.map(([k]) => Math.max(.07, (counts[k] || 0) / tot)), sum = share.reduce((a, b) => a + b, 0);
+  const arcs = STAGES.map(([k, l, c], i) => { const len = share[i] / sum * C - gap, off = -at; at += share[i] / sum * C;
+    return `<circle class="chs-arc${S.stage === k ? " on" : ""}" cx="60" cy="60" r="46" style="--c:${c}" stroke-dasharray="${len.toFixed(1)} ${(C - len).toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>`; }).join("");
+  const cur = STAGES.find(([k]) => k === S.stage) || STAGES[0];
+  return `<div class="ch-route chs-tiles chs-ret" role="group" aria-label="Stage">
+    <div class="chs-dial" aria-hidden="true"><svg viewBox="0 0 120 120"><circle class="chs-tick" cx="60" cy="60" r="56"/><g transform="rotate(-90 60 60)">${arcs}</g><circle class="chs-spin" cx="60" cy="60" r="36"/></svg>
+      <div class="chs-core" style="--c:${cur[2]}"><b>${counts[cur[0]] || 0}</b><span>${cur[1]}</span></div></div>
+    <div class="chs-list">${STAGES.map(([k, l, c]) => `<button class="ch-stop${S.stage === k ? " on" : ""}" data-stage="${k}" type="button" style="--c:${c}"><em>${counts[k]}</em><span>${l}</span></button>`).join("")}</div></div>`;
 }
 function drawerHtml() {
   if (!S.drawer) return "";

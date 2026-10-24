@@ -93,7 +93,7 @@ function openCardSheet(items, opts, f) {
   const paint = () => {
     const it = items[i], p = photo(it), n = items.length;
     s = f.openSheet(`<div class="iv-bar"><button type="button" class="iv-back" data-close>‹ ${esc(opts.backLabel || "Back")}</button>${n > 1 ? `<span class="iv-n">${i + 1} of ${n}</span><button type="button" class="iv-btn" data-prev aria-label="Previous"${i === 0 ? " disabled" : ""}>‹</button><button type="button" class="iv-btn" data-next aria-label="Next"${i === n - 1 ? " disabled" : ""}>›</button>` : ""}</div>
-      ${p ? `<div class="iv-hero"><img src="${esc(p)}" alt="" draggable="false"></div>` : ""}<div class="k-zinfo it-info"><h2>${esc(name(it))}</h2>${itemTabs(it, opts.info ? opts.info(it) : "")}</div>`);
+      ${lockFrame(it, p)}<div class="k-zinfo it-info"><h2>${esc(name(it))}</h2>${itemTabs(it, opts.info ? opts.info(it) : "")}</div>`);
     wireTabs(s);
     s.querySelector("[data-prev]")?.addEventListener("click", () => go(i - 1));
     s.querySelector("[data-next]")?.addEventListener("click", () => go(i + 1));
@@ -136,4 +136,23 @@ export function openCard(items, opts = {}) {
   z.addEventListener("touchend", (e) => { if (sx == null) return; const dx = e.changedTouches[0].clientX - sx; sx = null; if (Math.abs(dx) > 60) z.querySelector(dx < 0 ? "[data-next]" : "[data-prev]")?.click(); }, { passive: true });
   paint(true);
   return z;
+}
+
+/* Target lock (Ghost Recon Future Soldier): the card in a reticle, its real numbers floating beside it on leader lines. */
+export function lockFrame(it, src, { id = "" } = {}) {
+  const o = it._order || null, price = Number(o ? o.total ?? it.price : it.price) || 0;
+  const paid = it.purchasePrice != null && it.purchasePrice !== "" ? Number(it.purchasePrice) : null;
+  const net = price ? Math.max(0, price - (price * 0.1325 + 0.3) - 0.78) : 0, prof = paid != null && price ? net - paid : null;
+  const where = o ? (it.phase === "sold" ? "To ship" : it.phase === "delivered" ? "Delivered" : "Shipped") : it.phase === "listed" ? "Live" : it.phase === "staged" ? "Ready" : it.phase === "stored" ? "In a bin" : "Intake";
+  const R = (k, v, cls = "") => v === "" || v == null ? "" : `<div class="lk-r ${cls}"><em>${esc(k)}</em><b>${v}</b></div>`;
+  const L = `${R(o ? "Sold for" : "Market", $m(price), "money")}${R("Paid", paid != null ? $m(paid) : "—")}${prof != null ? R("Profit", (prof >= 0 ? "+" : "−") + $m(Math.abs(prof)), prof >= 0 ? "up" : "down") : R("You keep", $m(net))}`;
+  const Rt = `${R("Status", esc(where), o ? "hot" : "")}${R("Set", esc(it.setName || ""))}${R("No.", esc(it.collectorNumber || ""))}${R("Cond", esc(it.condition || ""))}`;
+  return `<div class="lk${o ? " hot" : ""}">
+    <svg class="lk-ring" viewBox="0 0 300 300" aria-hidden="true"><path class="a1" d="M38 196 A118 118 0 0 1 150 32"/><path class="a2" d="M262 104 A118 118 0 0 1 150 268"/>
+      <path class="hatch" d="M52 108 A106 106 0 0 1 96 58"/><circle class="seg" cx="150" cy="150" r="134"/>
+      <g class="lens"><circle cx="246" cy="228" r="13"/><circle cx="246" cy="228" r="4"/><path d="M246 210 V218 M246 238 V246 M228 228 H236 M256 228 H264"/></g>
+      <path class="rule" d="M20 92 V208"/><path class="rule" d="M280 92 V208"/></svg>
+    <div class="lk-side l">${L}</div>
+    <div class="lk-core">${src ? `<img${id ? ` id="${id}"` : ""} src="${esc(src)}" alt="" draggable="false">` : `<span class="lk-none">No photo</span>`}<i class="lk-c tl"></i><i class="lk-c tr"></i><i class="lk-c bl"></i><i class="lk-c br"></i></div>
+    <div class="lk-side r">${Rt}</div></div>`;
 }

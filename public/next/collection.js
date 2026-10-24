@@ -1,5 +1,5 @@
 import { photoManager } from "./photos.js?v=4";
-import { openCard } from "./kit.js?v=4";
+import { openCard } from "./kit.js?v=5";
 import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=6";
 
 let ctx = null;

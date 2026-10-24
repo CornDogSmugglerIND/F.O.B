@@ -1,14 +1,14 @@
 import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=6";
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=7";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=25";
-import { renderCollection, openImport } from "./collection.js?v=20";
+import { renderScouter } from "./scouter.js?v=26";
+import { renderCollection, openImport } from "./collection.js?v=21";
 import { photoManager } from "./photos.js?v=4";
-import { renderSpaces } from "./spaces.js?v=17";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=34";
+import { renderSpaces } from "./spaces.js?v=18";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=35";
 import { renderSettings } from "./settings.js?v=9";
 import { initSync } from "./sync.js?v=4";
-import { initKit, itemTabs, wireTabs } from "./kit.js?v=4";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=5";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -163,7 +163,7 @@ function archiveOne(it) {
 
 function orderSheet(it) {
   const o = it._order, u = trackUrl(o), src = photoOf(it);
-  const s = openSheet(`${navBar(it.id)}${src ? `<img src="${esc(src)}" alt="" style="width:100%;height:240px;object-fit:contain;border-radius:14px;background:#0f1211;margin-bottom:12px">` : ""}<h2>${esc(nameOf(it))}</h2><div class="sub">${it.phase === "sold" ? "Sold, needs shipping" : it.phase === "delivered" ? "Delivered" : "Shipped"}</div>
+  const s = openSheet(`${navBar(it.id)}${lockFrame(it, src)}<h2>${esc(nameOf(it))}</h2><div class="sub">${it.phase === "sold" ? "Sold, needs shipping" : it.phase === "delivered" ? "Delivered" : "Shipped"}</div>
     ${it.phase === "sold" ? "" : trackerHtml(o)}
     <div class="row"><span>Total</span><span>${money(o.total)}</span></div><div class="row"><span>Buyer</span><span>${esc(o.buyer || "—")}</span></div><div class="row"><span>Sold</span><span>${dayText(o.createdAt) || "—"}</span></div><div class="row"><span>Carrier</span><span>${esc(o.carrier || "—")}</span></div><div class="row"><span>Tracking</span><span>${o.trackingNumber ? esc(o.trackingNumber) : "No label yet"}</span></div>
     ${u ? `<a class="btn go" href="${esc(u)}" target="_blank" rel="noopener" style="margin-top:12px">Open carrier tracking</a>` : `<a class="btn go" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener" style="margin-top:12px">Open eBay orders</a>`}
@@ -177,7 +177,7 @@ function itemSheet(id) {
   const src = photoOf(it); const ph = phaseFromItem(it); const st = stopFor(it);
   const s = openSheet(`
     ${navBar(it.id)}
-    ${src ? `<img id="sheetMain" src="${esc(src)}" alt="" style="width:100%;height:300px;object-fit:contain;border-radius:20px;background:#0f1211;margin-bottom:14px;box-shadow:0 14px 34px rgba(0,0,0,.5)">` : ""}
+    ${lockFrame(it, src, { id: "sheetMain" })}
 <div class="it-info">
     <h2>${esc(nameOf(it))}</h2>
     ${itemTabs(it, `<div class="ip-big">${money(it.price)}</div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${it.purchasePrice ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div>` : ""}${nextAction(ph, it)}${moreActions(ph, it)}`)}
@@ -248,21 +248,31 @@ function pileHtml(list, cls, emptyMsg, sid = "") {
 }
 /* HUD widgets: the numbers you check first, tap to jump there */
 function widgets(g) {
-  const ord = orderItems(90), day = 864e5, now = Date.now(), bars = [];
-  for (let k = 6; k >= 0; k--) { const a = now - (k + 1) * day, b = now - k * day; bars.push(ord.filter((o) => { const t = Date.parse(o._order?.createdAt || o.when || 0); return t > a && t <= b; }).reduce((x, o) => x + (Number(o.price) || 0), 0)); }
-  const wk = bars.reduce((a, b) => a + b, 0), mx = Math.max(1, ...bars);
-  const live = g.listed.length + g.stored.length, liveV = [...g.listed, ...g.stored].reduce((a, x) => a + worth(x), 0);
-  return `<div class="hudw" role="group" aria-label="At a glance">
-    <button type="button" class="hw hw-sales" data-goto="channels" data-pst="sold"><em>Sold this week</em><b>${money(wk)}</b><span class="hw-bars">${bars.map((v) => `<i style="height:${Math.max(6, Math.round(v / mx * 100))}%"></i>`).join("")}</span></button>
-    <button type="button" class="hw hw-ship" data-stage="sold"><em>To ship</em><b>${g.sold.length}</b><span>${g.sold.length ? "Tap to pack" : "All caught up"}</span></button>
-    <button type="button" class="hw hw-way" data-stage="shipped"><em>On the way</em><b>${g.shipped.length}</b><span>${g.delivered.length} delivered</span></button>
-    <button type="button" class="hw hw-live" data-goto="channels" data-pst="listed"><em>Live on eBay</em><b>${live}</b><span>${money(liveV)}</span></button></div>`;
+  const ord = orderItems(90), day = 864e5, now = Date.now();
+  const wk = ord.filter((o) => now - Date.parse(o._order?.createdAt || o.when || 0) < 7 * day).reduce((x, o) => x + (Number(o.price) || 0), 0);
+  return `<div class="hudw holo" role="group" aria-label="At a glance">
+    <div class="holo-read">
+      <button type="button" class="hr" data-goto="channels" data-pst="sold"><em>Sold this week</em><b>${money(wk)}</b></button>
+      <button type="button" class="hr hot" data-stage="sold"><em>To ship</em><b>${g.sold.length}</b></button>
+      <button type="button" class="hr" data-stage="shipped"><em>On the way</em><b>${g.shipped.length}</b></button>
+    </div></div>`;
 }
 /* ---------- your route, your way: stops can be dragged anywhere, the line always runs in order ---------- */
 const ROUTE_KEY = "coalition-route-v1";
 let arranging = false;
 function routeSaved(kind) { try { return (JSON.parse(localStorage.getItem(ROUTE_KEY) || "{}") || {})[kind] || {}; } catch { return {}; } }
 function routeSave(kind, map) { try { const all = JSON.parse(localStorage.getItem(ROUTE_KEY) || "{}") || {}; all[kind] = map; localStorage.setItem(ROUTE_KEY, JSON.stringify(all)); } catch { /* ignore */ } }
+/* dark city map under the route (like the original roadmap photo) — fixed seed so it never jumps */
+function mapStreets(W, H) {
+  let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const cx = (v) => Math.max(0, Math.min(W, v)).toFixed(0), cy = (v) => Math.max(0, Math.min(H, v)).toFixed(0);
+  let d = "";
+  for (let y = 40; y < H; y += 60 + rnd() * 70) { const a = (rnd() - .5) * 40; d += `M0,${cy(y)} L${W},${cy(y + a)} `; }
+  for (let x = 30; x < W; x += 50 + rnd() * 80) { const a = (rnd() - .5) * 60; d += `M${cx(x)},0 L${cx(x + a)},${H} `; }
+  for (let k = 0; k < 6; k++) { const x0 = rnd() * W, y0 = rnd() * H; d += `M${cx(x0)},${cy(y0)} L${cx(x0 + (rnd() - .5) * W * .8)},${cy(y0 + (rnd() - .5) * H * .5)} `; }
+  let m = ""; for (let k = 0; k < 9; k++) { const r = 8 + rnd() * 16; m += `<circle cx="${cx(Math.max(r + 2, Math.min(W - r - 2, rnd() * W)))}" cy="${cy(rnd() * H)}" r="${r.toFixed(0)}"/>`; }
+  return `<g class="streets" aria-hidden="true"><path d="${d}"/>${m}</g>`;
+}
 function routePath(pts, vertical) { let d = `M${pts[0][0]},${pts[0][1]}`; for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; if (vertical) { const m = (y0 + y1) / 2; d += ` C${x0},${m} ${x1},${m} ${x1},${y1}`; } else { const m = (x0 + x1) / 2; d += ` C${m},${y0} ${m},${y1} ${x1},${y1}`; } } return d; }
 function wireArrange(main, kind, W, H) {
   const road = main.querySelector(".road"); if (!road) return;
@@ -274,7 +284,7 @@ function wireArrange(main, kind, W, H) {
   road.addEventListener("click", (e) => { if (e.target.closest(".stop")) { e.stopPropagation(); e.preventDefault(); } }, true);
   const stops = [...road.querySelectorAll(".stop")];
   const points = () => stops.map((st) => { const x = parseFloat(st.style.left) / 100 * W; const y = kind === "phone" ? parseFloat(st.style.top) : parseFloat(st.style.top) / 100 * H; return [x, y]; });
-  const redraw = () => { const d = routePath(points(), kind === "phone"); road.querySelectorAll("svg path").forEach((p) => p.setAttribute("d", d)); road.querySelectorAll("svg animateMotion").forEach((a) => a.setAttribute("path", d)); };
+  const redraw = () => { const d = routePath(points(), kind === "phone"); road.querySelectorAll("svg > path").forEach((p) => p.setAttribute("d", d)); road.querySelectorAll("svg animateMotion").forEach((a) => a.setAttribute("path", d)); };
   stops.forEach((st) => {
     const grip = st.querySelector(".tag"); if (!grip) return;
     grip.addEventListener("pointerdown", (e) => {
@@ -308,7 +318,7 @@ function renderCommand() {
       <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".4" stroke-width="11" style="filter:blur(7px)"/>
       <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/>
       <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 34"/>
-      ${[0, 1, 2].map((k) => `<circle r="6" fill="#B3FBD5" style="filter:drop-shadow(0 0 7px #90FFCC)"><animateMotion dur="12s" begin="${k * 4}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
+      ${[0, 1, 2].map((k) => `<circle r="6" opacity="0" fill="#B3FBD5" style="filter:drop-shadow(0 0 7px #90FFCC)"><set attributeName="opacity" to="1" begin="${k * 4}s"/><animateMotion dur="12s" begin="${k * 4}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
       ${STOPS.map((s, i) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${PX[i]}%;top:${PY[i]}px;--c:${s.c}">
         ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
         <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div></div>`).join("")}
@@ -324,7 +334,7 @@ function renderCommand() {
       <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".45" stroke-width="16" stroke-linecap="round" style="filter:blur(9px)"/>
       <path d="${path}" fill="none" stroke="url(#rg)" stroke-width="4" stroke-linecap="round"/>
       <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 34"/>
-      ${[0, 1, 2, 3].map((k) => `<circle r="7" fill="#B3FBD5" style="filter:drop-shadow(0 0 9px #90FFCC)"><animateMotion dur="14s" begin="${k * 3.5}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
+      ${[0, 1, 2, 3].map((k) => `<circle r="7" opacity="0" fill="#B3FBD5" style="filter:drop-shadow(0 0 9px #90FFCC)"><set attributeName="opacity" to="1" begin="${k * 3.5}s"/><animateMotion dur="14s" begin="${k * 3.5}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
       ${STOPS.map((s, i) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${POS[i][0]}%;top:${POS[i][1]}%;--c:${s.c}">
         ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
         <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div></div>`).join("")}
@@ -375,7 +385,7 @@ const ORDER = ["command", "scouter", "spaces", "channels", "collection", "settin
 function go(v) {
   const run = () => go_(v);
   const reduce = matchMedia("(prefers-reduced-motion:reduce)").matches;
-  if (document.startViewTransition && !reduce && v !== view) {
+  if (document.startViewTransition && !reduce && !window.__fobFX && v !== view) {
     document.documentElement.dataset.vt = ORDER.indexOf(v) >= ORDER.indexOf(view) ? "fwd" : "back";
     const t = document.startViewTransition(run); t.finished.finally(() => { delete document.documentElement.dataset.vt; });
   } else run();
