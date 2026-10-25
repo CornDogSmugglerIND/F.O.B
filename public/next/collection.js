@@ -25,6 +25,49 @@ function card(it) {
     <div class="co-art"><div class="co-img k-tilt" data-tilt="1.1">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i><span class="co-price">${money(it.price)}</span>${fresh ? `<span class="co-new">Just added</span>` : `<span class="co-st">${where(it)}</span>`}</div>${S.selecting ? `<i class="co-pick">${S.sel.has(String(it.id)) ? "✓" : ""}</i>` : ""}</div>
     <div class="co-cap"><span>${esc(nameOf(it))}</span></div></article>`;
 }
+/* ===================== Collection = the vault (Oct 25 v2): what you own, how it's grown, where it lives ===================== */
+const SLAB = /\b(PSA|BGS|CGC|SGC|TAG|BCCG|HGA|Beckett)\s?(10|[1-9](\.5)?|AUTH|Authentic)\b/i;
+const SEALED_W = /\b(booster|pack|box|(?<!upper )deck|tin|bundle|blister|etb|elite trainer|display|case|starter|collection)\b/i;
+const kindOf = (it) => SLAB.test(nameOf(it)) ? "graded" : laneOf(it) === "sealed" || (SEALED_W.test(nameOf(it)) && !/\bsingle\b/i.test(nameOf(it))) ? "sealed" : "singles";
+const VK = [["all", "Everything"], ["graded", "Graded"], ["singles", "Binder"], ["sealed", "Sealed"]];
+function growth(all) {
+  /* value you added, month by month, from when each item came in */
+  const pts = new Map(); for (const it of all) { const t = Date.parse(it.createdAt || 0); if (!t) continue; const d = new Date(t), k = d.getFullYear() * 12 + d.getMonth(); pts.set(k, (pts.get(k) || 0) + (Number(it.price) || 0) * (Number(it.quantity) || 1)); }
+  const now = new Date(), end = now.getFullYear() * 12 + now.getMonth(), start = end - 11; let acc = 0; for (const [k, v] of pts) if (k < start) acc += v;
+  const series = []; for (let k = start; k <= end; k++) { acc += pts.get(k) || 0; series.push(acc); }
+  const mx = Math.max(1, ...series), W = 300, H = 70, xs = (j) => (j / 11) * W, ys = (v) => H - 6 - (v / mx) * (H - 14);
+  const line = series.map((v, j) => `${j ? "L" : "M"}${xs(j).toFixed(1)},${ys(v).toFixed(1)}`).join(" ");
+  const mo = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+  return `<svg class="vg" viewBox="0 0 ${W} ${H + 14}" preserveAspectRatio="none" aria-label="Collection value over the last 12 months"><defs><linearGradient id="vgF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7DF2B4" stop-opacity=".35"/><stop offset="1" stop-color="#7DF2B4" stop-opacity="0"/></linearGradient></defs>
+    <path d="${line} L${W},${H} L0,${H} Z" fill="url(#vgF)"/><path d="${line}" fill="none" stroke="#7DF2B4" stroke-width="2" vector-effect="non-scaling-stroke"/>
+    <circle cx="${xs(11)}" cy="${ys(series[11])}" r="3.5" fill="#D2FFE6"/>${series.map((_, j) => j % 2 === 1 ? "" : `<text x="${xs(j)}" y="${H + 12}" text-anchor="${j === 0 ? "start" : "middle"}">${mo[(start + j) % 12]}</text>`).join("")}</svg>`;
+}
+function vaultTop(all, total, base) {
+  const paid = all.reduce((a, i) => a + (Number(i.purchasePrice) || 0) * (Number(i.quantity) || 1), 0), d = total - paid;
+  const n = (k) => base.filter((i) => kindOf(i) === k).length, kind = S.kind || "all";
+  return `<header class="vt"><div class="vt-v"><em>Collection value</em><b>${money(total)}</b><span>${all.length} item${all.length === 1 ? "" : "s"}${paid ? ` · <i class="${d >= 0 ? "up" : "down"}">${d >= 0 ? "+" : "−"}${money(Math.abs(d))} vs paid</i>` : ""}</span></div>
+      <span class="cx-tools"><button class="cx-btn${S.selecting ? " on" : ""}" id="coSel" type="button">${S.selecting ? "Done" : "Select"}</button><button class="cx-btn" id="coMenuBtn" type="button" aria-expanded="${!!S.menu}" aria-label="Sort, filter, import">⋯</button></span></header>
+    ${growth(base)}
+    <div class="vk" role="tablist" aria-label="Show">${VK.map(([k, l]) => `<button type="button" role="tab" aria-selected="${kind === k}" class="vk-b${kind === k ? " on" : ""}" data-kind="${k}">${l}<b>${k === "all" ? base.length : n(k)}</b></button>`).join("")}</div>`;
+}
+function vaultBody(all) {
+  const kind = S.kind || "all", pick = (k) => all.filter((i) => kindOf(i) === k), val = (l) => money(l.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0));
+  const graded = pick("graded").sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)), singles = pick("singles"), sealed = pick("sealed");
+  const ph = (it) => { const s = photoOf(it); return s ? `<img src="${esc(s)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`; };
+  const gradeOf = (it) => { const m = nameOf(it).match(SLAB); return m ? `${m[1].toUpperCase()} ${m[2]}` : "Graded"; };
+  let out = "";
+  if ((kind === "all" || kind === "graded") && graded.length) out += `<section class="vs"><header class="vs-h"><b>Graded case</b><span>${graded.length} · ${val(graded)}</span></header>
+    <div class="slabs hscroll">${graded.slice(0, kind === "graded" ? 200 : 24).map((it) => `<button type="button" class="slab" data-vid="${esc(it.id)}" aria-label="${esc(nameOf(it))}"><span class="slab-l"><b>${esc(gradeOf(it))}</b><em>${money(it.price)}</em></span><span class="slab-w">${ph(it)}</span></button>`).join("")}</div></section>`;
+  if ((kind === "all" || kind === "singles") && singles.length) {
+    const sets = new Map(); for (const it of singles) { const k = it.setName || gameOf(it); if (!sets.has(k)) sets.set(k, []); sets.get(k).push(it); }
+    out += `<section class="vs"><header class="vs-h"><b>Binder</b><span>${singles.length} cards · ${val(singles)}</span></header>${[...sets.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, kind === "singles" ? 60 : 5).map(([k, l]) => {
+      const pages = []; for (let j = 0; j < l.length; j += 9) pages.push(l.slice(j, j + 9));
+      return `<div class="bd"><div class="bd-h"><b>${esc(k)}</b><span>${l.length} · ${val(l)}${pages.length > 1 ? ` · ${pages.length} pages` : ""}</span></div><div class="bd-pages hscroll">${pages.slice(0, kind === "singles" ? 12 : 2).map((pg) => `<div class="bd-page">${pg.map((it) => `<button type="button" class="bd-p" data-vid="${esc(it.id)}" aria-label="${esc(nameOf(it))}">${ph(it)}<em>${money(it.price)}</em></button>`).join("")}${Array.from({ length: 9 - pg.length }, () => `<span class="bd-p empty"></span>`).join("")}</div>`).join("")}</div></div>`; }).join("")}</section>`;
+  }
+  if ((kind === "all" || kind === "sealed") && sealed.length) out += `<section class="vs"><header class="vs-h"><b>Sealed shelf</b><span>${sealed.length} · ${val(sealed)}</span></header>
+    <div class="shelf hscroll">${sealed.slice(0, kind === "sealed" ? 200 : 30).map((it) => `<button type="button" class="box" data-vid="${esc(it.id)}" aria-label="${esc(nameOf(it))}"><span class="box-a">${ph(it)}</span><em>${money(it.price)}</em><span class="box-n">${esc(nameOf(it))}</span></button>`).join("")}</div></section>`;
+  return out || `<div class="co-empty">Nothing here yet.</div>`;
+}
 /* category share: one segmented bar, each segment is a filter */
 function catBar(base, cats) {
   const tot = base.length || 1, list = [["All", base.length], ...[...cats.entries()].sort((a, b) => b[1] - a[1])];
@@ -55,22 +98,19 @@ function paint() {
   const base = peekItems().filter(onHand), cats = new Map(); base.forEach((i) => { const c = catOf(i); cats.set(c, (cats.get(c) || 0) + 1); });
   const all = rows(), shown = all.slice(0, S.more), total = val(all), SP = new Map(loadSpaces().map((x) => [x.id, x.name])), binName = (id) => (id && SP.get(id)) || "";
   host.innerHTML = `<div class="co-wrap cx">
-    <div class="vx">
-      <div class="ix">${(() => { const paid = all.reduce((a, i) => a + (Number(i.purchasePrice) || 0) * (Number(i.quantity) || 1), 0), live = all.filter((i) => i.phase === "listed").length; return ringGauge(all.length, all.length ? live / all.length : 0, "items") + `<div class="ix-v"><em>${S.cat === "All" ? "Your collection" : esc(S.cat)}</em><b>${money(total)}</b><span>${live} live on eBay${paid ? ` · <i class="${total - paid >= 0 ? "up" : "hot"}">${total - paid >= 0 ? "+" : "−"}${money(Math.abs(total - paid))} vs paid</i>` : ""}</span></div>`; })()}
-        <span class="cx-tools"><button class="cx-btn${S.selecting ? " on" : ""}" id="coSel" type="button">${S.selecting ? "Done" : "Select"}</button><button class="cx-btn" id="coMenuBtn" type="button" aria-expanded="${!!S.menu}" aria-label="Sort, filter, import">⋯</button></span></div>
-      ${catBar(base, cats)}
-    </div>
+    ${vaultTop(all, total, base)}
     ${S.menu ? `<div class="cx-menu"><label><span>Sort</span><select id="coSort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest value</option><option value="new"${S.sort === "new" ? " selected" : ""}>Newest</option><option value="name"${S.sort === "name" ? " selected" : ""}>Name</option></select></label>
       <label><span>Show</span><select id="coStage">${[["all", "All"], ["new", "Intake"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<option value="${k}"${S.stage === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
       <button class="cx-btn" id="coIO" type="button">Import / Export</button></div>` : ""}
     <div class="cx-lbar"><input id="coQ" class="cx-q" type="search" placeholder="Search your collection" value="${esc(S.q)}"><button type="button" class="cx-btn${S.list ? " on" : ""}" id="coList" aria-pressed="${!!S.list}">${S.list ? "Hide list" : "Show list"}</button></div>
-    ${!(S.list || S.q || S.selecting) ? vaultShelves(all) : ""}
+    ${!(S.list || S.q || S.selecting) ? vaultBody(all) : ""}
     ${S.list || S.q || S.selecting ? `<div class="cx-scroll"><div class="cx-grid">${shown.map((it) => { const src = photoOf(it), on = S.sel.has(String(it.id)), bn = binName(it.spaceId); return `<article class="cx-card${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0">
       <div class="cx-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<span class="cx-price">${money(it.price)}</span>${Number(it.quantity) > 1 ? `<span class="cx-qty">x${Number(it.quantity)}</span>` : ""}${S.selecting ? `<i class="cx-ck"></i>` : ""}</div>
       <div class="cx-cap"><span>${esc(nameOf(it))}</span><em>${esc(where(it))}${bn ? " · " + esc(bn) : ""}</em></div></article>`; }).join("") || `<div class="co-empty">Nothing matches.</div>`}${all.length > S.more ? `<button type="button" class="cx-more" id="coMore">Show more (${all.length - S.more})</button>` : ""}</div></div>` : ""}
     ${S.selecting ? bar() : ""}</div>`;
   wire();
-  host.querySelectorAll(".sv-c").forEach((c) => c.addEventListener("click", () => openZoom(c.dataset.id, c)));
+  host.querySelectorAll("[data-vid]").forEach((c) => c.addEventListener("click", () => openZoom(c.dataset.vid, c)));
+  host.querySelectorAll("[data-kind]").forEach((b) => b.addEventListener("click", () => { S.kind = b.dataset.kind; paint(); }));
   host.querySelectorAll("[data-allgrp]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); if (S.cat === "All" && b.dataset.allgrp !== "Top value") S.cat = b.dataset.allgrp; S.list = true; paint(); }));
   host.querySelector("#coList")?.addEventListener("click", () => { S.list = !S.list; paint(); });
   { const pc = host.querySelector("#coPct"); if (pc && typed) { pc.value = typed; if (typedFocus) pc.focus(); } }

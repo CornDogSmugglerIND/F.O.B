@@ -1,0 +1,42 @@
+import { test, beforeEach } from "node:test";
+import assert from "node:assert/strict";
+import { clearEbayTokenCache, reviseEbayItems } from "../src/channels/ebay.js";
+
+beforeEach(() => {
+  clearEbayTokenCache();
+  Object.assign(process.env, { EBAY_CLIENT_ID: "cid", EBAY_CLIENT_SECRET: "csec", EBAY_REFRESH_TOKEN: "rtok", EBAY_ENV: "sandbox", EBAY_MARKETPLACE_ID: "EBAY_US" });
+});
+const res = (status, body) => ({ ok: status < 300, status, statusText: String(status), async json() { return body; }, async text() { return JSON.stringify(body); } });
+
+test("revise: price + qty for two variation SKUs go out in one bulk call", async () => {
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => {
+    calls.push([String(url), init.method || "GET", (() => { try { return init.body ? JSON.parse(init.body) : null; } catch { return null; } })()]);
+    if (String(url).includes("/oauth2/token")) return res(200, { access_token: "t", expires_in: 7200 });
+    if (String(url).includes("bulk_update_price_quantity")) return res(200, { responses: [{ sku: "A", statusCode: 200 }, { sku: "B", statusCode: 200 }] });
+    return res(404, {});
+  };
+  const out = await reviseEbayItems([{ sku: "A", offerId: "1", price: 2.5, quantity: 3 }, { sku: "B", offerId: "2", quantity: 0 }], { fetchImpl });
+  assert.deepEqual(out.map((r) => r.ok), [true, true], JSON.stringify(out));
+  const bulk = calls.find((c) => c[0].includes("bulk_update_price_quantity"));
+  assert.equal(bulk[2].requests.length, 2);
+  assert.equal(bulk[2].requests[0].offers[0].price.value, "2.50");
+  assert.equal(bulk[2].requests[1].shipToLocationAvailability.quantity, 0);
+});
+
+test("revise: title change reads the item and writes it back with the new title", async () => {
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => {
+    calls.push([String(url), init.method || "GET", (() => { try { return init.body ? JSON.parse(init.body) : null; } catch { return null; } })()]);
+    if (String(url).includes("/oauth2/token")) return res(200, { access_token: "t", expires_in: 7200 });
+    if (String(url).includes("/inventory_item/") && (init.method || "GET") === "GET") return res(200, { sku: "A", locale: "en_US", product: { title: "Old", imageUrls: ["x"] }, condition: "USED_EXCELLENT" });
+    if (String(url).includes("/inventory_item/") && init.method === "PUT") return res(204, {});
+    return res(404, {});
+  };
+  const out = await reviseEbayItems([{ sku: "A", title: "New title" }], { fetchImpl });
+  assert.equal(out[0].ok, true);
+  const put = calls.find((c) => c[1] === "PUT");
+  assert.equal(put[2].product.title, "New title");
+  assert.deepEqual(put[2].product.imageUrls, ["x"]);
+  assert.equal(put[2].sku, undefined);
+});

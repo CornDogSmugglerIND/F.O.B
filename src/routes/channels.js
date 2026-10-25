@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { getCanonicalInventory, getChannelStatuses, getEbayChannelStatus } from "../channels/config.js";
 import { applySale } from "../channels/sync.js";
 import { publishListing, assertChannelConfigured } from "../channels/adapters.js";
-import { publishEbayVariationListing, publishEbayListing, endEbayListing, endEbayVariationListing, resolveEbayImages, updateEbayPhotos, cardAspects, resolveFulfillmentPolicyId } from "../channels/ebay.js";
+import { publishEbayVariationListing, publishEbayListing, endEbayListing, endEbayVariationListing, resolveEbayImages, updateEbayPhotos, cardAspects, resolveFulfillmentPolicyId, reviseEbayItems } from "../channels/ebay.js";
 import { runListingEngine, buildItemSpecifics } from "../listing/engine.js";
 import { probeEbay, syncEbayInventory, syncEbayWindow, clearEbayTokenCache, getEbayTracking } from "../channels/ebay.js";
 import {
@@ -111,6 +111,19 @@ export function channelsRouter() {
     const st = currentEbaySettings(), ship = resolveFulfillmentPolicyId(item);
     const pol = (id) => (id ? { id, name: names[id] || "Your saved eBay policy" } : null);
     res.json({ ok: true, title: eng.title, description: eng.description, aspects, shipping: pol(ship), shippingOptions, returns: pol(st.returnPolicyId), payment: pol(st.paymentPolicyId) });
+  });
+  /* change live listings: price / quantity / title per SKU (variations = one SKU each) */
+  router.post("/ebay/revise", async (req, res) => {
+    const updates = Array.isArray(req.body?.updates) ? req.body.updates.slice(0, 200) : [];
+    try {
+      assertChannelConfigured("ebay");
+      if (!updates.length) return res.status(400).json({ ok: false, error: "Nothing to change." });
+      const results = await reviseEbayItems(updates);
+      const bad = results.filter((r) => !r.ok);
+      res.json({ ok: bad.length === 0, results, error: bad.length ? bad[0].error : undefined });
+    } catch (e) {
+      res.status(e.code === "VALIDATION" ? 400 : 502).json({ ok: false, error: e.message });
+    }
   });
   router.post("/ebay/update-photos", async (req, res) => {
     const { sku, photos } = req.body || {};

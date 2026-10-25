@@ -894,3 +894,51 @@ export async function resolveEbayImages(item, opts = {}) {
   for (const u of raw) out.push(/^https:\/\//.test(u) ? u : await uploadEbayImage(u, opts));
   return out;
 }
+
+/**
+ * Change live listings: price, quantity and/or title, one entry per SKU (each variation is its own SKU).
+ * @param {{ sku: string, offerId?: string, price?: number, quantity?: number, title?: string }[]} updates
+ */
+export async function reviseEbayItems(updates, opts = {}) {
+  const fetchImpl = opts.fetchImpl;
+  const results = [];
+  const pq = [];
+  for (const u of updates || []) {
+    const sku = String(u.sku || "").trim();
+    if (!sku) { results.push({ sku, ok: false, error: "No eBay SKU on this item." }); continue; }
+    try {
+      if (u.title != null && String(u.title).trim()) {
+        const path = `/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`;
+        const { data: cur } = await ebayRequest(path, { method: "GET", fetchImpl });
+        const body = { ...(cur || {}), product: { ...((cur || {}).product || {}), title: String(u.title).trim().slice(0, 80) } };
+        if (u.quantity != null) body.availability = { ...(body.availability || {}), shipToLocationAvailability: { ...((body.availability || {}).shipToLocationAvailability || {}), quantity: Math.max(0, Math.round(Number(u.quantity))) } };
+        delete body.sku; delete body.locale; delete body.groupIds; delete body.inventoryItemGroupKeys;
+        await ebayRequest(path, { method: "PUT", fetchImpl, body });
+      }
+      if (u.price != null || u.quantity != null) {
+        let offerId = u.offerId ? String(u.offerId) : "";
+        if (!offerId) {
+          const { data } = await ebayRequest(`/sell/inventory/v1/offer?sku=${encodeURIComponent(sku)}`, { method: "GET", fetchImpl });
+          offerId = data?.offers?.[0]?.offerId || "";
+        }
+        if (!offerId) { results.push({ sku, ok: false, error: "eBay has no offer for this SKU." }); continue; }
+        const q = u.quantity != null ? Math.max(0, Math.round(Number(u.quantity))) : undefined;
+        const offer = { offerId, ...(q != null ? { availableQuantity: q } : {}), ...(u.price != null ? { price: { currency: "USD", value: Number(u.price).toFixed(2) } } : {}) };
+        pq.push({ sku, ...(q != null ? { shipToLocationAvailability: { quantity: q } } : {}), offers: [offer] });
+      } else results.push({ sku, ok: true });
+    } catch (e) { results.push({ sku, ok: false, error: e.message }); }
+  }
+  for (let i = 0; i < pq.length; i += 25) {
+    const chunk = pq.slice(i, i + 25);
+    try {
+      const { data } = await ebayRequest("/sell/inventory/v1/bulk_update_price_quantity", { method: "POST", fetchImpl, body: { requests: chunk } });
+      const rs = data?.responses || [];
+      for (const r of chunk) {
+        const hit = rs.find((x) => x.sku === r.sku);
+        const bad = hit && Number(hit.statusCode) >= 300;
+        results.push(bad ? { sku: r.sku, ok: false, error: hit.errors?.[0]?.message || `eBay said ${hit.statusCode}` } : { sku: r.sku, ok: true });
+      }
+    } catch (e) { for (const r of chunk) results.push({ sku: r.sku, ok: false, error: e.message }); }
+  }
+  return results;
+}

@@ -121,6 +121,91 @@ function shelvesHtml(groups) {
     return shelf(k, `${list.length} · ${money(val)}${list.length > 16 ? ` · <button type="button" class="sv-all" data-allgrp="${esc(k)}">See all</button>` : ""}`, cards, k);
   }).join("");
 }
+/* ===================== Channels = the selling desk (Oct 25) ===================== */
+const DESK_TABS = [["listed", "Live"], ["sold", "To ship"], ["shipped", "Shipped"], ["delivered", "Delivered"]];
+function deskTop(all, total, counts) {
+  const orders = ["sold", "shipped", "delivered"].includes(S.stage);
+  const stale = orders ? [] : pool("listed").filter((it) => (daysSince(it.channels?.ebay?.listedAt || it.createdAt) || 0) > 45);
+  const wk = weekSales(), wkNow = wk[7], wkSum = wk.reduce((a, b) => a + b, 0);
+  return `<header class="dk-top"><div class="dk-id"><img src="img/icon.jpg" alt=""><div><b>eBay</b><span>CornDogSmuggler Coalition · ${counts.listed || 0} live</span></div></div>
+      <div class="dk-kpi"><div><em>Live value</em><b>${money(pool("listed").reduce((a, i) => a + valOf(i), 0))}</b></div><div><em>Sold, 8 weeks</em><b>${money(wkSum)}</b></div><div><em>This week</em><b>${money(wkNow)}</b></div></div></header>
+    <div class="dk-tabs" role="tablist" aria-label="Stage">${DESK_TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${S.stage === k}" class="dk-tab ch-stop${S.stage === k ? " on" : ""}${k === "sold" && counts.sold ? " hot" : ""}" data-stage="${k}"><b>${counts[k] || 0}</b><span>${l}</span></button>`).join("")}</div>
+    ${!orders && stale.length ? `<button type="button" class="dk-alert${S.stale ? " on" : ""}" id="dkStale"><b>${stale.length} listing${stale.length === 1 ? "" : "s"} sitting 45+ days</b><span>${S.stale ? "Showing them. Tap to show everything." : "Tap to see them and fix the price."}</span></button>` : ""}
+    <div class="dk-find"><input id="chQ" type="search" placeholder="Search title or SKU" value="${esc(S.q)}" aria-label="Search title or SKU">
+      ${orders ? "" : `<select id="dkSort" aria-label="Sort"><option value="value"${S.sort === "value" ? " selected" : ""}>Price: high</option><option value="low"${S.sort === "low" ? " selected" : ""}>Price: low</option><option value="old"${S.sort === "old" ? " selected" : ""}>Oldest first</option><option value="name"${S.sort === "name" ? " selected" : ""}>Name</option></select>`}
+      <button class="btn ch-controls${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}" aria-label="Bulk tools">Bulk</button></div>`;
+}
+function deskList(all) {
+  let list = all;
+  if (S.stale && S.stage === "listed") list = list.filter((it) => (daysSince(it.channels?.ebay?.listedAt || it.createdAt) || 0) > 45);
+  if (S.sort === "old" && S.stage === "listed") list = [...list].sort((a, b) => (Date.parse(a.channels?.ebay?.listedAt || a.createdAt || 0) || 0) - (Date.parse(b.channels?.ebay?.listedAt || b.createdAt || 0) || 0));
+  if (!list.length) return `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing live yet."}</div>`;
+  const sp = new Map(loadSpaces().map((x) => [x.id, x.name]));
+  const row = (it) => {
+    const src = photoOf(it), on = S.sel.has(String(it.id));
+    if (it._order) { const o = it._order, d = daysSince(o.createdAt), st = track(o).step, n = it.phase === "sold" ? 0 : Math.max(1, st + 1);
+      return `<article class="dk-row ch-tile${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0"><button type="button" class="co-pick" data-pick="${esc(it.id)}" aria-label="Select" aria-pressed="${on}"></button>
+        <span class="co-img dk-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`}</span>
+        <div class="dk-mid"><b>${esc(nameOf(it))}</b><span>${esc(o.buyer || "Buyer")} · ${d == null ? "" : d === 0 ? "today" : d + "d ago"}</span><span class="dk-trk">${[0, 1, 2, 3].map((k) => `<i${k < n ? ' class="on"' : ""}></i>`).join("")}<em>${esc(badge(it))}</em></span></div>
+        <div class="dk-end"><b>${money(o.total ?? it.price)}</b>${it.phase === "sold" ? `<a class="dk-act hot" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener" data-noopen>Print label</a>` : ""}</div></article>`; }
+    const d = daysSince(it.channels?.ebay?.listedAt || it.createdAt), q = it._n > 1 ? it._kids.reduce((a, k) => a + (Number(k.quantity) || 1), 0) : Number(it.quantity) || 1;
+    return `<article class="dk-row ch-tile${on ? " sel" : ""}" data-id="${esc(it.id)}" data-edit="1" tabindex="0"><button type="button" class="co-pick" data-pick="${esc(it.id)}" aria-label="Select" aria-pressed="${on}"></button>
+      <span class="co-img dk-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`}</span>
+      <div class="dk-mid"><b>${esc(nameOf(it))}</b><span>${it._n > 1 ? `${it._n} variations · ` : ""}${d == null ? "" : `<i class="${d > 45 ? "old" : ""}">${d}d live</i> · `}${esc(sp.get(it.spaceId) || "No bin")}</span></div>
+      <div class="dk-end"><b>${ptxt(it)}</b><span>qty ${q}</span><em class="dk-act">Edit</em></div></article>`;
+  };
+  return `<div class="dk-list">${list.slice(0, S.more.dk || 80).map(row).join("")}</div>${list.length > (S.more.dk || 80) ? `<button class="btn dk-more" type="button" id="dkMore">Show ${Math.min(80, list.length - (S.more.dk || 80))} more</button>` : ""}`;
+}
+function wireDesk(all) {
+  const h = ctx.host;
+  h.querySelector("#dkStale")?.addEventListener("click", () => { S.stale = !S.stale; paint(); });
+  h.querySelector("#dkSort")?.addEventListener("change", (e) => { S.sort = e.target.value; paint(); });
+  h.querySelector("#dkMore")?.addEventListener("click", () => { S.more.dk = (S.more.dk || 80) + 80; paint(); });
+  h.querySelectorAll("[data-noopen]").forEach((a) => a.addEventListener("click", (e) => e.stopPropagation()));
+}
+/* edit a live listing: price, quantity, title; one row per variation */
+function editSheet(all, id) {
+  const it = all.find((x) => String(x.id) === String(id)); if (!it) return;
+  const kids = it._n > 1 ? it._kids.slice() : [it], multi = kids.length > 1, src = photoOf(it);
+  const skuOf = (k) => k.channels?.ebay?.sku || k.sku || "", offerOf = (k) => k.channels?.ebay?.offerId || "";
+  const names = kids.map((k) => nameOf(k)), words = names.map((t) => t.split(/\s+/)); let cut = 0;
+  if (multi) while (cut < 12 && words.every((w) => w[cut] && w[cut].toLowerCase() === words[0][cut].toLowerCase())) cut++;
+  const short = (j) => { const r = words[j].slice(cut).join(" "); return r.length > 2 ? r : names[j]; };
+  const s = ctx.openSheet(`<div class="ed">
+    <div class="ed-head">${src ? `<img src="${esc(src)}" alt="">` : ""}<div><em>Live on eBay${multi ? ` · ${kids.length} variations` : ""}</em><b>${esc(nameOf(it))}</b></div></div>
+    ${multi ? "" : `<label class="ed-f"><span>Title</span><input id="edTitle" maxlength="80" value="${esc(nameOf(it))}"><small id="edTn">${nameOf(it).length}/80</small></label>`}
+    <div class="ed-vars">${kids.map((k, j) => `<div class="ed-v" data-j="${j}">${multi ? `<span class="ed-vn">${esc(short(j))}</span>` : ""}
+      <label class="ed-p"><span>Price</span><i>$</i><input inputmode="decimal" data-price value="${(Number(k.price) || 0).toFixed(2)}" aria-label="Price"></label>
+      <div class="ed-q"><span>Qty</span><button type="button" data-qd aria-label="Less">−</button><input inputmode="numeric" data-qty value="${Number(k.quantity) || 1}" aria-label="Quantity"><button type="button" data-qu aria-label="More">+</button></div></div>`).join("")}</div>
+    ${multi ? `<div class="ed-all"><span>Change every price by</span><button type="button" data-pct="-10">−10%</button><button type="button" data-pct="-5">−5%</button><button type="button" data-pct="5">+5%</button></div>` : `<div class="ed-all"><span>Quick price</span><button type="button" data-pct="-10">−10%</button><button type="button" data-pct="-5">−5%</button><button type="button" data-pct="5">+5%</button></div>`}
+    <p class="ed-msg" id="edMsg"></p>
+    <div class="ed-go"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn go" id="edSave">Save to eBay</button></div></div>`);
+  const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#edMsg"); m.textContent = t; m.classList.toggle("bad", !!bad); };
+  $("#edTitle")?.addEventListener("input", (e) => { $("#edTn").textContent = `${e.target.value.length}/80`; });
+  s.querySelectorAll(".ed-v").forEach((r) => { const q = r.querySelector("[data-qty]"); r.querySelector("[data-qd]").addEventListener("click", () => { q.value = Math.max(0, (parseInt(q.value, 10) || 0) - 1); }); r.querySelector("[data-qu]").addEventListener("click", () => { q.value = (parseInt(q.value, 10) || 0) + 1; }); });
+  s.querySelectorAll("[data-pct]").forEach((b) => b.addEventListener("click", () => { const k = 1 + Number(b.dataset.pct) / 100; s.querySelectorAll("[data-price]").forEach((p) => { const v = parseFloat(p.value) || 0; p.value = Math.max(.99, Math.round(v * k * 100) / 100).toFixed(2); }); }));
+  $("#edSave").addEventListener("click", async () => {
+    const updates = [], local = [];
+    s.querySelectorAll(".ed-v").forEach((r) => { const k = kids[Number(r.dataset.j)], price = parseFloat(r.querySelector("[data-price]").value), qty = parseInt(r.querySelector("[data-qty]").value, 10);
+      const u = { sku: skuOf(k), offerId: offerOf(k) }, ch = {};
+      if (price > 0 && Math.abs(price - (Number(k.price) || 0)) >= .005) { u.price = price; ch.price = price; }
+      if (qty >= 0 && qty !== (Number(k.quantity) || 1)) { u.quantity = qty; ch.quantity = qty; }
+      if (!multi) { const t = ($("#edTitle")?.value || "").trim(); if (t && t !== nameOf(k)) { u.title = t; ch.title = t; } }
+      if (Object.keys(ch).length) { updates.push(u); local.push([k.id, ch]); } });
+    if (!updates.length) { msg("Nothing changed."); return; }
+    if (updates.some((u) => !u.sku)) { msg("This listing has no eBay SKU in the app yet. Tap Sync, then try again.", true); return; }
+    const b = $("#edSave"); b.disabled = true; b.textContent = "Saving to eBay…"; msg("");
+    try {
+      const r = await fetch("/api/channels/ebay/revise", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ updates }) });
+      const out = await r.json().catch(() => ({}));
+      const okSkus = new Set((out.results || []).filter((x) => x.ok).map((x) => x.sku));
+      if (okSkus.size) { const l = loadItems(), m = new Map(local); for (const x of l) { const ch = m.get(x.id); const sku = x.channels?.ebay?.sku || x.sku; if (ch && okSkus.has(sku)) { Object.assign(x, ch); x.updatedAt = new Date().toISOString(); } } saveItems(l); ctx.refresh(); }
+      if (out.ok) { ctx.closeSheet(); ctx.toast(`Updated on eBay: ${updates.length} change${updates.length === 1 ? "" : "s"}.`); paint(); return; }
+      msg(okSkus.size ? `${okSkus.size} saved, ${updates.length - okSkus.size} didn't: ${out.error || "eBay said no."}` : (out.error || "eBay said no. Nothing changed."), true);
+    } catch { msg("Couldn't reach eBay. Nothing changed.", true); }
+    b.disabled = false; b.textContent = "Save to eBay";
+  });
+}
 function wallInfo(it) {
   if (it._order) { const o = it._order, d = daysSince(o.createdAt); return `${esc(o.buyer || "Buyer")} · ${esc(badge(it))}${d == null ? "" : " · " + (d === 0 ? "today" : d + "d ago")}`; }
   const d = daysSince(it.channels?.ebay?.listedAt || it.createdAt), sp = loadSpaces().find((x) => x.id === it.spaceId);
@@ -140,15 +225,12 @@ function paint() {
       ${closed ? "" : `<div class="${S.view === "list" ? "sp-list" : S.view === "rows" ? "chr-list" : "co-grid ch-grid " + S.view}">${shown.map(tile).join("")}</div>${list.length > shown.length ? `<button class="btn" data-more="${esc(k)}" type="button">Show ${Math.min(120, list.length - shown.length)} more of ${list.length - shown.length}</button>` : ""}`}</section>`;
   }).join("");
   const n = S.sel.size;
-  h.innerHTML = `<div class="co-wrap ch-wrap">
-    ${stageRouteHtml(counts)}
-    ${instrumentHtml(all, total, counts)}
-    <div class="ch-bar2"><input id="chQ" type="search" placeholder="Search title or SKU" value="${esc(S.q)}" aria-label="Search title or SKU">
-      <button class="btn ch-controls${S.list ? " on" : ""}" id="chList" type="button" aria-pressed="${!!S.list}">${S.list ? "Hide list" : "Show list"}</button><button class="btn ch-controls${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}">Controls</button></div>
+  h.innerHTML = `<div class="co-wrap ch-wrap dk">
+    ${deskTop(all, total, counts)}
     ${drawerHtml()}
-    ${S.list || S.sel.size || S.drawer ? (sections || `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing here yet."}</div>`) : (shelvesHtml(groups) || `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing live yet."}</div>`)}
+    ${S.list ? (sections || "") : deskList(all)}
     ${n ? bar(n) : ""}</div>`;
-  wire(all); h.querySelectorAll(".sv-c").forEach((c) => c.addEventListener("click", () => zoom(all, c))); h.querySelectorAll("[data-allgrp]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); S.list = true; paint(); })); ctx.host.querySelector("#chList")?.addEventListener("click", () => { S.list = !S.list; paint(); });
+  wire(all); wireDesk(all); h.querySelectorAll(".sv-c").forEach((c) => c.addEventListener("click", () => zoom(all, c))); h.querySelectorAll("[data-allgrp]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); S.list = true; paint(); })); ctx.host.querySelector("#chList")?.addEventListener("click", () => { S.list = !S.list; paint(); });
   { const pc = h.querySelector("#chPct"); if (pc && typedPct) pc.value = typedPct; if (typedQ) { const q = h.querySelector("#chQ"); if (q) { q.focus(); const n = q.value.length; try { q.setSelectionRange(n, n); } catch { /* ignore */ } } } }
 }
 function bar(n) {
@@ -204,7 +286,7 @@ function wire(all) {
   h.querySelectorAll("[data-selgrp]").forEach((b) => b.addEventListener("click", () => { all.filter((i) => keyOf(i) === b.dataset.selgrp).forEach((i) => S.sel.add(String(i.id))); paint(); }));
   $("#chAll")?.addEventListener("click", () => { all.forEach((i) => S.sel.add(String(i.id))); paint(); });
   h.querySelectorAll("[data-pick]").forEach((p) => p.addEventListener("click", (e) => { e.stopPropagation(); toggle(p.dataset.pick); paint(); }));
-  h.querySelectorAll(".ch-tile").forEach((c) => { c.addEventListener("click", () => zoom(all, c)); c.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); zoom(all, c); } }); });
+  h.querySelectorAll(".ch-tile").forEach((c) => { c.addEventListener("click", (e) => { if (e.target.closest("[data-pick]")) return; if (c.dataset.edit && !e.target.closest(".co-img")) editSheet(all, c.dataset.id); else zoom(all, c); }); c.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); zoom(all, c); } }); });
   h.querySelectorAll(".ch-row").forEach((r) => r.addEventListener("click", (e) => { if (e.target.closest("input")) return; zoom(all, r); }));
   h.querySelectorAll(".ch-row input").forEach((c) => c.addEventListener("change", () => { toggle(c.dataset.id); paint(); }));
   $("#chBin")?.addEventListener("change", (e) => { const v = e.target.value; if (!v) return; const ids = [...S.sel], prev = snap(); if (assign(ids, v)) { S.sel.clear(); ctx.refresh(); paint(); ctx.toastUndo(`Filed ${ids.length} into ${loadSpaces().find((s) => s.id === v)?.name}`, () => { restore(prev); ctx.refresh(); paint(); }); } });
