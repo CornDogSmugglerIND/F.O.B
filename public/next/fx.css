@@ -387,3 +387,34 @@ html.fx .spx .spx-un{flex:none;white-space:nowrap;padding:0 12px!important;min-h
   .spx-dl.on{box-shadow:inset -2px 0 0 var(--holo),0 0 18px rgba(60,220,140,.25)}
 }
 @media (max-width:820px){html.fx .spx .spx-hint{display:none}}
+
+/* ===================== HOLOGRAM WALL (Channels + Collection) ===================== */
+.hwl{position:relative;margin:18px 0 0;min-width:0}
+.hwl-scroll{width:100%;display:flex;gap:18px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;perspective:900px;padding:14px calc(50% - 75px) 24px;cursor:grab}
+.hwl-scroll::-webkit-scrollbar{display:none}
+.hwl-col{flex:0 0 150px;display:flex;flex-direction:column;gap:20px;scroll-snap-align:center;transform-style:preserve-3d;
+  transform:translateZ(calc(var(--a,1) * -90px)) rotateY(calc(var(--d,0) * -28deg));opacity:calc(1 - var(--a,1) * .2);transition:transform .12s linear}
+.hwl-c{position:relative;height:208px;appearance:none;border:0;padding:0;border-radius:10px;overflow:hidden;background:#0a1512;cursor:pointer;
+  box-shadow:0 0 0 1px rgba(125,242,180,.22),0 18px 34px rgba(0,0,0,.6);transition:box-shadow .25s,transform .25s}
+.hwl-c img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.hwl-c span{display:flex;height:100%;align-items:center;justify-content:center;font:700 44px var(--disp);color:var(--mute)}
+.hwl-c em{position:absolute;left:8px;bottom:8px;font:700 12.5px var(--text);font-style:normal;padding:3px 8px;border-radius:8px;background:rgba(4,10,8,.86);color:var(--ink)}
+.hwl-c.on{box-shadow:0 0 0 2px var(--holo),0 0 34px var(--logoGlow),0 18px 34px rgba(0,0,0,.6);transform:translateZ(18px)}
+.hwl-focus{text-align:center;padding:2px 30px 8px}
+.hwl-focus b{display:block;font:650 15.5px/1.3 var(--text);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hwl-focus span{display:block;margin-top:5px;font:500 13.5px var(--text);color:var(--mute)}
+.hwl-focus i{font-style:normal;font-weight:700}.hwl-focus i.up{color:#B8FFD9}.hwl-focus i.down{color:#FF9C8A}
+.cd.hot .hwl-c.on{box-shadow:0 0 0 2px #E8924A,0 0 34px rgba(232,146,74,.5),0 18px 34px rgba(0,0,0,.6)}
+@media (min-width:821px){.hwl{margin:24px 0 0}.hwl-col{flex-basis:190px;gap:24px}.hwl-c{height:264px}.hwl-scroll{padding:18px calc(50% - 95px) 30px}}
+/* quiet tool row under the wall */
+html.fx #main .ch-bar2,.cx-lbar{display:flex;gap:8px;align-items:center;margin:10px 0 6px}
+.cx-lbar .cx-q{flex:1;min-width:0;margin:0!important}
+html.fx #main .ch-bar2 input{flex:1;min-width:0}
+html.fx #main .ch-bar2 .btn,.cx-lbar .cx-btn{flex:none;padding:9px 14px!important;font-size:13.5px!important}
+.cd .cd-sum{margin-top:8px}
+@media (min-width:821px){
+  .hwl-col{flex-basis:216px;gap:26px;transform:translateZ(calc(min(var(--a,1),3) * -45px)) rotateY(calc(var(--d,0) * -9deg));opacity:calc(1 - min(var(--a,1),4) * .09)}
+  .hwl-c{height:300px}
+  .hwl-scroll{padding:18px calc(50% - 108px) 30px}
+}
+@media (min-width:821px){.cd-tabs{max-width:820px}}

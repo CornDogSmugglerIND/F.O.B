@@ -1,5 +1,5 @@
 import { photoManager } from "./photos.js?v=4";
-import { openCard, holoDeck, wireHoloDeck } from "./kit.js?v=7";
+import { openCard, holoWall, wireHoloWall } from "./kit.js?v=8";
 import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=6";
 
 let ctx = null;
@@ -25,6 +25,10 @@ function card(it) {
     <div class="co-art"><div class="co-img k-tilt" data-tilt="1.1">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i><span class="co-price">${money(it.price)}</span>${fresh ? `<span class="co-new">Just added</span>` : `<span class="co-st">${where(it)}</span>`}</div>${S.selecting ? `<i class="co-pick">${S.sel.has(String(it.id)) ? "✓" : ""}</i>` : ""}</div>
     <div class="co-cap"><span>${esc(nameOf(it))}</span></div></article>`;
 }
+function vaultInfo(it) {
+  const paid = it.purchasePrice != null && it.purchasePrice !== "" ? Number(it.purchasePrice) : null, g = paid != null ? (Number(it.price) || 0) - paid : null;
+  return `${money(it.price)}${paid != null ? ` · paid ${money(paid)} · <i class="${g >= 0 ? "up" : "down"}">${g >= 0 ? "+" : "−"}${money(Math.abs(g))}</i>` : ""} · ${esc(where(it))}`;
+}
 function vaultRead(it) {
   const R = (k, v, cls = "") => v === "" || v == null ? "" : `<div class="lk-r ${cls}"><em>${esc(k)}</em><b>${v}</b></div>`;
   const paid = it.purchasePrice != null && it.purchasePrice !== "" ? Number(it.purchasePrice) : null, g = paid != null ? (Number(it.price) || 0) - paid : null;
@@ -40,18 +44,19 @@ function paint() {
     <div class="cd vault">
       <div class="cd-tabs hscroll" role="tablist" aria-label="Categories"><button type="button" role="tab" aria-selected="${S.cat === "All"}" class="cd-tab${S.cat === "All" ? " on" : ""}" data-cat="All" style="--c:#7DF2B4"><b>${base.length}</b><span>All</span></button>${[...cats.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => `<button type="button" role="tab" aria-selected="${S.cat === c}" class="cd-tab${S.cat === c ? " on" : ""}" data-cat="${esc(c)}" style="--c:#7DF2B4"><b>${n}</b><span>${esc(c)}</span></button>`).join("")}</div>
       <div class="cd-sum"><b>${money(total)}</b><span>${all.length} item${all.length === 1 ? "" : "s"}${(() => { const paid = all.reduce((a, i) => a + (Number(i.purchasePrice) || 0) * (Number(i.quantity) || 1), 0); if (!paid) return ""; const d = total - paid; return ` · <i class="cx-gain ${d >= 0 ? "up" : "down"}">${d >= 0 ? "+" : "−"}${money(Math.abs(d))} vs paid</i>`; })()}</span><span class="cx-tools"><button class="cx-btn${S.selecting ? " on" : ""}" id="coSel" type="button">${S.selecting ? "Done" : "Select"}</button><button class="cx-btn" id="coMenuBtn" type="button" aria-expanded="${!!S.menu}" aria-label="Sort, filter, import">⋯</button></span></div>
-      ${S.q || S.selecting ? "" : holoDeck([...all].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)), { readouts: vaultRead })}
+      ${S.q || S.selecting ? "" : holoWall([...all].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)), { info: vaultInfo })}
     </div>
     ${S.menu ? `<div class="cx-menu"><label><span>Sort</span><select id="coSort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest value</option><option value="new"${S.sort === "new" ? " selected" : ""}>Newest</option><option value="name"${S.sort === "name" ? " selected" : ""}>Name</option></select></label>
       <label><span>Show</span><select id="coStage">${[["all", "All"], ["new", "Intake"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<option value="${k}"${S.stage === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
       <button class="cx-btn" id="coIO" type="button">Import / Export</button></div>` : ""}
-    <input id="coQ" class="cx-q" type="search" placeholder="Search your collection" value="${esc(S.q)}">
-    <div class="cx-scroll"><div class="cx-grid">${shown.map((it) => { const src = photoOf(it), on = S.sel.has(String(it.id)), bn = binName(it.spaceId); return `<article class="cx-card${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0">
+    <div class="cx-lbar"><input id="coQ" class="cx-q" type="search" placeholder="Search your collection" value="${esc(S.q)}"><button type="button" class="cx-btn${S.list ? " on" : ""}" id="coList" aria-pressed="${!!S.list}">${S.list ? "Hide list" : "Show list"}</button></div>
+    ${S.list || S.q || S.selecting ? `<div class="cx-scroll"><div class="cx-grid">${shown.map((it) => { const src = photoOf(it), on = S.sel.has(String(it.id)), bn = binName(it.spaceId); return `<article class="cx-card${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0">
       <div class="cx-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<span class="cx-price">${money(it.price)}</span>${Number(it.quantity) > 1 ? `<span class="cx-qty">x${Number(it.quantity)}</span>` : ""}${S.selecting ? `<i class="cx-ck"></i>` : ""}</div>
-      <div class="cx-cap"><span>${esc(nameOf(it))}</span><em>${esc(where(it))}${bn ? " · " + esc(bn) : ""}</em></div></article>`; }).join("") || `<div class="co-empty">Nothing matches.</div>`}${all.length > S.more ? `<button type="button" class="cx-more" id="coMore">Show more (${all.length - S.more})</button>` : ""}</div></div>
+      <div class="cx-cap"><span>${esc(nameOf(it))}</span><em>${esc(where(it))}${bn ? " · " + esc(bn) : ""}</em></div></article>`; }).join("") || `<div class="co-empty">Nothing matches.</div>`}${all.length > S.more ? `<button type="button" class="cx-more" id="coMore">Show more (${all.length - S.more})</button>` : ""}</div></div>` : ""}
     ${S.selecting ? bar() : ""}</div>`;
   wire();
-  wireHoloDeck(host, [...all].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)), { readouts: vaultRead, onOpen: (it, el) => openZoom(it.id, el) });
+  wireHoloWall(host, [...all].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)), { info: vaultInfo, onOpen: (it, el) => openZoom(it.id, el) });
+  host.querySelector("#coList")?.addEventListener("click", () => { S.list = !S.list; paint(); });
   { const pc = host.querySelector("#coPct"); if (pc && typed) { pc.value = typed; if (typedFocus) pc.focus(); } }
 }
 function bar() {

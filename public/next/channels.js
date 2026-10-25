@@ -1,6 +1,6 @@
 import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=6";
 import { photoManager } from "./photos.js?v=4";
-import { openCard } from "./kit.js?v=7";
+import { openCard, holoWall, wireHoloWall } from "./kit.js?v=8";
 import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=7";
 
 let ctx = null;
@@ -97,26 +97,15 @@ function deckHtml(all, total, counts) {
   return `<div class="cd${["sold", "shipped", "delivered"].includes(S.stage) ? " hot" : ""}">
     <div class="cd-tabs hscroll" role="tablist" aria-label="Stage">${tabs}</div>
     <div class="cd-sum"><b>${money(total)}</b><span>${all.length} ${["sold", "shipped", "delivered"].includes(S.stage) ? "order" : "listing"}${all.length === 1 ? "" : "s"}</span>${["sold", "shipped", "delivered"].includes(S.stage) && all.length ? `<button class="btn" id="chArchAll" type="button">Archive all</button>` : ""}</div>
-    ${flow.length ? `<div class="cd-stage">
-      <svg class="cd-ring" viewBox="0 0 300 300" aria-hidden="true"><path class="a1" d="M38 196 A118 118 0 0 1 150 32"/><path class="a2" d="M262 104 A118 118 0 0 1 150 268"/><path class="hatch" d="M52 108 A106 106 0 0 1 96 58"/><circle class="seg" cx="150" cy="150" r="134"/><path class="rule" d="M20 92 V208"/><path class="rule" d="M280 92 V208"/></svg>
-      <div class="cd-side l lk-side" id="cdL">${ld.l}</div><div class="cd-side r lk-side" id="cdR">${ld.r}</div>
-      <div class="cd-flow hscroll" id="cdFlow">${cards}</div>
-      <div class="cd-name" id="cdName">${esc(nameOf(flow[0]))}</div>
-      <div class="cd-nav"><button type="button" class="cd-arr" id="cdPrev" aria-label="Previous">‹</button><span id="cdN">1 / ${flow.length}</span><button type="button" class="cd-arr" id="cdNext" aria-label="Next">›</button></div>
-    </div>` : ""}</div>`;
+    ${holoWall(all, { info: wallInfo })}</div>`;
 }
-function wireDeck(all) {
-  const h = ctx.host, fl = h.querySelector("#cdFlow"); if (!fl) return;
-  const cards = [...fl.querySelectorAll(".cd-c")], flow = all.slice(0, 16); let cur = 0, raf = 0;
-  const center = () => { const r = fl.getBoundingClientRect(), mid = r.left + r.width / 2; let best = 0, bd = 1e9;
-    cards.forEach((c, i) => { const b = c.getBoundingClientRect(), d = (b.left + b.width / 2 - mid) / (b.width || 1); const a = Math.min(2, Math.abs(d)); c.style.setProperty("--d", Math.max(-2, Math.min(2, d)).toFixed(3)); c.style.setProperty("--a", a.toFixed(3)); c.classList.toggle("on", a < .5); if (Math.abs(d) < bd) { bd = Math.abs(d); best = i; } });
-    if (best !== cur) { cur = best; const ld = lockData(flow[cur]); h.querySelector("#cdL").innerHTML = ld.l; h.querySelector("#cdR").innerHTML = ld.r; h.querySelector("#cdName").textContent = nameOf(flow[cur]); h.querySelector("#cdN").textContent = `${cur + 1} / ${flow.length}`; } };
-  fl.addEventListener("scroll", () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(center); }, { passive: true });
-  const goTo = (i) => { const c = cards[Math.max(0, Math.min(cards.length - 1, i))]; if (c) fl.scrollTo({ left: c.offsetLeft - (fl.clientWidth - c.offsetWidth) / 2, behavior: "smooth" }); };
-  cards.forEach((c, i) => c.addEventListener("click", () => { if (i !== cur) return goTo(i); zoom(all, c); }));
-  h.querySelector("#cdPrev").addEventListener("click", () => goTo(cur - 1)); h.querySelector("#cdNext").addEventListener("click", () => goTo(cur + 1));
-  (window.requestIdleCallback || ((f) => setTimeout(f, 60)))(center);
+function wallInfo(it) {
+  if (it._order) { const o = it._order, d = daysSince(o.createdAt); return `${esc(o.buyer || "Buyer")} · ${esc(badge(it))}${d == null ? "" : " · " + (d === 0 ? "today" : d + "d ago")}`; }
+  const d = daysSince(it.channels?.ebay?.listedAt || it.createdAt), sp = loadSpaces().find((x) => x.id === it.spaceId);
+  return `${ptxt(it)}${d == null ? "" : ` · live ${d} day${d === 1 ? "" : "s"}`} · ${sp ? esc(sp.name) : "No bin"}`;
 }
+function wireDeck(all) { wireHoloWall(ctx.host, all, { info: wallInfo, onOpen: (it, el) => zoom(all, el) }); }
+
 function paint() {
   const all = rows(), h = ctx.host; const groups = new Map();
   const typedPct = h.querySelector("#chPct")?.value || "", typedQ = document.activeElement && document.activeElement.id === "chQ";
@@ -132,11 +121,11 @@ function paint() {
   h.innerHTML = `<div class="co-wrap ch-wrap">
     ${deckHtml(all, total, counts)}
     <div class="ch-bar2"><input id="chQ" type="search" placeholder="Search title or SKU" value="${esc(S.q)}" aria-label="Search title or SKU">
-      <button class="btn ch-controls${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}">Controls</button></div>
+      <button class="btn ch-controls${S.list ? " on" : ""}" id="chList" type="button" aria-pressed="${!!S.list}">${S.list ? "Hide list" : "Show list"}</button><button class="btn ch-controls${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}">Controls</button></div>
     ${drawerHtml()}
-    ${sections || `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing here yet."}</div>`}
+    ${S.list || S.q || S.sel.size || S.drawer ? (sections || `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing here yet."}</div>`) : ""}
     ${n ? bar(n) : ""}</div>`;
-  wire(all); wireDeck(all);
+  wire(all); wireDeck(all); ctx.host.querySelector("#chList")?.addEventListener("click", () => { S.list = !S.list; paint(); });
   { const pc = h.querySelector("#chPct"); if (pc && typedPct) pc.value = typedPct; if (typedQ) { const q = h.querySelector("#chQ"); if (q) { q.focus(); const n = q.value.length; try { q.setSelectionRange(n, n); } catch { /* ignore */ } } } }
 }
 function bar(n) {

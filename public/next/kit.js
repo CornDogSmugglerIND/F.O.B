@@ -181,3 +181,35 @@ export function wireHoloDeck(root, list, { readouts, onOpen }) {
   root.querySelector("[data-cdprev]").addEventListener("click", () => goTo(cur - 1)); root.querySelector("[data-cdnext]").addEventListener("click", () => goTo(cur + 1));
   (window.requestIdleCallback || ((f) => setTimeout(f, 60)))(center);
 }
+
+/* Hologram wall: columns of cards on a curve; the card in the middle column lights up. info(it) -> html line under the wall. */
+export function holoWall(list, { info, rows } = {}) {
+  if (!list.length) return "";
+  const R = rows || 2, nm = (it) => it.title || it.productName || "Untitled", ph = (it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "";
+  const money = (n) => "$" + (Number(n) || 0).toFixed(2);
+  let cols = "";
+  for (let c = 0; c * R < list.length; c++) {
+    cols += `<div class="hwl-col">${list.slice(c * R, c * R + R).map((it, r) => { const s = ph(it), i = c * R + r; return `<button type="button" class="hwl-c" data-hw="${i}" data-id="${esc(it.id)}" aria-label="${esc(nm(it))}">${s ? `<img src="${esc(s)}" alt="" loading="lazy" draggable="false">` : `<span>${esc(nm(it).charAt(0))}</span>`}<em>${it._order ? money(it._order.total ?? it.price) : money(it.price)}</em></button>`; }).join("")}</div>`;
+  }
+  return `<div class="hwl" data-rows="${R}"><div class="hwl-scroll hscroll" data-hwscroll>${cols}</div>
+    <div class="hwl-focus"><b data-hwname>${esc(nm(list[0]))}</b><span data-hwinfo>${info ? info(list[0]) : ""}</span></div></div>`;
+}
+export function wireHoloWall(root, list, { info, onOpen }) {
+  const sc = root.querySelector("[data-hwscroll]"); if (!sc) return;
+  const cols = [...sc.querySelectorAll(".hwl-col")], cards = [...sc.querySelectorAll(".hwl-c")], nm = (it) => it.title || it.productName || "Untitled";
+  let cur = -1, raf = 0;
+  const focusCard = (i) => { if (i === cur || !list[i] || !sc.isConnected) return; const nmEl = root.querySelector("[data-hwname]"), inEl = root.querySelector("[data-hwinfo]"); if (!nmEl || !inEl) return; cur = i; cards.forEach((c) => c.classList.toggle("on", Number(c.dataset.hw) === i)); nmEl.textContent = nm(list[i]); inEl.innerHTML = info ? info(list[i]) : ""; };
+  let midCol = 0;
+  const lay = () => { if (!sc.isConnected) return; const r = sc.getBoundingClientRect(), mid = r.left + r.width / 2; let best = 0, bd = 1e9;
+    cols.forEach((c, k) => { const b = c.getBoundingClientRect(); if (b.right < r.left - 400 || b.left > r.right + 400) return; const d = (b.left + b.width / 2 - mid) / (b.width || 1), a = Math.min(3, Math.abs(d)); c.style.setProperty("--d", Math.max(-3, Math.min(3, d)).toFixed(3)); c.style.setProperty("--a", a.toFixed(3)); if (a < bd) { bd = a; best = k; } });
+    if (best !== midCol || cur < 0) { const row = cur >= 0 ? cur % cols[0].children.length : 0; midCol = best; const el = cols[best].children[Math.min(row, cols[best].children.length - 1)]; if (el) focusCard(Number(el.dataset.hw)); } };
+  sc.addEventListener("scroll", () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(lay); }, { passive: true });
+  const toCol = (k) => { const c = cols[k]; if (c) sc.scrollTo({ left: c.offsetLeft - (sc.clientWidth - c.offsetWidth) / 2, behavior: "smooth" }); };
+  cards.forEach((c) => c.addEventListener("click", () => { const i = Number(c.dataset.hw), k = cols.indexOf(c.parentElement); if (k !== midCol) { toCol(k); focusCard(i); return; } if (i !== cur) { focusCard(i); return; } onOpen(list[i], c); }));
+  /* mouse: drag to spin */
+  let dn = null; sc.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse") return; dn = { x: e.clientX, l: sc.scrollLeft, moved: false }; });
+  sc.addEventListener("pointermove", (e) => { if (!dn) return; const dx = e.clientX - dn.x; if (Math.abs(dx) > 4) { if (!dn.moved) { try { sc.setPointerCapture(e.pointerId); } catch { /* ignore */ } } dn.moved = true; } if (dn.moved) sc.scrollLeft = dn.l - dx; });
+  sc.addEventListener("pointerup", () => { if (dn && dn.moved) { const stop = (ev) => { ev.stopPropagation(); ev.preventDefault(); }; sc.addEventListener("click", stop, { capture: true, once: true }); setTimeout(() => sc.removeEventListener("click", stop, true), 50); } dn = null; });
+  if (matchMedia("(min-width:821px)").matches && cols.length > 4) { const c = cols[Math.min(4, cols.length - 1)]; sc.scrollLeft = c.offsetLeft - (sc.clientWidth - c.offsetWidth) / 2; }
+  (window.requestIdleCallback || ((f) => setTimeout(f, 60)))(lay);
+}
