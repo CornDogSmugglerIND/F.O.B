@@ -1,5 +1,5 @@
 import { photoManager } from "./photos.js?v=4";
-import { openCard, holoWall, wireHoloWall } from "./kit.js?v=8";
+import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=9";
 import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=6";
 
 let ctx = null;
@@ -25,6 +25,20 @@ function card(it) {
     <div class="co-art"><div class="co-img k-tilt" data-tilt="1.1">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i><span class="co-price">${money(it.price)}</span>${fresh ? `<span class="co-new">Just added</span>` : `<span class="co-st">${where(it)}</span>`}</div>${S.selecting ? `<i class="co-pick">${S.sel.has(String(it.id)) ? "✓" : ""}</i>` : ""}</div>
     <div class="co-cap"><span>${esc(nameOf(it))}</span></div></article>`;
 }
+/* category share: one segmented bar, each segment is a filter */
+function catBar(base, cats) {
+  const tot = base.length || 1, list = [["All", base.length], ...[...cats.entries()].sort((a, b) => b[1] - a[1])];
+  const hues = ["#7DF2B4", "#5FD3E8", "#E8924A", "#B6A4FF", "#F2D27D", "#8FB5A5", "#FF8FA3"];
+  return `<div class="cb"><div class="cb-bar" aria-hidden="true">${list.slice(1).map(([c, n], i) => `<i style="flex:${n};--h:${hues[i % hues.length]}"${S.cat === c ? ' class="on"' : ""}></i>`).join("")}</div>
+    <div class="cb-keys hscroll" role="tablist" aria-label="Categories">${list.map(([c, n], i) => `<button type="button" role="tab" aria-selected="${S.cat === c}" class="cb-k${S.cat === c ? " on" : ""}" data-cat="${esc(c)}" style="--h:${i ? hues[(i - 1) % hues.length] : "#D3F2E4"}"><i></i>${esc(c === "Pokémon singles" ? "Pokémon" : c)} <b>${n}</b></button>`).join("")}</div></div>`;
+}
+function vaultShelves(all) {
+  const card = (it) => { const paid = it.purchasePrice != null && it.purchasePrice !== "" ? Number(it.purchasePrice) : null, g = paid != null ? (Number(it.price) || 0) - paid : null; return svCard(it, { photo: photoOf(it), chip: g != null && Math.abs(g) >= .01 ? `${g >= 0 ? "+" : "−"}${money(Math.abs(g))}` : "", chipHot: g != null && g < 0 }); };
+  const top = [...all].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)).slice(0, 14);
+  const groups = new Map(); if (S.cat === "All") all.forEach((i) => { const c = catOf(i); if (!groups.has(c)) groups.set(c, []); groups.get(c).push(i); }); else all.forEach((i) => { const w = where(i); if (!groups.has(w)) groups.set(w, []); groups.get(w).push(i); });
+  const v = (l) => money(l.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0));
+  return shelf("Top value", `${top.length} · ${v(top)}`, top.map(card).join(""), "Top value") + [...groups.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, l]) => shelf(k, `${l.length} · ${v(l)}${l.length > 14 ? ` · <button type="button" class="sv-all" data-allgrp="${esc(k)}">See all</button>` : ""}`, l.slice(0, 14).map(card).join(""), k)).join("");
+}
 function vaultInfo(it) {
   const paid = it.purchasePrice != null && it.purchasePrice !== "" ? Number(it.purchasePrice) : null, g = paid != null ? (Number(it.price) || 0) - paid : null;
   return `${money(it.price)}${paid != null ? ` · paid ${money(paid)} · <i class="${g >= 0 ? "up" : "down"}">${g >= 0 ? "+" : "−"}${money(Math.abs(g))}</i>` : ""} · ${esc(where(it))}`;
@@ -41,21 +55,23 @@ function paint() {
   const base = peekItems().filter(onHand), cats = new Map(); base.forEach((i) => { const c = catOf(i); cats.set(c, (cats.get(c) || 0) + 1); });
   const all = rows(), shown = all.slice(0, S.more), total = val(all), SP = new Map(loadSpaces().map((x) => [x.id, x.name])), binName = (id) => (id && SP.get(id)) || "";
   host.innerHTML = `<div class="co-wrap cx">
-    <div class="cd vault">
-      <div class="cd-tabs hscroll" role="tablist" aria-label="Categories"><button type="button" role="tab" aria-selected="${S.cat === "All"}" class="cd-tab${S.cat === "All" ? " on" : ""}" data-cat="All" style="--c:#7DF2B4"><b>${base.length}</b><span>All</span></button>${[...cats.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => `<button type="button" role="tab" aria-selected="${S.cat === c}" class="cd-tab${S.cat === c ? " on" : ""}" data-cat="${esc(c)}" style="--c:#7DF2B4"><b>${n}</b><span>${esc(c)}</span></button>`).join("")}</div>
-      <div class="cd-sum"><b>${money(total)}</b><span>${all.length} item${all.length === 1 ? "" : "s"}${(() => { const paid = all.reduce((a, i) => a + (Number(i.purchasePrice) || 0) * (Number(i.quantity) || 1), 0); if (!paid) return ""; const d = total - paid; return ` · <i class="cx-gain ${d >= 0 ? "up" : "down"}">${d >= 0 ? "+" : "−"}${money(Math.abs(d))} vs paid</i>`; })()}</span><span class="cx-tools"><button class="cx-btn${S.selecting ? " on" : ""}" id="coSel" type="button">${S.selecting ? "Done" : "Select"}</button><button class="cx-btn" id="coMenuBtn" type="button" aria-expanded="${!!S.menu}" aria-label="Sort, filter, import">⋯</button></span></div>
-      ${S.q || S.selecting ? "" : holoWall([...all].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)), { info: vaultInfo })}
+    <div class="vx">
+      <div class="ix">${(() => { const paid = all.reduce((a, i) => a + (Number(i.purchasePrice) || 0) * (Number(i.quantity) || 1), 0), live = all.filter((i) => i.phase === "listed").length; return ringGauge(all.length, all.length ? live / all.length : 0, "items") + `<div class="ix-v"><em>${S.cat === "All" ? "Your collection" : esc(S.cat)}</em><b>${money(total)}</b><span>${live} live on eBay${paid ? ` · <i class="${total - paid >= 0 ? "up" : "hot"}">${total - paid >= 0 ? "+" : "−"}${money(Math.abs(total - paid))} vs paid</i>` : ""}</span></div>`; })()}
+        <span class="cx-tools"><button class="cx-btn${S.selecting ? " on" : ""}" id="coSel" type="button">${S.selecting ? "Done" : "Select"}</button><button class="cx-btn" id="coMenuBtn" type="button" aria-expanded="${!!S.menu}" aria-label="Sort, filter, import">⋯</button></span></div>
+      ${catBar(base, cats)}
     </div>
     ${S.menu ? `<div class="cx-menu"><label><span>Sort</span><select id="coSort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest value</option><option value="new"${S.sort === "new" ? " selected" : ""}>Newest</option><option value="name"${S.sort === "name" ? " selected" : ""}>Name</option></select></label>
       <label><span>Show</span><select id="coStage">${[["all", "All"], ["new", "Intake"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<option value="${k}"${S.stage === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
       <button class="cx-btn" id="coIO" type="button">Import / Export</button></div>` : ""}
     <div class="cx-lbar"><input id="coQ" class="cx-q" type="search" placeholder="Search your collection" value="${esc(S.q)}"><button type="button" class="cx-btn${S.list ? " on" : ""}" id="coList" aria-pressed="${!!S.list}">${S.list ? "Hide list" : "Show list"}</button></div>
+    ${!(S.list || S.q || S.selecting) ? vaultShelves(all) : ""}
     ${S.list || S.q || S.selecting ? `<div class="cx-scroll"><div class="cx-grid">${shown.map((it) => { const src = photoOf(it), on = S.sel.has(String(it.id)), bn = binName(it.spaceId); return `<article class="cx-card${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0">
       <div class="cx-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<span class="cx-price">${money(it.price)}</span>${Number(it.quantity) > 1 ? `<span class="cx-qty">x${Number(it.quantity)}</span>` : ""}${S.selecting ? `<i class="cx-ck"></i>` : ""}</div>
       <div class="cx-cap"><span>${esc(nameOf(it))}</span><em>${esc(where(it))}${bn ? " · " + esc(bn) : ""}</em></div></article>`; }).join("") || `<div class="co-empty">Nothing matches.</div>`}${all.length > S.more ? `<button type="button" class="cx-more" id="coMore">Show more (${all.length - S.more})</button>` : ""}</div></div>` : ""}
     ${S.selecting ? bar() : ""}</div>`;
   wire();
-  wireHoloWall(host, [...all].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)), { info: vaultInfo, onOpen: (it, el) => openZoom(it.id, el) });
+  host.querySelectorAll(".sv-c").forEach((c) => c.addEventListener("click", () => openZoom(c.dataset.id, c)));
+  host.querySelectorAll("[data-allgrp]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); if (S.cat === "All" && b.dataset.allgrp !== "Top value") S.cat = b.dataset.allgrp; S.list = true; paint(); }));
   host.querySelector("#coList")?.addEventListener("click", () => { S.list = !S.list; paint(); });
   { const pc = host.querySelector("#coPct"); if (pc && typed) { pc.value = typed; if (typedFocus) pc.focus(); } }
 }

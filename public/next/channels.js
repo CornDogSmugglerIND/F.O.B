@@ -1,6 +1,6 @@
 import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=6";
 import { photoManager } from "./photos.js?v=4";
-import { openCard, holoWall, wireHoloWall } from "./kit.js?v=8";
+import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=9";
 import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=7";
 
 let ctx = null;
@@ -99,6 +99,28 @@ function deckHtml(all, total, counts) {
     <div class="cd-sum"><b>${money(total)}</b><span>${all.length} ${["sold", "shipped", "delivered"].includes(S.stage) ? "order" : "listing"}${all.length === 1 ? "" : "s"}</span>${["sold", "shipped", "delivered"].includes(S.stage) && all.length ? `<button class="btn" id="chArchAll" type="button">Archive all</button>` : ""}</div>
     ${holoWall(all, { info: wallInfo })}</div>`;
 }
+/* ---------- Oct 25 rebuild: instrument header, stage route, shelves ---------- */
+function weekSales() { const now = Date.now(), wk = new Array(8).fill(0); for (const o of orderItems(60)) { const t = Date.parse(o._order?.createdAt || o.when || 0); if (!t) continue; const k = 7 - Math.floor((now - t) / (7 * 864e5)); if (k >= 0 && k < 8) wk[k] += Number(o._order?.total ?? o.price) || 0; } return wk; }
+function instrumentHtml(all, total, counts) {
+  const orders = ["sold", "shipped", "delivered"].includes(S.stage), wk = weekSales(), live = counts.listed || 0;
+  const stale = orders ? 0 : all.filter((it) => (daysSince(it.channels?.ebay?.listedAt || it.createdAt) || 0) > 45).length;
+  const g = orders ? ringGauge(all.length, all.length ? 1 : 0, S.stage === "sold" ? "to ship" : S.stage === "shipped" ? "moving" : "done", true) : ringGauge(live, live ? Math.min(1, (live - stale) / live) : 0, "live");
+  return `<div class="ix${orders ? " hot" : ""}">${g}<div class="ix-v"><em>${orders ? ({ sold: "Sold, needs shipping", shipped: "On the way", delivered: "Delivered" })[S.stage] : "Listed on eBay"}</em><b>${money(total)}</b><span>${orders ? `${all.length} order${all.length === 1 ? "" : "s"}` : stale ? `<i class="hot">${stale} sitting 45+ days</i>` : "all fresh"}</span></div>${orders && all.length ? `<button class="btn ix-arch" id="chArchAll" type="button">Archive all</button>` : wk.some((x) => x > 0) ? sparkBars(wk, "sales, 8 wks") : ""}</div>`;
+}
+function stageRouteHtml(counts) {
+  const pos = [8, 36, 64, 92];
+  return `<div class="sr" role="tablist" aria-label="Stage"><svg class="sr-l" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><path d="M8 5 H92"/><path class="lit" d="M8 5 H${pos[Math.max(0, STAGES.findIndex(([k]) => k === S.stage))]}"/></svg>
+    ${STAGES.map(([k, l, c], i) => `<button type="button" role="tab" aria-selected="${S.stage === k}" class="sr-n ch-stop${S.stage === k ? " on" : ""}" data-stage="${k}" style="left:${pos[i]}%;--c:${c}"><b>${counts[k] || 0}</b><i></i><span>${({ listed: "Live" })[k] || l}</span></button>`).join("")}</div>`;
+}
+function orderSub(it) { const st = track(it._order).step, n = it.phase === "sold" ? 0 : Math.max(1, st + 1); return `<span class="sv-trk">${[0, 1, 2, 3].map((k) => `<i${k < n ? ' class="on"' : ""}></i>`).join("")}</span>${esc(badge(it))}`; }
+function shelvesHtml(groups) {
+  return [...groups.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, list]) => {
+    const val = list.reduce((a, i) => a + (i._order ? Number(i.price) || 0 : valOf(i)), 0);
+    const cards = list.slice(0, 16).map((it) => { if (it._order) return svCard(it, { price: money(it._order.total ?? it.price), sub: orderSub(it), photo: photoOf(it) });
+      const d = daysSince(it.channels?.ebay?.listedAt || it.createdAt); return svCard(it, { price: ptxt(it), photo: photoOf(it), chip: d != null && d > 45 ? `${d}d` : it._n > 1 ? `${it._n} var.` : "", chipHot: d != null && d > 45 }); }).join("");
+    return shelf(k, `${list.length} · ${money(val)}${list.length > 16 ? ` · <button type="button" class="sv-all" data-allgrp="${esc(k)}">See all</button>` : ""}`, cards, k);
+  }).join("");
+}
 function wallInfo(it) {
   if (it._order) { const o = it._order, d = daysSince(o.createdAt); return `${esc(o.buyer || "Buyer")} · ${esc(badge(it))}${d == null ? "" : " · " + (d === 0 ? "today" : d + "d ago")}`; }
   const d = daysSince(it.channels?.ebay?.listedAt || it.createdAt), sp = loadSpaces().find((x) => x.id === it.spaceId);
@@ -119,13 +141,14 @@ function paint() {
   }).join("");
   const n = S.sel.size;
   h.innerHTML = `<div class="co-wrap ch-wrap">
-    ${deckHtml(all, total, counts)}
+    ${stageRouteHtml(counts)}
+    ${instrumentHtml(all, total, counts)}
     <div class="ch-bar2"><input id="chQ" type="search" placeholder="Search title or SKU" value="${esc(S.q)}" aria-label="Search title or SKU">
       <button class="btn ch-controls${S.list ? " on" : ""}" id="chList" type="button" aria-pressed="${!!S.list}">${S.list ? "Hide list" : "Show list"}</button><button class="btn ch-controls${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}">Controls</button></div>
     ${drawerHtml()}
-    ${S.list || S.q || S.sel.size || S.drawer ? (sections || `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing here yet."}</div>`) : ""}
+    ${S.list || S.sel.size || S.drawer ? (sections || `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing here yet."}</div>`) : (shelvesHtml(groups) || `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing live yet."}</div>`)}
     ${n ? bar(n) : ""}</div>`;
-  wire(all); wireDeck(all); ctx.host.querySelector("#chList")?.addEventListener("click", () => { S.list = !S.list; paint(); });
+  wire(all); h.querySelectorAll(".sv-c").forEach((c) => c.addEventListener("click", () => zoom(all, c))); h.querySelectorAll("[data-allgrp]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); S.list = true; paint(); })); ctx.host.querySelector("#chList")?.addEventListener("click", () => { S.list = !S.list; paint(); });
   { const pc = h.querySelector("#chPct"); if (pc && typedPct) pc.value = typedPct; if (typedQ) { const q = h.querySelector("#chQ"); if (q) { q.focus(); const n = q.value.length; try { q.setSelectionRange(n, n); } catch { /* ignore */ } } } }
 }
 function bar(n) {

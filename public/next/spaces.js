@@ -1,5 +1,5 @@
 import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=6";
-import { fly, rectOf, sleep, openCard } from "./kit.js?v=8";
+import { fly, rectOf, sleep, openCard } from "./kit.js?v=9";
 
 /* Spaces = his real storage, as a camera you fly through:
    area -> shelf -> bin (closed, lid flips) -> bin (open, items inside). */

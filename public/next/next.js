@@ -2,13 +2,13 @@ import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./s
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=7";
 import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=27";
-import { renderCollection, openImport } from "./collection.js?v=24";
+import { renderCollection, openImport } from "./collection.js?v=25";
 import { photoManager } from "./photos.js?v=4";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=21";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=38";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=22";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=39";
 import { renderSettings } from "./settings.js?v=9";
 import { initSync } from "./sync.js?v=4";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=8";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=9";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";

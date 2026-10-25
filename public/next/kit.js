@@ -213,3 +213,24 @@ export function wireHoloWall(root, list, { info, onOpen }) {
   if (matchMedia("(min-width:821px)").matches && cols.length > 4) { const c = cols[Math.min(4, cols.length - 1)]; sc.scrollLeft = c.offsetLeft - (sc.clientWidth - c.offsetWidth) / 2; }
   (window.requestIdleCallback || ((f) => setTimeout(f, 60)))(lay);
 }
+
+/* ===== shared pieces for Channels + Collection (Oct 25 rebuild) ===== */
+const $$m = (n) => "$" + (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/* segmented ring gauge, same language as the Command mission gauges */
+export function ringGauge(value, frac, label, hot) {
+  const f = Math.max(0, Math.min(1, frac || 0)), C = 2 * Math.PI * 42, on = (C * f).toFixed(1);
+  return `<div class="rg${hot ? " hot" : ""}" aria-hidden="true"><svg viewBox="0 0 100 100"><circle class="rg-t" cx="50" cy="50" r="47"/><circle class="rg-b" cx="50" cy="50" r="42"/><circle class="rg-f" cx="50" cy="50" r="42" stroke-dasharray="${on} ${C.toFixed(1)}"/></svg><b>${esc(String(value))}</b><small>${esc(label)}</small></div>`;
+}
+/* tiny bar sparkline from numbers (e.g. sales per week) */
+export function sparkBars(vals, label) {
+  const mx = Math.max(1, ...vals);
+  return `<div class="spk" aria-label="${esc(label)}"><div class="spk-b">${vals.map((v, i) => `<i style="height:${Math.max(6, v / mx * 100).toFixed(0)}%"${i === vals.length - 1 ? ' class="now"' : ""}></i>`).join("")}</div><small>${esc(label)}</small></div>`;
+}
+/* one row of cards you swipe through, with a header that says what it is */
+export function shelf(title, meta, cards, key) {
+  return `<section class="sv" data-shelf="${esc(key || title)}"><header class="sv-h"><b>${esc(title)}</b><span>${meta}</span></header><div class="sv-row hscroll">${cards}</div></section>`;
+}
+export function svCard(it, { price, chip, chipHot, sub, photo } = {}) {
+  const nm = it.title || it.productName || "Untitled", ph = photo || (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "";
+  return `<button type="button" class="sv-c" data-id="${esc(it.id)}" aria-label="${esc(nm)}"><span class="sv-art">${ph ? `<img src="${esc(ph)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nm.charAt(0))}</i>`}<em class="sv-p">${price != null ? price : $$m(it.price)}</em>${chip ? `<em class="sv-chip${chipHot ? " hot" : ""}">${esc(chip)}</em>` : ""}<span class="sv-k tl"></span><span class="sv-k br"></span></span><span class="sv-n">${esc(nm)}</span>${sub ? `<span class="sv-s">${sub}</span>` : ""}</button>`;
+}
