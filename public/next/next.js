@@ -1,7 +1,7 @@
 import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=6";
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=7";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=27";
+import { renderScouter } from "./scouter.js?v=28";
 import { renderCollection, openImport } from "./collection.js?v=25";
 import { photoManager } from "./photos.js?v=4";
 import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=22";
@@ -309,10 +309,11 @@ function wireArrange(main, kind, W, H) {
     });
   });
 }
+addEventListener("fob:inbox", () => { if (view === "command" && !arranging && !document.querySelector("ion-modal")) renderCommand(); });
 function renderCommand() {
   const g = groups(); const main = $("#main");
   const pills = [
-    [g.intake.length, "Identify new photos", "scouter"],
+    [g.intake.length + (window.__fobInboxN || 0), "Identify new photos", "scouter"],
     [g.staged.length, "Build and publish", "@staged"],
     [unbinnedCount(), "Put away", "!putaway"],
     [g.sold.length, "Pack and ship", "channels", "sold"],

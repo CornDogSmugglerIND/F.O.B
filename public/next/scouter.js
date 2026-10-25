@@ -1,4 +1,5 @@
 import { isArchived, loadSpaces, assign } from "./shared.js?v=6";
+import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=1";
 import { phaseFromItem } from "/visor/phases.js?v=3";
 /* Scouter: one upload = one item. Photos preview instantly, get shrunk off the
  * hot path, nothing is saved until Save is pressed. */
@@ -117,6 +118,7 @@ async function save() {
   let list = ctx.getItems();
   if (d.reid) { const old = list.find((x) => String(x.id) === String(d.reid)); if (old) { Object.assign(item, { id: old.id, createdAt: old.createdAt, notes: old.notes || "", collections: old.collections || [], spaceId: old.spaceId || null, sku: old.sku, channels: old.channels || {} }); list = list.filter((x) => x !== old); } }
   try { ctx.setItems([item, ...list]); } catch { ctx.toast("Couldn't save. Storage is full."); if (btn) { btn.disabled = false; btn.textContent = "Save item"; } return; }
+  if (d.fromInbox && d.fromInbox.length) { const ids = d.fromInbox; d.fromInbox = null; inboxRemove(ids).catch(() => {}); }
   try { let u = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); u += (k.length + (localStorage.getItem(k) || "").length) * 2; } if (u > 4.2 * 1048576) ctx.toast("Device storage is about " + Math.round(u / 52428.8) + "% full. List or remove items soon."); } catch { /* ignore */ }
   session.unshift({ id: item.id, title: item.title, qty: item.quantity, price: item.price, photo: stored[0] && stored[0].dataUrl, staged: item.phase === "staged" });
   d.saved = { item, backup: { done: 0, total: stored.length, state: "run" } };
@@ -282,7 +284,7 @@ function queue_() {
   const row = (t, sub, l, k, acts = "") => l.length ? `<div class="sc-qh"><h3>${t}</h3><em>${l.length}</em><small>${sub}</small>${acts}</div><div class="sc-qs">${l.slice(0, 30).map((i) => tile(i, k)).join("")}</div>` : "";
   const out = row("Waiting to identify", "Tap one to read it", wait, "wait") + row("Ready to list", "Tap one to list it, bin it or fix it", ready, "ready", ready.length > 1 ? `<button type="button" class="sc-qa" id="scVar">List several as one</button>` : "");
   const tools = `<div class="sc-qtools"><button type="button" class="sc-qa" id="scCsv">Import a CSV</button></div>`;
-  return `<section class="sc-queue">${out}${tools}</section>`;
+  return `<section class="sc-queue"><section class="sc-inbox" id="scInbox"></section>${out}${tools}</section>`;
 }
 function repaintLists() {
   if (!ctx || !ctx.host.isConnected) return;
@@ -448,7 +450,32 @@ function paintSaved() {
   $("#scAgain")?.addEventListener("click", () => { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); });
   $("#scNext")?.addEventListener("click", () => { if (ready) { const bid = it.id; d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); ctx.build(bid); } else { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); ctx.toast("Add the photos again to identify, or open it from Command."); } });
 }
+/* ---------- photo inbox: dump now, identify later ---------- */
+const ibSel = new Set();
+async function paintInbox() {
+  const box = ctx && ctx.host.querySelector("#scInbox"); if (!box) return;
+  const list = await inboxList(); if (!box.isConnected) return;
+  for (const id of [...ibSel]) if (!list.some((x) => x.id === id)) ibSel.delete(id);
+  const n = ibSel.size;
+  box.innerHTML = `<div class="sc-qh"><h3>Photo inbox</h3><em>${list.length}</em><small>${list.length ? "Pick the photos of one item, then Identify" : "Dump all your photos here first, identify them later"}</small>
+      <label class="sc-qa ib-add">Dump photos<input type="file" id="ibFile" accept="image/*" multiple hidden></label></div>
+    ${list.length ? `<div class="ib-grid">${list.slice(0, 120).map((p) => `<button type="button" class="ib-t${ibSel.has(p.id) ? " on" : ""}" data-ib="${p.id}" aria-pressed="${ibSel.has(p.id)}"><img src="${p.thumb}" alt="" loading="lazy" draggable="false"><i></i></button>`).join("")}</div>
+      <div class="ib-bar${n ? " on" : ""}"><b>${n ? `${n} picked` : `${list.length} photo${list.length === 1 ? "" : "s"} waiting`}</b><button type="button" class="btn" id="ibDel"${n ? "" : " disabled"}>Delete</button><button type="button" class="btn go" id="ibGo"${n ? "" : " disabled"}>Identify ${n || ""}</button></div>` : ""}`;
+  box.querySelector("#ibFile").addEventListener("change", async (e) => { const fs = [...e.target.files]; e.target.value = ""; if (!fs.length) return; ctx.toast(`Adding ${fs.length} photo${fs.length === 1 ? "" : "s"} to the inbox…`); await inboxAdd(fs); ctx.toast(`${fs.length} photo${fs.length === 1 ? "" : "s"} in the inbox.`); paintInbox(); });
+  box.querySelectorAll("[data-ib]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.ib; if (ibSel.has(id)) ibSel.delete(id); else { if (ibSel.size >= MAX_PICK) { ctx.toast(`Up to ${MAX_PICK} photos of one item.`); return; } ibSel.add(id); } paintInbox(); }));
+  box.querySelector("#ibDel")?.addEventListener("click", async () => { const ids = [...ibSel]; ibSel.clear(); await inboxRemove(ids); ctx.toast(`Deleted ${ids.length} photo${ids.length === 1 ? "" : "s"}.`); paintInbox(); });
+  box.querySelector("#ibGo")?.addEventListener("click", () => {
+    const pick = list.filter((p) => ibSel.has(p.id)); if (!pick.length) return;
+    d.photos.forEach((p) => p.preview && p.preview.startsWith("blob:") && URL.revokeObjectURL(p.preview)); d = blank();
+    d.photos = pick.map((p) => ({ id: nid(), preview: p.full, data: p.full, picked: true, err: false }));
+    d.fromInbox = pick.map((p) => p.id); ibSel.clear(); paintAll();
+    try { document.getElementById("main").scrollTo({ top: 0, behavior: "smooth" }); } catch { /* ignore */ }
+    identify();
+  });
+}
+addEventListener("fob:inbox", () => { if (ctx && ctx.host.isConnected && ctx.host.querySelector("#scInbox")) paintInbox(); });
 function wireQueue() {
+  paintInbox();
   ctx.host.querySelectorAll("[data-qdel]").forEach((x) => x.addEventListener("click", (e) => {
     e.stopPropagation(); e.preventDefault();
     const id = x.dataset.qdel, prev = ctx.getItems(), it = prev.find((i) => String(i.id) === String(id)); if (!it) return;
