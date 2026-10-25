@@ -364,3 +364,26 @@ html.fx .sc-lock .c{border-color:var(--holo)!important;filter:drop-shadow(0 0 5p
 .cd-tab.ch-stop span{opacity:1;font-size:13px;text-shadow:none}
 .cd-tab.ch-stop em{display:none}
 .cd-ring{width:min(100%,440px)}
+
+/* ===================== SPACES de-cram (Oct 25) ===================== */
+html.fx .spx .spx-head{flex-wrap:nowrap!important;gap:8px!important;align-items:center}
+html.fx .spx .spx-crumbs{min-width:0;flex:1;overflow:hidden}
+html.fx .spx .spx-crumbs h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.fx .spx .spx-un{flex:none;white-space:nowrap;padding:0 12px!important;min-height:36px!important;font-size:13px!important}
+@media (max-width:820px){html.fx .spx:not([data-level=area]) .spx-crumb{display:none!important}html.fx .spx:not([data-level=area]) .spx-sep{display:none!important}}
+/* dial: a strip of bins between the photo and the bin card on phone; a column beside the photo on Mac */
+.spx-stage{position:relative}
+.spx-dial{position:static;width:auto;top:auto;bottom:auto;right:auto;flex-direction:row;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;margin:10px -4px 8px;padding:2px 0!important;gap:8px;
+  -webkit-mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.spx-dial::before,.spx-dial::after{flex:0 0 38%!important}
+.spx-dl{flex:none;align-items:center;text-align:center;padding:8px 14px;transform:scale(.9)}
+.spx-dl.on{box-shadow:inset 0 -2px 0 var(--holo),0 0 18px rgba(60,220,140,.25)}
+@media (min-width:821px){
+  html.fx .spx-stage:has(.spx-dial){padding-right:170px}
+  .spx-dial{position:absolute;right:0;top:0;bottom:120px;width:156px;margin:0;flex-direction:column;overflow-x:hidden;overflow-y:auto;scroll-snap-type:y mandatory;
+    -webkit-mask:linear-gradient(180deg,transparent,#000 20%,#000 80%,transparent);mask:linear-gradient(180deg,transparent,#000 20%,#000 80%,transparent)}
+  .spx-dial::before,.spx-dial::after{flex:0 0 40%!important}
+  .spx-dl{align-items:flex-end;text-align:right}
+  .spx-dl.on{box-shadow:inset -2px 0 0 var(--holo),0 0 18px rgba(60,220,140,.25)}
+}
+@media (max-width:820px){html.fx .spx .spx-hint{display:none}}

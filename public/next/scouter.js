@@ -159,6 +159,53 @@ function attachCam() {
 }
 /* lock-on: find the card in the frame and follow it */
 let trk = null;
+
+/* ---------- card finder used by the live lock ---------- */
+function cardBlob(px, w, h) {
+  const n = w * h, R = new Uint8Array(n), G = new Uint8Array(n), B = new Uint8Array(n);
+  for (let i = 0; i < n; i++) { R[i] = px[i * 4]; G[i] = px[i * 4 + 1]; B[i] = px[i * 4 + 2]; }
+  /* background = median colour of a 3px frame border */
+  const br = [], bg_ = [], bb = []; const take = (i) => { br.push(R[i]); bg_.push(G[i]); bb.push(B[i]); };
+  for (let x = 0; x < w; x++) for (let y of [0, 1, 2, h - 3, h - 2, h - 1]) take(y * w + x);
+  for (let y = 3; y < h - 3; y++) for (let x of [0, 1, 2, w - 3, w - 2, w - 1]) take(y * w + x);
+  const med = (a) => { a.sort((p, q) => p - q); return a[a.length >> 1]; }, r0 = med(br), g0 = med(bg_), b0 = med(bb);
+  const D = new Uint16Array(n), hist = new Uint32Array(256);
+  for (let i = 0; i < n; i++) { const d = Math.min(255, (Math.abs(R[i] - r0) + Math.abs(G[i] - g0) + Math.abs(B[i] - b0)) / 2 | 0); D[i] = d; hist[d]++; }
+  /* Otsu threshold, never below 28 so sensor noise stays background */
+  let sum = 0; for (let t = 0; t < 256; t++) sum += t * hist[t];
+  let sB = 0, wB = 0, best = 0, th = 40; for (let t = 0; t < 256; t++) { wB += hist[t]; if (!wB) continue; const wF = n - wB; if (!wF) break; sB += t * hist[t]; const mB = sB / wB, mF = (sum - sB) / wF, v = wB * wF * (mB - mF) * (mB - mF); if (v > best) { best = v; th = t; } }
+  th = Math.max(28, th);
+  const M = new Uint8Array(n); for (let i = 0; i < n; i++) M[i] = D[i] > th ? 1 : 0;
+  /* close small gaps (glare, dark art) with one dilate */
+  const M2 = new Uint8Array(n); for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const i = y * w + x; M2[i] = M[i] | M[i - 1] | M[i + 1] | M[i - w] | M[i + w]; }
+  const lab = new Int32Array(n), q = new Int32Array(n); let bestS = 0, out = null, id = 0;
+  for (let s0 = 0; s0 < n; s0++) {
+    if (!M2[s0] || lab[s0]) continue; id++; let qh = 0, qt = 0; q[qt++] = s0; lab[s0] = id;
+    let cnt = 0, sx = 0, sy = 0, x0 = w, x1 = 0, y0 = h, y1 = 0;
+    while (qh < qt) { const i = q[qh++], x = i % w, y = (i / w) | 0; cnt++; sx += x; sy += y; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (x > 0 && M2[i - 1] && !lab[i - 1]) { lab[i - 1] = id; q[qt++] = i - 1; } if (x < w - 1 && M2[i + 1] && !lab[i + 1]) { lab[i + 1] = id; q[qt++] = i + 1; }
+      if (y > 0 && M2[i - w] && !lab[i - w]) { lab[i - w] = id; q[qt++] = i - w; } if (y < h - 1 && M2[i + w] && !lab[i + w]) { lab[i + w] = id; q[qt++] = i + w; } }
+    const bw = (x1 - x0 + 1) / w, bh = (y1 - y0 + 1) / h, area = cnt / n, fill = cnt / ((x1 - x0 + 1) * (y1 - y0 + 1));
+    if (area < .035 || bw > .97 || bh > .97 || fill < .45) continue;
+    const cx = sx / cnt / w - .5, cy = sy / cnt / h - .5, ar = (bw * w) / (bh * h), shape = Math.exp(-Math.abs(Math.log(ar / (63 / 88))) * 1.2);
+    const score = area * fill * (0.6 + 0.4 * shape) * Math.exp(-(cx * cx + cy * cy) * 3);
+    if (score > bestS) { bestS = score; out = { x: x0 / w, y: y0 / h, w: bw, h: bh }; }
+  }
+  if (!out) return null; const pad = .015;
+  return { x: Math.max(.01, out.x - pad), y: Math.max(.01, out.y - pad), w: Math.min(.98, out.w + pad * 2), h: Math.min(.98, out.h + pad * 2) };
+}
+function edgeBox(px, w, h) {
+  const L = new Float32Array(w * h); for (let i = 0; i < w * h; i++) L[i] = px[i * 4] * .3 + px[i * 4 + 1] * .59 + px[i * 4 + 2] * .11;
+  const E = new Float32Array(w * h); let sum = 0, sq = 0, n = 0;
+  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) { const i = y * w + x, e = Math.abs(L[i + 1] - L[i - 1]) + Math.abs(L[i + w] - L[i - w]); E[i] = e; sum += e; sq += e * e; n++; }
+  const mean = sum / n, sd = Math.sqrt(Math.max(0, sq / n - mean * mean)), th = mean + 1.2 * sd, cx = new Float32Array(w), cy = new Float32Array(h); let tot = 0;
+  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) { const e = E[y * w + x]; if (e > th && e > 14) { const dx = (x / w - .5) * 2, dy = (y / h - .5) * 2, wt = Math.exp(-(dx * dx + dy * dy) * 1.2); cx[x] += wt; cy[y] += wt; tot += wt; } }
+  if (tot < w * h * .012) return null;
+  const pct = (arr, len, qq) => { let a = 0; const t = tot * qq; for (let i = 0; i < len; i++) { a += arr[i]; if (a >= t) return i; } return len - 1; };
+  const x0 = pct(cx, w, .05) / w, x1 = (pct(cx, w, .95) + 1) / w, y0 = pct(cy, h, .05) / h, y1 = (pct(cy, h, .95) + 1) / h, bw = x1 - x0, bh = y1 - y0;
+  if (bw > .14 && bh > .14 && bw < .97 && bh < .97) { const pad = .018; return { x: Math.max(.02, x0 - pad), y: Math.max(.02, y0 - pad), w: Math.min(.96, bw + pad * 2), h: Math.min(.96, bh + pad * 2) }; }
+  return null;
+}
 function track() {
   if (trk) return;
   const cv = document.createElement("canvas"), g = cv.getContext("2d", { willReadFrequently: true });
@@ -177,20 +224,11 @@ function track() {
     const sc = Math.max(W / v.videoWidth, H / v.videoHeight), cw = W / sc, chh = H / sc, sx = (v.videoWidth - cw) / 2, sy = (v.videoHeight - chh) / 2;
     const w = 96, h = Math.max(24, Math.round(96 * H / W)); cv.width = w; cv.height = h;
     g.drawImage(v, sx, sy, cw, chh, 0, 0, w, h);
-    const px = g.getImageData(0, 0, w, h).data, L = new Float32Array(w * h);
-    for (let i = 0; i < w * h; i++) L[i] = px[i * 4] * .3 + px[i * 4 + 1] * .59 + px[i * 4 + 2] * .11;
-    const E = new Float32Array(w * h); let sum = 0, sq = 0, n = 0;
-    for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) { const i = y * w + x, e = Math.abs(L[i + 1] - L[i - 1]) + Math.abs(L[i + w] - L[i - w]); E[i] = e; sum += e; sq += e * e; n++; }
-    const mean = sum / n, sd = Math.sqrt(Math.max(0, sq / n - mean * mean)), th = mean + 1.2 * sd;
-    const cx = new Float32Array(w), cy = new Float32Array(h); let tot = 0;
-    for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) { const e = E[y * w + x]; if (e > th && e > 14) { const dx = (x / w - .5) * 2, dy = (y / h - .5) * 2, wt = Math.exp(-(dx * dx + dy * dy) * .9); cx[x] += wt; cy[y] += wt; tot += wt; } }
-    const pct = (arr, len, q) => { let a = 0; const t = tot * q; for (let i = 0; i < len; i++) { a += arr[i]; if (a >= t) return i; } return len - 1; };
-    let tg = null;
-    if (tot > w * h * .012) {
-      const x0 = pct(cx, w, .05) / w, x1 = (pct(cx, w, .95) + 1) / w, y0 = pct(cy, h, .05) / h, y1 = (pct(cy, h, .95) + 1) / h;
-      const bw = x1 - x0, bh = y1 - y0;
-      if (bw > .14 && bh > .14 && bw < .97 && bh < .97) { const pad = .018; tg = { x: Math.max(.02, x0 - pad), y: Math.max(.02, y0 - pad), w: Math.min(.96, bw + pad * 2), h: Math.min(.96, bh + pad * 2) }; }
-    }
+    const px = g.getImageData(0, 0, w, h).data;
+    /* 1) the card stands out from the table: segment against the frame border's colour, take the best central blob */
+    let tg = cardBlob(px, w, h);
+    /* 2) fallback: where the sharp edges cluster */
+    if (!tg) tg = edgeBox(px, w, h);
     if (tg) st.seen = now; const t = tg || (now - st.seen > 700 ? def : null);
     if (t) {
       const mv = Math.abs(t.x - st.tx) + Math.abs(t.y - st.ty) + Math.abs(t.w - st.tw) + Math.abs(t.h - st.th);
@@ -284,7 +322,7 @@ function wireCard() {
   c.querySelector("#sccBack")?.addEventListener("click", () => { focus = null; paintAll(); });
   c.querySelector("#sccPrev")?.addEventListener("click", () => go(i - 1));
   c.querySelector("#sccNext")?.addEventListener("click", () => go(i + 1));
-  c.querySelector("#sccList")?.addEventListener("click", () => ctx.build(id));
+  c.querySelector("#sccList")?.addEventListener("click", () => { ctx.build(id); const k = focus.ids.indexOf(id), nx = focus.ids.slice(k + 1)[0] || focus.ids.slice(0, k).reverse()[0]; focus = nx ? { id: nx, ids: focus.ids.filter((x) => x !== id) } : null; paintAll(); });
   c.querySelector("#sccFix")?.addEventListener("click", () => { focus = null; loadForId(id); });
   c.querySelectorAll("[data-sccbin]").forEach((b) => b.addEventListener("click", () => {
     const it = ctx.getItems().find((x) => String(x.id) === id); const to = it && it.spaceId === b.dataset.sccbin ? null : b.dataset.sccbin;
@@ -408,7 +446,7 @@ function paintSaved() {
     <div class="sc-next"><button class="btn go" id="scNext" type="button">${ready ? "Build the listing" : "Identify it now"}</button>${ready ? `<button class="btn" id="scOpen" type="button">Put it in a bin or fix it</button>` : ""}<button class="btn" id="scAgain" type="button">Scan the next item</button></div></div>`;
   $("#scOpen")?.addEventListener("click", () => { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); openFocus(it.id, [String(it.id)]); });
   $("#scAgain")?.addEventListener("click", () => { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); });
-  $("#scNext")?.addEventListener("click", () => { if (ready) { ctx.build(it.id); } else { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); ctx.toast("Add the photos again to identify, or open it from Command."); } });
+  $("#scNext")?.addEventListener("click", () => { if (ready) { const bid = it.id; d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); ctx.build(bid); } else { d.photos.forEach((p) => URL.revokeObjectURL(p.preview)); d = blank(); paintAll(); ctx.toast("Add the photos again to identify, or open it from Command."); } });
 }
 function wireQueue() {
   ctx.host.querySelectorAll("[data-qdel]").forEach((x) => x.addEventListener("click", (e) => {

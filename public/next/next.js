@@ -1,14 +1,14 @@
 import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=6";
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=7";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=26";
-import { renderCollection, openImport } from "./collection.js?v=22";
+import { renderScouter } from "./scouter.js?v=27";
+import { renderCollection, openImport } from "./collection.js?v=23";
 import { photoManager } from "./photos.js?v=4";
-import { renderSpaces } from "./spaces.js?v=19";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=36";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=20";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=37";
 import { renderSettings } from "./settings.js?v=9";
 import { initSync } from "./sync.js?v=4";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=6";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=7";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -314,8 +314,9 @@ function renderCommand() {
   const pills = [
     [g.intake.length, "Identify new photos", "scouter"],
     [g.staged.length, "Build and publish", "@staged"],
+    [unbinnedCount(), "Put away", "!putaway"],
     [g.sold.length, "Pack and ship", "channels", "sold"],
-  ].map(([n, t, v, st]) => `<button class="pill${n ? " hot" : ""}" ${v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
+  ].map(([n, t, v, st]) => `<button class="pill${n ? " hot" : ""}" ${v[0] === "!" ? `data-putaway type="button"` : v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto"; main.style.overflowX = "hidden";
     const H = 2270, W = 390, sv = routeSaved("phone"), PX = [27, 73, 27, 73, 27, 73, 27].map((x, i) => (sv[STOPS[i].id] || [])[0] ?? x), PY = [300, 590, 880, 1170, 1460, 1750, 2040].map((y, i) => (sv[STOPS[i].id] || [])[1] ?? y);
@@ -356,6 +357,7 @@ function renderCommand() {
   main.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.pst) window.__chStage = b.dataset.pst; go(b.dataset.goto); }));
   main.querySelectorAll(".stop .tag").forEach((d) => d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); stageSheet(d.dataset.stage); } }));
   main.querySelectorAll(".pc[data-item]").forEach(bindDrag);
+  main.querySelectorAll("[data-putaway]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); if (!unbinnedCount()) { toast("Everything is already in a bin."); return; } openPutAway({ toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); if (view === "command") renderCommand(); } }); }));
   if (phone()) wireArrange(main, "phone", 390, 2270); else wireArrange(main, "desk", Math.max(600, main.clientWidth || 1000), Math.max(420, main.clientHeight || 600));
 }
 function bindDrag(el) {

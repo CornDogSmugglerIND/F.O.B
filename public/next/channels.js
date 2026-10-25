@@ -1,6 +1,6 @@
 import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=6";
 import { photoManager } from "./photos.js?v=4";
-import { openCard } from "./kit.js?v=6";
+import { openCard } from "./kit.js?v=7";
 import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=7";
 
 let ctx = null;
@@ -312,12 +312,12 @@ function buildSheet(it) {
     <label class="sc-f"><span>Price</span><input id="blPrice" inputmode="decimal" value="${esc(Number(it.price) || "")}"></label>
     <label class="sc-f"><span>Quantity</span><input id="blQty" inputmode="numeric" value="${esc(Number(it.quantity) || 1)}"></label>
     <label class="sc-f"><span>Condition</span><select id="blCond">${[["NM", "Near Mint"], ["LP", "Lightly Played"], ["MP", "Moderately Played"], ["HP", "Heavily Played"]].map(([k, l]) => `<option value="${k}"${String(it.condition || "NM").toUpperCase() === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
-    <label class="sc-f"><span>Description</span><textarea id="blDesc" rows="8" style="width:100%;resize:vertical"></textarea></label>
+    <label class="sc-f"><span>Description</span><textarea id="blDesc" rows="8" style="width:100%;resize:vertical">${esc(it.description || "")}</textarea></label>
     <div class="sc-f"><span>Item specifics</span><div id="blAsp" class="bl-vars" style="max-height:none"></div><button class="btn" id="blAddAsp" type="button" style="margin-top:6px">Add item specific</button></div>
     <div class="sc-f"><span>Shipping, returns and payment</span><div id="blPol" class="sub">Loading your eBay policies…</div></div>
     <label class="sc-f" style="flex-direction:row;gap:10px;align-items:center"><input type="checkbox" id="blDH" checked><span>Also download the Double Holo files (cards + photos) after listing</span></label>
     <div id="blMsg" class="sub bl-msg" role="status">Nothing goes live until you tap List on eBay twice.</div>
-    <div class="co-znav bl-act"><button class="btn go" id="blGo" type="button">List on eBay</button></div>`);
+    <div class="co-znav bl-act"><button class="btn" id="blSave" type="button">Save draft</button><button class="btn go" id="blGo" type="button">List on eBay</button></div>`);
   const aspRow = (k = "", v = "") => `<div style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" aria-label="Item specific name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="Value" aria-label="Item specific value" style="flex:1;min-width:0"><button class="btn" data-rm type="button" aria-label="Remove this item specific" style="flex:none;padding:6px 12px">×</button></div>`;
   const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#blMsg"); m.textContent = t; m.style.color = bad ? "var(--org)" : ""; };
   let armed = null;
@@ -356,7 +356,14 @@ function buildSheet(it) {
     } catch (e) { msg(e.name === "AbortError" ? "eBay took too long. Nothing was listed. Try again." : "Couldn't reach eBay. Nothing was listed.", true); return null; }
     finally { clearTimeout(to); }
   };
-  const busy = (on) => { $("#blGo").disabled = on; };
+  /* drafts: everything you type is kept on the item, so closing the builder never loses work */
+  const draftRead = () => { const g = (q) => s.querySelector(q); const price = parseFloat(String(g("#blPrice")?.value || "").replace(/[^0-9.]/g, "")), aspects = {};
+    s.querySelectorAll("#blAsp > div").forEach((r) => { const k = r.querySelector("[data-ak]").value.trim(), v = r.querySelector("[data-av]").value.trim(); if (k && v) aspects[k] = v; });
+    const ship = g("#blShip"); return Object.assign({ title: (g("#blTitle")?.value || "").trim().slice(0, 80), quantity: Math.max(1, parseInt(g("#blQty")?.value, 10) || 1), condition: g("#blCond")?.value, description: (g("#blDesc")?.value || "").trim(), aspects, draft: { savedAt: new Date().toISOString() } }, price > 0 ? { price } : {}, ship ? { fulfillmentPolicyId: ship.value } : {}); };
+  const saveDraft = () => { const d = draftRead(); patchItem(it.id, (i) => { Object.assign(i, d); if (!i.title) delete i.title; }); };
+  let dT = 0; s.addEventListener("input", () => { clearTimeout(dT); dT = setTimeout(saveDraft, 600); }); s.addEventListener("change", () => { clearTimeout(dT); dT = setTimeout(saveDraft, 300); });
+  $("#blSave").addEventListener("click", () => { clearTimeout(dT); saveDraft(); ctx.closeSheet(); ctx.rerender?.(); window.__fobScRepaint?.(); ctx.toast("Draft saved. It's waiting in Ready to list."); });
+  const busy = (on) => { $("#blGo").disabled = on; $("#blSave").disabled = on; };
   $("#blGo").addEventListener("click", async () => {
     const f = read(); if (!f) return;
     if (!armed) { armed = setTimeout(() => { armed = null; $("#blGo").textContent = "List on eBay"; }, 10000); $("#blGo").textContent = `Yes, list it now for ${money(f.price)}`; msg("This goes live on eBay right away. Tap again to confirm.", false); return; }

@@ -1,5 +1,5 @@
 import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=6";
-import { fly, rectOf, sleep, openCard } from "./kit.js?v=6";
+import { fly, rectOf, sleep, openCard } from "./kit.js?v=7";
 
 /* Spaces = his real storage, as a camera you fly through:
    area -> shelf -> bin (closed, lid flips) -> bin (open, items inside). */
@@ -52,7 +52,7 @@ const brs = `<i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></
 /* ---------- markup ---------- */
 function head(w, crumbs) {
   return `<header class="spx-head"><div class="spx-crumbs">${S.level !== "area" ? `<button class="spx-back" data-up type="button" aria-label="Back">‹</button>` : ""}${crumbs.map((c, i) => c.go ? `<button class="spx-crumb" data-crumb="${i}" type="button">${esc(c.t)}</button>` : `<h2>${esc(c.t)}</h2>`).join(`<span class="spx-sep">›</span>`)}</div>
-    <button class="spx-un${w.un.length ? "" : " done"}" data-un type="button">${w.un.length ? `<b>${w.un.length}</b> not in a bin` : "Everything is in a bin"}</button></header>`;
+    <button class="spx-un${w.un.length ? "" : " done"}" data-un type="button">${w.un.length ? `<b>${w.un.length}</b> to put away` : "Everything is in a bin"}</button></header>`;
 }
 function hotspots(w, sh) {
   return sh.bins.map((id) => { const [x, y, ww, hh] = PHYS[id].rect, n = w.inBin(id).length;
@@ -72,8 +72,8 @@ function shelfFocusView(w) {
   const id = S.bin, sh = SHELVES.find((x) => x.id === PHYS[id].shelf), i = ORDER_BINS.indexOf(id), sp = w.spaces.find((x) => x.id === id) || {}, its = w.inBin(id);
   return `<div class="spx-stage"><div class="spx-cam" id="cam"><div class="spx-pan" id="pan" style="transform:${focusTf(id)}"><img src="${IMG}${sh.photo}" alt="${esc(shelfName(sh))}" draggable="false">
       ${sh.bins.map((b) => { const [x, y, ww, hh] = PHYS[b].rect; return `<button class="spx-fhot${b === id ? " on" : ""}" data-fbin="${b}" style="left:${x}%;top:${y}%;width:${ww}%;height:${hh}%" type="button" aria-label="Open ${esc(nm(w, b))}"></button>`; }).join("")}</div>
-      <div class="spx-dial" id="fDial" role="listbox" aria-label="Bins">${ORDER_BINS.map((b) => { const n = w.inBin(b).length; return `<button type="button" role="option" class="spx-dl${b === id ? " on" : ""}" data-dial="${b}" aria-selected="${b === id}"><b>${esc(nm(w, b))}</b><em>${n} item${n === 1 ? "" : "s"}</em></button>`; }).join("")}</div>
       <div class="spx-fnav"><button type="button" class="spx-fbtn" id="fPrev" aria-label="Bin above"${i <= 0 ? " disabled" : ""}>˄</button><button type="button" class="spx-fbtn" id="fNext" aria-label="Bin below"${i >= ORDER_BINS.length - 1 ? " disabled" : ""}>˅</button></div></div>
+      <div class="spx-dial" id="fDial" role="listbox" aria-label="Bins">${ORDER_BINS.map((b) => { const n = w.inBin(b).length; return `<button type="button" role="option" class="spx-dl${b === id ? " on" : ""}" data-dial="${b}" aria-selected="${b === id}"><b>${esc(nm(w, b))}</b><em>${n} item${n === 1 ? "" : "s"}</em></button>`; }).join("")}</div>
     <div class="spx-fcard"><div><b>${esc(sp.name || nm(w, id))}</b><em>${esc(sp.sub || PHYS[id].sub || "")} · ${its.length} item${its.length === 1 ? "" : "s"} · ${money(val(its))}</em></div><button class="btn go" id="fOpen" type="button">Open it</button></div>
     <p class="spx-hint">Turn the dial or swipe to change bins. Tap the bin to open it.</p></div>`;
 }
@@ -131,7 +131,7 @@ function renameSheet(title, current, save, after) {
 function pickSheet(targetId) {
   const sel = new Set(); let q = "", cat = "All", more = 60;
   const s = ctx.openSheet(`<div id="pk"></div>`), box = s.querySelector("#pk");
-  const move = (ids, to, label) => { const prev = snapshot(); if (!assign(ids, to)) { ctx.toast("Couldn't save. Storage is full."); return; } const name = (loadSpaces().find((b) => b.id === to) || {}).name || "bin"; ctx.closeSheet(); ctx.refresh(); paint(); ctx.toastUndo(`Put ${label} in ${name}`, () => { restore(prev); ctx.refresh(); paint(); }); };
+  const move = (ids, to, label) => { const prev = snapshot(); if (!assign(ids, to)) { ctx.toast("Couldn't save. Storage is full."); return; } const name = (loadSpaces().find((b) => b.id === to) || {}).name || "bin"; ctx.closeSheet(); ctx.refresh(); if (ctx.host && ctx.host.querySelector('.spx')) paint(); ctx.toastUndo(`Put ${label} in ${name}`, () => { restore(prev); ctx.refresh(); if (ctx.host && ctx.host.querySelector('.spx')) paint(); }); };
   const draw = (keepScroll) => {
     const w2 = world(), un = w2.un, cats = new Map(); un.forEach((i) => { const c = catOf(i); cats.set(c, (cats.get(c) || 0) + 1); });
     const shown = un.filter((i) => (cat === "All" || catOf(i) === cat) && (!q || nameOf(i).toLowerCase().includes(q.toLowerCase())));
@@ -175,7 +175,7 @@ function focusOn(id, fromBin) {
   else if (fromBin) ctx.host.querySelector(".spx-stage")?.animate([{ transform: "scale(1.25)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)" });
 }
 function stepBin(d) { const i = ORDER_BINS.indexOf(S.bin); jumpBin(ORDER_BINS[i + d]); }
-function dialSync() { const dl = ctx.host.querySelector("#fDial"); if (!dl) return; dl.querySelectorAll("[data-dial]").forEach((b) => { const on = b.dataset.dial === S.bin; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); if (on) { const d = b.getBoundingClientRect().top - dl.getBoundingClientRect().top - (dl.clientHeight - b.offsetHeight) / 2; dl.scrollBy({ top: d, behavior: "smooth" }); } }); }
+function dialSync() { const dl = ctx.host.querySelector("#fDial"); if (!dl) return; dl.querySelectorAll("[data-dial]").forEach((b) => { const on = b.dataset.dial === S.bin; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); if (on) { const br = b.getBoundingClientRect(), dr = dl.getBoundingClientRect(), hz = dl.scrollWidth > dl.clientWidth + 4; dl.scrollBy(hz ? { left: br.left - dr.left - (dl.clientWidth - b.offsetWidth) / 2, behavior: "smooth" } : { top: br.top - dr.top - (dl.clientHeight - b.offsetHeight) / 2, behavior: "smooth" }); } }); }
 function jumpBin(nid) {
   if (!nid || nid === S.bin) return;
   const pan = ctx.host.querySelector("#pan");
@@ -206,7 +206,7 @@ function wire(w) {
   h.querySelectorAll("[data-fbin]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.fbin === S.bin) openBin(); else { const d = ORDER_BINS.indexOf(b.dataset.fbin) - ORDER_BINS.indexOf(S.bin); stepBin(d); } }));
   $("#fPrev")?.addEventListener("click", () => stepBin(-1)); $("#fNext")?.addEventListener("click", () => stepBin(1)); $("#fOpen")?.addEventListener("click", openBin);
   h.querySelectorAll("[data-dial]").forEach((b) => { if (b.dataset.w) return; b.dataset.w = "1"; b.addEventListener("click", () => jumpBin(b.dataset.dial)); });
-  requestAnimationFrame(() => { const dl = h.querySelector("#fDial"), on = dl && dl.querySelector(".on"); if (on) dl.scrollTop += on.getBoundingClientRect().top - dl.getBoundingClientRect().top - (dl.clientHeight - on.offsetHeight) / 2; });
+  requestAnimationFrame(() => { const dl = h.querySelector("#fDial"), on = dl && dl.querySelector(".on"); if (on) { const br = on.getBoundingClientRect(), dr = dl.getBoundingClientRect(); if (dl.scrollWidth > dl.clientWidth + 4) dl.scrollLeft += br.left - dr.left - (dl.clientWidth - on.offsetWidth) / 2; else dl.scrollTop += br.top - dr.top - (dl.clientHeight - on.offsetHeight) / 2; } });
   const cam = $("#cam"); if (cam) { let sy = null, sx = 0; cam.addEventListener("touchstart", (e) => { if (e.touches.length !== 1) { sy = null; return; } sy = e.touches[0].clientY; sx = e.touches[0].clientX; }, { passive: true });
     cam.addEventListener("touchend", (e) => { if (sy == null) return; const dy = e.changedTouches[0].clientY - sy, dx = e.changedTouches[0].clientX - sx; sy = null; if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx) * 1.3) stepBin(dy < 0 ? 1 : -1); }, { passive: true });
     let wt = 0; cam.addEventListener("wheel", (e) => { if (Math.abs(e.deltaY) < 20) return; e.preventDefault(); const now = Date.now(); if (now - wt < 650) return; wt = now; stepBin(e.deltaY > 0 ? 1 : -1); }, { passive: false }); }
@@ -231,4 +231,7 @@ export function renderSpaces(host, api) {
   ctx = { host, ...api }; ensureBins(); Object.assign(S, { level: "area", shelf: null, bin: null, open: false }); busy = false; paint();
   if (!keyBound) { keyBound = true; document.addEventListener("keydown", (e) => { const sh = document.getElementById("sheet"); if (e.key === "Escape" && ctx && ctx.host.querySelector(".spx") && !document.querySelector(".k-zoom") && (!sh || sh.hidden)) up(); }); }
 }
+/* bulk put-away from anywhere (Command uses it) */
+export function unbinnedCount() { return world().un.length; }
+export function openPutAway(api) { ctx = Object.assign({ host: document.createElement("div") }, ctx || {}, api, ctx && ctx.host && ctx.host.isConnected && ctx.host.querySelector(".spx") ? { host: ctx.host } : { host: document.createElement("div") }); pickSheet(null); }
 export function repaintSpaces() { if (ctx && ctx.host.querySelector(".spx")) paint(); }
