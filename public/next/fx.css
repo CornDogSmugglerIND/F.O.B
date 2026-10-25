@@ -526,3 +526,6 @@ html.fx .cx-bar .cx-row{gap:6px!important}html.fx .cx-bar .cx-row .cx-btn{min-he
 html.fx .pk-bar{padding:10px 12px!important}
 html.fx .pk-bins{display:flex!important;flex-wrap:nowrap!important;gap:6px!important;overflow-x:auto;scrollbar-width:none}
 html.fx .pk-bin{flex:none!important;min-height:38px!important;padding:0 16px!important;font-size:13.5px!important}
+.pk-rules{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px}
+.pk-rule{appearance:none;border:0;cursor:pointer;text-align:left;padding:12px 14px;border-radius:12px;background:linear-gradient(155deg,rgba(26,62,54,.7),rgba(7,16,14,.85));box-shadow:inset 0 0 0 1px rgba(125,242,180,.35),0 0 18px rgba(60,220,140,.15);color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.pk-rule b{font:700 15px var(--text)}.pk-rule span{font:500 12.5px var(--text);color:var(--mute)}

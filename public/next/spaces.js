@@ -128,6 +128,17 @@ function renameSheet(title, current, save, after) {
   s.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", (e) => { e.preventDefault(); ctx.closeSheet(); }));
   s.querySelector("#rnF").addEventListener("submit", (e) => { e.preventDefault(); const inp = s.querySelector("[name=n]"); const n = inp.value.trim(); if (!n) { ctx.toast("Give it a name."); return; } inp.blur(); save(n); ctx.closeSheet(); ctx.toast(`Renamed to ${n}`); if (after) after(); else setTimeout(paint, 380); });
 }
+/* bin rules: what belongs in a bin. Bin 2 = trading card singles + graded cards (Sawyer, Oct 25). */
+const GRADED = /\b(PSA|BGS|CGC|SGC|TAG|BCCG|HGA|Beckett)\s?(10|[1-9](\.5)?|AUTH|Authentic)\b/i;
+const SEALED_X = /\b(booster|pack|box|(?<!upper )deck|tin|bundle|blister|etb|elite trainer|display|case|starter|collection)\b/i;
+const CARDLIKE = /\b(NM|LP|MP|HP|Near Mint|Base|Holo|Reverse|Promo|Rookie|RC|Insert|Parallel|Refractor|Card Lot|\d+ Card)\b|\b\d{1,3}\/\d{1,3}\b|#\s?\d+|\b[A-Z]{1,4}-\d{1,3}\b/i;
+const RULES = { cards: { label: "Trading card singles + graded cards", test: (it) => { const n = nameOf(it); return GRADED.test(n) || /\bsingle\b/i.test(n) || (!SEALED_X.test(n) && (gameOf(it) !== "Other" || CARDLIKE.test(n))); } } };
+function ruleBins() {
+  const sp = loadSpaces(); let changed = false;
+  if (!sp.some((b) => b.rule)) { const b2 = sp.find((b) => /^bin\s*2$/i.test(String(b.name || "").trim())) || sp.find((b) => b.id === "bin-2"); if (b2) { b2.rule = "cards"; changed = true; } }
+  if (changed) saveSpaces(sp);
+  return sp.filter((b) => b.rule && RULES[b.rule]);
+}
 function pickSheet(targetId) {
   const sel = new Set(); let q = "", cat = "All", more = 60;
   const s = ctx.openSheet(`<div id="pk"></div>`), box = s.querySelector("#pk");
@@ -139,6 +150,7 @@ function pickSheet(targetId) {
     const ids = shown.map((i) => String(i.id)), allOn = ids.length && ids.every((x) => sel.has(x));
     const sc = keepScroll ? box.querySelector(".pk-grid")?.scrollTop : 0;
     box.innerHTML = `<div class="pk-top"><a class="back" href="#" data-close>‹ Back</a><h2>${targetId ? "Add items" : "Put away"}</h2><div class="sub">${un.length} not in a bin</div>
+      ${(() => { const rb = ruleBins().map((b) => ({ b, n: un.filter(RULES[b.rule].test).length })).filter((x) => x.n); return rb.length ? `<div class="pk-rules">${rb.map(({ b, n }) => `<button type="button" class="pk-rule" data-rule="${esc(b.id)}"><b>${n} → ${esc(b.name)}</b><span>${esc(RULES[b.rule].label)}</span></button>`).join("")}</div>` : ""; })()}
       <div class="pk-chips" role="tablist"><button type="button" class="${cat === "All" ? "on" : ""}" data-cat="All">All <em>${un.length}</em></button>${[...cats.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => `<button type="button" class="${cat === c ? "on" : ""}" data-cat="${esc(c)}">${esc(c)} <em>${n}</em></button>`).join("")}</div>
       <div class="pk-tools"><input id="pkq" type="search" placeholder="Search" value="${esc(q)}" class="spx-q"><button type="button" class="pk-all" id="pkAll">${allOn ? "Clear" : `Select all ${shown.length}`}</button></div></div>
       <div class="pk-grid">${shown.slice(0, more).map((i) => { const on = sel.has(String(i.id)), ph = photoOf(i); return `<button type="button" class="pk-tile${on ? " on" : ""}" data-id="${esc(i.id)}" draggable="true">${ph ? `<img src="${esc(ph)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="pk-ini">${esc(nameOf(i).charAt(0))}</span>`}<i class="pk-ck"></i><span class="pk-cap">${esc(nameOf(i))}</span></button>`; }).join("") || `<div class="spx-empty">${un.length ? "Nothing matches." : "Everything is in a bin."}</div>`}${shown.length > more ? `<button type="button" class="pk-more" id="pkMore">Show more (${shown.length - more})</button>` : ""}</div>
@@ -146,6 +158,7 @@ function pickSheet(targetId) {
     if (sc) box.querySelector(".pk-grid").scrollTop = sc;
     box.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", (e) => { e.preventDefault(); ctx.closeSheet(); }));
     box.querySelectorAll("[data-cat]").forEach((b) => b.addEventListener("click", () => { cat = b.dataset.cat; more = 60; draw(); }));
+    box.querySelectorAll("[data-rule]").forEach((b) => b.addEventListener("click", () => { const bin = loadSpaces().find((x) => x.id === b.dataset.rule); if (!bin) return; const ids = world().un.filter(RULES[bin.rule].test).map((i) => String(i.id)); if (ids.length) move(ids, bin.id, `${ids.length} item${ids.length === 1 ? "" : "s"}`); }));
     box.querySelector("#pkAll")?.addEventListener("click", () => { allOn ? ids.forEach((x) => sel.delete(x)) : ids.forEach((x) => sel.add(x)); draw(true); });
     box.querySelector("#pkMore")?.addEventListener("click", () => { more += 60; draw(true); });
     const qi = box.querySelector("#pkq"); qi?.addEventListener("input", () => { q = qi.value; more = 60; const p = qi.selectionStart; draw(); const n = box.querySelector("#pkq"); n.focus(); n.setSelectionRange(p, p); });
