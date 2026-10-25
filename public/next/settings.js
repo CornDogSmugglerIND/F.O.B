@@ -1,4 +1,4 @@
-import { archMap, unarchive, esc as escA } from "./shared.js?v=6";
+import { archMap, unarchive, esc as escA } from "./shared.js?v=7";
 /* Settings — moved out of next.js (bridge [32] file split). Same content Sawyer
    verified in P1+2: profile picture, live connections, install steps, storage
    meter, brand plates. Polish lives in settings.css. */

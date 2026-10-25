@@ -1,4 +1,4 @@
-import { isArchived, loadSpaces, assign } from "./shared.js?v=6";
+import { isArchived, loadSpaces, assign } from "./shared.js?v=7";
 import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=1";
 import { phaseFromItem } from "/visor/phases.js?v=3";
 /* Scouter: one upload = one item. Photos preview instantly, get shrunk off the

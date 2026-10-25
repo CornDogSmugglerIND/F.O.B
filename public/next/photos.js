@@ -1,4 +1,4 @@
-import { esc, loadItems, saveItems } from "./shared.js?v=6";
+import { esc, loadItems, saveItems } from "./shared.js?v=7";
 
 /* One photo editor for every item, wherever it is: set main, reorder, remove, add. */
 async function shrink(file, max = 1400) {

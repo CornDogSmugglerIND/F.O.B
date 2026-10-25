@@ -1,5 +1,5 @@
 /* Real eBay orders (last 90 days), kept apart from inventory so Sold and Shipped are always current. */
-import { peekItems, esc, isArchived } from "./shared.js?v=6";
+import { peekItems, esc, isArchived } from "./shared.js?v=7";
 const LS = "coalition-orders-v1";
 export const saveOrders = (list) => { try { localStorage.setItem(LS, JSON.stringify(list)); return true; } catch { return false; } };
 export const loadOrders = () => { try { const v = JSON.parse(localStorage.getItem(LS) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };

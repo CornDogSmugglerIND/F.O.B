@@ -1,6 +1,6 @@
-import { photoManager } from "./photos.js?v=4";
+import { photoManager } from "./photos.js?v=5";
 import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=9";
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=6";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=7";
 
 let ctx = null;
 const S = { q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 48 };

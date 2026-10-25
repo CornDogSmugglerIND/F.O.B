@@ -517,3 +517,12 @@ html.fx #main .sr-n{position:absolute;top:0;transform:translateX(-50%);display:f
 .ib-bar b{flex:1;font:600 13.5px var(--text);color:var(--mute)}.ib-bar.on b{color:var(--ink)}
 .ib-bar .btn{padding:9px 14px!important;font-size:13.5px!important}
 @media (max-width:820px){.sc-inbox .sc-qh small{display:none}.sc-inbox .sc-qh h3{white-space:nowrap}}
+/* bulk bars: compact, never cover the cards you're picking */
+html.fx .cx-bar{padding:10px 12px!important;gap:8px!important;max-height:none}
+html.fx .cx-bar .cx-bins{display:flex!important;flex-wrap:nowrap!important;gap:6px!important;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+html.fx .cx-bar .cx-bins::-webkit-scrollbar{display:none}
+html.fx .cx-bar .cx-bin{flex:none!important;min-height:36px!important;height:36px;padding:0 14px!important;font-size:13px!important;border-radius:10px!important}
+html.fx .cx-bar .cx-row{gap:6px!important}html.fx .cx-bar .cx-row .cx-btn{min-height:36px!important;padding:0 12px!important;font-size:13px!important}
+html.fx .pk-bar{padding:10px 12px!important}
+html.fx .pk-bins{display:flex!important;flex-wrap:nowrap!important;gap:6px!important;overflow-x:auto;scrollbar-width:none}
+html.fx .pk-bin{flex:none!important;min-height:38px!important;padding:0 16px!important;font-size:13.5px!important}

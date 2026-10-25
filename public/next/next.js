@@ -1,12 +1,12 @@
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=6";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=7";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=7";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=8";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=28";
-import { renderCollection, openImport } from "./collection.js?v=25";
-import { photoManager } from "./photos.js?v=4";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=22";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=39";
-import { renderSettings } from "./settings.js?v=9";
+import { renderScouter } from "./scouter.js?v=29";
+import { renderCollection, openImport } from "./collection.js?v=26";
+import { photoManager } from "./photos.js?v=5";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=23";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=40";
+import { renderSettings } from "./settings.js?v=10";
 import { initSync } from "./sync.js?v=4";
 import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=9";
 
@@ -21,7 +21,11 @@ const worth = (it) => it._order ? (Number(it.price) || 0) : (Number(it.price) ||
 
 /* ---------- data ---------- */
 function loadItems() { try { const v = JSON.parse(localStorage.getItem(LS_ITEMS) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } }
-function saveItems(items) { try { localStorage.setItem(LS_ITEMS, JSON.stringify(items)); } catch { toast("Couldn't save. Storage is full."); } }
+/* never write an older copy over a newer one: if another screen changed an item since we loaded it, its newer version wins */
+function mergeNewer(list) { try { const cur = JSON.parse(localStorage.getItem(LS_ITEMS) || "[]"); if (!Array.isArray(cur)) return list; const cm = new Map(cur.map((i) => [String(i.id), i]));
+  for (const i of list) { const c = cm.get(String(i.id)); if (c && c.spaceId !== i.spaceId && Date.parse(c.updatedAt || 0) > Date.parse(i.updatedAt || 0)) i.spaceId = c.spaceId; } return list; } catch { return list; } }
+function saveItems(items) { try { localStorage.setItem(LS_ITEMS, JSON.stringify(mergeNewer(items))); return true; } catch { toast("Couldn't save. Phone storage is full."); return false; } }
+const saveItems2 = (l) => { try { localStorage.setItem(LS_ITEMS, JSON.stringify(l)); return true; } catch { return false; } };
 const isDemo = (i) => i.demo || /^demo/.test(String(i.channels?.ebay?.listingId || "")) || (i.photos || []).some((p) => String(p.dataUrl || "").startsWith("/demo/"));
 function purgeDemo() { const l = loadItems(), k = l.filter((i) => !isDemo(i)); if (k.length !== l.length) saveItems(k); }
 purgeDemo();
@@ -486,7 +490,7 @@ async function syncAll(auto) {
     const pulled = await pullEbay((n, t) => { btn.textContent = (phone() ? `${n}/${t}` : `Syncing ${n}/${t}`); });
     if (pulled.error) { await ordersP; softRender(); toast(auto ? "Showing saved data. eBay didn't answer." : pulled.error); return; }
     const body = { partial: !pulled.complete };
-    const list = loadItems(); const all = pulled.rows; const rows = all.filter((r) => r.offerKnown !== false);
+    const list = loadItems(), syncStartIds = new Set(list.map((i) => String(i.id))); const all = pulled.rows; const rows = all.filter((r) => r.offerKnown !== false);
     for (const r of rows) {
       const sku = r.channels?.ebay?.sku || r.sku; if (!sku) continue; if (HIDDEN.has(r.id || `ebay-${sku}`)) continue;
       const idx = list.findIndex((i) => i.channels?.ebay?.sku === sku || (r.id && i.id === r.id));
@@ -505,7 +509,12 @@ async function syncAll(auto) {
     }
     const bySku = await ordersP;
     for (const it of list) { if (!(it.source === "scouter" || it.source === "app")) continue; const hit = bySku.get(it.sku || it.channels?.ebay?.sku); if (hit && it.phase !== hit && ["listed", "staged", "intake", "sold", "packed"].includes(it.phase)) { it.phase = hit; it.ended = false; } }
-    saveItems(list); items = list; softRender();
+    /* anything you did while eBay was syncing wins: bins, prices you paid, notes, drafts, new items, deletes */
+    { const fresh = loadItems(), fm = new Map(fresh.map((i) => [String(i.id), i])), KEEP = ["spaceId", "purchasePrice", "notes", "draft", "description", "aspects", "condition", "collections", "fulfillmentPolicyId"];
+      for (let k = list.length - 1; k >= 0; k--) { const it = list[k], f = fm.get(String(it.id)); if (f) { for (const key of KEEP) if (key in f) it[key] = f[key]; } else if (syncStartIds.has(String(it.id))) list.splice(k, 1); }
+      const have = new Set(list.map((i) => String(i.id))); for (const f of fresh) if (!have.has(String(f.id))) list.unshift(f); }
+    if (!saveItems2(list)) { toast("Couldn't save the sync: phone storage is full. Clear space in Settings."); return; }
+    items = list; softRender();
     const nLive = list.filter((i) => phaseFromItem(i) === "listed").length, nSold = list.filter((i) => DONE.includes(i.phase)).length, nEnd = list.filter((i) => i.ended && !DONE.includes(i.phase)).length;
     setLink(true); toast(pulled.complete ? `Synced: ${nLive} live, ${nSold} sold, ${orderItems().length} orders` : `Synced ${rows.length} of ${pulled.total}. ${pulled.total - rows.length} couldn't be checked. Tap Sync again.`);
   } catch { toast(auto ? "Showing saved data." : "eBay sync failed. Try again."); }
@@ -545,3 +554,12 @@ const h = (location.hash || "").slice(1);
 go(["scouter", "collection", "channels", "spaces", "settings"].includes(h) ? h : "command");
 initSync(() => softRender());
 syncAll(true);
+/* storage diet: oversized photo copies (some are 300-600 KB each) are re-saved at a sane size so the phone never runs out of room */
+setTimeout(async () => {
+  try {
+    const list = loadItems(); let changed = 0;
+    const shrinkUrl = (u) => new Promise((res) => { const im = new Image(); im.onload = () => { const k = Math.min(1, 900 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement("canvas"); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL("image/jpeg", .76)); }; im.onerror = () => res(null); im.src = u; });
+    for (const it of list) for (const ph of it.photos || []) { const u = ph.dataUrl || ""; if (u.startsWith("data:image") && u.length > 160000) { const n = await shrinkUrl(u); if (n && n.length < u.length * .8) { ph.dataUrl = n; changed++; } } }
+    if (changed) { const cur = loadItems(), m = new Map(list.map((i) => [String(i.id), i])); for (const c of cur) { const l = m.get(String(c.id)); if (l) c.photos = l.photos; } if (saveItems2(cur)) items = cur; }
+  } catch { /* ignore */ }
+}, 5000);

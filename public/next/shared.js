@@ -52,7 +52,7 @@ export function saveSpaces(list) { try { localStorage.setItem(LS_SPACES, JSON.st
 /** Put items into a bin (or null = unsorted), keeping item.spaceId and space.itemIds in step. */
 export function assign(ids, spaceId) {
   const items = loadItems(), spaces = loadSpaces(), set = new Set(ids.map(String));
-  for (const it of items) if (set.has(String(it.id))) it.spaceId = spaceId || null;
+  const now = new Date().toISOString(); for (const it of items) if (set.has(String(it.id))) { it.spaceId = spaceId || null; it.updatedAt = now; }
   for (const sp of spaces) { sp.itemIds = (sp.itemIds || []).filter((i) => !set.has(String(i))); if (sp.id === spaceId) sp.itemIds.push(...ids); }
   return saveItems(items) && saveSpaces(spaces);
 }
