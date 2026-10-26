@@ -40,3 +40,40 @@ test("revise: title change reads the item and writes it back with the new title"
   assert.deepEqual(put[2].product.imageUrls, ["x"]);
   assert.equal(put[2].sku, undefined);
 });
+
+test("publish: sealed product asks eBay for its category and lists as New", async () => {
+  const { publishEbayListing } = await import("../src/channels/ebay.js");
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => {
+    const u = String(url); calls.push([u, init.method || "GET", (() => { try { return init.body ? JSON.parse(init.body) : null; } catch { return null; } })()]);
+    if (u.includes("/oauth2/token")) return res(200, { access_token: "t", expires_in: 7200 });
+    if (u.includes("get_category_suggestions")) return res(200, { categorySuggestions: [{ category: { categoryId: "183457", categoryName: "CCG Card Albums, Binders & Pages" } }] });
+    if (u.includes("/inventory_item/")) return res(204, {});
+    if (u.endsWith("/offer") && init.method === "POST") return res(201, { offerId: "of1" });
+    if (u.includes("/publish")) return res(200, { listingId: "L1" });
+    return res(200, {});
+  };
+  await publishEbayListing({ id: "x1", title: "Pokemon TCG Mini Card Binder Album Greninja", price: 9.5, quantity: 1, photos: [] }, { fetchImpl }).catch(() => null);
+  const put = calls.find((c) => c[0].includes("/inventory_item/") && c[1] === "PUT");
+  assert.equal(put[2].condition, "NEW");
+  assert.equal(put[2].conditionDescriptors, undefined);
+  const offer = calls.find((c) => c[0].endsWith("/offer") && c[1] === "POST");
+  assert.equal(offer[2].categoryId, "183457");
+});
+
+test("publish: a single card stays in Individual Cards with its card condition", async () => {
+  const { publishEbayListing } = await import("../src/channels/ebay.js");
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => {
+    const u = String(url); calls.push([u, init.method || "GET", (() => { try { return init.body ? JSON.parse(init.body) : null; } catch { return null; } })()]);
+    if (u.includes("/oauth2/token")) return res(200, { access_token: "t", expires_in: 7200 });
+    if (u.includes("/inventory_item/")) return res(204, {});
+    if (u.endsWith("/offer") && init.method === "POST") return res(201, { offerId: "of1" });
+    if (u.includes("/publish")) return res(200, { listingId: "L1" });
+    return res(200, {});
+  };
+  await publishEbayListing({ id: "x2", title: "Pikachu 005/025 Celebrations", collectorNumber: "005/025", price: 3, quantity: 1, photos: [] }, { fetchImpl }).catch(() => null);
+  assert.ok(!calls.some((c) => c[0].includes("get_category_suggestions")));
+  const offer = calls.find((c) => c[0].endsWith("/offer") && c[1] === "POST");
+  assert.equal(offer[2].categoryId, "183454");
+});

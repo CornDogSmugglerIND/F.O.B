@@ -192,6 +192,10 @@ export async function publishEbayListing(item, opts = {}) {
   const marketplaceId = ebayMarketplaceId();
 
   const imageUrls = await resolveEbayImages(item, opts);
+  /* sealed product + accessories don't belong in Individual Cards: ask eBay for the right category, list as New */
+  const sealedLike = !item.collectorNumber && (item.lane === "sealed" || /\b(booster|pack|box|(?<!upper )deck|tin|bundle|blister|etb|elite trainer|display|binder|album|portfolio|sleeves?|playmat|figure|figurine|statue|plush|collection|case)\b/i.test(String(item.title)));
+  let category = null;
+  if (sealedLike) { try { const { suggestCategory } = await import("../comps.js"); category = await suggestCategory(item.title, { fetchImpl: opts.fetchImpl }); } catch { category = null; } if (category && category.id === "183454") category = null; }
   await ebayRequest(`/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, {
     method: "PUT",
     fetchImpl: opts.fetchImpl,
@@ -199,8 +203,10 @@ export async function publishEbayListing(item, opts = {}) {
       availability: {
         shipToLocationAvailability: { quantity: qty },
       },
-      condition: "USED_VERY_GOOD", // 4000 = Ungraded in Trading Cards (183454)
-      conditionDescriptors: [{ name: "40001", values: [CARD_COND[String(item.condition || "NM").toUpperCase()] || "400010"] }],
+      ...(category ? { condition: "NEW" } : {
+        condition: "USED_VERY_GOOD", // 4000 = Ungraded in Trading Cards (183454)
+        conditionDescriptors: [{ name: "40001", values: [CARD_COND[String(item.condition || "NM").toUpperCase()] || "400010"] }],
+      }),
       product: {
         title: String(item.title).slice(0, 80),
         description: item.description || item.title,
@@ -225,7 +231,7 @@ export async function publishEbayListing(item, opts = {}) {
     marketplaceId,
     format: "FIXED_PRICE",
     availableQuantity: qty,
-    categoryId: "183454", // Trading Cards default; map categories later
+    categoryId: category ? category.id : "183454", // Trading Cards unless eBay picked a sealed/accessory category
     listingDescription: item.description || item.title,
     pricingSummary: {
       price: {

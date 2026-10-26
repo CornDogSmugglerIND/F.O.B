@@ -404,7 +404,7 @@ function paintFlow() {
   const id = d.identity || {};
   const chips = [id.set_name, id.collector_number, id.finish].filter(Boolean).map((c) => `<i>${esc(c)}</i>`).join("");
   const money_ = `<div class="scr-money">
-      <div class="scr-mkt"><em>Market value</em><input id="scMkt" inputmode="decimal" placeholder="${d.marketState === "loading" ? "…" : "0.00"}" value="${esc(mk)}" aria-label="Market value">${mkNote ? `<small>${esc(mkNote)}</small>` : ""}</div>
+      <div class="scr-mkt"><em>Market value</em><input id="scMkt" inputmode="decimal" placeholder="${d.marketState === "loading" ? "…" : "0.00"}" value="${esc(mk)}" aria-label="Market value">${mkNote ? `<small>${esc(mkNote)}${d.marketState === "miss" ? ` <button type="button" class="scr-again" id="scMktRe">Look it up again</button>` : ""}</small>` : ""}</div>
       <div class="scr-mini"><label><em>You paid</em><input id="scPaid" inputmode="decimal" placeholder="0.00" value="${esc(paid)}"></label><label><em>Qty</em><input id="scQty" inputmode="numeric" value="${esc(d.qty)}"></label></div>
       ${profit != null ? `<div class="sc-profit ${profit >= 0 ? "pos" : "neg"}">${profit >= 0 ? "Profit" : "Loss"} at market <b>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</b></div>` : ""}</div>`;
   const ready = d.identity || d.title.trim();
@@ -426,6 +426,7 @@ function paintFlow() {
   f.querySelectorAll("[data-c]").forEach((b) => b.addEventListener("click", () => applyIdentity(d.candidates[+b.dataset.c])));
   $("#scMF")?.addEventListener("submit", (e) => { e.preventDefault(); const g = (k) => $(`#scMF [name=${k}]`).value.trim(); if (!g("n")) { ctx.toast("Type the name first."); return; } applyIdentity({ product_name: g("n"), collector_number: g("c") || "", set_name: g("s") || "", game: g("g") || "", finish: "", confidence: 1 }); d.manual = false; d.identity.typed = true; paintFlow(); });
   $("#scPaid")?.addEventListener("input", (e) => { d.paid = e.target.value; refreshProfit(); });
+  $("#scMktRe")?.addEventListener("click", () => fetchMarket());
   $("#scMkt")?.addEventListener("input", (e) => { d.market = e.target.value; refreshProfit(); });
   $("#scQty")?.addEventListener("input", (e) => { d.qty = e.target.value; });
   $("#scSave")?.addEventListener("click", save);

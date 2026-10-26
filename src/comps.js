@@ -132,7 +132,7 @@ async function ebayClean(info, request) {
   const short = (t) => String(t || "").replace(/[()\[\]/,&-]+/g, " ").split(/\s+/).filter(Boolean).slice(0, 8).join(" ");
   const q = (info.number ? [info.name, numberForms(info.number)[0], info.set].filter(Boolean).join(" ") : [short(info.name), info.set].filter(Boolean).join(" ")).slice(0, 100) || String(info.q || "").slice(0, 100);
   if (q.length < 3) return null;
-  const cat = info.game || info.number ? "&category_ids=183454" : "";
+  const cat = info.number ? "&category_ids=183454" : "";
   const data = await request(`/buy/browse/v1/item_summary/search?q=${encodeURIComponent(q)}&limit=100${cat}&filter=buyingOptions:%7BFIXED_PRICE%7D,itemLocationCountry:US`).catch(() => null);
   const prices = cleanComps(data?.itemSummaries, info);
   if (prices.length < 3) return null;
@@ -153,4 +153,13 @@ export async function marketValue(info = {}, { fetchImpl = fetch, request = brow
   if (eb && eb.value) return { ok: true, value: eb.value, basis: eb.source, count: eb.count };
   if (i.q || i.name) { const a = await activeComps(String(i.q || i.name).replace(/[()\[\]/,&-]+/g, " ").split(/\s+/).filter(Boolean).slice(0, 8).join(" "), { request }).catch(() => null); if (a && a.ok) return { ...a, basis: "active eBay listings" }; }
   return { ok: false, reason: "no matching listings" };
+}
+
+/** eBay's own category pick for a title (sealed product, binders, figures...). null when unsure. */
+export async function suggestCategory(title, { fetchImpl = fetch } = {}) {
+  const q = String(title || "").replace(/[()\[\]/,&:-]+/g, " ").trim().slice(0, 100); if (q.length < 3) return null;
+  try {
+    const data = await browseRequest(`/commerce/taxonomy/v1/category_tree/0/get_category_suggestions?q=${encodeURIComponent(q)}`, fetchImpl);
+    const c = (data?.categorySuggestions || [])[0]?.category; return c && c.categoryId ? { id: String(c.categoryId), name: c.categoryName || "" } : null;
+  } catch { return null; }
 }
