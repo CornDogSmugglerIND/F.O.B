@@ -557,7 +557,7 @@ syncAll(true);
 /* always run the newest build: if the server has a newer one than this page, reload into it */
 (() => { const mine = (import.meta.url.match(/[?&]v=(\d+)/) || [])[1]; if (!mine) return;
   const check = async () => { try { const t = await (await fetch(`/next/index.html?ts=${Date.now()}`, { cache: "no-store" })).text(); const live = (t.match(/next\.js\?v=(\d+)/) || [])[1];
-    if (live && live !== mine && !document.querySelector("ion-modal")) { try { sessionStorage.setItem("fob-upd", live); } catch { /* ignore */ } location.replace(`/next/?b=${live}`); } } catch { /* offline: keep going */ } };
+    if (live && live !== mine && !document.querySelector("ion-modal")) { let tried = ""; try { tried = sessionStorage.getItem("fob-upd") || ""; sessionStorage.setItem("fob-upd", live); } catch { /* ignore */ } if (tried !== live) location.replace(`/next/?b=${live}&r=${Date.now().toString(36)}`); } } catch { /* offline: keep going */ } };
   setTimeout(check, 1500); document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); }); setInterval(check, 5 * 60 * 1000); })();
 /* storage diet: oversized photo copies (some are 300-600 KB each) are re-saved at a sane size so the phone never runs out of room */
 setTimeout(async () => {
