@@ -188,7 +188,7 @@ const aspCache = new Map();
 export async function categoryAspectList(categoryId, { fetchImpl = fetch } = {}) {
   if (aspCache.has(categoryId)) return aspCache.get(categoryId);
   let list = [];
-  try { const data = await browseRequest(`/commerce/taxonomy/v1/category_tree/0/get_item_aspects_for_category?category_id=${encodeURIComponent(categoryId)}`, fetchImpl); list = data?.aspects || []; } catch { return []; }
+  try { const data = await browseRequest(`/commerce/taxonomy/v1/category_tree/0/get_item_aspects_for_category?category_id=${encodeURIComponent(categoryId)}`, fetchImpl); list = data?.aspects || []; } catch (e) { categoryAspectList.lastError = String(e.message); return []; }
   const out = list.map((a) => ({ name: a.localizedAspectName, required: !!a.aspectConstraint?.aspectRequired, recommended: a.aspectConstraint?.aspectUsage === "RECOMMENDED", mode: a.aspectConstraint?.aspectMode || "FREE_TEXT", multi: a.aspectConstraint?.itemToAspectCardinality === "MULTI", values: (a.aspectValues || []).map((v) => v.localizedValue).filter(Boolean) })).filter((a) => a.name);
   aspCache.set(categoryId, out); return out;
 }

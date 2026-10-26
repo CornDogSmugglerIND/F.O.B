@@ -3,7 +3,7 @@ import multer from "multer";
 import { randomUUID } from "node:crypto";
 import { lookupBarcode } from "../lookup.js";
 import { runIdentify, identityToItemPatch } from "../identify/router.js";
-import { activeComps, marketValue, suggestCategory, fillRequiredAspects } from "../comps.js";
+import { activeComps, marketValue, suggestCategory, fillRequiredAspects, categoryAspectList } from "../comps.js";
 import { runBarcodeScan } from "../identify/barcode.js";
 import { visionKeyStatus } from "../identify/vision.js";
 import {
@@ -242,7 +242,8 @@ export function scouterRouter() {
   /* what eBay will file this under, and the item specifics it requires (filled from the title) */
   router.get("/category", async (req, res) => {
     const title = String(req.query?.title || ""); const c = await suggestCategory(title);
-    const id = c ? c.id : "183454"; res.json({ ok: true, category: c || { id, name: "CCG Individual Cards" }, aspects: await fillRequiredAspects(id, title, {}) });
+    const id = c ? c.id : "183454"; const list0 = await categoryAspectList(id).catch((e) => String(e.message)); const list = Array.isArray(list0) && !list0.length && categoryAspectList.lastError ? categoryAspectList.lastError : list0;
+    res.json({ ok: true, category: c || { id, name: "CCG Individual Cards" }, aspects: await fillRequiredAspects(id, title, {}), specifics: Array.isArray(list) ? list.map((a) => `${a.name}${a.required ? "*" : a.recommended ? "+" : ""}(${a.values.length})`) : list });
   });
 
   router.post("/barcode", async (req, res, next) => {
