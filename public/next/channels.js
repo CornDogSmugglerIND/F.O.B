@@ -1,7 +1,7 @@
 import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=7";
 import { photoManager } from "./photos.js?v=5";
 import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=9";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=8";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=9";
 
 let ctx = null;
 const S = { stage: "listed", view: "cards", group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
@@ -142,16 +142,17 @@ function deskList(all) {
   if (S.sort === "old" && S.stage === "listed") list = [...list].sort((a, b) => (Date.parse(a.channels?.ebay?.listedAt || a.createdAt || 0) || 0) - (Date.parse(b.channels?.ebay?.listedAt || b.createdAt || 0) || 0));
   if (!list.length) return `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing live yet."}</div>`;
   const sp = new Map(loadSpaces().map((x) => [x.id, x.name]));
+  const vp = (it, withId) => { const all = (it._n > 1 ? it._kids : [it]).flatMap((k) => (k.photos || []).map((p) => p.dataUrl || p.url)).filter(Boolean).slice(0, 24); return all.length ? ` data-view-photo="${esc(JSON.stringify(all))}"${withId ? ` data-view-id="${esc(it.id)}"` : ""}` : ""; };
   const row = (it) => {
     const src = photoOf(it), on = S.sel.has(String(it.id));
     if (it._order) { const o = it._order, d = daysSince(o.createdAt), st = track(o).step, n = it.phase === "sold" ? 0 : Math.max(1, st + 1);
       return `<article class="dk-row ch-tile${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0"><button type="button" class="co-pick" data-pick="${esc(it.id)}" aria-label="Select" aria-pressed="${on}"></button>
-        <span class="co-img dk-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`}</span>
+        <span class="co-img dk-img"${vp(it, false)}>${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`}</span>
         <div class="dk-mid"><b>${esc(nameOf(it))}</b><span>${esc(o.buyer || "Buyer")} · ${d == null ? "" : d === 0 ? "today" : d + "d ago"}</span><span class="dk-trk">${[0, 1, 2, 3].map((k) => `<i${k < n ? ' class="on"' : ""}></i>`).join("")}<em>${esc(badge(it))}</em></span></div>
         <div class="dk-end"><b>${money(o.total ?? it.price)}</b>${it.phase === "sold" ? `<a class="dk-act hot" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener" data-noopen>Print label</a>` : ""}</div></article>`; }
     const d = daysSince(it.channels?.ebay?.listedAt || it.createdAt), q = it._n > 1 ? it._kids.reduce((a, k) => a + (Number(k.quantity) || 1), 0) : Number(it.quantity) || 1;
     return `<article class="dk-row ch-tile${on ? " sel" : ""}" data-id="${esc(it.id)}" data-edit="1" tabindex="0"><button type="button" class="co-pick" data-pick="${esc(it.id)}" aria-label="Select" aria-pressed="${on}"></button>
-      <span class="co-img dk-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`}</span>
+      <span class="co-img dk-img"${vp(it, true)}>${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`}</span>
       <div class="dk-mid"><b>${esc(nameOf(it))}</b><span>${it._n > 1 ? `${it._n} variations · ` : ""}${d == null ? "" : `<i class="${d > 45 ? "old" : ""}">${d}d live</i> · `}${esc(sp.get(it.spaceId) || "No bin")}</span></div>
       <div class="dk-end"><b>${ptxt(it)}</b><span>qty ${q}</span><em class="dk-act">Edit</em></div></article>`;
   };
@@ -287,7 +288,7 @@ function wire(all) {
   h.querySelectorAll("[data-selgrp]").forEach((b) => b.addEventListener("click", () => { all.filter((i) => keyOf(i) === b.dataset.selgrp).forEach((i) => S.sel.add(String(i.id))); paint(); }));
   $("#chAll")?.addEventListener("click", () => { all.forEach((i) => S.sel.add(String(i.id))); paint(); });
   h.querySelectorAll("[data-pick]").forEach((p) => p.addEventListener("click", (e) => { e.stopPropagation(); toggle(p.dataset.pick); paint(); }));
-  h.querySelectorAll(".ch-tile").forEach((c) => { c.addEventListener("click", (e) => { if (e.target.closest("[data-pick]")) return; if (c.dataset.edit && !e.target.closest(".co-img")) editSheet(all, c.dataset.id); else zoom(all, c); }); c.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); zoom(all, c); } }); });
+  h.querySelectorAll(".ch-tile").forEach((c) => { c.addEventListener("pv:details", () => zoom(all, c)); c.addEventListener("click", (e) => { if (e.target.closest("[data-pick]")) return; if (c.dataset.edit && !e.target.closest(".co-img")) editSheet(all, c.dataset.id); else zoom(all, c); }); c.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); zoom(all, c); } }); });
   h.querySelectorAll(".ch-row").forEach((r) => r.addEventListener("click", (e) => { if (e.target.closest("input")) return; zoom(all, r); }));
   h.querySelectorAll(".ch-row input").forEach((c) => c.addEventListener("change", () => { toggle(c.dataset.id); paint(); }));
   $("#chBin")?.addEventListener("change", (e) => { const v = e.target.value; if (!v) return; const ids = [...S.sel], prev = snap(); if (assign(ids, v)) { S.sel.clear(); ctx.refresh(); paint(); ctx.toastUndo(`Filed ${ids.length} into ${loadSpaces().find((s) => s.id === v)?.name}`, () => { restore(prev); ctx.refresh(); paint(); }); } });

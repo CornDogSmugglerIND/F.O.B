@@ -1,4 +1,5 @@
 import { photoManager } from "./photos.js?v=5";
+import { hideIds, unhideIds } from "./orders.js?v=9";
 import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=9";
 import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=7";
 
@@ -55,6 +56,8 @@ function vaultBody(all) {
   const kind = S.kind || "all", pick = (k) => all.filter((i) => kindOf(i) === k), val = (l) => money(l.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0));
   const graded = pick("graded").sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)), singles = pick("singles"), sealed = pick("sealed");
   const ph = (it) => { const s = photoOf(it); return s ? `<img src="${esc(s)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`; };
+  /* tapping a photo opens it full screen (zoom in); "Details" from there opens the item */
+  const pv = (it) => { const all = (it.photos || []).map((p) => p.dataUrl || p.url).filter(Boolean); return all.length ? ` data-view-photo="${esc(JSON.stringify(all))}" data-view-id="${esc(it.id)}"` : ""; };
   const gradeOf = (it) => { const m = nameOf(it).match(SLAB); return m ? `${m[1].toUpperCase()} ${m[2]}` : "Graded"; };
   let out = "";
   if ((kind === "all" || kind === "singles") && singles.length) {
@@ -64,7 +67,7 @@ function vaultBody(all) {
       if (!sets.has(S.bset)) { S.bset = order[0][0]; S.bpg = 0; }
       const l = [...sets.get(S.bset)].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)), per = innerWidth > 820 ? 18 : 9, spreads = Math.max(1, Math.ceil(l.length / per));
       S.bpg = Math.min(Math.max(0, S.bpg), spreads - 1);
-      const pg = (from) => { const c = l.slice(from, from + 9); return `<div class="bn-pg">${c.map((it) => `<button type="button" class="bd-p" data-vid="${esc(it.id)}" aria-label="${esc(nameOf(it))} ${money(it.price)}">${ph(it)}<em>${money(it.price)}</em></button>`).join("")}${Array.from({ length: 9 - c.length }, () => `<span class="bd-p empty"></span>`).join("")}</div>`; };
+      const pg = (from) => { const c = l.slice(from, from + 9); return `<div class="bn-pg">${c.map((it) => `<button type="button" class="bd-p" data-vid="${esc(it.id)}"${pv(it)} aria-label="${esc(nameOf(it))} ${money(it.price)}">${ph(it)}<em>${money(it.price)}</em></button>`).join("")}${Array.from({ length: 9 - c.length }, () => `<span class="bd-p empty"></span>`).join("")}</div>`; };
       const at = S.bpg * per;
       out += `<section class="vs bn-sec"><header class="vs-h"><b>Binder</b><span>${val(l)} in ${esc(S.bset)}</span></header>
       <div class="bn-tabs hscroll" role="tablist">${order.map(([k, x]) => `<button type="button" role="tab" class="bn-t${k === S.bset ? " on" : ""}" aria-selected="${k === S.bset}" data-bset="${esc(k)}">${esc(k)}<b>${x.length}</b></button>`).join("")}</div>
@@ -74,9 +77,9 @@ function vaultBody(all) {
   }
   let side = "";
   if ((kind === "all" || kind === "graded") && graded.length) side += `<section class="vs"><header class="vs-h"><b>Graded case</b><span>${graded.length} · ${val(graded)}</span></header>
-    <div class="slabs hscroll">${graded.slice(0, kind === "graded" ? 200 : 24).map((it) => `<button type="button" class="slab" data-vid="${esc(it.id)}" aria-label="${esc(nameOf(it))}"><span class="slab-l"><b>${esc(gradeOf(it))}</b><em>${money(it.price)}</em></span><span class="slab-w">${ph(it)}</span></button>`).join("")}</div></section>`;
+    <div class="slabs hscroll">${graded.slice(0, kind === "graded" ? 200 : 24).map((it) => `<button type="button" class="slab" data-vid="${esc(it.id)}"${pv(it)} aria-label="${esc(nameOf(it))}"><span class="slab-l"><b>${esc(gradeOf(it))}</b><em>${money(it.price)}</em></span><span class="slab-w">${ph(it)}</span></button>`).join("")}</div></section>`;
   if ((kind === "all" || kind === "sealed") && sealed.length) side += `<section class="vs"><header class="vs-h"><b>Sealed shelf</b><span>${sealed.length} · ${val(sealed)}</span></header>
-    <div class="shelf hscroll">${sealed.slice(0, kind === "sealed" ? 200 : 30).map((it) => `<button type="button" class="box" data-vid="${esc(it.id)}" aria-label="${esc(nameOf(it))}"><span class="box-a">${ph(it)}</span><em>${money(it.price)}</em><span class="box-n">${esc(nameOf(it))}</span></button>`).join("")}</div></section>`;
+    <div class="shelf hscroll">${sealed.slice(0, kind === "sealed" ? 200 : 30).map((it) => `<button type="button" class="box" data-vid="${esc(it.id)}"${pv(it)} aria-label="${esc(nameOf(it))}"><span class="box-a">${ph(it)}</span><em>${money(it.price)}</em><span class="box-n">${esc(nameOf(it))}</span></button>`).join("")}</div></section>`;
   if (side) out += `<div class="vrow">${side}</div>`;
   return out || `<div class="co-empty">Nothing here yet.</div>`;
 }
@@ -121,7 +124,7 @@ function paint() {
       <div class="cx-cap"><span>${esc(nameOf(it))}</span><em>${esc(where(it))}${bn ? " · " + esc(bn) : ""}</em></div></article>`; }).join("") || `<div class="co-empty">Nothing matches.</div>`}${all.length > S.more ? `<button type="button" class="cx-more" id="coMore">Show more (${all.length - S.more})</button>` : ""}</div></div>` : ""}
     ${S.selecting ? bar() : ""}</div>`;
   wire();
-  host.querySelectorAll("[data-vid]").forEach((c) => c.addEventListener("click", () => openZoom(c.dataset.vid, c)));
+  host.querySelectorAll("[data-vid]").forEach((c) => { c.addEventListener("click", () => openZoom(c.dataset.vid, c)); c.addEventListener("pv:details", () => openZoom(c.dataset.vid, c)); });
   host.querySelectorAll("[data-kind]").forEach((b) => b.addEventListener("click", () => { S.kind = b.dataset.kind; paint(); }));
   host.querySelectorAll("[data-bset]").forEach((b) => b.addEventListener("click", () => { S.bset = b.dataset.bset; S.bpg = 0; paint(); }));
   host.querySelectorAll("[data-bflip]").forEach((b) => b.addEventListener("click", () => { S.bpg += Number(b.dataset.bflip); const sp = host.querySelector(".bn-spread"); paint(); const n = host.querySelector(".bn-spread"); n && n.classList.add(Number(b.dataset.bflip) > 0 ? "fl-n" : "fl-p"); }));
@@ -163,15 +166,24 @@ function bulk(kind) {
   const ids = [...S.sel]; if (!ids.length) return; const set = new Set(ids);
   if (kind === "sealed" || kind === "singles") { setLane(ids, kind); S.sel.clear(); paint(); }
   else if (kind === "pct") { const p = parseFloat(String(ctx.host.querySelector("#coPct").value).replace(/[^0-9.\-+]/g, "")); if (!Number.isFinite(p) || !p) { ctx.toast("Type a percent, like -10 or 15."); return; } const prevRaw = localStorage.getItem("coalition-items-v4"); if (commit((l) => l.forEach((i) => { if (set.has(String(i.id))) i.price = Math.max(0, Math.round((Number(i.price) || 0) * (1 + p / 100) * 100) / 100); }))) { (ctx.toastUndo || ctx.toast)(`Changed ${ids.length} prices by ${p > 0 ? "+" : ""}${p}% (this app only)`, () => { try { localStorage.setItem("coalition-items-v4", prevRaw); } catch { /* ignore */ } ctx.refresh(); paint(); }); S.sel.clear(); paint(); } }
-  else if (kind === "del") { const before = loadItems(); const removed = before.filter((i) => set.has(String(i.id))); if (commit((l) => { for (let k = l.length - 1; k >= 0; k--) if (set.has(String(l[k].id))) l.splice(k, 1); })) { S.sel.clear(); undo(before, `Removed ${removed.length} from this app`); paint(); } }
+  else if (kind === "del") removeItems([...set], () => { S.sel.clear(); });
 }
 function undo(prev, msg) { ctx.toastUndo(msg, () => { saveItems(prev); ctx.refresh(); paint(); ctx.toast("Restored"); }); }
+/* delete from this app (eBay listings stay live; they're hidden so a sync doesn't bring them back) */
+function removeItems(ids, after) {
+  const set = new Set(ids.map(String)), before = loadItems(), removed = before.filter((i) => set.has(String(i.id))); if (!removed.length) return;
+  const ebay = removed.flatMap((i) => { const sk = i.channels?.ebay?.sku || i.sku; return [String(i.id).startsWith("ebay-") ? String(i.id) : null, sk ? `ebay-${sk}` : null]; }).filter(Boolean); hideIds(ebay);
+  if (!commit((l) => { for (let k = l.length - 1; k >= 0; k--) if (set.has(String(l[k].id))) l.splice(k, 1); })) return;
+  after && after(); paint();
+  ctx.toastUndo(removed.length === 1 ? `Deleted ${nameOf(removed[0])}` : `Deleted ${removed.length} items`, () => { unhideIds(ebay); saveItems(before); ctx.refresh(); paint(); ctx.toast("Restored"); });
+}
 function openZoom(id, fromEl) {
   const list = rows(), i = list.findIndex((x) => String(x.id) === String(id)); if (i < 0) return;
   openCard(list, { index: i, from: fromEl || null, photo: photoOf, name: nameOf, backLabel: "Collection",
     info: (it) => { const profit = it.purchasePrice != null && it.purchasePrice !== "" ? (Number(it.price) || 0) - Number(it.purchasePrice) : null, sp = loadSpaces().find((s) => s.id === it.spaceId);
-      return `<div class="sub">${esc(where(it))} · ${esc(laneOf(it) === "sealed" ? "Sealed" : "Single")} · ${esc(gameOf(it))}</div><div class="row"><span>Market value</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${profit != null ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div><div class="row"><span>Profit</span><span>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div><button class="btn" id="zLane" type="button">Move to ${laneOf(it) === "sealed" ? "Singles" : "Sealed"}</button>${it.phase === "listed" && (it.channels?.ebay?.sku || it.sku) ? `<button class="btn go" id="zEdit" type="button">Edit price or quantity</button>` : ""}`; },
-    wire: (root, it, api) => { { const d = document.createElement("div"); (root.querySelector(".k-zinfo") || root).appendChild(d); photoManager(d, it.id, { toast: ctx.toast, refresh: ctx.refresh }); } root.querySelector("#zEdit")?.addEventListener("click", () => { api.close(); setTimeout(() => dispatchEvent(new CustomEvent("fob:edit-live", { detail: it.id })), 280); });
+      return `<div class="sub">${esc(where(it))} · ${esc(laneOf(it) === "sealed" ? "Sealed" : "Single")} · ${esc(gameOf(it))}</div><div class="row"><span>Market value</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${profit != null ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div><div class="row"><span>Profit</span><span>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div><button class="btn" id="zLane" type="button">Move to ${laneOf(it) === "sealed" ? "Singles" : "Sealed"}</button>${it.phase === "listed" && (it.channels?.ebay?.sku || it.sku) ? `<button class="btn go" id="zEdit" type="button">Edit price or quantity</button>` : ""}<button class="btn warn" id="zDel" type="button">Delete from this app</button>${it.phase === "listed" && !it.ended ? `<small class="z-note">Still live on eBay. To take it down, end it in Channels.</small>` : ""}`; },
+    wire: (root, it, api) => { { const d = document.createElement("div"); (root.querySelector(".k-zinfo") || root).appendChild(d); photoManager(d, it.id, { toast: ctx.toast, refresh: ctx.refresh }); } root.querySelector("#zDel")?.addEventListener("click", (e) => { const b = e.currentTarget; if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Tap again to delete"; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = "Delete from this app"; } }, 4000); return; } api.close(); removeItems([it.id]); });
+      root.querySelector("#zEdit")?.addEventListener("click", () => { api.close(); setTimeout(() => dispatchEvent(new CustomEvent("fob:edit-live", { detail: it.id })), 280); });
       return root.querySelector("#zLane")?.addEventListener("click", () => { api.close(); setLane([it.id], laneOf(it) === "sealed" ? "singles" : "sealed"); }); } });
 }
 export function renderCollection(host, api) { ctx = { host, ...api }; if (!host.querySelector(".co-wrap")) S.sel.clear(); paint(); }

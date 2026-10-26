@@ -26,6 +26,7 @@ const rd = (k) => { try { return JSON.parse(localStorage.getItem(k) || "{}") || 
 export const setOv = (id, v) => { const o = rd(OV); if (v) o[id] = v; else delete o[id]; try { localStorage.setItem(OV, JSON.stringify(o)); } catch { /* ignore */ } };
 export const hiddenIds = () => new Set(Object.keys(rd(HID)));
 export const hideIds = (ids) => { const o = rd(HID); ids.forEach((i) => { o[String(i)] = 1; }); try { localStorage.setItem(HID, JSON.stringify(o)); } catch { /* ignore */ } };
+export const unhideIds = (ids) => { const o = rd(HID); ids.forEach((i) => { delete o[String(i)]; }); try { localStorage.setItem(HID, JSON.stringify(o)); } catch { /* ignore */ } };
 export const STEPS = ["Label made", "Shipped", "In transit", "Out for delivery", "Delivered"];
 export function track(o) {
   const ov = rd(OV)[o.orderId];
