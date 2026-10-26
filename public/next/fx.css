@@ -651,3 +651,36 @@ html.fx #main .dk-row{grid-template-columns:36px 56px minmax(0,1fr) auto!importa
 @media (min-width:821px){html.fx #main .dk-row{grid-template-columns:36px 64px minmax(0,1fr) auto!important}}
 
 :root{color-scheme:dark only}
+/* ===== Vault binder v3 (Build 140): one open binder, tabs per game, page flips ===== */
+.bn-tabs{display:flex;gap:6px;padding:0 2px 12px;overflow-x:auto;scrollbar-width:none}.bn-tabs::-webkit-scrollbar{display:none}
+.bn-t{appearance:none;border:0;cursor:pointer;flex:0 0 auto;display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:999px;background:rgba(10,20,17,.72);border:1px solid rgba(125,242,180,.16);color:var(--mute);font:600 13px var(--text)}
+.bn-t b{font:700 12px var(--text);color:var(--mute);opacity:.8}
+.bn-t.on{color:#06110D;background:linear-gradient(180deg,#9DF7C8,#5FD99A);border-color:transparent;box-shadow:0 6px 18px rgba(95,217,154,.28)}.bn-t.on b{color:#06110D}
+.bn{position:relative;padding:14px;border-radius:18px;
+  background:linear-gradient(160deg,#1b2622 0%,#0d1513 55%,#121c19 100%);border:1px solid rgba(125,242,180,.18);
+  box-shadow:0 30px 60px -20px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 0 6px rgba(0,0,0,.28)}
+.bn::before{content:"";position:absolute;inset:6px;border-radius:13px;border:1px dashed rgba(211,242,228,.13);pointer-events:none}
+.bn-spread{display:grid;grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr);gap:0;align-items:stretch;touch-action:pan-y}
+.bn-spread.one{grid-template-columns:minmax(0,1fr)}
+.bn-pg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:min-content;align-content:start;gap:8px;padding:12px;border-radius:10px;
+  background:linear-gradient(180deg,#0f1815,#0a110f);border:1px solid rgba(220,245,235,.08)}
+.bn-rings{display:block;background:url(img/rings.png) center 10px/14px 62px repeat-y;opacity:.95}
+.bn .bd-p{border-radius:5px;border:1px solid rgba(220,245,235,.18);background:rgba(220,245,235,.04);transition:transform .18s ease,box-shadow .18s ease}
+.bn .bd-p::after{background:linear-gradient(115deg,rgba(255,255,255,.18),transparent 30%,transparent 70%,rgba(255,255,255,.06))}
+.bn .bd-p em{opacity:.92}
+@media (hover:hover){.bn .bd-p em{opacity:0;transition:opacity .15s}.bn .bd-p:hover em{opacity:1}.bn .bd-p:not(.empty):hover{transform:translateY(-3px) scale(1.03);box-shadow:0 12px 24px rgba(0,0,0,.6),0 0 0 1px rgba(125,242,180,.5);z-index:2}}
+.bn .bd-p.empty{background:rgba(220,245,235,.02);border-style:dashed;border-color:rgba(220,245,235,.08)}
+.bn-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:12px;font:600 13px var(--text);color:var(--mute)}
+.bn-a{appearance:none;cursor:pointer;width:40px;height:40px;border-radius:50%;border:1px solid rgba(125,242,180,.25);background:rgba(8,16,13,.8);color:var(--ink);font:400 24px/1 var(--text);display:grid;place-items:center}
+.bn-a:disabled{opacity:.3;cursor:default}
+.bn-spread.fl-n{animation:bnN .32s cubic-bezier(.2,.8,.2,1)}.bn-spread.fl-p{animation:bnP .32s cubic-bezier(.2,.8,.2,1)}
+@keyframes bnN{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}}@keyframes bnP{from{opacity:0;transform:translateX(-26px)}to{opacity:1;transform:none}}
+.bn-sec .vs-h span{color:var(--holo)}
+@media (min-width:821px){.bn{padding:20px}.bn-pg{gap:10px;padding:16px}.bn-spread{grid-template-columns:minmax(0,1fr) 34px minmax(0,1fr)}}
+/* quieter header: filters + search on one line on desktop */
+@media (min-width:821px){.co-wrap.cx .vk{max-width:520px;margin-bottom:0}html.fx #main .co-wrap.cx .cx-lbar{margin:0 0 22px auto!important;max-width:420px}}
+.bn{max-width:980px;margin:0 auto}.bn-sec .vs-h,.bn-tabs{max-width:980px;margin-left:auto;margin-right:auto}
+@media (min-width:821px){.vrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:28px;align-items:start}.vrow>.vs{min-width:0}}
+.vt{flex-wrap:wrap}.vt .vk{order:3;flex:1 1 100%;margin:14px 0 0}
+@media (min-width:821px){.vt{flex-wrap:nowrap;align-items:center;gap:28px;margin:6px 2px 18px}.vt .vk{order:0;flex:0 1 480px;margin:0 0 0 auto}.vt-v b{font-size:42px}}
+.cx-find{width:36px;padding:0!important;display:grid!important;place-items:center}
