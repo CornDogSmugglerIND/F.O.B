@@ -112,6 +112,9 @@ export function channelsRouter() {
     if (isCard && item.finish) known.Finish = [String(item.finish)];
     if (isCard && !known.Language) known.Language = [String(item.language || "English")];
     if (isCard) { const man = buildItemSpecifics({ game: item.game }).Manufacturer; if (man) known.Manufacturer = [man]; }
+    /* true for any raw single you pull from a pack */
+    if (isCard && !/\b(PSA|BGS|CGC|SGC|TAG|BCCG|HGA|Beckett)\b/i.test(`${item.title}`)) Object.assign(known, { "Card Size": ["Standard"], Autographed: ["No"], Customized: ["No"] });
+    if (isCard && /pok/i.test(item.game || item.title || "")) known.Franchise = ["Pokémon"];
     let list = []; try { list = [...(await categoryAspectList(cat.id))]; } catch { list = []; }
     /* thin categories (Pez, toys, figures...) list barely any specifics: add the ones buyers actually search by. eBay accepts custom specifics. */
     if (!isCard && list.filter((a) => !/prop 65|country of origin/i.test(a.name)).length < 8) {
