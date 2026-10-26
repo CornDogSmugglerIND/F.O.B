@@ -182,3 +182,49 @@ export async function fillRequiredAspects(categoryId, title, aspects = {}, { fet
   }
   return out;
 }
+
+/** Every item specific eBay knows for a category (required + recommended), with allowed values. Cached per category. */
+const aspCache = new Map();
+export async function categoryAspectList(categoryId, { fetchImpl = fetch } = {}) {
+  if (aspCache.has(categoryId)) return aspCache.get(categoryId);
+  let list = [];
+  try { const data = await browseRequest(`/commerce/taxonomy/v1/category_tree/0/get_item_aspects_for_category?category_id=${encodeURIComponent(categoryId)}`, fetchImpl); list = data?.aspects || []; } catch { return []; }
+  const out = list.map((a) => ({ name: a.localizedAspectName, required: !!a.aspectConstraint?.aspectRequired, recommended: a.aspectConstraint?.aspectUsage === "RECOMMENDED", mode: a.aspectConstraint?.aspectMode || "FREE_TEXT", multi: a.aspectConstraint?.itemToAspectCardinality === "MULTI", values: (a.aspectValues || []).map((v) => v.localizedValue).filter(Boolean) })).filter((a) => a.name);
+  aspCache.set(categoryId, out); return out;
+}
+const rxEsc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** Fill as many specifics as the item's own words support. Never invents: a value is used only if it appears in the text, or is a safe known fact (brand, franchise, language). */
+export function autoAspects(list, text, known = {}) {
+  const t = ` ${String(text || "").toLowerCase().replace(/[^a-z0-9éè&+/.' -]+/g, " ")} `, out = {};
+  const pok = /pok[eé]mon/i.test(text), have = (n) => Object.keys(out).some((k) => k.toLowerCase() === n.toLowerCase());
+  for (const [k, v] of Object.entries(known)) if (v != null && String(v).trim()) out[k] = Array.isArray(v) ? v.map(String) : [String(v)];
+  for (const a of list) {
+    if (have(a.name)) continue;
+    const n = a.name.toLowerCase(); let v = "";
+    if (/^(franchise|tv show|theme|character family)$/.test(n) && pok) v = a.values.find((x) => /pok[eé]mon/i.test(x)) || (a.mode === "FREE_TEXT" ? "Pokémon" : "");
+    if (!v && /^(brand|manufacturer)$/.test(n)) v = a.values.filter((x) => x.length >= 3 && new RegExp(`(^|[^a-z0-9])${rxEsc(x.toLowerCase())}([^a-z0-9]|$)`).test(t)).sort((x, y) => y.length - x.length)[0] || (pok ? (a.values.find((x) => /pok[eé]mon company|nintendo/i.test(x)) || (a.mode === "FREE_TEXT" ? "The Pokémon Company" : "")) : "");
+    if (!v && /^(language)$/.test(n) && /japanese/i.test(text)) v = "Japanese";
+    if (!v && /^(country\/region of manufacture)$/.test(n)) v = "";
+    if (!v && a.values.length) {
+      const hits = a.values.filter((x) => x.length >= 3 && !/^\d+$/.test(x) && !/^(other|unknown|none|n\/a|yes|no)$/i.test(x) && new RegExp(`(^|[^a-z0-9])${rxEsc(x.toLowerCase())}s?([^a-z0-9]|$)`).test(t));
+      v = hits.sort((x, y) => y.length - x.length)[0] || "";
+    }
+    if (v) out[a.name] = [v];
+  }
+  return out;
+}
+
+/** Card singles stay in CCG Individual Cards (183454). Anything else (sealed, binders, figures, Pez...) goes where eBay says it belongs. */
+const PRODUCT_RX = /\b(booster|pack|box|(?<!upper )deck|tin|bundle|blister|etb|elite trainer|display|binder|album|portfolio|sleeves?|playmat|figure|figurine|statue|plush|collection|case|dispenser|pez|toy|funko|pop!?|keychain|pin|poster|shirt|hat|mug|cup|lunch|backpack|lego|puzzle|game boy|switch|cartridge|dvd|book|manga|sticker|lamp|blanket)\b/i;
+export function looksLikeCard(item = {}) {
+  const t = String(item.title || item.productName || "");
+  if (item.categoryId) return String(item.categoryId) === "183454";
+  if (PRODUCT_RX.test(t)) return false;
+  if (item.collectorNumber) return true;
+  return /\b\d{1,3}\/\d{1,3}\b|#\s?\d+|\b(holo|reverse|promo|rookie|rc|psa|bgs|cgc|card)\b/i.test(t);
+}
+export async function resolveCategory(item = {}, { fetchImpl = fetch } = {}) {
+  if (item.categoryId) return { id: String(item.categoryId), name: item.categoryName || "" };
+  if (looksLikeCard(item)) return { id: "183454", name: "CCG Individual Cards" };
+  return (await suggestCategory(item.title || item.productName, { fetchImpl })) || { id: "183454", name: "CCG Individual Cards" };
+}

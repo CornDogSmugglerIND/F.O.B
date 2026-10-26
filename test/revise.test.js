@@ -102,3 +102,26 @@ test("publish: missing required item specific (Type) is filled from the title, a
   assert.equal(put[2].product.aspects.Color, undefined);
   assert.equal(out.listingId, "L9");
 });
+
+test("best offer: on by default, auto-declines under 80%", async () => {
+  const { bestOfferTerms } = await import("../src/channels/ebay.js");
+  assert.deepEqual(bestOfferTerms({}, 10), { bestOfferEnabled: true, autoDeclinePrice: { currency: "USD", value: "8.00" } });
+  assert.equal(bestOfferTerms({ bestOffer: false }, 10), null);
+  assert.equal(bestOfferTerms({ offerFloorPct: 70 }, 20).autoDeclinePrice.value, "14.00");
+});
+test("enable offers on a live listing keeps its policies and adds best offer", async () => {
+  const { enableBestOffer } = await import("../src/channels/ebay.js");
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => { const u = String(url); calls.push([u, init.method || "GET", (() => { try { return JSON.parse(init.body); } catch { return null; } })()]);
+    if (u.includes("/oauth2/token")) return res(200, { access_token: "t", expires_in: 7200 });
+    if (u.includes("/offer?sku=")) return res(200, { offers: [{ offerId: "o1", sku: "A", status: "PUBLISHED", listing: { listingId: "L" }, marketplaceId: "EBAY_US", format: "FIXED_PRICE", categoryId: "183454", availableQuantity: 1, pricingSummary: { price: { value: "5.00", currency: "USD" } }, listingPolicies: { fulfillmentPolicyId: "F", returnPolicyId: "R" } }] });
+    if (u.includes("/offer/o1") && init.method === "PUT") return res(204, {});
+    return res(404, {}); };
+  const out = await enableBestOffer(["A"], { fetchImpl });
+  if (!out[0].ok) console.log("ERR", out[0].error);
+  assert.equal(out[0].ok, true);
+  const put = calls.find((c) => c[1] === "PUT");
+  assert.equal(put[2].listingPolicies.fulfillmentPolicyId, "F");
+  assert.equal(put[2].listingPolicies.bestOfferTerms.autoDeclinePrice.value, "4.00");
+  assert.equal(put[2].status, undefined); assert.equal(put[2].listing, undefined);
+});

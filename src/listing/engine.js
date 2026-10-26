@@ -129,46 +129,73 @@ export function buildVariationTitle(id = {}) {
 }
 
 /**
- * Two-layer plain-text description + locked sign-off.
- * @param {{
- *   productName?: string|null,
- *   setName?: string|null,
- *   collectorNumber?: string|null,
- *   rarity?: string|null,
- *   finish?: string|null,
- *   language?: string|null,
- *   condition?: string|null,
- *   game?: string|null,
- *   quantity?: number,
- *   variations?: Array<{ name: string, number?: string, qty?: number }>,
- * }} id
+ * Plain-text description written for buyers and for eBay/Google AI shopping:
+ * a clear first line saying exactly what it is, then only the facts we actually know,
+ * then the locked sign-off. No shipping boilerplate, no empty "—" fields, no card fields on non-card items.
+ * @param {Record<string, any>} id
  */
+const SEALED_RX = /\b(booster|pack|box|(?<!upper )deck|tin|bundle|blister|etb|elite trainer|display|binder|album|portfolio|sleeves?|playmat|figure|figurine|statue|plush|collection|case|toploaders?|storage|deck box|dispenser|pez|toy|funko|keychain|pin|poster|shirt|hat|mug|cup|lunch|backpack|lego|puzzle|game boy|switch|cartridge|dvd|book|manga|sticker|lamp|blanket)\b/i;
+const GRADED_RX = /\b(PSA|BGS|CGC|SGC|TAG|BCCG|HGA|Beckett)\s?(10|[1-9](\.5)?|AUTH|Authentic)\b/i;
+const COND = { NM: "Near Mint", LP: "Lightly Played", MP: "Moderately Played", HP: "Heavily Played", DMG: "Damaged", NEW: "New" };
+export function itemKind(id = {}) {
+  const t = `${id.productName || ""} ${id.title || ""}`;
+  if (GRADED_RX.test(t)) return "graded";
+  if (id.sealed || (!id.collectorNumber && SEALED_RX.test(t))) return "product";
+  return "card";
+}
 export function buildEbayDescription(id = {}) {
-  const facts = [
-    `Game: ${clean(id.game) || "TCG"}`,
-    `Product: ${clean(id.productName) || "—"}`,
-    `Set: ${clean(id.setName) || "—"}`,
-    `Number: ${clean(id.collectorNumber) || "—"}`,
-    `Rarity: ${clean(id.rarity) || "—"}`,
-    `Finish: ${clean(id.finish) || "—"}`,
-    `Language: ${clean(id.language) || "English"}`,
-    `Condition: ${clean(id.condition) || "NM"}`,
-    `Qty: ${Number(id.quantity) || 1}`,
-  ];
-  if (id.variations?.length) {
-    facts.push("Variations:");
-    for (const v of id.variations) {
-      facts.push(`- ${clean(v.name)}${v.number ? ` ${clean(v.number)}` : ""} ×${v.qty || 1}`);
-    }
+  const name = clean(id.productName || id.title) || "Item";
+  const game = clean(id.game).replace(/^pokemon$/i, "Pokémon");
+  const kind = itemKind(id);
+  const cond = COND[String(id.condition || "").toUpperCase()] || clean(id.condition);
+  const qty = Number(id.quantity) || 1;
+  const lines = [];
+  const fact = (k, v) => { if (v) lines.push(`- ${k}: ${v}`); };
+  if (kind === "product") {
+    lines.push(`${name}${game ? ` (${game}${/tcg|card game/i.test(game) ? "" : " TCG"})` : ""}.`);
+    lines.push("");
+    lines.push(`You get the exact item shown in the photos.`);
+    lines.push("");
+    fact("Product", name);
+    fact("Brand", game ? (/pok/i.test(game) ? "The Pokémon Company" : "") : "");
+    fact("Condition", cond || "New");
+    if (qty > 1) fact("Quantity", String(qty));
+  } else {
+    const g = (`${id.productName || ""} ${id.title || ""}`).match(GRADED_RX);
+    const head = [name, clean(id.setName), clean(id.collectorNumber) && !name.includes(clean(id.collectorNumber)) ? clean(id.collectorNumber) : ""].filter(Boolean).join(" - ");
+    lines.push(`${head}${game ? ` | ${game} TCG` : ""}${kind === "graded" && g ? ` | ${g[1].toUpperCase()} ${g[2]}` : ""}.`);
+    lines.push("");
+    lines.push(kind === "graded" ? "You get the exact graded card shown in the photos, in its original slab." : "You get the exact card shown in the photos.");
+    lines.push("");
+    fact("Game", game ? `${game} TCG` : "");
+    fact("Card name", name);
+    fact("Set", clean(id.setName));
+    fact("Card number", clean(id.collectorNumber));
+    fact("Rarity", clean(id.rarity));
+    fact("Finish", clean(id.finish));
+    fact("Language", clean(id.language) || (game ? "English" : ""));
+    if (kind === "graded" && g) { fact("Grader", g[1].toUpperCase()); fact("Grade", g[2]); }
+    else fact("Condition", cond || "Near Mint");
+    if (qty > 1) fact("Quantity available", String(qty));
   }
-  const layer1 = facts.join("\n");
-  const layer2 = [
-    "",
-    "Ships from Wisconsin. Combined shipping available on eligible orders.",
-    "",
-    LISTING_CONFIG.signOff,
-  ].join("\n");
-  return `${layer1}${layer2}`;
+  if (id.variations?.length) {
+    lines.push("");
+    lines.push("Pick your card from the drop-down. Included:");
+    for (const v of id.variations) lines.push(`- ${clean(v.name)}${v.number ? ` ${clean(v.number)}` : ""}${(v.qty || 1) > 1 ? ` (${v.qty} available)` : ""}`);
+  }
+  lines.push("");
+  lines.push(LISTING_CONFIG.signOff);
+  return lines.join("\n");
+}
+/** Plain text from the builder -> simple HTML eBay renders with line breaks and bullet lists. */
+export function descriptionHtml(text) {
+  const esc = (x) => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const raw = String(text || "").trim(); if (/<(p|br|ul|div)\b/i.test(raw)) return raw;
+  const out = []; let list = [];
+  const flush = () => { if (list.length) { out.push(`<ul>${list.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`); list = []; } };
+  for (const line of raw.split(/\r?\n/)) { const m = line.match(/^\s*[-•*]\s+(.*)$/); if (m) { list.push(m[1]); continue; } flush(); if (line.trim()) out.push(`<p>${esc(line.trim())}</p>`); }
+  flush();
+  return out.join("");
 }
 
 /**
@@ -226,6 +253,7 @@ export function runListingEngine(item, opts = {}) {
     condition: item.condition,
     game: item.game,
     quantity: item.quantity,
+    title: item.title,
     sealed: /sealed/i.test(String(item.category || "")) || /sealed/i.test(String(item.condition || "")),
   };
   const title =

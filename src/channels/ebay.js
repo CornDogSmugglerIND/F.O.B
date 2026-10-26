@@ -174,6 +174,14 @@ export async function probeEbay(opts = {}) {
  * @param {import('../store.js').ScoutItem} item
  * @param {{ fetchImpl?: typeof fetch }} [opts]
  */
+/** Best Offer on by default; offers under the floor (80% unless set) are declined automatically. */
+export function bestOfferTerms(item = {}, price) {
+  if (item.bestOffer === false) return null;
+  const pct = Math.min(99, Math.max(1, Number(item.offerFloorPct) || 80)), p = Number(price);
+  const t = { bestOfferEnabled: true };
+  if (p > 0) { const floor = Math.round(p * pct) / 100; if (floor > 0 && floor < p) t.autoDeclinePrice = { currency: "USD", value: floor.toFixed(2) }; }
+  return t;
+}
 export async function publishEbayListing(item, opts = {}) {
   if (!item?.title) {
     const err = new Error("eBay publish requires item.title");
@@ -192,11 +200,11 @@ export async function publishEbayListing(item, opts = {}) {
   const marketplaceId = ebayMarketplaceId();
 
   const imageUrls = await resolveEbayImages(item, opts);
-  /* sealed product + accessories don't belong in Individual Cards: ask eBay for the right category, list as New */
-  const sealedLike = !item.collectorNumber && (item.lane === "sealed" || /\b(booster|pack|box|(?<!upper )deck|tin|bundle|blister|etb|elite trainer|display|binder|album|portfolio|sleeves?|playmat|figure|figurine|statue|plush|collection|case)\b/i.test(String(item.title)));
+  /* card singles stay in Individual Cards; everything else goes in the category eBay picks for it (or the one chosen in the builder) */
   let category = null;
-  if (sealedLike) { try { const { suggestCategory } = await import("../comps.js"); category = await suggestCategory(item.title, { fetchImpl: opts.fetchImpl }); } catch { category = null; } if (category && category.id === "183454") category = null; }
-  let aspects = cardAspects(item) || {};
+  try { const { resolveCategory } = await import("../comps.js"); const c = await resolveCategory(item, { fetchImpl: opts.fetchImpl }); if (c && c.id !== "183454") category = c; } catch { category = null; }
+  /* the builder's item specifics are the source of truth; only top up what eBay requires */
+  let aspects = item.aspects && Object.keys(item.aspects).length ? Object.fromEntries(Object.entries(item.aspects).map(([k, v]) => [k, Array.isArray(v) ? v.map(String) : [String(v)]])) : (category ? {} : cardAspects(item) || {});
   try { const { fillRequiredAspects } = await import("../comps.js"); aspects = await fillRequiredAspects(category ? category.id : "183454", item.title, aspects, { fetchImpl: opts.fetchImpl }); } catch { /* keep what we have */ }
   await ebayRequest(`/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, {
     method: "PUT",
@@ -205,13 +213,13 @@ export async function publishEbayListing(item, opts = {}) {
       availability: {
         shipToLocationAvailability: { quantity: qty },
       },
-      ...(category ? { condition: "NEW" } : {
+      ...(category ? { condition: /^(used|pre-?owned|USED)/i.test(String(item.condition || "")) ? "USED_EXCELLENT" : "NEW" } : {
         condition: "USED_VERY_GOOD", // 4000 = Ungraded in Trading Cards (183454)
         conditionDescriptors: [{ name: "40001", values: [CARD_COND[String(item.condition || "NM").toUpperCase()] || "400010"] }],
       }),
       product: {
         title: String(item.title).slice(0, 80),
-        description: item.description || item.title,
+        description: (await import("../listing/engine.js")).descriptionHtml(item.description || item.title),
         aspects: Object.keys(aspects).length ? aspects : undefined,
         imageUrls,
       },
@@ -225,7 +233,8 @@ export async function publishEbayListing(item, opts = {}) {
   const returnPolicyId = env("EBAY_RETURN_POLICY_ID");
   if (fulfillmentPolicyId) listingPolicies.fulfillmentPolicyId = fulfillmentPolicyId;
   if (paymentPolicyId) listingPolicies.paymentPolicyId = paymentPolicyId;
-  if (returnPolicyId) listingPolicies.returnPolicyId = returnPolicyId;
+  if (item.returnPolicyId || returnPolicyId) listingPolicies.returnPolicyId = String(item.returnPolicyId || returnPolicyId);
+  const bo = bestOfferTerms(item, price); if (bo) listingPolicies.bestOfferTerms = bo;
 
   /** @type {Record<string, unknown>} */
   const offerBody = {
@@ -233,7 +242,7 @@ export async function publishEbayListing(item, opts = {}) {
     marketplaceId,
     format: "FIXED_PRICE",
     availableQuantity: qty,
-    categoryId: category ? category.id : "183454", // Trading Cards unless eBay picked a sealed/accessory category
+    categoryId: category ? category.id : "183454", // Trading Cards unless it's not a card
     listingDescription: item.description || item.title,
     pricingSummary: {
       price: {
@@ -321,7 +330,7 @@ export async function publishEbayVariationListing(batch, opts = {}) {
   const policies = {};
   if (env("EBAY_FULFILLMENT_POLICY_ID")) policies.fulfillmentPolicyId = env("EBAY_FULFILLMENT_POLICY_ID");
   if (env("EBAY_PAYMENT_POLICY_ID")) policies.paymentPolicyId = env("EBAY_PAYMENT_POLICY_ID");
-  if (env("EBAY_RETURN_POLICY_ID")) policies.returnPolicyId = env("EBAY_RETURN_POLICY_ID");
+  if (batch.returnPolicyId || env("EBAY_RETURN_POLICY_ID")) policies.returnPolicyId = String(batch.returnPolicyId || env("EBAY_RETURN_POLICY_ID"));
   const locationKey = env("EBAY_MERCHANT_LOCATION_KEY");
 
   // Each card is one value of the "Card" variation axis; eBay needs unique values.
@@ -344,7 +353,7 @@ export async function publishEbayVariationListing(batch, opts = {}) {
         conditionDescriptors: [{ name: "40001", values: [CARD_COND[String(c.condition || "NM").toUpperCase()] || "400010"] }],
         product: {
           title: String(label).slice(0, 80),
-          description: batch.description || batch.title,
+          description: (await import("../listing/engine.js")).descriptionHtml(batch.description || batch.title),
           aspects: { ...(cardAspects({ ...c, game: c.game || batch.game, set: c.set || batch.setName }) || {}), Card: [label] },
           imageUrls: imgsOf(c),
         },
@@ -358,7 +367,7 @@ export async function publishEbayVariationListing(batch, opts = {}) {
     body: {
       inventoryItemGroupKey: groupKey,
       title: String(batch.title).slice(0, 80),
-      description: batch.description || batch.title,
+      description: (await import("../listing/engine.js")).descriptionHtml(batch.description || batch.title),
       imageUrls: imgsOf(named[0].c),
       aspects: cardAspects({ game: batch.game, set: batch.setName }) || undefined,
       variantSKUs: named.map(({ c }) => c.sku),
@@ -377,7 +386,7 @@ export async function publishEbayVariationListing(batch, opts = {}) {
       format: "FIXED_PRICE",
       availableQuantity: Math.max(1, Number(c.quantity) || 1),
       categoryId: "183454",
-      listingDescription: batch.description || batch.title,
+      listingDescription: (await import("../listing/engine.js")).descriptionHtml(batch.description || batch.title),
       pricingSummary: { price: { currency: "USD", value: Number(c.price).toFixed(2) } },
     };
     // Per-child routing: a Pick-Your-Card batch can straddle the threshold,
@@ -387,7 +396,8 @@ export async function publishEbayVariationListing(batch, opts = {}) {
       price: c.price,
       categoryId: "183454",
     });
-    if (childFulfillment) childPolicies.fulfillmentPolicyId = childFulfillment;
+    if (childFulfillment) childPolicies.fulfillmentPolicyId = String(batch.fulfillmentPolicyId || childFulfillment);
+    { const bo = bestOfferTerms(batch, c.price); if (bo) childPolicies.bestOfferTerms = bo; }
     if (Object.keys(childPolicies).length) body.listingPolicies = childPolicies;
     if (locationKey) body.merchantLocationKey = locationKey;
     const r = await ebayRequest("/sell/inventory/v1/offer", { method: "POST", fetchImpl: opts.fetchImpl, body });
@@ -957,4 +967,24 @@ export async function reviseEbayItems(updates, opts = {}) {
     } catch (e) { for (const r of chunk) results.push({ sku: r.sku, ok: false, error: e.message }); }
   }
   return results;
+}
+
+/** Turn Best Offer on for live listings (by SKU): reads each offer and writes it back with offers on. */
+export async function enableBestOffer(skus, opts = {}) {
+  const KEEP = ["availableQuantity", "categoryId", "charity", "hideBuyerDetails", "includeCatalogProductDetails", "listingDescription", "listingDuration", "listingPolicies", "listingStartDate", "lotSize", "merchantLocationKey", "pricingSummary", "quantityLimitPerBuyer", "regulatory", "secondaryCategoryId", "storeCategoryNames", "tax"];
+  const out = [];
+  for (const sku of skus) {
+    try {
+      const got = await ebayRequest(`/sell/inventory/v1/offer?sku=${encodeURIComponent(sku)}&marketplace_id=${encodeURIComponent(ebayMarketplaceId())}`, { fetchImpl: opts.fetchImpl });
+      const offers = got.data?.offers || []; if (!offers.length) { out.push({ sku, ok: false, error: "No eBay offer for this SKU" }); continue; }
+      for (const o of offers) {
+        const body = {}; for (const k of KEEP) if (o[k] !== undefined) body[k] = o[k];
+        const bo = bestOfferTerms({ offerFloorPct: opts.pct }, Number(o.pricingSummary?.price?.value));
+        body.listingPolicies = { ...(o.listingPolicies || {}), bestOfferTerms: bo };
+        await ebayRequest(`/sell/inventory/v1/offer/${encodeURIComponent(o.offerId)}`, { method: "PUT", fetchImpl: opts.fetchImpl, body });
+      }
+      out.push({ sku, ok: true });
+    } catch (e) { out.push({ sku, ok: false, error: e.message }); }
+  }
+  return out;
 }

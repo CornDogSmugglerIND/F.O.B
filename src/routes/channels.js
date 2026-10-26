@@ -99,18 +99,31 @@ export function channelsRouter() {
   /** Everything the Build-the-listing screen shows before it goes live: description, item specifics, shipping / returns / payment. Read-only, nothing is sent to eBay. */
   router.post("/ebay/listing-preview", async (req, res) => {
     const item = req.body?.item || {};
+    const { resolveCategory, categoryAspectList, autoAspects, looksLikeCard } = await import("../comps.js");
+    const { buildEbayDescription, itemKind } = await import("../listing/engine.js");
+    let cat = { id: "183454", name: "CCG Individual Cards" };
+    try { cat = await resolveCategory(item); } catch { /* keep cards */ }
+    const isCard = cat.id === "183454";
+    const id = { productName: item.productName || item.title, title: item.title, setName: item.setName, collectorNumber: item.collectorNumber, rarity: item.rarity, finish: item.finish, language: item.language, condition: isCard ? item.condition : (item.condition && !/^(NM|LP|MP|HP)$/i.test(item.condition) ? item.condition : "NEW"), game: item.game, quantity: item.quantity, sealed: !isCard };
+    /* what we know for sure from identify; then everything the title supports for this category */
+    const known = {};
+    if (isCard) for (const [k, v] of Object.entries(cardAspects({ ...item, number: item.number || item.collectorNumber, cardName: item.cardName || item.productName }) || {})) known[k] = v;
+    if (isCard && item.rarity) known.Rarity = [String(item.rarity)];
+    if (isCard && item.finish) known.Finish = [String(item.finish)];
+    if (isCard && !known.Language) known.Language = [String(item.language || "English")];
+    if (isCard) { const man = buildItemSpecifics({ game: item.game }).Manufacturer; if (man) known.Manufacturer = [man]; }
+    let list = []; try { list = await categoryAspectList(cat.id); } catch { list = []; }
+    const names = new Set(list.map((a) => a.name.toLowerCase()));
+    for (const k of Object.keys(known)) if (list.length && !names.has(k.toLowerCase())) delete known[k]; /* only specifics this category has */
+    const filled = autoAspects(list, `${item.title || ""} ${item.productName || ""} ${item.setName || ""} ${item.description || ""}`, known);
+    const aspects = {}; for (const [k, v] of Object.entries(filled)) aspects[k] = (Array.isArray(v) ? v : [v]).join(", ");
+    const more = list.filter((a) => !aspects[a.name] && (a.required || a.recommended)).slice(0, 30).map((a) => ({ name: a.name, required: a.required, values: a.values.slice(0, 200) }));
+    let names2 = {}, shippingOptions = [], returnOptions = [];
+    try { const p = await listEbayPolicies(); shippingOptions = p.fulfillment || []; returnOptions = p.returns || []; for (const g of [p.fulfillment, p.payment, p.returns]) for (const x of g || []) names2[x.id] = x.name; } catch { /* not connected: ids only */ }
+    const st = currentEbaySettings(), ship = resolveFulfillmentPolicyId({ ...item, categoryId: cat.id });
+    const pol = (pid) => (pid ? { id: pid, name: names2[pid] || "Your saved eBay policy" } : null);
     const eng = runListingEngine(item);
-    const aspects = {};
-    for (const [k, v] of Object.entries(cardAspects({ ...item, number: item.number || item.collectorNumber, cardName: item.cardName || item.productName }) || {})) aspects[k] = (Array.isArray(v) ? v : [v]).join(", ");
-    if (item.rarity) aspects.Rarity = String(item.rarity);
-    if (item.finish) aspects.Finish = String(item.finish);
-    if (!aspects.Language) aspects.Language = String(item.language || "English");
-    const man = buildItemSpecifics({ game: item.game }).Manufacturer; if (man) aspects.Manufacturer = man;
-    let names = {}, shippingOptions = [];
-    try { const p = await listEbayPolicies(); shippingOptions = p.fulfillment || []; for (const g of [p.fulfillment, p.payment, p.returns]) for (const x of g || []) names[x.id] = x.name; } catch { /* not connected: ids only */ }
-    const st = currentEbaySettings(), ship = resolveFulfillmentPolicyId(item);
-    const pol = (id) => (id ? { id, name: names[id] || "Your saved eBay policy" } : null);
-    res.json({ ok: true, title: eng.title, description: eng.description, aspects, shipping: pol(ship), shippingOptions, returns: pol(st.returnPolicyId), payment: pol(st.paymentPolicyId) });
+    res.json({ ok: true, kind: isCard ? itemKind(id) : "product", category: cat, allNames: list.map((a) => a.name), title: eng.title, description: buildEbayDescription(id), aspects, more, shipping: pol(ship), shippingOptions, returns: pol(item.returnPolicyId || st.returnPolicyId), returnOptions, payment: pol(st.paymentPolicyId) });
   });
   /* change live listings: price / quantity / title per SKU (variations = one SKU each) */
   router.post("/ebay/revise", async (req, res) => {
@@ -124,6 +137,15 @@ export function channelsRouter() {
     } catch (e) {
       res.status(e.code === "VALIDATION" ? 400 : 502).json({ ok: false, error: e.message });
     }
+  });
+  router.post("/ebay/offers-on", async (req, res) => {
+    const skus = Array.isArray(req.body?.skus) ? req.body.skus.filter(Boolean).slice(0, 300) : [];
+    try {
+      assertChannelConfigured("ebay"); if (!skus.length) return res.status(400).json({ ok: false, error: "Nothing picked." });
+      const { enableBestOffer } = await import("../channels/ebay.js");
+      const results = await enableBestOffer(skus, { pct: Number(req.body?.pct) || 80 }), bad = results.filter((r) => !r.ok);
+      res.json({ ok: bad.length === 0, done: results.length - bad.length, failed: bad.length, results, error: bad[0]?.error });
+    } catch (e) { res.status(502).json({ ok: false, error: e.message }); }
   });
   router.post("/ebay/update-photos", async (req, res) => {
     const { sku, photos } = req.body || {};
@@ -354,6 +376,10 @@ export function channelsRouter() {
       }
       const opts = { setName: req.body?.setName, rarity: req.body?.rarity, game: req.body?.game };
       const batch = combineVariationBatch(children, opts);
+      const b = req.body || {};
+      if (b.title) batch.title = String(b.title).slice(0, 80);
+      if (b.description) batch.description = String(b.description);
+      for (const k of ["returnPolicyId", "fulfillmentPolicyId", "bestOffer", "offerFloorPct"]) if (b[k] != null) batch[k] = b[k];
       if (req.body?.dryRun) return res.json({ ok: true, dryRun: true, groupId: batch.groupId, title: batch.title, count: children.length, totalQty: batch.totalQty });
       assertChannelConfigured("ebay");
       for (let i = 0; i < children.length; i++) batch.children[i].photos = (await resolveEbayImages(children[i])).map((url) => ({ url }));

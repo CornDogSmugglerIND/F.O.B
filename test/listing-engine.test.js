@@ -87,7 +87,8 @@ test("buildEbayDescription includes facts + locked sign-off", () => {
     collectorNumber: "58",
     game: "Pokemon",
   });
-  assert.match(d, /Product: Pikachu/);
+  assert.match(d, /Card name: Pikachu/);
+  assert.doesNotMatch(d, /Combined shipping|—/);
   assert.match(d, /CornDogSmuggler Coalition - Operating To Marine Corps Standards\./);
   assert.doesNotMatch(d, /premium|authentic|genuine/i);
 });
@@ -119,4 +120,17 @@ test("runListingEngine returns title description specifics", () => {
   assert.match(out.description, /Sign-off|CornDogSmuggler/i);
   assert.equal(out.specifics.Manufacturer, "The Pokémon Company");
   assert.ok(out.suggestedPrice > 10);
+});
+
+test("description: non-card product gets no card filler", async () => {
+  const { buildEbayDescription } = await import("../src/listing/engine.js");
+  const d = buildEbayDescription({ productName: "Pokemon TCG Mini Card Binder/Album - Greninja & Lapras (2024)", game: "pokemon", condition: "NEW" });
+  assert.doesNotMatch(d, /Card number|Rarity|Set:|Finish|Combined shipping|—/);
+  assert.match(d, /exact item/);
+  assert.match(d, /Condition: New/);
+});
+test("description html: bullets become a list, lines become paragraphs", async () => {
+  const { descriptionHtml } = await import("../src/listing/engine.js");
+  const h = descriptionHtml("Line one.\n\n- A: 1\n- B: 2\nEnd <x>");
+  assert.equal(h, "<p>Line one.</p><ul><li>A: 1</li><li>B: 2</li></ul><p>End &lt;x&gt;</p>");
 });

@@ -240,6 +240,7 @@ function bar(n) {
   return `<div class="co-bar"><b>${n} selected</b>
     <select id="chBin" aria-label="Send to bin"><option value="">Send to bin…</option>${spaces.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")}</select>
     <span class="co-pct"><input id="chPct" inputmode="numeric" placeholder="±%" aria-label="Percent"><button class="btn" data-bulk="pct" type="button">Change price</button></span>
+    <button class="btn go" data-bulk="offers" type="button">Turn on offers</button>
     <button class="btn" data-bulk="end" type="button">End on eBay…</button>
     <button class="btn warn" data-bulk="del" type="button">Remove from app</button><button class="btn" data-bulk="clear" type="button">Clear</button>
     <small>Price and remove change this app only. Publish and end touch real eBay listings, so they ask first.</small></div>`;
@@ -301,6 +302,17 @@ function bulk(kind) {
   const ids = expand([...S.sel]); if (!ids.length && kind !== "clear") return; const set = new Set(ids.map(String)); if (kind === "del") hideIds([...set].filter((x) => x.startsWith("ebay-")));
   if (kind === "clear") { S.sel.clear(); paint(); return; }
   if (kind === "var") { varSheet(loadItems().filter((i) => set.has(String(i.id)))); return; }
+  if (kind === "offers") {
+    const skus = [...new Set(loadItems().filter((i) => set.has(String(i.id)) && !i.ended).map((i) => i.channels?.ebay?.sku || i.sku).filter(Boolean))];
+    if (!skus.length) { ctx.toast("None of those are live on eBay."); return; }
+    const pct = (() => { try { return Number(localStorage.getItem("fob-offer-pct")) || 80; } catch { return 80; } })();
+    ctx.toast(`Turning on offers for ${skus.length} listing${skus.length === 1 ? "" : "s"}…`);
+    fetch("/api/channels/ebay/offers-on", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ skus, pct }) }).then((r) => r.json()).then((o) => {
+      if (o.ok) { S.sel.clear(); paint(); ctx.toast(`Offers on for ${o.done} listing${o.done === 1 ? "" : "s"}. Offers under ${pct}% are declined for you.`); }
+      else ctx.toast(o.done ? `Offers on for ${o.done}. ${o.failed} didn't take: ${o.error || "eBay said no"}` : `eBay said no: ${o.error || "try again"}`);
+    }).catch(() => ctx.toast("Couldn't reach eBay. Nothing changed."));
+    return;
+  }
   if (kind === "pct") {
     const p = parseFloat(String(ctx.host.querySelector("#chPct").value).replace(/[^0-9.\-+]/g, "")); if (!Number.isFinite(p) || !p) { ctx.toast("Type a percent, like -10 or 15."); return; }
     const prev = snap(); if (commit((l) => l.forEach((i) => { if (set.has(String(i.id))) i.price = Math.max(0, Math.round((Number(i.price) || 0) * (1 + p / 100) * 100) / 100); }))) { S.sel.clear(); paint(); ctx.toastUndo(`Changed ${ids.length} prices ${p > 0 ? "+" : ""}${p}% in this app`, () => { restore(prev); ctx.refresh(); paint(); }); }
@@ -373,7 +385,7 @@ function varSheet(list) {
     const items = read(); if (!items) return null;
     const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 120000);
     try {
-      const r = await fetch("/api/channels/ebay/publish-variation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items, dryRun }), signal: ctl.signal });
+      const r = await fetch("/api/channels/ebay/publish-variation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items, dryRun, bestOffer: true, offerFloorPct: (() => { try { return Number(localStorage.getItem("fob-offer-pct")) || 80; } catch { return 80; } })() }), signal: ctl.signal });
       const out = await r.json().catch(() => ({}));
       if (!r.ok || !out.ok) { msg(out.error || "eBay said no. Nothing was listed.", true); return null; }
       return { out, items };
@@ -407,14 +419,17 @@ function buildSheet(it) {
     <label class="sc-f"><span>Title</span><input id="blTitle" maxlength="80" value="${esc(nameOf(it))}"></label>
     <label class="sc-f"><span>Price</span><input id="blPrice" inputmode="decimal" value="${esc(Number(it.price) || "")}"></label>
     <label class="sc-f"><span>Quantity</span><input id="blQty" inputmode="numeric" value="${esc(Number(it.quantity) || 1)}"></label>
-    ${!it.collectorNumber && (it.lane === "sealed" || /\b(booster|pack|box|(?<!upper )deck|tin|bundle|blister|etb|elite trainer|display|binder|album|portfolio|sleeves?|playmat|figure|figurine|statue|plush|collection|case)\b/i.test(nameOf(it))) ? `<label class="sc-f"><span>Condition</span><select id="blCond"><option value="NEW">New (sealed product, eBay picks the category)</option></select></label>` : `<label class="sc-f"><span>Condition</span><select id="blCond">${[["NM", "Near Mint"], ["LP", "Lightly Played"], ["MP", "Moderately Played"], ["HP", "Heavily Played"]].map(([k, l]) => `<option value="${k}"${String(it.condition || "NM").toUpperCase() === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>`}
-    <label class="sc-f"><span>Description</span><textarea id="blDesc" rows="8" style="width:100%;resize:vertical">${esc(it.description || "")}</textarea></label>
-    <div class="sc-f"><span>Item specifics</span><div id="blAsp" class="bl-vars" style="max-height:none"></div><button class="btn" id="blAddAsp" type="button" style="margin-top:6px">Add item specific</button></div>
+    <div class="bl-cat sub" id="blCat">Checking eBay category…</div>
+    <label class="sc-f"><span>Condition</span><select id="blCond">${[["NM", "Near Mint"], ["LP", "Lightly Played"], ["MP", "Moderately Played"], ["HP", "Heavily Played"]].map(([k, l]) => `<option value="${k}"${String(it.condition || "NM").toUpperCase() === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+    <div class="sc-f"><span class="bl-lh">Description <button type="button" class="bl-mini" id="blRedo">Rewrite from the item</button></span><textarea id="blDesc" rows="9" style="width:100%;resize:vertical">${esc(it.description || "")}</textarea></div>
+    <div class="sc-f"><span class="bl-lh">Item specifics <em id="blAspN"></em></span><p class="sub bl-hint">Filled from the item where we're sure. Fill any empty ones you know: every one you add helps buyers find it.</p><div id="blAsp" class="bl-vars bl-asp" style="max-height:none"></div><button class="btn" id="blAddAsp" type="button" style="margin-top:6px">Add item specific</button></div>
+    <div class="sc-f"><span>Offers</span><div class="bl-off"><label><input type="checkbox" id="blOffer" checked> Accept offers</label><label class="bl-offp">Auto-decline under <input id="blOfferPct" inputmode="numeric" value="${(() => { try { return localStorage.getItem("fob-offer-pct") || "80"; } catch { return "80"; } })()}">% of price</label></div></div>
     <div class="sc-f"><span>Shipping, returns and payment</span><div id="blPol" class="sub">Loading your eBay policies…</div></div>
+    <div class="bl-var sub">Several cards from one set? <button type="button" class="bl-mini" id="blVar">List them as one listing, buyers pick</button></div>
     <label class="sc-f" style="flex-direction:row;gap:10px;align-items:center"><input type="checkbox" id="blDH" checked><span>Also download the Double Holo files (cards + photos) after listing</span></label>
     <div id="blMsg" class="sub bl-msg" role="status">Nothing goes live until you tap List on eBay twice.</div>
     <div class="co-znav bl-act"><button class="btn" id="blSave" type="button">Save draft</button><button class="btn go" id="blGo" type="button">List on eBay</button></div>`);
-  const aspRow = (k = "", v = "") => `<div style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" aria-label="Item specific name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="Value" aria-label="Item specific value" style="flex:1;min-width:0"><button class="btn" data-rm type="button" aria-label="Remove this item specific" style="flex:none;padding:6px 12px">×</button></div>`;
+  let dlN = 0; const aspRow = (k = "", v = "", vals = [], req = false) => { const dl = vals.length ? `bl-dl-${++dlN}` : ""; return `<div class="bl-ar${req ? " req" : ""}${v ? "" : " empty"}" style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" aria-label="Item specific name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="${req ? "Required" : "Optional"}" aria-label="${esc(k || "Item specific")} value" style="flex:1;min-width:0"${dl ? ` list="${dl}"` : ""}>${dl ? `<datalist id="${dl}">${vals.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>` : ""}<button class="btn" data-rm type="button" aria-label="Remove this item specific" style="flex:none;padding:6px 12px">×</button></div>`; };
   const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#blMsg"); m.textContent = t; m.style.color = bad ? "var(--org)" : ""; };
   let armed = null;
   const paintPh = () => { const cur = loadItems().find((x) => String(x.id) === String(it.id)) || it, list = cur.photos || []; $("#blPh").innerHTML = list.map((p, k) => `<button type="button" class="bl-pic${k === 0 ? " on" : ""}" data-k="${k}" aria-label="${k === 0 ? "Main photo" : "Make this the main photo"}"><img src="${esc(p.dataUrl || p.url || "")}" alt="" draggable="false">${k === 0 ? "<b>Main</b>" : ""}</button>`).join(""); };
@@ -428,23 +443,40 @@ function buildSheet(it) {
     const qs = new URLSearchParams({ q: nameOf(it), name: it.productName || nameOf(it), number: it.collectorNumber || it.number || "", set: it.setName || "", game: it.game || "" });
     fetch(`/api/scouter/comps?${qs}`).then((r) => r.json()).then((r) => { if (!s.isConnected || pe.value) return; if (r.ok && r.value > 0) { pe.value = Number(r.value).toFixed(2); pe.dispatchEvent(new Event("input", { bubbles: true })); msg(`Price filled from ${r.basis || "eBay"}${r.count ? ` (${r.count} listings)` : ""}. Change it if you want.`); } else { pe.placeholder = "Type a price"; msg("Couldn't find a price. Type one.", true); } }).catch(() => { if (s.isConnected) pe.placeholder = "Type a price"; });
   }
+  let pv = null;
+  const countAsp = () => { const rows = [...s.querySelectorAll("#blAsp > div")], n = rows.filter((r) => r.querySelector("[data-av]").value.trim()).length; $("#blAspN").textContent = `${n} of ${rows.length} filled`; rows.forEach((r) => r.classList.toggle("empty", !r.querySelector("[data-av]").value.trim())); };
+  $("#blAsp").addEventListener("input", countAsp);
+  $("#blDesc").addEventListener("input", (e) => { if (e.isTrusted) patchItem(it.id, (i) => { i.descEdited = true; }); });
+  $("#blRedo").addEventListener("click", () => { if (pv && pv.description) { $("#blDesc").value = pv.description; $("#blDesc").dispatchEvent(new Event("input", { bubbles: true })); } });
+  $("#blVar").addEventListener("click", () => { const others = loadItems().filter((i) => i.phase === "staged" && !i.ended && (i.photos || []).length); if (others.length < 2) { ctx.toast("Save this as a draft, scan the other cards, then tap this again. Every Ready-to-list card shows up to pick from."); return; } ctx.closeSheet(); setTimeout(() => varSheet(others), 280); });
   fetch("/api/channels/ebay/listing-preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item: it }) }).then((r) => r.json()).then((p) => {
     if (!p || !p.ok || !s.isConnected) return;
-    if (!$("#blDesc").value) $("#blDesc").value = p.description || "";
-    const ex = it.aspects || {}, all = Object.assign({}, p.aspects, ex);
-    $("#blAsp").innerHTML = Object.entries(all).map(([k, v]) => aspRow(k, Array.isArray(v) ? v.join(", ") : v)).join("");
+    pv = p;
+    $("#blCat").innerHTML = `eBay category: <b>${esc(p.category?.name || "CCG Individual Cards")}</b>`;
+    if (p.kind === "product") { const c = /^(used|pre)/i.test(String(it.condition || "")) ? "USED" : "NEW"; $("#blCond").innerHTML = `<option value="NEW"${c === "NEW" ? " selected" : ""}>New</option><option value="USED"${c === "USED" ? " selected" : ""}>Used (pre-owned)</option>`; }
+    /* old auto descriptions carried card filler and the shipping line: replace those, keep anything you wrote yourself */
+    const d0 = $("#blDesc").value, auto = !d0.trim() || !it.descEdited || /Combined shipping|^Game: |: —$/m.test(d0);
+    if (auto) $("#blDesc").value = p.description || "";
+    const names = new Set((p.allNames || []).map((n) => n.toLowerCase())), ex = Object.fromEntries(Object.entries(it.aspects || {}).filter(([k]) => !names.size || names.has(k.toLowerCase())));
+    const all = Object.assign({}, p.aspects, ex);
+    $("#blAsp").innerHTML = Object.entries(all).map(([k, v]) => aspRow(k, Array.isArray(v) ? v.join(", ") : v)).join("") + (p.more || []).filter((m) => !(m.name in all)).map((m) => aspRow(m.name, "", m.values || [], m.required)).join("");
+    countAsp();
     const line = (l, o) => `<div class="row"><span>${l}</span><span>${o ? esc(o.name) : "Not set up in eBay yet"}</span></div>`;
     const opts = p.shippingOptions || [], cur = it.fulfillmentPolicyId || (p.shipping && p.shipping.id) || "";
     const shipRow = opts.length ? `<label class="sc-f"><span>Shipping</span><select id="blShip">${opts.map((o) => `<option value="${esc(o.id)}"${String(o.id) === String(cur) ? " selected" : ""}>${esc(o.name)}</option>`).join("")}</select></label>` : line("Shipping", p.shipping);
-    $("#blPol").innerHTML = shipRow + line("Returns", p.returns) + line("Payment", p.payment);
+    const ropts = p.returnOptions || [], rcur = it.returnPolicyId || (p.returns && p.returns.id) || "";
+    const retRow = ropts.length ? `<label class="sc-f"><span>Returns</span><select id="blRet">${ropts.map((o) => `<option value="${esc(o.id)}"${String(o.id) === String(rcur) ? " selected" : ""}>${esc(o.name)}</option>`).join("")}</select></label>` : line("Returns", p.returns);
+    $("#blPol").innerHTML = shipRow + retRow + line("Payment", p.payment);
   }).catch(() => { if (s.isConnected) $("#blPol").textContent = "Couldn't load your eBay policies. eBay will use your defaults."; });
   const read = () => {
     const title = $("#blTitle").value.trim().slice(0, 80), price = parseFloat(String($("#blPrice").value).replace(/[^0-9.]/g, "")), qty = Math.max(1, parseInt($("#blQty").value, 10) || 1), cond = $("#blCond").value;
-    const need = (id, t) => { msg(t, true); ctx.toast(t); const el = $(id); el.classList.add("bl-need"); el.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => el.focus(), 250); el.addEventListener("input", () => el.classList.remove("bl-need"), { once: true }); return null; };
+    const need = (id, t, elx) => { msg(t, true); ctx.toast(t); const el = elx || $(id); el.classList.add("bl-need"); el.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => el.focus(), 250); el.addEventListener("input", () => el.classList.remove("bl-need"), { once: true }); return null; };
     if (!title) return need("#blTitle", "Add a title first. It's at the top.");
     if (!(price > 0)) return need("#blPrice", "Add a price first. The price box is highlighted.");
     const aspects = {}; s.querySelectorAll("#blAsp > div").forEach((r) => { const k = r.querySelector("[data-ak]").value.trim(), v = r.querySelector("[data-av]").value.trim(); if (k && v) aspects[k] = v; });
-    const ship = s.querySelector("#blShip"); return { title, price, quantity: qty, condition: cond, ...(ship ? { fulfillmentPolicyId: ship.value } : {}), description: $("#blDesc").value.trim() || title, aspects };
+    const ship = s.querySelector("#blShip"), ret = s.querySelector("#blRet"), pct = Math.min(99, Math.max(1, parseInt($("#blOfferPct").value, 10) || 80)); try { localStorage.setItem("fob-offer-pct", String(pct)); } catch { /* ignore */ }
+    const missing = [...s.querySelectorAll("#blAsp > div.req")].find((r) => !r.querySelector("[data-av]").value.trim()); if (missing) return need(null, `eBay requires ${missing.querySelector("[data-ak]").value}. Fill the highlighted box.`, missing.querySelector("[data-av]"));
+    return { title, price, quantity: qty, condition: cond, ...(ship ? { fulfillmentPolicyId: ship.value } : {}), ...(ret ? { returnPolicyId: ret.value } : {}), ...(pv?.category?.id ? { categoryId: pv.category.id, categoryName: pv.category.name } : {}), bestOffer: $("#blOffer").checked, offerFloorPct: pct, description: $("#blDesc").value.trim() || title, aspects };
   };
   const call = async (dryRun) => {
     const f = read(); if (!f) return null;
@@ -470,7 +502,7 @@ function buildSheet(it) {
   /* drafts: everything you type is kept on the item, so closing the builder never loses work */
   const draftRead = () => { const g = (q) => s.querySelector(q); const price = parseFloat(String(g("#blPrice")?.value || "").replace(/[^0-9.]/g, "")), aspects = {};
     s.querySelectorAll("#blAsp > div").forEach((r) => { const k = r.querySelector("[data-ak]").value.trim(), v = r.querySelector("[data-av]").value.trim(); if (k && v) aspects[k] = v; });
-    const ship = g("#blShip"); return Object.assign({ title: (g("#blTitle")?.value || "").trim().slice(0, 80), quantity: Math.max(1, parseInt(g("#blQty")?.value, 10) || 1), condition: g("#blCond")?.value, description: (g("#blDesc")?.value || "").trim(), aspects, draft: { savedAt: new Date().toISOString() } }, price > 0 ? { price } : {}, ship ? { fulfillmentPolicyId: ship.value } : {}); };
+    const ship = g("#blShip"), ret = g("#blRet"); return Object.assign({ ...(ret ? { returnPolicyId: ret.value } : {}), title: (g("#blTitle")?.value || "").trim().slice(0, 80), quantity: Math.max(1, parseInt(g("#blQty")?.value, 10) || 1), condition: g("#blCond")?.value, description: (g("#blDesc")?.value || "").trim(), aspects, draft: { savedAt: new Date().toISOString() } }, price > 0 ? { price } : {}, ship ? { fulfillmentPolicyId: ship.value } : {}); };
   const saveDraft = () => { const d = draftRead(); patchItem(it.id, (i) => { Object.assign(i, d); if (!i.title) delete i.title; }); };
   let dT = 0; s.addEventListener("input", () => { clearTimeout(dT); dT = setTimeout(saveDraft, 600); }); s.addEventListener("change", () => { clearTimeout(dT); dT = setTimeout(saveDraft, 300); });
   $("#blSave").addEventListener("click", () => { clearTimeout(dT); saveDraft(); ctx.closeSheet(); ctx.rerender?.(); window.__fobScRepaint?.(); ctx.toast("Draft saved. It's waiting in Ready to list."); });
