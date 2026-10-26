@@ -175,8 +175,9 @@ export async function fillRequiredAspects(categoryId, title, aspects = {}, { fet
     const hit = vals.filter((v) => t.includes(` ${v.toLowerCase()} `) || t.includes(` ${v.toLowerCase()}s `) || t.includes(v.toLowerCase())).sort((x, y) => y.length - x.length)[0];
     let v = hit;
     if (!v && /brand|manufacturer/i.test(name)) v = /pok[eé]mon/i.test(title) ? "The Pokémon Company" : /one piece|dragon ball|digimon/i.test(title) ? "Bandai" : /magic|mtg/i.test(title) ? "Wizards of the Coast" : "Unbranded";
-    if (!v && /game|franchise/i.test(name)) v = /pok[eé]mon/i.test(title) ? "Pokémon TCG" : /one piece/i.test(title) ? "One Piece Card Game" : /dragon ball/i.test(title) ? "Dragon Ball Super Card Game" : vals[0];
-    if (!v) v = vals[0];
+    if (!v && /game|franchise/i.test(name)) v = /pok[eé]mon/i.test(title) ? "Pokémon TCG" : /one piece/i.test(title) ? "One Piece Card Game" : /dragon ball/i.test(title) ? "Dragon Ball Super Card Game" : "";
+    /* only guess the first listed value for plain "kind of thing" specifics; anything else stays empty so the builder asks */
+    if (!v && !/game|franchise|character|set|series|player|team|card name|autograph|grade/i.test(name) && a.aspectMode === "SELECTION_ONLY") v = vals[0];
     if (v) { out[name] = [v]; have.add(name.toLowerCase()); }
   }
   return out;
