@@ -684,3 +684,4 @@ html.fx #main .dk-row{grid-template-columns:36px 56px minmax(0,1fr) auto!importa
 .vt{flex-wrap:wrap}.vt .vk{order:3;flex:1 1 100%;margin:14px 0 0}
 @media (min-width:821px){.vt{flex-wrap:nowrap;align-items:center;gap:28px;margin:6px 2px 18px}.vt .vk{order:0;flex:0 1 480px;margin:0 0 0 auto}.vt-v b{font-size:42px}}
 .cx-find{width:36px;padding:0!important;display:grid!important;place-items:center}
+.bl-need{outline:2px solid #FFB27A!important;outline-offset:2px;box-shadow:0 0 0 6px rgba(255,178,122,.18)!important}

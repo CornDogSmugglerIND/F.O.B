@@ -5,7 +5,7 @@ import { renderScouter } from "./scouter.js?v=29";
 import { renderCollection, openImport } from "./collection.js?v=33";
 import { photoManager } from "./photos.js?v=5";
 import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=24";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=41";
+import { renderChannels, buildListing, variationListing } from "./channels.js?v=42";
 import { renderSettings } from "./settings.js?v=10";
 import { initSync } from "./sync.js?v=4";
 import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=9";
@@ -367,17 +367,28 @@ function renderCommand() {
 }
 function bindDrag(el) {
   let ghost = null, sx = 0, sy = 0, moved = false, over = null, down = false;
-  el.addEventListener("pointerdown", (e) => { down = true; moved = false; sx = e.clientX; sy = e.clientY; el.setPointerCapture(e.pointerId); });
+  el.addEventListener("pointerdown", (e) => { down = true; window.__fobHold = true; moved = false; sx = e.clientX; sy = e.clientY; el.setPointerCapture(e.pointerId); });
   el.addEventListener("pointermove", (e) => {
     if (!down) return;
     if (!moved && Math.hypot(e.clientX - sx, e.clientY - sy) < 8) return;
     if (!moved) { moved = true; ghost = el.cloneNode(true); ghost.className = "pc ghost"; document.body.appendChild(ghost); el.style.opacity = ".3"; }
-    ghost.style.left = e.clientX + "px"; ghost.style.top = e.clientY + "px";
-    const hit = document.elementsFromPoint(e.clientX, e.clientY).map((n) => n.closest && n.closest(".stop")).find(Boolean);
-    if (over && over !== hit) over.classList.remove("drop"); over = hit || null; if (over) over.classList.add("drop");
+    ghost.style.left = e.clientX + "px"; ghost.style.top = e.clientY + "px"; lx = e.clientX; ly = e.clientY; hitTest();
+    if (!raf) raf = requestAnimationFrame(edge);
   });
+  /* drag near the top/bottom edge and the route scrolls, so you can reach any stop */
+  let lx = 0, ly = 0, raf = 0;
+  const scroller = () => { const m = $("#main"); return m && m.scrollHeight > m.clientHeight + 4 ? m : document.scrollingElement; };
+  const hitTest = () => { const hit = document.elementsFromPoint(lx, ly).map((n) => n.closest && n.closest(".stop")).find(Boolean); if (over && over !== hit) over.classList.remove("drop"); over = hit || null; if (over) over.classList.add("drop"); };
+  const edge = () => {
+    raf = 0; if (!down || !moved) return;
+    const sc = scroller(), r = sc === document.scrollingElement ? { top: 0, bottom: innerHeight } : sc.getBoundingClientRect(), nav = $("#nav")?.getBoundingClientRect(), bot = Math.min(r.bottom, nav && nav.top > 0 ? nav.top : r.bottom), zone = 90;
+    let dy = 0; if (ly > bot - zone) dy = Math.min(22, (ly - (bot - zone)) / 3); else if (ly < r.top + zone) dy = -Math.min(22, (r.top + zone - ly) / 3);
+    if (dy) { sc.scrollTop += dy; hitTest(); }
+    raf = requestAnimationFrame(edge);
+  };
+  const release = () => { window.__fobHold = false; if (window.__fobPend) { window.__fobPend = false; setTimeout(render, 0); } };
   const end = (e) => {
-    if (!down) return; down = false;
+    if (!down) return; down = false; setTimeout(release, 0); if (raf) { cancelAnimationFrame(raf); raf = 0; }
     try { el.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
     if (!moved) { const st = el.closest(".stop"); if (st) navFor(st.dataset.drop); itemSheet(el.dataset.item); return; }
     const target = over && over.dataset.drop; if (over) over.classList.remove("drop"); if (ghost) ghost.remove(); el.style.opacity = "";
@@ -389,7 +400,7 @@ function bindDrag(el) {
     it.phase = MOVE_TO[target]; saveItems(items); toast(`Moved to ${STOPS.find((s) => s.id === target).label}`); render();
   };
   el.addEventListener("pointerup", end);
-  el.addEventListener("pointercancel", () => { down = false; moved = false; if (ghost) ghost.remove(); ghost = null; if (over) over.classList.remove("drop"); over = null; el.style.opacity = ""; });
+  el.addEventListener("pointercancel", () => { down = false; release(); moved = false; if (ghost) ghost.remove(); ghost = null; if (over) over.classList.remove("drop"); over = null; el.style.opacity = ""; });
 }
 
 /* ---------- other views ---------- */
@@ -437,6 +448,7 @@ function softRender() {
   const m = $("#main"), y = m.scrollTop; render(); m.scrollTop = y;
 }
 function render() {
+  if (window.__fobHold) { window.__fobPend = true; return; }
   { let raw = ""; try { raw = localStorage.getItem(LS_ITEMS) || "[]"; } catch { /* ignore */ }
     if (raw !== lastRaw || !items) { const l = loadItems(), k = l.filter((i) => !isDemo(i)); if (k.length !== l.length) saveItems(k); items = k; try { lastRaw = localStorage.getItem(LS_ITEMS) || "[]"; } catch { lastRaw = raw; } } }
   renderStats(); sig = sigOf(items);

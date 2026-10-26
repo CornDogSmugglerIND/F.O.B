@@ -433,8 +433,9 @@ function buildSheet(it) {
   }).catch(() => { if (s.isConnected) $("#blPol").textContent = "Couldn't load your eBay policies. eBay will use your defaults."; });
   const read = () => {
     const title = $("#blTitle").value.trim().slice(0, 80), price = parseFloat(String($("#blPrice").value).replace(/[^0-9.]/g, "")), qty = Math.max(1, parseInt($("#blQty").value, 10) || 1), cond = $("#blCond").value;
-    if (!title) { msg("Add a title first.", true); return null; }
-    if (!(price > 0)) { msg("Add a price first.", true); return null; }
+    const need = (id, t) => { msg(t, true); ctx.toast(t); const el = $(id); el.classList.add("bl-need"); el.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => el.focus(), 250); el.addEventListener("input", () => el.classList.remove("bl-need"), { once: true }); return null; };
+    if (!title) return need("#blTitle", "Add a title first. It's at the top.");
+    if (!(price > 0)) return need("#blPrice", "Add a price first. The price box is highlighted.");
     const aspects = {}; s.querySelectorAll("#blAsp > div").forEach((r) => { const k = r.querySelector("[data-ak]").value.trim(), v = r.querySelector("[data-av]").value.trim(); if (k && v) aspects[k] = v; });
     const ship = s.querySelector("#blShip"); return { title, price, quantity: qty, condition: cond, ...(ship ? { fulfillmentPolicyId: ship.value } : {}), description: $("#blDesc").value.trim() || title, aspects };
   };
