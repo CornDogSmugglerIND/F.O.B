@@ -115,19 +115,22 @@ async function scryfallPrice({ name, set, finish }, fetchImpl) {
 }
 /** eBay active listings, cleaned: same card number + name, no slabs / lots / proxies */
 const JUNK = /\b(psa|bgs|cgc|sgc|tag|ace|beckett|graded|slab|lot|lots|bundle|bulk|proxy|custom|orica|replica|metal|gold|jumbo|oversize[d]?|choose|pick|you pick|select|playset|sleeve[ds]?|binder|empty|code|digital|japanese|korean|chinese)\b|\bx\s?\d\b|\b\d+\s?x\b/i;
+/* sealed product + accessories (binders, tins, ETBs): different junk, looser name match */
+const JUNK_SEALED = /\b(psa|bgs|cgc|graded|slab|proxy|custom|replica|empty box|box only|code card|digital|opened|resealed)\b/i;
 export function cleanComps(items, { name, number, graded } = {}) {
-  const nameW = norm(name).split(" ").filter((w) => w.length > 2 && !["the", "and", "pokemon"].includes(w));
-  const nums = numberForms(number).map((n) => n.toLowerCase());
+  const nameW = norm(name).split(" ").filter((w) => w.length > 2 && !["the", "and", "pokemon", "tcg", "card", "cards", "game"].includes(w));
+  const nums = numberForms(number).map((n) => n.toLowerCase()), sealed = !nums.length;
   return (items || []).filter((i) => {
     const t = String(i?.title || ""); const tn = norm(t);
-    if (!graded && JUNK.test(t)) return false;
-    if (nameW.length && !nameW.every((w) => tn.includes(w))) return false;
+    if (!graded && (sealed ? JUNK_SEALED : JUNK).test(t)) return false;
+    if (nameW.length && (sealed ? nameW.filter((w) => tn.includes(w)).length < Math.max(2, Math.ceil(nameW.length * 0.6)) : !nameW.every((w) => tn.includes(w)))) return false;
     if (nums.length && !nums.some((n) => new RegExp(`(^|[^a-z0-9])${n}([^0-9]|$)`, "i").test(t))) return false;
     return true;
   }).map((i) => Number(i?.price?.value)).filter((n) => Number.isFinite(n) && n > 0);
 }
 async function ebayClean(info, request) {
-  const q = [info.name, numberForms(info.number)[0], info.set].filter(Boolean).join(" ").slice(0, 100) || String(info.q || "").slice(0, 100);
+  const short = (t) => String(t || "").replace(/[()\[\]/,&-]+/g, " ").split(/\s+/).filter(Boolean).slice(0, 8).join(" ");
+  const q = (info.number ? [info.name, numberForms(info.number)[0], info.set].filter(Boolean).join(" ") : [short(info.name), info.set].filter(Boolean).join(" ")).slice(0, 100) || String(info.q || "").slice(0, 100);
   if (q.length < 3) return null;
   const cat = info.game || info.number ? "&category_ids=183454" : "";
   const data = await request(`/buy/browse/v1/item_summary/search?q=${encodeURIComponent(q)}&limit=100${cat}&filter=buyingOptions:%7BFIXED_PRICE%7D,itemLocationCountry:US`).catch(() => null);
@@ -148,6 +151,6 @@ export async function marketValue(info = {}, { fetchImpl = fetch, request = brow
   const eb = await ebayClean(i, request).catch(() => null);
   if (tcg && tcg.value) return { ok: true, value: tcg.value, basis: tcg.source, count: 1, matched: tcg.card, variant: tcg.variant || null, ebay: eb ? eb.value : null };
   if (eb && eb.value) return { ok: true, value: eb.value, basis: eb.source, count: eb.count };
-  if (!i.name && i.q) return activeComps(i.q, { request });
+  if (i.q || i.name) { const a = await activeComps(String(i.q || i.name).replace(/[()\[\]/,&-]+/g, " ").split(/\s+/).filter(Boolean).slice(0, 8).join(" "), { request }).catch(() => null); if (a && a.ok) return { ...a, basis: "active eBay listings" }; }
   return { ok: false, reason: "no matching listings" };
 }
