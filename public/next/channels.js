@@ -452,7 +452,16 @@ function buildSheet(it) {
     try {
       const res = await fetch("/api/channels/ebay/publish-item", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item: saved, dryRun }), signal: ctl.signal });
       const out = await res.json().catch(() => ({}));
-      if (!res.ok || !out.ok) { msg(out.error || "eBay said no. Check the details and try again.", true); return null; }
+      if (!res.ok || !out.ok) {
+        const e = String(out.error || ""), miss = e.match(/item specific (.+?) is missing/i);
+        if (miss) { /* eBay wants one more detail: add the box for it and point at it */
+          const name = miss[1].trim(); let row = [...s.querySelectorAll("#blAsp > div")].find((r) => r.querySelector("[data-ak]").value.trim().toLowerCase() === name.toLowerCase());
+          if (!row) { $("#blAsp").insertAdjacentHTML("beforeend", aspRow(name, "")); row = $("#blAsp").lastElementChild; }
+          const v = row.querySelector("[data-av]"); v.classList.add("bl-need"); v.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => v.focus(), 250); v.addEventListener("input", () => v.classList.remove("bl-need"), { once: true });
+          msg(`eBay needs one more detail: ${name}. Type it in the highlighted box, then tap List on eBay again.`, true); ctx.toast(`eBay needs "${name}". Fill the highlighted box.`);
+        } else msg(e ? `eBay said no: ${e.replace(/^eBay API \S+ \S+ failed \(\d+\): /, "")}` : "eBay said no. Check the details and try again.", true);
+        return null;
+      }
       return out;
     } catch (e) { msg(e.name === "AbortError" ? "eBay took too long. Nothing was listed. Try again." : "Couldn't reach eBay. Nothing was listed.", true); return null; }
     finally { clearTimeout(to); }

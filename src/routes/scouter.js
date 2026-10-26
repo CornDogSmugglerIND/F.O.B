@@ -3,7 +3,7 @@ import multer from "multer";
 import { randomUUID } from "node:crypto";
 import { lookupBarcode } from "../lookup.js";
 import { runIdentify, identityToItemPatch } from "../identify/router.js";
-import { activeComps, marketValue } from "../comps.js";
+import { activeComps, marketValue, suggestCategory, fillRequiredAspects } from "../comps.js";
 import { runBarcodeScan } from "../identify/barcode.js";
 import { visionKeyStatus } from "../identify/vision.js";
 import {
@@ -237,6 +237,12 @@ export function scouterRouter() {
     const q = req.query || {};
     if (q.name) return res.json(await marketValue({ name: q.name, number: q.number, set: q.set, finish: q.finish, game: q.game, q: q.q }));
     res.json(await activeComps(q.q));
+  });
+
+  /* what eBay will file this under, and the item specifics it requires (filled from the title) */
+  router.get("/category", async (req, res) => {
+    const title = String(req.query?.title || ""); const c = await suggestCategory(title);
+    const id = c ? c.id : "183454"; res.json({ ok: true, category: c || { id, name: "CCG Individual Cards" }, aspects: await fillRequiredAspects(id, title, {}) });
   });
 
   router.post("/barcode", async (req, res, next) => {

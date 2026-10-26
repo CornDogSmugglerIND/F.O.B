@@ -60,7 +60,7 @@ test("getEbayAccessToken refreshes via OAuth and caches", async () => {
 });
 
 test("publishEbayListing runs inventory → offer → publish", async () => {
-  const fetchImpl = mockFetchSequence([
+  const seq = mockFetchSequence([
     async (url) => {
       assert.match(url, /oauth2\/token$/);
       return jsonResponse(200, { access_token: "atok", expires_in: 7200 });
@@ -84,6 +84,13 @@ test("publishEbayListing runs inventory → offer → publish", async () => {
       return jsonResponse(200, { listingId: "listing-42" });
     },
   ]);
+  /* the taxonomy lookup (app token + required item specifics) runs on its own; answer it outside the sequence */
+  let appTokDone = false;
+  const fetchImpl = async (url, init = {}) => {
+    if (String(url).includes("/commerce/taxonomy/")) return jsonResponse(200, { aspects: [] });
+    if (String(url).endsWith("oauth2/token") && /client_credentials/.test(String(init.body || "")) && !appTokDone) { appTokDone = true; return jsonResponse(200, { access_token: "app", expires_in: 7200 }); }
+    return seq(url, init);
+  };
 
   const result = await publishEbayListing(
     {

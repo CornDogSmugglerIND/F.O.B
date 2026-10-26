@@ -163,3 +163,21 @@ export async function suggestCategory(title, { fetchImpl = fetch } = {}) {
     const c = (data?.categorySuggestions || [])[0]?.category; return c && c.categoryId ? { id: String(c.categoryId), name: c.categoryName || "" } : null;
   } catch { return null; }
 }
+
+/** Fill the item specifics eBay requires for a category, using values that appear in the title when it can. */
+export async function fillRequiredAspects(categoryId, title, aspects = {}, { fetchImpl = fetch } = {}) {
+  let list = [];
+  try { const data = await browseRequest(`/commerce/taxonomy/v1/category_tree/0/get_item_aspects_for_category?category_id=${encodeURIComponent(categoryId)}`, fetchImpl); list = data?.aspects || []; } catch { return aspects; }
+  const out = { ...aspects }, t = ` ${String(title || "").toLowerCase()} `, have = new Set(Object.keys(out).map((k) => k.toLowerCase()));
+  for (const a of list) {
+    const name = a?.localizedAspectName; if (!name || !a?.aspectConstraint?.aspectRequired || have.has(name.toLowerCase())) continue;
+    const vals = (a.aspectValues || []).map((v) => v.localizedValue).filter(Boolean);
+    const hit = vals.filter((v) => t.includes(` ${v.toLowerCase()} `) || t.includes(` ${v.toLowerCase()}s `) || t.includes(v.toLowerCase())).sort((x, y) => y.length - x.length)[0];
+    let v = hit;
+    if (!v && /brand|manufacturer/i.test(name)) v = /pok[eé]mon/i.test(title) ? "The Pokémon Company" : /one piece|dragon ball|digimon/i.test(title) ? "Bandai" : /magic|mtg/i.test(title) ? "Wizards of the Coast" : "Unbranded";
+    if (!v && /game|franchise/i.test(name)) v = /pok[eé]mon/i.test(title) ? "Pokémon TCG" : /one piece/i.test(title) ? "One Piece Card Game" : /dragon ball/i.test(title) ? "Dragon Ball Super Card Game" : vals[0];
+    if (!v) v = vals[0];
+    if (v) { out[name] = [v]; have.add(name.toLowerCase()); }
+  }
+  return out;
+}

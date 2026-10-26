@@ -196,6 +196,8 @@ export async function publishEbayListing(item, opts = {}) {
   const sealedLike = !item.collectorNumber && (item.lane === "sealed" || /\b(booster|pack|box|(?<!upper )deck|tin|bundle|blister|etb|elite trainer|display|binder|album|portfolio|sleeves?|playmat|figure|figurine|statue|plush|collection|case)\b/i.test(String(item.title)));
   let category = null;
   if (sealedLike) { try { const { suggestCategory } = await import("../comps.js"); category = await suggestCategory(item.title, { fetchImpl: opts.fetchImpl }); } catch { category = null; } if (category && category.id === "183454") category = null; }
+  let aspects = cardAspects(item) || {};
+  try { const { fillRequiredAspects } = await import("../comps.js"); aspects = await fillRequiredAspects(category ? category.id : "183454", item.title, aspects, { fetchImpl: opts.fetchImpl }); } catch { /* keep what we have */ }
   await ebayRequest(`/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, {
     method: "PUT",
     fetchImpl: opts.fetchImpl,
@@ -210,7 +212,7 @@ export async function publishEbayListing(item, opts = {}) {
       product: {
         title: String(item.title).slice(0, 80),
         description: item.description || item.title,
-        aspects: cardAspects(item),
+        aspects: Object.keys(aspects).length ? aspects : undefined,
         imageUrls,
       },
     },
@@ -244,11 +246,19 @@ export async function publishEbayListing(item, opts = {}) {
   const merchantLocationKey = env("EBAY_MERCHANT_LOCATION_KEY");
   if (merchantLocationKey) offerBody.merchantLocationKey = merchantLocationKey;
 
-  const offerRes = await ebayRequest("/sell/inventory/v1/offer", {
-    method: "POST",
-    fetchImpl: opts.fetchImpl,
-    body: offerBody,
-  });
+  /* a retry after a failed publish: the offer already exists for this SKU, so update it instead of making a new one */
+  let offerRes;
+  try {
+    offerRes = await ebayRequest("/sell/inventory/v1/offer", { method: "POST", fetchImpl: opts.fetchImpl, body: offerBody });
+  } catch (e) {
+    const dup = /already exists/i.test(String(e.message)) || (e.details?.errors || []).some((x) => x.errorId === 25002);
+    if (!dup) throw e;
+    let existing = (e.details?.errors || []).flatMap((x) => x.parameters || []).find((p) => p.name === "offerId")?.value;
+    if (!existing) { const got = await ebayRequest(`/sell/inventory/v1/offer?sku=${encodeURIComponent(sku)}&marketplace_id=${encodeURIComponent(marketplaceId)}`, { fetchImpl: opts.fetchImpl }); existing = got.data?.offers?.[0]?.offerId; }
+    if (!existing) throw e;
+    await ebayRequest(`/sell/inventory/v1/offer/${encodeURIComponent(existing)}`, { method: "PUT", fetchImpl: opts.fetchImpl, body: offerBody });
+    offerRes = { data: { offerId: existing } };
+  }
 
   const offerId = offerRes.data?.offerId;
   if (!offerId) {
