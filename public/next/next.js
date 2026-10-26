@@ -32,37 +32,32 @@ purgeDemo();
 let items = loadItems(); let lastRaw = null; document.body.dataset.view = "command";
 
 const STOPS = [
-  { id: "intake", label: "Intake", note: "not identified yet", phases: ["intake"], c: "#B3FBD5", pos: [6, 76], movable: true },
-  { id: "staged", label: "Ready to list", note: "listing not built yet", phases: ["staged"], c: "#B3FBD5", pos: [20, 48], movable: true },
-  { id: "listed", label: "Live on eBay", note: "selling now", phases: ["listed"], c: "#90FFEE", pos: [34, 72], movable: false },
-  { id: "stored", label: "Put away", note: "in its bin", phases: [], c: "#90FFEE", pos: [48, 44], movable: false },
-  { id: "sold", label: "Sold", note: "needs shipping", phases: ["sold", "packed"], c: "#E8924A", pos: [62, 70], movable: true },
-  { id: "shipped", label: "Shipped", note: "on the way, tap to track", phases: ["shipped"], c: "#E8924A", pos: [77, 44], movable: true },
-  { id: "delivered", label: "Delivered", note: "at the door", phases: ["delivered"], c: "#E8924A", pos: [92, 70], movable: true },
+  { id: "intake", label: "Intake", note: "not identified yet", phases: ["intake"], c: "#B3FBD5", pos: [6, 80], movable: true },
+  { id: "staged", label: "Ready to list", note: "listing not built yet", phases: ["staged"], c: "#B3FBD5", pos: [23, 54], movable: true },
+  { id: "stored", label: "Put away", note: "listed, needs its bin", phases: ["listed"], c: "#90FFEE", pos: [40, 80], movable: false },
+  { id: "sold", label: "Sold", note: "needs shipping", phases: ["sold", "packed"], c: "#E8924A", pos: [57, 54], movable: true },
+  { id: "shipped", label: "Shipped", note: "on the way, tap to track", phases: ["shipped"], c: "#E8924A", pos: [74, 80], movable: true },
+  { id: "delivered", label: "Delivered", note: "at the door", phases: ["delivered"], c: "#E8924A", pos: [91, 54], movable: true },
 ];
-const stopFor = (it) => { const ph = phaseFromItem(it); return ph === "listed" && it.spaceId ? STOPS.find((x) => x.id === "stored") : STOPS.find((x) => x.phases.includes(ph)); };
+/* a fresh map: things you bring in through the app until they're listed and in a bin, then your eBay orders. Old eBay listings live in Channels. */
+const stopFor = (it) => { const ph = phaseFromItem(it); if (ph === "listed") return it.spaceId ? null : STOPS.find((x) => x.id === "stored"); return STOPS.find((x) => x.phases.includes(ph)); };
 const MOVE_TO = { intake: "intake", staged: "staged", sold: "sold", shipped: "shipped", delivered: "delivered" };
 
 /* The roadmap tracks what you bring in through the app (Scouter). Your eBay inventory lives in Collection, Channels and Spaces. */
 const app = (i) => i.source === "scouter" || i.source === "app";
 const realLive = (i) => i.phase === "listed" && !i.ended && !/^(demo-|mp-)/.test(String(i.id)) && !!i.channels?.ebay?.listingId && !/^demo/.test(String(i.channels.ebay.listingId));
-/* Command shows what you scout, plus every real live eBay listing (one card per listing), so nothing is in limbo. */
-function mine(list) {
-  const seen = new Set(), out = [];
-  for (const i of list) {
-    if (isArchived(i.id)) continue;
-    if (realLive(i)) { const k = i.channels.ebay.listingId; if (seen.has(k)) continue; seen.add(k); out.push(i); }
-    else if (app(i)) out.push(i);
-  }
-  return out;
-}
+/* Command shows only what you bring in through the app. Listings imported from eBay don't clutter the map. */
+function mine(list) { return list.filter((i) => !isArchived(i.id) && app(i)); }
+
 function groups() {
   const g = Object.fromEntries(STOPS.map((s) => [s.id, []]));
   for (const it of mine(items)) {
     const s = stopFor(it);
     if (s) g[s.id].push(it);
   }
-  for (const o of orderItems(90)) g[o.phase].push(o);
+  /* delivered drops off the map after a week so it stays a fresh to-do map; Channels keeps the full history */
+  const wk = Date.now() - 7 * 864e5;
+  for (const o of orderItems(90)) { if (o.phase === "delivered" && Date.parse(o._order?.deliveredAt || o._order?.shippedAt || o.when || 0) < wk) continue; g[o.phase].push(o); }
   return g;
 }
 
@@ -202,7 +197,7 @@ function itemSheet(id) {
   s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "spaces") { closeSheet(); go("spaces"); } else if (a === "channels") { window.__chStage = e.currentTarget.dataset.st || "listed"; if (e.currentTarget.dataset.st === "staged") { closeSheet(); buildListing(id, chApi()); } else go("channels"); } });
 }
 function chApi() { return { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); window.__fobScRepaint?.(); }, rerender: () => render() }; }
-const EMPTY_HINT = { intake: "No cards waiting. Snap or drop photos in Scouter to start.", staged: "Nothing ready to list. Identify cards in Scouter first.", listed: "Nothing live on eBay right now.", stored: "Nothing filed in a bin yet.", sold: "No sales waiting to ship.", shipped: "Nothing in transit.", delivered: "No deliveries in the last 90 days." };
+const EMPTY_HINT = { intake: "No cards waiting. Snap or drop photos in Scouter to start.", staged: "Nothing ready to list. Identify cards in Scouter first.", listed: "Nothing live on eBay right now.", stored: "Nothing waiting. Items you list show up here until you pick their bin.", sold: "No sales waiting to ship.", shipped: "Nothing in transit.", delivered: "Nothing delivered this week. Channels has the full history." };
 function stageSheet(sid) {
   if (!STOPS.some((x) => x.id === sid)) return;
   if (sid === "intake" && !groups().intake.length) { go("scouter"); return; }
@@ -224,7 +219,7 @@ function renderStats() {
   const g = groups();
   const open = mine(items).filter((i) => !["ended", "sold", "packed", "shipped", "delivered"].includes(phaseFromItem(i)));
   const value = open.reduce((a, i) => a + worth(i), 0);
-  $("#stats").innerHTML = [[money(value), "Total value in progress"], [g.intake.length + g.staged.length, "Items need action"], [g.listed.length + g.stored.length, "Live on eBay"]]
+  $("#stats").innerHTML = [[money(value), "Total value in progress"], [g.intake.length + g.staged.length, "Items need action"], [(() => { const k = new Set(); items.forEach((i) => { if (realLive(i)) k.add(i.channels.ebay.listingId); }); return k.size; })(), "Live on eBay"]]
     .map(([b, l]) => `<div class="stat"><b>${b}</b><span>${l}</span></div>`).join("");
 }
 function initAvatar() {
@@ -265,7 +260,7 @@ function widgets(g) {
     </div></div>`;
 }
 /* ---------- your route, your way: stops can be dragged anywhere, the line always runs in order ---------- */
-const ROUTE_KEY = "coalition-route-v1";
+const ROUTE_KEY = "coalition-route-v2";
 let arranging = false;
 function routeSaved(kind) { try { return (JSON.parse(localStorage.getItem(ROUTE_KEY) || "{}") || {})[kind] || {}; } catch { return {}; } }
 function routeSave(kind, map) { try { const all = JSON.parse(localStorage.getItem(ROUTE_KEY) || "{}") || {}; all[kind] = map; localStorage.setItem(ROUTE_KEY, JSON.stringify(all)); } catch { /* ignore */ } }
@@ -322,12 +317,12 @@ function renderCommand() {
   const pills = [
     [g.intake.length + (window.__fobInboxN || 0), "Identify new photos", "scouter"],
     [g.staged.length, "Build and publish", "@staged"],
-    [unbinnedCount(), "Put away", "!putaway"],
+    [g.stored.length, "Put away", "!putaway"],
     [g.sold.length, "Pack and ship", "channels", "sold"],
   ].map(([n, t, v, st]) => `<button class="pill${n ? " hot" : ""}" ${v[0] === "!" ? `data-putaway type="button"` : v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto"; main.style.overflowX = "hidden";
-    const H = 2270, W = 390, sv = routeSaved("phone"), PX = [27, 73, 27, 73, 27, 73, 27].map((x, i) => (sv[STOPS[i].id] || [])[0] ?? x), PY = [300, 590, 880, 1170, 1460, 1750, 2040].map((y, i) => (sv[STOPS[i].id] || [])[1] ?? y);
+    const H = 1980, W = 390, sv = routeSaved("phone"), PX = [27, 73, 27, 73, 27, 73].map((x, i) => (sv[STOPS[i].id] || [])[0] ?? x), PY = [300, 590, 880, 1170, 1460, 1750].map((y, i) => (sv[STOPS[i].id] || [])[1] ?? y);
     const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
     const path = routePath(pts, true);
     main.innerHTML = `${widgets(g)}<div class="arr-bar"><button type="button" class="arr-btn${arranging ? " on" : ""}" id="arrBtn">${arranging ? "Done arranging" : "Arrange route"}</button>${arranging ? `<button type="button" class="arr-btn" id="arrReset">Reset</button>` : ""}</div><div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
@@ -339,7 +334,7 @@ function renderCommand() {
       ${STOPS.map((s, i) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${PX[i]}%;top:${PY[i]}px;--c:${s.c}">
         ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
         <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div></div>`).join("")}
-      <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[6] - 17}%;top:${PY[6] + 8}px"><i></i>Done</div></div>`;
+      <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[5] - 17}%;top:${PY[5] + 8}px"><i></i>Done</div></div>`;
   } else {
     main.style.overflowY = "hidden"; main.style.overflowX = "";
     const W = Math.max(600, main.clientWidth || 1000), H = Math.max(420, main.clientHeight || 600);
@@ -355,7 +350,7 @@ function renderCommand() {
       ${STOPS.map((s, i) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${POS[i][0]}%;top:${POS[i][1]}%;--c:${s.c}">
         ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
         <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div></div>`).join("")}
-      <div class="flag start" style="left:${POS[0][0] - 6}%;top:${POS[0][1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${POS[6][0] - 2}%;top:${POS[6][1] + 12}%"><i></i>Done</div>
+      <div class="flag start" style="left:${POS[0][0] - 6}%;top:${POS[0][1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${POS[5][0] - 2}%;top:${POS[5][1] + 12}%"><i></i>Done</div>
       <div class="dock">${pills}</div><div class="hint">Tap a stop to open it · hold a card and drop it on a stop to move it</div><div class="arr-bar desk"><button type="button" class="arr-btn${arranging ? " on" : ""}" id="arrBtn">${arranging ? "Done arranging" : "Arrange route"}</button>${arranging ? `<button type="button" class="arr-btn" id="arrReset">Reset</button>` : ""}</div></div>`;
   }
   // wire up
@@ -366,7 +361,7 @@ function renderCommand() {
   main.querySelectorAll(".stop .tag").forEach((d) => d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); stageSheet(d.dataset.stage); } }));
   main.querySelectorAll(".pc[data-item]").forEach(bindDrag);
   main.querySelectorAll("[data-putaway]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); if (!unbinnedCount()) { toast("Everything is already in a bin."); return; } openPutAway({ toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); if (view === "command") renderCommand(); } }); }));
-  if (phone()) wireArrange(main, "phone", 390, 2270); else wireArrange(main, "desk", Math.max(600, main.clientWidth || 1000), Math.max(420, main.clientHeight || 600));
+  if (phone()) wireArrange(main, "phone", 390, 1980); else wireArrange(main, "desk", Math.max(600, main.clientWidth || 1000), Math.max(420, main.clientHeight || 600));
 }
 function bindDrag(el) {
   let ghost = null, sx = 0, sy = 0, moved = false, over = null, down = false;
@@ -398,8 +393,10 @@ function bindDrag(el) {
     if (!target) return;
     const it = items.find((i) => String(i.id) === String(el.dataset.item)); if (!it) return;
     if (String(el.dataset.item).startsWith("ord-")) { toast("Orders come from eBay. Open it to see tracking."); return; }
+    if (target === "stored" && it.phase === "staged" && it.channels?.ebay?.listingId) { it.phase = "listed"; saveItems(items); toast("Listed. Now pick its bin."); render(); itemSheet(it.id); return; }
     if (target === "listed" && it.phase === "staged") { if (it.channels?.ebay?.listingId) { it.phase = "listed"; saveItems(items); toast("Moved to Live on eBay"); render(); } else buildListing(it.id, chApi()); return; }
-    if (!MOVE_TO[target]) { toast(target === "stored" ? "Open Spaces to put it in a bin." : "Use Build and publish to put an item live on eBay."); return; }
+    if (target === "stored") { if (it.phase === "staged") buildListing(it.id, chApi()); else itemSheet(it.id); return; }
+    if (!MOVE_TO[target]) { toast("Use Build and publish to put an item live on eBay."); return; }
     it.phase = MOVE_TO[target]; saveItems(items); toast(`Moved to ${STOPS.find((s) => s.id === target).label}`); render();
   };
   el.addEventListener("pointerup", end);

@@ -713,3 +713,5 @@ html .shx>.x{margin-left:-54px!important}
 html .shx h2,html .shx .ed-head,html .shx .back,html .shx .pk-top>h2,html .shx .lk-top{padding-right:48px}
 .it-acts{display:flex;gap:8px;flex-wrap:wrap}
 .scr-again{appearance:none;border:0;background:none;color:var(--holo);font:600 12.5px var(--text);padding:0 0 0 4px;cursor:pointer;text-decoration:underline}
+/* desk: the route itself shows every count, so the duplicate gauges go */
+@media (min-width:821px){html.fx #main .road .dock{display:none!important}html.fx #main .road:not(.arranging){inset:70px 0 132px 0!important}}
