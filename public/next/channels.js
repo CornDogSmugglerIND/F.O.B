@@ -72,6 +72,7 @@ function routeHtml(counts) {
 }
 function drawerHtml() {
   if (!S.drawer) return "";
+  if (!S.list) return `<div class="ch-drawer"><div class="ch-drow"><span>Bulk edit</span><button class="btn" id="chAll" type="button">Select everything shown</button></div><p class="ch-dhint">Or tap the circle on each listing you want. Then change the price or end them together.</p></div>`;
   return `<div class="ch-drawer">
     <div class="ch-drow"><span>View</span><div class="seg" role="group" aria-label="View">${[["rows", "List"], ["cards", "Cards"], ["grid", "Grid"]].map(([k, l]) => `<button class="${S.view === k ? "on" : ""}" data-view="${k}" type="button">${l}</button>`).join("")}</div></div>
     <div class="ch-drow"><span>Group by</span><select id="chGroup" aria-label="Group by">${[["game", "Game"], ["stage", "Stage"], ["type", "Sealed / Singles"], ["bin", "Bin"], ["none", "Nothing"]].map(([k, l]) => `<option value="${k}"${S.group === k ? " selected" : ""}>${l}</option>`).join("")}</select></div>
@@ -421,6 +422,11 @@ function buildSheet(it) {
   $("#blDesc").value = it.description || "";
   $("#blAddAsp").addEventListener("click", () => { $("#blAsp").insertAdjacentHTML("beforeend", aspRow()); });
   $("#blAsp").addEventListener("click", (e) => { const b = e.target.closest("[data-rm]"); if (b) b.parentElement.remove(); });
+  if (!(Number(it.price) > 0)) { /* no price yet: look one up so the item can be listed */
+    const pe = $("#blPrice"); pe.placeholder = "Looking up a price…";
+    const qs = new URLSearchParams({ q: nameOf(it), name: it.productName || nameOf(it), number: it.collectorNumber || it.number || "", set: it.setName || "", game: it.game || "" });
+    fetch(`/api/scouter/comps?${qs}`).then((r) => r.json()).then((r) => { if (!s.isConnected || pe.value) return; if (r.ok && r.value > 0) { pe.value = Number(r.value).toFixed(2); pe.dispatchEvent(new Event("input", { bubbles: true })); msg(`Price filled from ${r.basis || "eBay"}${r.count ? ` (${r.count} listings)` : ""}. Change it if you want.`); } else { pe.placeholder = "Type a price"; msg("Couldn't find a price. Type one.", true); } }).catch(() => { if (s.isConnected) pe.placeholder = "Type a price"; });
+  }
   fetch("/api/channels/ebay/listing-preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item: it }) }).then((r) => r.json()).then((p) => {
     if (!p || !p.ok || !s.isConnected) return;
     if (!$("#blDesc").value) $("#blDesc").value = p.description || "";
@@ -479,5 +485,6 @@ function buildSheet(it) {
 }
 export function renderChannels(host, api) { ctx = { host, ...api }; if (window.__chStage) { S.stage = /^(intake|staged)$/.test(window.__chStage) ? "listed" : window.__chStage; S.more = {}; window.__chStage = null; } if (/^(intake|staged)$/.test(S.stage)) S.stage = "listed"; if (!host.querySelector(".ch-wrap")) S.sel.clear(); paint(); }
 /* Listing is built from Command, never from the Channels page (Channels = what is live on eBay). */
+export function editListing(id, api) { ctx = { host: document.createElement("div"), ...api }; const it = loadItems().find((x) => String(x.id) === String(id)); if (it) editSheet([it], id); }
 export function buildListing(id, api) { ctx = { host: document.createElement("div"), ...api }; const it = loadItems().find((x) => String(x.id) === String(id)); if (it) buildSheet(it); }
 export function variationListing(api) { ctx = { host: document.createElement("div"), ...api }; varSheet(shown().filter((i) => i.phase === "staged" && !i.ended)); }

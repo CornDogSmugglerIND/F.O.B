@@ -1,12 +1,12 @@
 import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=7";
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds } from "./orders.js?v=8";
 import { phaseFromItem } from "/visor/phases.js?v=3";
-import { renderScouter } from "./scouter.js?v=29";
-import { renderCollection, openImport } from "./collection.js?v=33";
+import { renderScouter } from "./scouter.js?v=30";
+import { renderCollection, openImport } from "./collection.js?v=34";
 import { photoManager } from "./photos.js?v=5";
 import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=24";
-import { renderChannels, buildListing, variationListing } from "./channels.js?v=42";
-import { renderSettings } from "./settings.js?v=10";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=44";
+import { renderSettings } from "./settings.js?v=11";
 import { initSync } from "./sync.js?v=4";
 import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=9";
 
@@ -118,12 +118,14 @@ function openSheet(html) {
   return s;
 }
 $("#sheetBack").addEventListener("click", closeSheet);
+addEventListener("fob:edit-live", (e) => editListing(e.detail, chApi()));
 window.__fob = { openSheet: (h) => openSheet(h), closeSheet: () => closeSheet(), toast: (t) => toast(t), render: () => render() };
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
 
 function nextAction(ph, it) {
-  if (ph === "listed" && it && it.spaceId) return `<p class="sub" style="margin-top:12px">Live on eBay and put away in its bin.</p><button class="btn" data-act="spaces" type="button">Open Spaces</button>`;
-  if (ph === "listed") return `<p class="sub" style="margin-top:12px">Live on eBay. Next: pick its bin below.</p>`;
+  const ed = it && (it.channels?.ebay?.sku || it.sku) ? `<button class="btn go" data-edit-live type="button">Edit price or quantity</button>` : "";
+  if (ph === "listed" && it && it.spaceId) return `<p class="sub" style="margin-top:12px">Live on eBay and put away in its bin.</p><div class="it-acts">${ed}<button class="btn" data-act="spaces" type="button">Open Spaces</button></div>`;
+  if (ph === "listed") return `<p class="sub" style="margin-top:12px">Live on eBay. Next: pick its bin below.</p>${ed}`;
   if (ph === "intake") return `<p class="sub" style="margin-top:12px">Next: identify it from its photos.</p><button class="btn go" data-act="scouter" type="button">Identify it in Scouter</button>`;
   if (ph === "staged") return `<p class="sub" style="margin-top:12px">Next: build the eBay listing.</p><button class="btn go" data-act="channels" data-st="staged" type="button">Build the listing</button>`;
   if (ph === "listed") return `<p class="sub" style="margin-top:12px">Selling on eBay now.</p><button class="btn" data-act="channels" type="button">See all live listings</button>`;
@@ -196,6 +198,7 @@ function itemSheet(id) {
   photoManager(s.querySelector("#phMgr"), it.id, { toast, refresh: () => { items = loadItems(); renderStats(); const m = s.querySelector("#sheetMain"); const c = items.find((i) => String(i.id) === String(id)); if (m && c) m.src = photoOf(c); } });
   s.querySelectorAll("[data-sib]").forEach((b) => b.addEventListener("click", () => itemSheet(b.dataset.sib)));
   s.querySelector("[data-del]")?.addEventListener("click", () => { const prev = items.slice(); items = items.filter((i) => String(i.id) !== String(id)); saveItems(items); closeSheet(); render(); toastUndo(`Deleted ${nameOf(it)}`, () => { items = prev; saveItems(prev); render(); }); });
+  s.querySelector("[data-edit-live]")?.addEventListener("click", () => { closeSheet(); setTimeout(() => editListing(id, chApi()), 280); });
   s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "spaces") { closeSheet(); go("spaces"); } else if (a === "channels") { window.__chStage = e.currentTarget.dataset.st || "listed"; if (e.currentTarget.dataset.st === "staged") { closeSheet(); buildListing(id, chApi()); } else go("channels"); } });
 }
 function chApi() { return { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); window.__fobScRepaint?.(); }, rerender: () => render() }; }

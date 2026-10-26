@@ -276,7 +276,7 @@ function pkgs() {
   if (!list.length) return "";
   return `<div class="sc-pkgs"><h3>Scanned today</h3><div class="sc-pk">${list.map((x) => { const it = x.id && byId.get(String(x.id)); const st = it ? (it.listingStatus === "listed" ? "Live" : it.phase === "staged" ? "Ready to list" : "Intake") : x.staged ? "Ready to list" : "Intake"; return `<button type="button" class="sc-pkg k-tilt"${x.id ? ` data-open="${esc(x.id)}"` : ""}>${x.photo ? `<img src="${esc(x.photo)}" alt="" draggable="false">` : "<i></i>"}<span>${esc(it ? it.title : x.title)}</span><em>${money(it ? it.price : x.price)}</em>${x.qty > 1 ? `<u>x${x.qty}</u>` : ""}<s class="${st !== "Intake" ? "ok" : ""}">${st}</s></button>`; }).join("")}</div></div>`;
 }
-function queue_() {
+function queue_(noInbox) {
   /* exactly what Command shows at Intake and Ready to list, so the two never disagree */
   const all = ctx.getItems().filter((i) => (i.source === "scouter" || i.source === "app") && !i.ended && !isArchived(i.id));
   const wait = all.filter((i) => phaseFromItem(i) === "intake"), ready = all.filter((i) => phaseFromItem(i) === "staged");
@@ -284,7 +284,7 @@ function queue_() {
   const row = (t, sub, l, k, acts = "") => l.length ? `<div class="sc-qh"><h3>${t}</h3><em>${l.length}</em><small>${sub}</small>${acts}</div><div class="sc-qs">${l.slice(0, 30).map((i) => tile(i, k)).join("")}</div>` : "";
   const out = row("Waiting to identify", "Tap one to read it", wait, "wait") + row("Ready to list", "Tap one to list it, bin it or fix it", ready, "ready", ready.length > 1 ? `<button type="button" class="sc-qa" id="scVar">List several as one</button>` : "");
   const tools = `<div class="sc-qtools"><button type="button" class="sc-qa" id="scCsv">Import a CSV</button></div>`;
-  return `<section class="sc-queue"><section class="sc-inbox" id="scInbox"></section>${out}${tools}</section>`;
+  return `<section class="sc-queue">${noInbox ? "" : `<section class="sc-inbox" id="scInbox"></section>`}${out}${tools}</section>`;
 }
 function repaintLists() {
   if (!ctx || !ctx.host.isConnected) return;
@@ -367,7 +367,7 @@ function shell() {
 
       <div class="sc-tray" id="scTray"></div>
     </section>
-    <section class="sc-right" id="scFlow"></section>${pkgs()}${queue_()}</div>`;
+    <section class="sc-right" id="scFlow"></section><section class="sc-inbox sc-inbox-top" id="scInbox"></section>${pkgs()}${queue_(true)}</div>`;
 }
 function paintTray() {
   const t = $("#scTray"); if (!t) return;

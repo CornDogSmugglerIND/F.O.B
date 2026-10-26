@@ -15,8 +15,7 @@ export function renderSettings(host) {
     <section class="st-me"><button id="chg" type="button" class="st-av" aria-label="Change profile picture"><img src="${esc(av)}" alt=""><i>Edit</i></button><div><b>CornDogSmuggler</b><span>Coalition · Top Rated on eBay</span></div></section>
     <h3 class="st-h">Channels</h3><section class="st-grp"><div id="conn" class="conn"><div class="st-row"><span>Checking…</span></div></div></section>
     <h3 class="st-h">eBay</h3><section class="st-grp">
-      <button class="st-row st-btn" id="spSync" type="button"><span>Sync with eBay now</span><u>›</u></button>
-      <div class="st-row"><span>Pulls live listings, sold orders and photos</span></div></section>
+      <button class="st-row st-btn st-2l" id="spSync" type="button"><span>Sync with eBay now<small>Pulls live listings, sold orders and photos</small></span><u>›</u></button></section>
     <h3 class="st-h">Archive</h3><section class="st-grp"><button class="st-row st-btn" id="spArch" type="button"><span>Archived items and orders</span><b class="okk" id="spArchN">${Object.keys(archMap()).length}</b><u>›</u></button></section>
     <h3 class="st-h">Storage</h3><section class="st-grp"><div class="st-row st-col"><div class="meter"><i style="width:${pct}%"></i></div><p class="sub" id="spMsg">${mb} MB of about 5 MB used. eBay photos are links and take none.</p></div>
       <button class="st-row st-btn" id="spFree" type="button"><span>Free up space</span><u>›</u></button></section>

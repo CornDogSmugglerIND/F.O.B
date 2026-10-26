@@ -685,3 +685,30 @@ html.fx #main .dk-row{grid-template-columns:36px 56px minmax(0,1fr) auto!importa
 @media (min-width:821px){.vt{flex-wrap:nowrap;align-items:center;gap:28px;margin:6px 2px 18px}.vt .vk{order:0;flex:0 1 480px;margin:0 0 0 auto}.vt-v b{font-size:42px}}
 .cx-find{width:36px;padding:0!important;display:grid!important;place-items:center}
 .bl-need{outline:2px solid #FFB27A!important;outline-offset:2px;box-shadow:0 0 0 6px rgba(255,178,122,.18)!important}
+/* phone nav: labels never clipped */
+@media (max-width:820px){html.fx .nav button{font-size:9px!important;letter-spacing:-.03em!important;white-space:nowrap;overflow:visible!important;padding-left:0!important;padding-right:0!important;min-width:0}}
+@media (max-width:380px){html.fx .nav button{font-size:8.5px!important}}
+/* desk Command: mission gauges sit in the empty band above the route, never on top of a stop */
+@media (min-width:821px){
+  html.fx #main .road .dock{position:absolute!important;left:auto!important;right:24px!important;top:6px!important;bottom:auto!important;transform:none!important;gap:22px!important;z-index:7}
+  html.fx #main .road .dock .pill{min-width:112px!important}
+  html.fx #main .road .hint{display:none!important}
+}
+/* desk Command: route sits between the gauge band and the bottom labels, so nothing hides behind the nav */
+@media (min-width:821px){
+  html.fx #main .road:not(.arranging){inset:96px 0 132px 0!important}
+  html.fx #main .road:not(.arranging) .dock{top:-86px!important}
+  html.fx #main .road:not(.arranging) .arr-bar{bottom:-120px!important}
+}
+/* Scouter: photo inbox sits right under the step card (desk) / under the camera (phone) so a bulk dump is the first thing you see */
+@media (min-width:821px){.sc-wrap.hh>.sc-left{grid-row:span 2}.sc-wrap.hh>.sc-right{position:static!important}.sc-wrap.hh>.sc-inbox-top{grid-column:2;align-self:start}}
+.sc-inbox-top{margin:0}
+html .sc-q em{right:auto!important;left:8px!important;top:8px!important}
+#pk{width:100%;min-width:0}
+html .pk-cap{display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;line-height:1.25!important;max-height:calc(2.5em + 23px)!important;box-sizing:border-box}
+.st-2l span{display:flex;flex-direction:column;gap:3px}.st-2l small{font:500 12.5px var(--text);color:var(--mute)}
+.ch-dhint{margin:2px 0 0;font:500 13px/1.4 var(--text);color:var(--mute)}
+/* sheet close button floats without stealing width: sheet bodies use the full width */
+html .shx>.x{margin-left:-54px!important}
+html .shx h2,html .shx .ed-head,html .shx .back,html .shx .pk-top>h2,html .shx .lk-top{padding-right:48px}
+.it-acts{display:flex;gap:8px;flex-wrap:wrap}
