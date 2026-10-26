@@ -112,18 +112,37 @@ export function channelsRouter() {
     if (isCard && item.finish) known.Finish = [String(item.finish)];
     if (isCard && !known.Language) known.Language = [String(item.language || "English")];
     if (isCard) { const man = buildItemSpecifics({ game: item.game }).Manufacturer; if (man) known.Manufacturer = [man]; }
-    let list = []; try { list = await categoryAspectList(cat.id); } catch { list = []; }
+    let list = []; try { list = [...(await categoryAspectList(cat.id))]; } catch { list = []; }
+    /* thin categories (Pez, toys, figures...) list barely any specifics: add the ones buyers actually search by. eBay accepts custom specifics. */
+    if (!isCard && list.filter((a) => !/prop 65|country of origin/i.test(a.name)).length < 8) {
+      let chars = []; try { chars = ((await categoryAspectList("183454")).find((a) => a.name === "Character") || {}).values || []; } catch { chars = []; }
+      const extra = [
+        { name: "Brand", values: ["PEZ", "Funko", "Hasbro", "Mattel", "Jakks Pacific", "Bandai", "Nintendo", "Tomy", "Takara Tomy", "Wicked Cool Toys", "Build-A-Bear", "LEGO", "McDonald's", "Burger King", "Ultra Pro", "Dragon Shield", "BCW", "Banpresto", "Good Smile", "Kotobukiya", "Sanrio", "Hallmark", "Zoteki", "Pokémon Center", "The Pokémon Company"] },
+        { name: "Franchise", values: ["Pokémon", "One Piece", "Dragon Ball", "Yu-Gi-Oh!", "Digimon", "Star Wars", "Marvel", "Disney", "Nintendo", "Sonic the Hedgehog", "Naruto", "My Hero Academia", "Demon Slayer", "Hello Kitty"] },
+        { name: "Character", values: chars },
+        { name: "Type", values: ["Dispenser", "Figure", "Action Figure", "Plush", "Toy", "Keychain", "Pin", "Poster", "Binder", "Album", "Sleeves", "Playmat", "Deck Box", "Tin", "Booster Box", "Booster Pack", "Elite Trainer Box", "Collection Box", "Blister", "Statue", "Figurine", "Mug", "Cup", "Lunch Box", "Backpack", "Hat", "Shirt", "Sticker", "Puzzle", "Lamp", "Blanket", "Video Game", "Book", "Manga"] },
+        { name: "Color", values: ["Black", "White", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Brown", "Gray", "Gold", "Silver", "Multicolor", "Clear"] },
+        { name: "Year Manufactured", values: Array.from({ length: 40 }, (_, k) => String(2026 - k)) },
+        { name: "Material", values: ["Plastic", "Vinyl", "PVC", "Metal", "Plush", "Cardboard", "Paper", "Resin", "Ceramic", "Fabric"] },
+        { name: "Features", values: ["Limited Edition", "Exclusive", "Rare", "Collector's Edition", "Retired", "Promo", "Glow in the Dark", "Holographic"] },
+        { name: "Packaging", values: ["Original (Unopened)", "Original (Opened)", "No Packaging", "Blister Pack", "Box"] },
+        { name: "Original/Licensed Reproduction", values: ["Original", "Licensed Reproduction"] },
+      ];
+      const have = new Set(list.map((a) => a.name.toLowerCase()));
+      list = [...list, ...extra.filter((e) => !have.has(e.name.toLowerCase())).map((e) => ({ ...e, required: false, recommended: true, mode: "FREE_TEXT" }))];
+    }
     const names = new Set(list.map((a) => a.name.toLowerCase()));
     for (const k of Object.keys(known)) if (list.length && !names.has(k.toLowerCase())) delete known[k]; /* only specifics this category has */
     const filled = autoAspects(list, `${item.title || ""} ${item.productName || ""} ${item.setName || ""} ${item.description || ""}`, known);
     const aspects = {}; for (const [k, v] of Object.entries(filled)) aspects[k] = (Array.isArray(v) ? v : [v]).join(", ");
-    const more = list.filter((a) => !aspects[a.name] && (a.required || a.recommended)).slice(0, 30).map((a) => ({ name: a.name, required: a.required, values: a.values.slice(0, 200) }));
+    const rank = (a) => (a.required ? 0 : a.recommended ? 1 : 2);
+    const more = list.filter((a) => !aspects[a.name] && !/prop 65|autograph authentication number|signed by|customized/i.test(a.name)).sort((a, b) => rank(a) - rank(b)).slice(0, 24).map((a) => ({ name: a.name, required: a.required, values: a.values.slice(0, 200) }));
     let names2 = {}, shippingOptions = [], returnOptions = [];
     try { const p = await listEbayPolicies(); shippingOptions = p.fulfillment || []; returnOptions = p.returns || []; for (const g of [p.fulfillment, p.payment, p.returns]) for (const x of g || []) names2[x.id] = x.name; } catch { /* not connected: ids only */ }
     const st = currentEbaySettings(), ship = resolveFulfillmentPolicyId({ ...item, categoryId: cat.id });
     const pol = (pid) => (pid ? { id: pid, name: names2[pid] || "Your saved eBay policy" } : null);
     const eng = runListingEngine(item);
-    res.json({ ok: true, kind: isCard ? itemKind(id) : "product", category: cat, allNames: list.map((a) => a.name), title: eng.title, description: buildEbayDescription(id), aspects, more, shipping: pol(ship), shippingOptions, returns: pol(item.returnPolicyId || st.returnPolicyId), returnOptions, payment: pol(st.paymentPolicyId) });
+    res.json({ ok: true, kind: isCard ? itemKind(id) : "product", category: cat, allNames: list.map((a) => a.name), title: eng.title, description: buildEbayDescription({ ...id, specifics: isCard ? null : filled }), aspects, more, shipping: pol(ship), shippingOptions, returns: pol(item.returnPolicyId || st.returnPolicyId), returnOptions, payment: pol(st.paymentPolicyId) });
   });
   /* change live listings: price / quantity / title per SKU (variations = one SKU each) */
   router.post("/ebay/revise", async (req, res) => {

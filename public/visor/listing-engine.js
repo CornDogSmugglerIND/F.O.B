@@ -152,13 +152,15 @@ export function buildEbayDescription(id = {}) {
   const lines = [];
   const fact = (k, v) => { if (v) lines.push(`- ${k}: ${v}`); };
   if (kind === "product") {
-    lines.push(`${name}${game ? ` (${game}${/tcg|card game/i.test(game) ? "" : " TCG"})` : ""}.`);
+    const sp = Object.entries(id.specifics || {}).filter(([k, v]) => v && String(v).trim() && !/prop 65|country of origin/i.test(k));
+    const fr = (sp.find(([k]) => /^franchise$/i.test(k)) || [])[1] || (/pok/i.test(game) ? "Pokémon" : "");
+    lines.push(`${name}${fr && !name.toLowerCase().includes(String(fr).toLowerCase().replace("é", "e")) && !name.toLowerCase().includes(String(fr).toLowerCase()) ? ` (${fr})` : ""}.`);
     lines.push("");
     lines.push(`You get the exact item shown in the photos.`);
     lines.push("");
-    fact("Product", name);
-    fact("Brand", game ? (/pok/i.test(game) ? "The Pokémon Company" : "") : "");
-    fact("Condition", cond || "New");
+    if (sp.length) for (const [k, v] of sp) fact(k, Array.isArray(v) ? v.join(", ") : String(v));
+    else fact("Product", name);
+    if (!sp.some(([k]) => /^condition$/i.test(k))) fact("Condition", cond || "New");
     if (qty > 1) fact("Quantity", String(qty));
   } else {
     const g = (`${id.productName || ""} ${id.title || ""}`).match(GRADED_RX);

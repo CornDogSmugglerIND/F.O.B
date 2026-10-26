@@ -204,6 +204,7 @@ export function autoAspects(list, text, known = {}) {
     if (/^(franchise|tv show|theme|character family)$/.test(n) && pok) v = a.values.find((x) => /pok[eé]mon/i.test(x)) || (a.mode === "FREE_TEXT" ? "Pokémon" : "");
     if (!v && /^(brand|manufacturer)$/.test(n)) v = a.values.filter((x) => x.length >= 3 && new RegExp(`(^|[^a-z0-9])${rxEsc(x.toLowerCase())}([^a-z0-9]|$)`).test(t)).sort((x, y) => y.length - x.length)[0] || (pok ? (a.values.find((x) => /pok[eé]mon company|nintendo/i.test(x)) || (a.mode === "FREE_TEXT" ? "The Pokémon Company" : "")) : "");
     if (!v && /^(language)$/.test(n) && /japanese/i.test(text)) v = "Japanese";
+    if (!v && /year/.test(n)) { const y = String(text).match(/\b(19[5-9]\d|20[0-3]\d)\b/); if (y) v = y[1]; }
     if (!v && /^(country\/region of manufacture)$/.test(n)) v = "";
     if (!v && a.values.length) {
       const hits = a.values.filter((x) => x.length >= 3 && !/^\d+$/.test(x) && !/^(other|unknown|none|n\/a|yes|no)$/i.test(x) && new RegExp(`(^|[^a-z0-9])${rxEsc(x.toLowerCase())}s?([^a-z0-9]|$)`).test(t));
