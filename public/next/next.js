@@ -1,4 +1,4 @@
-import "./viewer.js?v=3";
+import "./viewer.js?v=4";
 import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=7";
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=9";
 import { phaseFromItem } from "/visor/phases.js?v=3";
@@ -329,10 +329,8 @@ function renderCommand() {
     const path = routePath(pts, true);
     main.innerHTML = `${widgets(g)}<div class="arr-bar"><button type="button" class="arr-btn${arranging ? " on" : ""}" id="arrBtn">${arranging ? "Done arranging" : "Arrange route"}</button>${arranging ? `<button type="button" class="arr-btn" id="arrReset">Reset</button>` : ""}</div><div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
       <defs><linearGradient id="rgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
-      <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".4" stroke-width="11" style="filter:blur(7px)"/>
-      <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/>
-      <path class="flow" d="${path}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="2 34"/>
-      ${[0, 1, 2].map((k) => `<circle r="6" opacity="0" fill="#B3FBD5" style="filter:drop-shadow(0 0 7px #90FFCC)"><set attributeName="opacity" to="1" begin="${k * 4}s"/><animateMotion dur="12s" begin="${k * 4}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
+      <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".12" stroke-width="14" stroke-linecap="round"/><path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".18" stroke-width="7" stroke-linecap="round"/>
+      <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/></svg>
       ${STOPS.map((s, i) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${PX[i]}%;top:${PY[i]}px;--c:${s.c}">
         ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
         <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div></div>`).join("")}
@@ -367,9 +365,15 @@ function renderCommand() {
 }
 function bindDrag(el) {
   let ghost = null, sx = 0, sy = 0, moved = false, over = null, down = false;
-  el.addEventListener("pointerdown", (e) => { down = true; window.__fobHold = true; moved = false; sx = e.clientX; sy = e.clientY; el.setPointerCapture(e.pointerId); });
+  /* touch: a swipe scrolls the map; hold a card ~0.3s to pick it up and drag it. mouse: drag right away. */
+  let armed = false, holdT = 0;
+  el.addEventListener("touchmove", (e) => { if (armed) e.preventDefault(); }, { passive: false });
+  el.addEventListener("pointerdown", (e) => { down = true; moved = false; sx = e.clientX; sy = e.clientY;
+    if (e.pointerType === "touch") { armed = false; clearTimeout(holdT); holdT = setTimeout(() => { if (!down) return; armed = true; window.__fobHold = true; try { el.setPointerCapture(e.pointerId); } catch { /* ignore */ } el.classList.add("lift"); navigator.vibrate?.(12); }, 300); }
+    else { armed = true; window.__fobHold = true; el.setPointerCapture(e.pointerId); } });
   el.addEventListener("pointermove", (e) => {
     if (!down) return;
+    if (!armed) { if (Math.hypot(e.clientX - sx, e.clientY - sy) > 8) { clearTimeout(holdT); down = false; } return; }
     if (!moved && Math.hypot(e.clientX - sx, e.clientY - sy) < 8) return;
     if (!moved) { moved = true; ghost = el.cloneNode(true); ghost.className = "pc ghost"; document.body.appendChild(ghost); el.style.opacity = ".3"; }
     ghost.style.left = e.clientX + "px"; ghost.style.top = e.clientY + "px"; lx = e.clientX; ly = e.clientY; hitTest();
@@ -388,7 +392,8 @@ function bindDrag(el) {
   };
   const release = () => { window.__fobHold = false; if (window.__fobPend) { window.__fobPend = false; setTimeout(render, 0); } };
   const end = (e) => {
-    if (!down) return; down = false; setTimeout(release, 0); if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    clearTimeout(holdT); el.classList.remove("lift");
+    if (!down) return; down = false; armed = false; setTimeout(release, 0); if (raf) { cancelAnimationFrame(raf); raf = 0; }
     try { el.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
     if (!moved) { const st = el.closest(".stop"); if (st) navFor(st.dataset.drop); itemSheet(el.dataset.item); return; }
     const target = over && over.dataset.drop; if (over) over.classList.remove("drop"); if (ghost) ghost.remove(); el.style.opacity = "";
@@ -402,7 +407,7 @@ function bindDrag(el) {
     it.phase = MOVE_TO[target]; saveItems(items); toast(`Moved to ${STOPS.find((s) => s.id === target).label}`); render();
   };
   el.addEventListener("pointerup", end);
-  el.addEventListener("pointercancel", () => { down = false; release(); moved = false; if (ghost) ghost.remove(); ghost = null; if (over) over.classList.remove("drop"); over = null; el.style.opacity = ""; });
+  el.addEventListener("pointercancel", () => { clearTimeout(holdT); el.classList.remove("lift"); armed = false; down = false; release(); moved = false; if (ghost) ghost.remove(); ghost = null; if (over) over.classList.remove("drop"); over = null; el.style.opacity = ""; });
 }
 
 /* ---------- other views ---------- */

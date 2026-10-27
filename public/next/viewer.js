@@ -14,26 +14,26 @@ function srcsNear(img) {
 export function openViewer(list, from = 0, opts = {}) {
   if (!list.length) return; close();
   let i = Math.max(0, Math.min(list.length - 1, from)), s = 1, x = 0, y = 0;
-  const v = document.createElement("div"); v.className = "pv"; v.setAttribute("role", "dialog"); v.setAttribute("aria-label", "Photo");
-  v.innerHTML = `<div class="pv-stage"><img class="pv-img" alt="" draggable="false"></div>
-    <button class="pv-x" type="button" aria-label="Close">×</button>
-    ${list.length > 1 ? `<button class="pv-a l" type="button" aria-label="Previous photo">‹</button><button class="pv-a r" type="button" aria-label="Next photo">›</button>` : ""}
-    <div class="pv-bar"><span class="pv-n"></span><span class="pv-h">Pinch or double-tap to zoom</span></div>
-    ${opts.details ? `<button class="pv-d" type="button">${opts.detailsLabel || "Details, edit or delete"}</button>` : ""}`;
+  const v = document.createElement("div"); v.className = "phv"; v.setAttribute("role", "dialog"); v.setAttribute("aria-label", "Photo");
+  v.innerHTML = `<div class="phv-stage"><img class="phv-img" alt="" draggable="false"></div>
+    <button class="phv-x" type="button" aria-label="Close">×</button>
+    ${list.length > 1 ? `<button class="phv-a l" type="button" aria-label="Previous photo">‹</button><button class="phv-a r" type="button" aria-label="Next photo">›</button>` : ""}
+    <div class="phv-bar"><span class="phv-n"></span><span class="phv-h">Pinch or double-tap to zoom</span></div>
+    ${opts.details ? `<button class="phv-d" type="button">${opts.detailsLabel || "Details, edit or delete"}</button>` : ""}`;
   document.body.appendChild(v); open = v;
-  const img = v.querySelector(".pv-img"), stage = v.querySelector(".pv-stage");
+  const img = v.querySelector(".phv-img"), stage = v.querySelector(".phv-stage");
   const apply = (anim) => { img.style.transition = anim ? "transform .22s cubic-bezier(.2,.8,.2,1)" : "none"; img.style.transform = `translate(${x}px,${y}px) scale(${s})`; v.classList.toggle("zoomed", s > 1.01); };
   const clamp = () => { const r = stage.getBoundingClientRect(), w = img.offsetWidth * s, h = img.offsetHeight * s, mx = Math.max(0, (w - r.width) / 2), my = Math.max(0, (h - r.height) / 2); x = Math.max(-mx, Math.min(mx, x)); y = Math.max(-my, Math.min(my, y)); };
   const reset = () => { s = 1; x = 0; y = 0; apply(true); };
   /* eBay serves bigger copies of the same photo: ask for the 1600px one */
   const big = (u) => /ebayimg\.com/.test(u) ? u.replace(/s-l\d+(\.\w+)/, "s-l1600$1").replace(/\$_\d+\.(jpe?g|png|webp)/i, "$_57.$1") : u;
-  const show = (k) => { i = (k + list.length) % list.length; img.src = big(list[i]); img.onerror = () => { if (img.src !== list[i]) img.src = list[i]; }; s = 1; x = 0; y = 0; apply(false); v.querySelector(".pv-n").textContent = list.length > 1 ? `${i + 1} of ${list.length}` : ""; };
+  const show = (k) => { i = (k + list.length) % list.length; img.src = big(list[i]); img.onerror = () => { if (img.src !== list[i]) img.src = list[i]; }; s = 1; x = 0; y = 0; apply(false); v.querySelector(".phv-n").textContent = list.length > 1 ? `${i + 1} of ${list.length}` : ""; };
   const zoomAt = (cx, cy, to) => { const r = stage.getBoundingClientRect(), ox = cx - (r.left + r.width / 2), oy = cy - (r.top + r.height / 2), k = to / s; x = ox - (ox - x) * k; y = oy - (oy - y) * k; s = to; clamp(); apply(true); };
   show(i);
-  v.querySelector(".pv-x").addEventListener("click", close);
-  v.querySelector(".pv-d")?.addEventListener("click", () => { close(); setTimeout(() => opts.details(), 190); });
-  v.querySelector(".pv-a.l")?.addEventListener("click", () => show(i - 1));
-  v.querySelector(".pv-a.r")?.addEventListener("click", () => show(i + 1));
+  v.querySelector(".phv-x").addEventListener("click", close);
+  v.querySelector(".phv-d")?.addEventListener("click", () => { close(); setTimeout(() => opts.details(), 190); });
+  v.querySelector(".phv-a.l")?.addEventListener("click", () => show(i - 1));
+  v.querySelector(".phv-a.r")?.addEventListener("click", () => show(i + 1));
   stage.addEventListener("dblclick", (e) => e.preventDefault());
   stage.addEventListener("wheel", (e) => { e.preventDefault(); const to = Math.max(1, Math.min(6, s * (e.deltaY < 0 ? 1.15 : 1 / 1.15))); if (to <= 1.01) { reset(); return; } zoomAt(e.clientX, e.clientY, to); }, { passive: false });
   /* pointers: one finger pans (or swipes when not zoomed), two fingers pinch */
@@ -57,7 +57,7 @@ export function openViewer(list, from = 0, opts = {}) {
 }
 export function close() { if (!open) return; const v = open; open = null; v.classList.remove("on"); setTimeout(() => v.remove(), 180); }
 
-document.addEventListener("keydown", (e) => { if (!open) return; if (e.key === "Escape") { e.stopPropagation(); close(); } else if (e.key === "ArrowRight") open.querySelector(".pv-a.r")?.click(); else if (e.key === "ArrowLeft") open.querySelector(".pv-a.l")?.click(); }, true);
+document.addEventListener("keydown", (e) => { if (!open) return; if (e.key === "Escape") { e.stopPropagation(); close(); } else if (e.key === "ArrowRight") open.querySelector(".phv-a.r")?.click(); else if (e.key === "ArrowLeft") open.querySelector(".phv-a.l")?.click(); }, true);
 document.addEventListener("click", (e) => {
   const img = e.target.closest && e.target.closest(TAP); if (!img || open) return;
   const el = img.tagName === "IMG" ? img : img.querySelector("img"); if (!el || !(el.currentSrc || el.src)) return;
