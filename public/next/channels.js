@@ -187,7 +187,7 @@ function fullEdit(it) {
       <label class="ed-f"><span>Title</span><input id="feTitle" maxlength="80" value="${esc(d.title)}"><small id="feTn">${d.title.length}/80</small></label>
       <div class="fe-row"><label class="ed-f"><span>Price</span><input id="fePrice" inputmode="decimal" value="${d.price != null ? Number(d.price).toFixed(2) : ""}"></label><label class="ed-f"><span>Quantity</span><input id="feQty" inputmode="numeric" value="${esc(d.quantity ?? 1)}"></label></div>
       <label class="ed-f"><span>Condition</span><select id="feCond">${condOpts.map(([k, l]) => `<option value="${k}"${k === cond ? " selected" : ""}>${l}</option>`).join("")}</select></label>
-      <div class="ed-f"><span>Description</span><textarea id="feDesc" rows="9" style="width:100%;resize:vertical">${esc(d.descriptionText || "")}</textarea></div>
+      <div class="ed-f"><span class="bl-lh">Description <button type="button" class="bl-mini" id="feRedo">Rewrite clean (no filler)</button></span><textarea id="feDesc" rows="9" style="width:100%;resize:vertical">${esc(d.descriptionText || "")}</textarea></div>
       <div class="ed-f"><span class="bl-lh">Item specifics <em id="feAspN"></em></span><div id="feAsp" class="bl-vars bl-asp" style="max-height:none">${Object.entries(d.aspects || {}).map(([k, v]) => row(k, (Array.isArray(v) ? v : [v]).join(", "))).join("")}${(d.more || []).map((m) => row(m.name, "", m.values || [], m.required)).join("")}</div><button class="btn" id="feAdd" type="button" style="margin-top:6px">Add item specific</button></div>
       <div class="ed-f"><span>Offers</span><div class="bl-off"><label><input type="checkbox" id="feOffer"${d.bestOffer || !d.offerId ? " checked" : ""}> Accept offers</label><label class="bl-offp">Auto-decline under <input id="feOfferPct" inputmode="numeric" value="${pct}">% of price</label></div></div>
       <label class="ed-f"><span>Shipping</span>${sel("feShip", d.shippingOptions || [], d.fulfillmentPolicyId)}</label>
@@ -198,6 +198,10 @@ function fullEdit(it) {
     cnt(); $("#feAsp").addEventListener("input", cnt);
     $("#feAsp").addEventListener("click", (e) => { const b = e.target.closest("[data-rm]"); if (b) { b.parentElement.remove(); cnt(); } });
     $("#feAdd").addEventListener("click", () => { $("#feAsp").insertAdjacentHTML("beforeend", row()); cnt(); });
+    $("#feRedo").addEventListener("click", (e) => { const b = e.currentTarget; b.textContent = "Rewriting…";
+      const aspects = {}; s.querySelectorAll("#feAsp > div").forEach((r) => { const k = r.querySelector("[data-ak]").value.trim(), v = r.querySelector("[data-av]").value.trim(); if (k && v) aspects[k] = v; });
+      fetch("/api/channels/ebay/listing-preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item: { ...it, title: $("#feTitle").value, categoryId: d.categoryId, condition: $("#feCond").value, quantity: Number($("#feQty").value) || 1, description: "" } }) }).then((r) => r.json()).then((p) => { b.textContent = "Rewrite clean (no filler)"; if (p.ok && p.description) $("#feDesc").value = p.description; }).catch(() => { b.textContent = "Rewrite clean (no filler)"; });
+    });
     $("#feTitle").addEventListener("input", (e) => { $("#feTn").textContent = `${e.target.value.length}/80`; });
     s.querySelector("[data-close]").addEventListener("click", () => ctx.closeSheet());
     $("#feSave").addEventListener("click", async () => {
