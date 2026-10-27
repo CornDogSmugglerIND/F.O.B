@@ -149,6 +149,7 @@ function paintRun(api) {
   const c = run.cards, n = c.length, fin = c.filter((x) => !["wait", "work"].includes(x.state)).length;
   const low = c.filter((x) => { const it = map.get(String(x.itemId)); return it && (it.match?.pct || 0) < 90; }).length, ok = c.filter((x) => { const it = map.get(String(x.itemId)); return it && it.phase === "staged"; }).length;
   document.getElementById("btSum").textContent = run.live ? `${fin} of ${n} done. Keep using the app, it keeps going.` : `${ok} of ${n} ready to list.${low ? ` ${low} under 90%: check the match, tap Fix if it's wrong.` : " Every match is 90% or better."}`;
+  { const h = box.closest(".bt")?.querySelector("h2"); if (h && !run.live) h.textContent = "Check the batch"; }
   document.getElementById("btFill").style.width = `${Math.round((fin / n) * 100)}%`;
   /* sort: shakiest matches first once it's done, so you check those */
   const order = c.map((x, k) => [x, k]); if (!run.live) order.sort((a, b) => ((map.get(String(a[0].itemId))?.match?.pct) ?? -1) - ((map.get(String(b[0].itemId))?.match?.pct) ?? -1));

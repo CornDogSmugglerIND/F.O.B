@@ -1,6 +1,6 @@
 import { isArchived, loadSpaces, assign } from "./shared.js?v=7";
 import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=2";
-import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=3";
+import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=4";
 import { phaseFromItem } from "/visor/phases.js?v=3";
 /* Scouter: one upload = one item. Photos preview instantly, get shrunk off the
  * hot path, nothing is saved until Save is pressed. */

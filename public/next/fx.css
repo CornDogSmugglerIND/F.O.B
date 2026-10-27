@@ -791,3 +791,4 @@ html .shx h2,html .shx .ed-head,html .shx .back,html .shx .pk-top>h2,html .shx .
 .bt-pick b{font:600 11.5px/1.2 var(--text);color:var(--ink);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.bt-pick small{font:500 10.5px/1.2 var(--text);color:var(--mute)}
 .bt-pick:hover,.bt-pick:focus-visible{box-shadow:0 0 0 2px var(--holo)}.bt-pick.busy{opacity:.5}
 .bt-list{max-height:62vh!important}
+.bt-row .bt-th img{width:40px!important;height:56px!important}.bt-row .bt-th{gap:4px}
