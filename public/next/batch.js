@@ -17,15 +17,22 @@ async function hostPhoto(dataUrl) {
   return resize(dataUrl, 600, 0.78); /* small copy on the device if eBay can't take it right now */
 }
 
+/* how sure we are, as a %: a match the card catalog confirms by set + number beats the photo read alone */
+function matchPct(id, guess) {
+  if (guess) return 45;
+  const cat = /tcgdex|pokemontcg|scryfall|catalog/i.test(id.source || ""), c = String(id.confidence || "").toLowerCase();
+  return c === "high" ? (cat ? 97 : 86) : c === "medium" ? (cat ? 80 : 70) : cat ? 66 : 52;
+}
 async function oneCard(c, k, api) {
   c.state = "work"; c.msg = "Reading the card…"; api.paint();
-  let id = null, guess = false;
+  let id = null, guess = false, alts = [];
   try {
     const photos = await Promise.all(c.full.map((f) => resize(f, 1000, 0.85)));
     const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 60000);
     const r = await fetch("/api/scouter/identify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ photos, quantity: 1 }), signal: ctl.signal });
     clearTimeout(to); const out = await r.json().catch(() => ({}));
     if (out.ok && out.identity) id = out.identity; else if ((out.candidates || []).length) { id = out.candidates[0]; guess = true; }
+    const seen = new Set(); alts = (out.candidates || []).filter((x) => x.image && x !== id).filter((x) => { const k = [x.product_name, x.collector_number, x.set_name].join("|"); if (seen.has(k) || (id && k === [id.product_name, id.collector_number, id.set_name].join("|"))) return false; seen.add(k); return true; }).slice(0, 4).map((x) => ({ product_name: x.product_name, collector_number: x.collector_number, set_name: x.set_name, set_code: x.set_code, game: x.game, rarity: x.rarity, image: x.image }));
   } catch { /* stays unidentified */ }
   let price = 0, basis = "";
   if (id) {
@@ -41,6 +48,7 @@ async function oneCard(c, k, api) {
     collectorNumber: id?.collector_number || "", setName: id?.set_name || "", setCode: id?.set_code || "", game: id?.game || "", rarity: id?.rarity || "", finish: id?.finish || "",
     language: id?.language || "", condition: "NM", identifyConfidence: id?.confidence || null, identifyPath: id ? "batch" : null,
     quantity: 1, price, source: "scouter", listingStatus: "draft", phase: ready ? "staged" : "intake", staged: ready, spaceId: null, channels: {}, photos, notes: guess ? "Batch best guess: check it" : "", collections: [], batch: run.id,
+    match: id ? { image: id.image || (alts[0] && alts[0].image) || "", pct: matchPct(id, guess), basis } : { image: "", pct: 0, basis: "" }, matchAlts: alts,
   };
   try { api.setItems([item, ...api.getItems()]); } catch { c.state = "fail"; c.msg = "Phone storage is full. Clear space in Settings."; api.paint(); return; }
   inboxRemove(c.ids).catch(() => {});
@@ -74,32 +82,96 @@ export async function openBatch(api) {
   s.querySelectorAll("[data-per]").forEach((b) => b.addEventListener("click", () => { per = Number(b.dataset.per); try { localStorage.setItem(PER_KEY, String(per)); } catch { /* ignore */ } s.querySelectorAll("[data-per]").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-checked", String(x === b)); }); draw(); }));
   s.querySelector("[data-close]").addEventListener("click", () => f.closeSheet());
   s.querySelector("#btGo").addEventListener("click", () => {
-    run = { id: `b${Date.now().toString(36)}`, live: true, cards: pairs().map((g) => ({ ids: g.map((x) => x.id), thumbs: g.map((x) => x.thumb), full: g.map((x) => x.full), state: "wait", msg: "Waiting…" })) };
+    run = { id: `b${Date.now().toString(36)}`, live: true, at: Date.now(), cards: pairs().map((g) => ({ ids: g.map((x) => x.id), thumbs: g.map((x) => x.thumb), full: g.map((x) => x.full), state: "wait", msg: "Waiting…" })) };
+    try { localStorage.setItem("fob-last-batch", run.id); } catch { /* ignore */ }
     f.closeSheet(); setTimeout(() => { sheet(api); start({ ...api, paint: () => paintRun(), done: () => { api.refresh?.(); const n = run.cards.filter((c) => c.state === "ok" || c.state === "noprice").length; api.toast(`Batch done: ${n} of ${run.cards.length} ready to list.`); } }); }, 260);
   });
 }
 
-function sheet(api) {
-  const f = window.__fob; f.openSheet(`<div class="bt"><h2>Identifying</h2><p class="sub" id="btSum"></p><div class="bt-bar"><div id="btFill"></div></div><div class="bt-list" id="btList"></div>
+function sheet(api, title = "Identifying") {
+  const f = window.__fob; const sh = f.openSheet(`<div class="bt"><h2>${title}</h2><p class="sub" id="btSum"></p><div class="bt-bar"><div id="btFill"></div></div><div class="bt-list" id="btList"></div>
     <div class="co-znav bl-act" id="btAct"></div></div>`);
+  sh.querySelector("#btList").addEventListener("click", (e) => onListClick(e));
+  sh.querySelector("#btList").addEventListener("input", (e) => { if (e.target.matches("[data-fq]")) { clearTimeout(qT); qT = setTimeout(() => search(e.target.closest(".bt-row")), 350); } });
   paintRun(api);
 }
-let lastApi = null;
+let lastApi = null, qT = 0, openFix = null;
+const items = () => { try { return lastApi.getItems(); } catch { return []; } };
+const pctCls = (p) => (p >= 90 ? "hi" : p >= 70 ? "md" : "lo");
+function rowHtml(c, k, it) {
+  const scans = it ? (it.photos || []).slice(0, 2).map((p) => p.dataUrl || p.url) : c.thumbs;
+  const m = it?.match || {}, pct = m.pct || 0, done = it && !["wait", "work"].includes(c.state);
+  const sub = it ? [it.setName, it.collectorNumber].filter(Boolean).join(" · ") : "";
+  return `<div class="bt-row ${c.state}${openFix === (it?.id || "") && it ? " fixing" : ""}" data-it="${esc(it?.id || "")}" data-k="${k}">
+    <span class="bt-th">${scans.map((t) => `<img src="${esc(t)}" alt="Your scan" data-view-photo="${esc(JSON.stringify(scans))}">`).join("")}</span>
+    <span class="bt-ref">${m.image ? `<img src="${esc(m.image)}" alt="Matched card" data-view-photo="${esc(JSON.stringify([m.image.replace("/low.", "/high.")]))}">` : `<i>${done ? "?" : ""}</i>`}</span>
+    <span class="bt-tx"><b>${esc(it?.productName || it?.title || c.title || `Card ${k + 1}`)}</b><small>${done ? esc(sub || c.msg) : esc(c.msg)}</small>${done && it?.price ? `<em>${money(it.price)}</em>` : ""}</span>
+    <span class="bt-side">${done ? `<b class="bt-pct ${pctCls(pct)}">${pct ? `${pct}%` : "No match"}</b><button type="button" class="bt-fix" data-fix>${pct >= 90 ? "Wrong?" : "Fix"}</button>` : `<i class="bt-st" aria-hidden="true"></i>`}</span>
+    ${openFix === it?.id && it ? fixHtml(it) : ""}</div>`;
+}
+function fixHtml(it) {
+  const q = [it.productName, (it.collectorNumber || "").split("/")[0]].filter(Boolean).join(" ");
+  const alts = (it.matchAlts || []).map((a, j) => pickTile(a, `alt${j}`)).join("");
+  return `<div class="bt-fixp">${alts ? `<div class="bt-fh">Other matches</div><div class="bt-grid" data-alts>${alts}</div>` : ""}
+    <div class="bt-fh">Search for the right card</div><input data-fq value="${esc(q)}" placeholder="Name and number, like Pikachu 25" aria-label="Search cards" autocomplete="off">
+    <div class="bt-grid" data-res><p class="sub">Searching…</p></div></div>`;
+}
+const pickTile = (r, key) => `<button type="button" class="bt-pick" data-pick='${esc(JSON.stringify(r))}' aria-label="${esc(`${r.product_name} ${r.collector_number} ${r.set_name}`)}"><img src="${esc(r.image)}" alt="" loading="lazy"><b>${esc(r.product_name)}</b><small>${esc(`${r.collector_number || ""} · ${r.set_name || ""}`)}</small></button>`;
+async function search(row) {
+  const inp = row?.querySelector("[data-fq]"), box = row?.querySelector("[data-res]"); if (!inp || !box) return;
+  const q = inp.value.trim(); if (q.length < 2) { box.innerHTML = `<p class="sub">Type a name or number.</p>`; return; }
+  box.innerHTML = `<p class="sub">Searching…</p>`;
+  try { const r = await (await fetch(`/api/scouter/search?q=${encodeURIComponent(q)}`)).json(); if (!box.isConnected || inp.value.trim() !== q) return;
+    box.innerHTML = (r.results || []).length ? r.results.map((x) => pickTile(x)).join("") : `<p class="sub">No cards found. Search covers Pokémon. For other games, fix it in Scouter by typing it in.</p>`; }
+  catch { box.innerHTML = `<p class="sub">Couldn't search. Try again.</p>`; }
+}
+async function onListClick(e) {
+  const row = e.target.closest(".bt-row"); if (!row) return;
+  if (e.target.closest("[data-fix]")) { const id = row.dataset.it; openFix = openFix === id ? null : id; paintRun(); if (openFix) { const r = document.querySelector(`.bt-row[data-it="${CSS.escape(id)}"]`); r?.scrollIntoView({ behavior: "smooth", block: "start" }); search(r); } return; }
+  const pick = e.target.closest("[data-pick]"); if (!pick) return;
+  const r = JSON.parse(pick.dataset.pick), id = row.dataset.it; pick.classList.add("busy");
+  let rarity = r.rarity || "", finish = "";
+  if (r.id) { try { const d = await (await fetch(`/api/scouter/card/${encodeURIComponent(r.id)}`)).json(); if (d.ok) { rarity = d.rarity || rarity; finish = d.finish || ""; } } catch { /* keep */ } }
+  let price = 0, basis = "";
+  try { const qs = new URLSearchParams({ q: [r.product_name, r.collector_number, r.set_name].join(" "), name: r.product_name, number: r.collector_number || "", set: r.set_name || "", finish, game: r.game || "pokemon" }); const m = await (await fetch(`/api/scouter/comps?${qs}`)).json(); if (m.ok) { price = Number(m.value) || 0; basis = m.basis || ""; } } catch { /* no price */ }
+  const l = items(), it = l.find((x) => String(x.id) === String(id)); if (!it) return;
+  Object.assign(it, { productName: r.product_name, collectorNumber: r.collector_number || "", setName: r.set_name || "", setCode: r.set_code || "", game: r.game || it.game, rarity, finish,
+    title: [r.product_name, r.collector_number, r.set_name, finish].filter(Boolean).join(" "), price: price || it.price, phase: "staged", staged: true, notes: "", description: "", descEdited: false, aspects: undefined,
+    match: { image: r.image, pct: 100, basis: "You picked it" }, identifyPath: "batch-picked", updatedAt: new Date().toISOString() });
+  lastApi.setItems(l);
+  const c = run && run.cards.find((x) => x.itemId === id); if (c) { c.state = price ? "ok" : "noprice"; c.msg = ""; }
+  openFix = null; paintRun(); lastApi.toast(`Fixed: ${it.title}${price ? ` · ${money(price)}` : ""}`);
+}
 function paintRun(api) {
   if (api) lastApi = api; api = lastApi;
   const box = document.getElementById("btList"); if (!box || !run) return;
-  const c = run.cards, n = c.length, fin = c.filter((x) => !["wait", "work"].includes(x.state)).length, ok = c.filter((x) => x.state === "ok" || x.state === "noprice").length, need = c.filter((x) => x.state === "guess" || x.state === "fail").length;
-  document.getElementById("btSum").textContent = run.live ? `${fin} of ${n} done · ${ok} ready to list${need ? ` · ${need} need you` : ""}. Keep using the app, it keeps going.` : `Done: ${ok} ready to list${need ? `, ${need} need you (they're in Intake)` : ""}.`;
+  const map = new Map(items().map((i) => [String(i.id), i]));
+  const c = run.cards, n = c.length, fin = c.filter((x) => !["wait", "work"].includes(x.state)).length;
+  const low = c.filter((x) => { const it = map.get(String(x.itemId)); return it && (it.match?.pct || 0) < 90; }).length, ok = c.filter((x) => { const it = map.get(String(x.itemId)); return it && it.phase === "staged"; }).length;
+  document.getElementById("btSum").textContent = run.live ? `${fin} of ${n} done. Keep using the app, it keeps going.` : `${ok} of ${n} ready to list.${low ? ` ${low} under 90%: check the match, tap Fix if it's wrong.` : " Every match is 90% or better."}`;
   document.getElementById("btFill").style.width = `${Math.round((fin / n) * 100)}%`;
-  box.innerHTML = c.map((x, k) => `<div class="bt-row ${x.state}"><span class="bt-th">${x.thumbs.map((t) => `<img src="${t}" alt="">`).join("")}</span><span class="bt-tx"><b>${esc(x.title || `Card ${k + 1}`)}</b><small>${esc(x.msg)}</small></span><i class="bt-st" aria-hidden="true"></i></div>`).join("");
+  /* sort: shakiest matches first once it's done, so you check those */
+  const order = c.map((x, k) => [x, k]); if (!run.live) order.sort((a, b) => ((map.get(String(a[0].itemId))?.match?.pct) ?? -1) - ((map.get(String(b[0].itemId))?.match?.pct) ?? -1));
+  const keepQ = document.activeElement?.matches?.("[data-fq]") ? [document.activeElement.value, document.activeElement.selectionStart] : null, keepRes = box.querySelector(".fixing [data-res]")?.innerHTML;
+  box.innerHTML = order.map(([x, k]) => rowHtml(x, k, map.get(String(x.itemId)))).join("");
+  if (keepQ) { const q = box.querySelector("[data-fq]"); if (q) { q.value = keepQ[0]; q.focus(); q.setSelectionRange(keepQ[1], keepQ[1]); } }
+  if (keepRes) { const r = box.querySelector(".fixing [data-res]"); if (r) r.innerHTML = keepRes; }
   const act = document.getElementById("btAct");
   if (act && !run.live && !act.dataset.on) {
     act.dataset.on = "1";
-    const ids = c.filter((x) => x.itemId && (x.state === "ok" || x.state === "noprice")).map((x) => x.itemId);
-    act.innerHTML = `<button type="button" class="btn" data-close>Close</button>${ids.length > 1 ? `<button type="button" class="btn" id="btVar">List as one variation listing</button>` : ""}<button type="button" class="btn go" id="btList2">Go to Ready to list</button>`;
+    act.innerHTML = `<button type="button" class="btn" data-close>Close</button><button type="button" class="btn" id="btVar">List as one variation listing</button><button type="button" class="btn go" id="btList2">Go to Ready to list</button>`;
     act.querySelector("[data-close]").addEventListener("click", () => window.__fob.closeSheet());
     act.querySelector("#btList2").addEventListener("click", () => { window.__fob.closeSheet(); api.go?.("command"); setTimeout(() => document.querySelector('.stop[data-drop="staged"] .tag')?.click(), 400); });
-    act.querySelector("#btVar")?.addEventListener("click", () => { window.__fob.closeSheet(); setTimeout(() => api.variation?.(), 260); });
+    act.querySelector("#btVar").addEventListener("click", () => { window.__fob.closeSheet(); setTimeout(() => api.variation?.(), 260); });
   }
 }
+/* reopen the last batch any time to check matches */
+export function reviewBatch(api) {
+  lastApi = api; let id = ""; try { id = localStorage.getItem("fob-last-batch") || ""; } catch { /* none */ }
+  if (run && run.live) return sheet(api);
+  const list = api.getItems().filter((i) => i.batch && i.batch === id); if (!list.length) { api.toast("No batch to review yet."); return; }
+  run = { id, live: false, cards: list.map((i) => ({ itemId: i.id, ids: [], thumbs: [], full: [], state: i.phase === "staged" ? (i.price ? "ok" : "noprice") : "guess", msg: "" })) };
+  sheet(api, "Check the batch");
+}
+export const lastBatchCount = (getItems) => { let id = ""; try { id = localStorage.getItem("fob-last-batch") || ""; } catch { return 0; } return id ? getItems().filter((i) => i.batch === id && ["staged", "intake"].includes(i.phase)).length : 0; };
 export const batchRunning = () => !!(run && run.live);

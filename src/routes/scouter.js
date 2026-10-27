@@ -240,6 +240,29 @@ export function scouterRouter() {
   });
 
   /* what eBay will file this under, and the item specifics it requires (filled from the title) */
+  /* card search for fixing a wrong match: name and/or number, with card images (Pokémon via TCGdex) */
+  let setMap = null, setAt = 0;
+  router.get("/search", async (req, res) => {
+    const raw = String(req.query?.q || "").trim(); if (raw.length < 2) return res.json({ ok: true, results: [] });
+    const num = (raw.match(/\b([A-Za-z]{0,4}\d{1,3}[a-z]?)(?:\s*\/\s*\d{1,4})?\b/) || [])[1] || "";
+    const name = raw.replace(/\b[A-Za-z]{0,4}\d{1,3}[a-z]?(\s*\/\s*\d{1,3})?\b/g, " ").replace(/\s+/g, " ").trim();
+    const T = "https://api.tcgdex.net/v2/en";
+    const get = async (u) => { const r = await fetch(u, { signal: AbortSignal.timeout(12000) }); if (!r.ok) return []; return r.json(); };
+    try {
+      if (!setMap || Date.now() - setAt > 6 * 3600e3) { const sets = await get(`${T}/sets`); setMap = new Map((sets || []).map((x) => [x.id, x])); setAt = Date.now(); }
+      const qs = new URLSearchParams(); if (name) qs.set("name", name); else if (num) qs.set("localId", num.replace(/^0+(?=\d)/, ""));
+      let list = (await get(`${T}/cards?${qs}&pagination:itemsPerPage=250`)) || [];
+      /* exact number first, then the rest, newest sets first */
+      const n0 = num.replace(/^0+(?=\d)/, "").toLowerCase(), hit = (c) => String(c.localId).replace(/^0+(?=\d)/, "").toLowerCase() === n0;
+      list = num ? [...list.filter(hit).reverse(), ...list.filter((c) => !hit(c)).reverse()] : list.reverse();
+      const results = (list || []).filter((c) => c.image).map((c) => { const sid = c.id.slice(0, c.id.lastIndexOf("-")), st = setMap.get(sid) || {}; const tot = st.cardCount?.official; return { id: c.id, product_name: c.name, collector_number: tot && /^\d+$/.test(c.localId) ? `${c.localId}/${String(tot).padStart(String(c.localId).length, "0")}` : c.localId, set_name: st.name || sid, set_code: sid, game: "Pokemon", image: `${c.image}/low.webp`, imageBig: `${c.image}/high.webp` }; }).slice(0, 48);
+      res.json({ ok: true, results });
+    } catch (e) { res.json({ ok: false, results: [], error: e.message }); }
+  });
+  /* one card's details (rarity) after you pick it */
+  router.get("/card/:id", async (req, res) => {
+    try { const r = await fetch(`https://api.tcgdex.net/v2/en/cards/${encodeURIComponent(req.params.id)}`, { signal: AbortSignal.timeout(12000) }); const c = await r.json(); res.json({ ok: true, rarity: c.rarity || "", finish: c.variants?.holo ? "Holo" : c.variants?.reverse && !c.variants?.normal ? "Reverse Holo" : "" }); } catch { res.json({ ok: false }); }
+  });
   router.get("/category", async (req, res) => {
     const title = String(req.query?.title || ""); const c = await suggestCategory(title);
     const id = c ? c.id : "183454"; const list0 = await categoryAspectList(id).catch((e) => String(e.message)); const list = Array.isArray(list0) && !list0.length && categoryAspectList.lastError ? categoryAspectList.lastError : list0;
