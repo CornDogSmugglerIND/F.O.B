@@ -38,10 +38,16 @@ test("cleanComps drops slabs, lots, proxies and other cards", () => {
   ];
   assert.deepEqual(cleanComps(items, { name: "Pikachu", number: "046/128" }), [2, 1.8]);
 });
-test("marketValue prefers TCGplayer market from TCGdex", async () => {
-  const fetchImpl = async (url) => ({ ok: true, json: async () => url.includes("/sets?") ? [{ id: "sv08", name: "Surging Sparks" }] : url.includes("/cards/sv08-238") ? { name: "Pikachu ex", localId: "238", pricing: { tcgplayer: { holofoil: { marketPrice: 274.44 } } } } : null });
-  const r = await marketValue({ name: "Pikachu ex", number: "238/191", set: "Surging Sparks", finish: "Holo", game: "Pokemon" }, { fetchImpl, request: async () => ({ itemSummaries: [] }) });
-  assert.equal(r.ok, true); assert.equal(r.value, 274.44); assert.equal(r.basis, "TCGplayer market");
+test("marketValue: eBay median sold x 1.30, never TCGplayer", async () => {
+  const fetchImpl = async () => { throw new Error("TCGplayer must not be called"); };
+  const request = async (path) => path.includes("marketplace_insights") ? { itemSales: [2, 3, 4, 50].map((v) => ({ title: "Pikachu ex 238/191 Surging Sparks", lastSoldPrice: { value: String(v) } })) } : { itemSummaries: [] };
+  const r = await marketValue({ name: "Pikachu ex", number: "238/191", set: "Surging Sparks", game: "Pokemon" }, { fetchImpl, request });
+  assert.equal(r.ok, true); assert.equal(r.sold, 3.5); assert.equal(r.value, 4.55); assert.match(r.basis, /eBay sold median/);
+});
+test("marketValue: never under the $1.77 floor", async () => {
+  const request = async (path) => path.includes("marketplace_insights") ? { itemSales: [0.2, 0.25, 0.3].map((v) => ({ title: "Iris's Fighting Spirit 149/159 Journey Together", lastSoldPrice: { value: String(v) } })) } : { itemSummaries: [] };
+  const r = await marketValue({ name: "Iris's Fighting Spirit", number: "149/159", set: "Journey Together" }, { request });
+  assert.equal(r.value, 1.77);
 });
 test("marketValue falls back to cleaned eBay when no TCGplayer price", async () => {
   const fetchImpl = async () => ({ ok: false, json: async () => ({}) });

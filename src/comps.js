@@ -140,18 +140,17 @@ async function ebayClean(info, request) {
   const p = prices.sort((a, b) => a - b); const cut = p.slice(0, Math.max(3, Math.ceil(p.length * 0.5)));
   return { value: medianPrice(cut), count: prices.length, source: "eBay active (cleaned)" };
 }
+/* Sawyer's rule: list at eBay median SOLD x 1.30 (aim for 30%), never under $1.77 a card. TCGplayer is not used for price. */
+export const PRICE_RULE = { markup: 1.3, floor: 1.77 };
 export async function marketValue(info = {}, { fetchImpl = fetch, request = browseRequest } = {}) {
   const i = { name: String(info.name || "").trim(), number: String(info.number || "").trim(), set: String(info.set || "").trim(), finish: String(info.finish || "").trim(), game: String(info.game || "").trim(), graded: /psa|bgs|cgc|sgc|graded/i.test(`${info.finish} ${info.name}`), q: info.q };
-  const isMagic = /magic|mtg/i.test(i.game);
-  let tcg = null;
-  try {
-    if (isMagic) tcg = await scryfallPrice(i, fetchImpl);
-    else if (i.number && i.set) { tcg = await tcgdexPrice(i, fetchImpl); if (!tcg || tcg.none) tcg = (await pokemonTcgPrice(i, fetchImpl)) || null; }
-  } catch { tcg = null; }
+  const listAt = (m) => Math.max(PRICE_RULE.floor, Math.round(m * PRICE_RULE.markup * 100) / 100);
+  const sold = await soldComps(i, { request }).catch(() => null);
+  if (sold && sold.ok) return { ok: true, value: listAt(sold.value), sold: sold.value, basis: `eBay sold median $${sold.value.toFixed(2)} + 30%`, count: sold.count };
+  /* no sold data available: fall back to the cheaper half of live eBay listings, clearly labeled, no markup */
   const eb = await ebayClean(i, request).catch(() => null);
-  if (tcg && tcg.value) return { ok: true, value: tcg.value, basis: tcg.source, count: 1, matched: tcg.card, variant: tcg.variant || null, ebay: eb ? eb.value : null };
-  if (eb && eb.value) return { ok: true, value: eb.value, basis: eb.source, count: eb.count };
-  if (i.q || i.name) { const a = await activeComps(String(i.q || i.name).replace(/[()\[\]/,&-]+/g, " ").split(/\s+/).filter(Boolean).slice(0, 8).join(" "), { request }).catch(() => null); if (a && a.ok) return { ...a, basis: "active eBay listings" }; }
+  if (eb && eb.value) return { ok: true, value: Math.max(PRICE_RULE.floor, eb.value), basis: "eBay active (sold data not connected)", count: eb.count, soldMissing: sold?.reason || true };
+  if (i.q || i.name) { const a = await activeComps(String(i.q || i.name).replace(/[()\[\]/,&-]+/g, " ").split(/\s+/).filter(Boolean).slice(0, 8).join(" "), { request }).catch(() => null); if (a && a.ok) return { ...a, value: Math.max(PRICE_RULE.floor, a.value), basis: "eBay active (sold data not connected)", soldMissing: true }; }
   return { ok: false, reason: "no matching listings" };
 }
 
@@ -230,36 +229,15 @@ export async function resolveCategory(item = {}, { fetchImpl = fetch } = {}) {
   return (await suggestCategory(item.title || item.productName, { fetchImpl })) || { id: "183454", name: "CCG Individual Cards" };
 }
 
-/** eBay SOLD listings (what cards actually sold for). Tries eBay's sold-items API first, then the public sold search page. */
-export async function soldComps(info = {}, { fetchImpl = fetch, request = browseRequest } = {}) {
+/** eBay SOLD comps via eBay's Marketplace Insights API (the official sold-items data). Needs eBay to grant the app access. */
+export async function soldComps(info = {}, { request = browseRequest } = {}) {
   const num = numberForms(info.number)[0] || "";
   const q = [info.name, num, info.set].filter(Boolean).join(" ").replace(/[()\[\]/,&:-]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 90) || String(info.q || "").slice(0, 90);
   if (q.length < 3) return { ok: false, reason: "query too short" };
-  let items = [], via = "";
-  try { /* Marketplace Insights: only works if the app has access */
-    const d = await request(`/buy/marketplace_insights/v1_beta/item_sales/search?q=${encodeURIComponent(q)}&limit=100${num ? "&category_ids=183454" : ""}`);
-    items = (d?.itemSales || []).map((i) => ({ title: i.title, price: { value: i.lastSoldPrice?.value } })); via = "insights";
-  } catch (e) { soldComps.lastError = `insights: ${e.message}`; }
-  if (!items.length) {
-    try {
-      const url = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q)}&LH_Sold=1&LH_Complete=1&_ipg=120&rt=nc&LH_PrefLoc=1${num ? "&_sacat=183454" : ""}`;
-      const r = await fetchImpl(url, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36", "Accept-Language": "en-US,en;q=0.9", Accept: "text/html" }, signal: AbortSignal.timeout(12000) });
-      const html = await r.text(); soldComps.lastStatus = `${r.status} ${html.length}`;
-      items = parseSoldHtml(html); via = "sold page";
-    } catch (e) { soldComps.lastError = `${soldComps.lastError || ""} page: ${e.message}`; }
-  }
+  let items = [];
+  try { const d = await request(`/buy/marketplace_insights/v1_beta/item_sales/search?q=${encodeURIComponent(q)}&limit=100${num ? "&category_ids=183454" : ""}`); items = (d?.itemSales || []).map((i) => ({ title: i.title, price: { value: i.lastSoldPrice?.value } })); }
+  catch (e) { return { ok: false, reason: /403/.test(e.message) ? "no sold-data access" : "sold lookup failed" }; }
   const prices = cleanComps(items, { name: info.name, number: info.number, graded: /psa|bgs|cgc|sgc|graded/i.test(`${info.finish} ${info.name}`) });
-  if (prices.length < 2) return { ok: false, reason: "not enough sold listings", count: prices.length, via, q };
-  return { ok: true, value: medianPrice(prices), count: prices.length, basis: "eBay sold (median)", via, q };
-}
-/** sold search page -> [{title, price}] (works on both old s-item and new s-card markup) */
-export function parseSoldHtml(html) {
-  const out = []; const blocks = String(html).split(/<li[^>]+class="[^"]*s-(?:item|card)[ "]/).slice(1);
-  for (const b of blocks) {
-    const t = (b.match(/class="[^"]*(?:s-item__title|s-card__title)[^"]*"[^>]*>(?:<[^>]+>)*([^<]+)/) || [])[1];
-    const p = (b.match(/class="[^"]*(?:s-item__price|s-card__price)[^"]*"[^>]*>(?:<[^>]+>)*\$([\d,]+\.\d{2})/) || [])[1];
-    if (!t || !p || /shop on ebay/i.test(t)) continue;
-    out.push({ title: t.replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"').trim(), price: { value: Number(p.replace(/,/g, "")) } });
-  }
-  return out;
+  if (prices.length < 2) return { ok: false, reason: "not enough sold listings", count: prices.length };
+  return { ok: true, value: medianPrice(prices), count: prices.length, basis: "eBay sold (median)" };
 }

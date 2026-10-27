@@ -265,8 +265,7 @@ export function scouterRouter() {
   });
   router.get("/sold", async (req, res) => {
     const { soldComps } = await import("../comps.js"); const q = req.query || {};
-    const r = await soldComps({ name: q.name, number: q.number, set: q.set, finish: q.finish, q: q.q });
-    res.json({ ...r, debug: { err: soldComps.lastError || null, status: soldComps.lastStatus || null } });
+    res.json(await soldComps({ name: q.name, number: q.number, set: q.set, finish: q.finish, q: q.q }));
   });
   router.get("/category", async (req, res) => {
     const title = String(req.query?.title || ""); const c = await suggestCategory(title);
