@@ -263,6 +263,11 @@ export function scouterRouter() {
   router.get("/card/:id", async (req, res) => {
     try { const r = await fetch(`https://api.tcgdex.net/v2/en/cards/${encodeURIComponent(req.params.id)}`, { signal: AbortSignal.timeout(12000) }); const c = await r.json(); res.json({ ok: true, rarity: c.rarity || "", finish: c.variants?.holo ? "Holo" : c.variants?.reverse && !c.variants?.normal ? "Reverse Holo" : "" }); } catch { res.json({ ok: false }); }
   });
+  router.get("/sold", async (req, res) => {
+    const { soldComps } = await import("../comps.js"); const q = req.query || {};
+    const r = await soldComps({ name: q.name, number: q.number, set: q.set, finish: q.finish, q: q.q });
+    res.json({ ...r, debug: { err: soldComps.lastError || null, status: soldComps.lastStatus || null } });
+  });
   router.get("/category", async (req, res) => {
     const title = String(req.query?.title || ""); const c = await suggestCategory(title);
     const id = c ? c.id : "183454"; const list0 = await categoryAspectList(id).catch((e) => String(e.message)); const list = Array.isArray(list0) && !list0.length && categoryAspectList.lastError ? categoryAspectList.lastError : list0;

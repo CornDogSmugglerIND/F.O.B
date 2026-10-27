@@ -229,3 +229,37 @@ export async function resolveCategory(item = {}, { fetchImpl = fetch } = {}) {
   if (looksLikeCard(item)) return { id: "183454", name: "CCG Individual Cards" };
   return (await suggestCategory(item.title || item.productName, { fetchImpl })) || { id: "183454", name: "CCG Individual Cards" };
 }
+
+/** eBay SOLD listings (what cards actually sold for). Tries eBay's sold-items API first, then the public sold search page. */
+export async function soldComps(info = {}, { fetchImpl = fetch, request = browseRequest } = {}) {
+  const num = numberForms(info.number)[0] || "";
+  const q = [info.name, num, info.set].filter(Boolean).join(" ").replace(/[()\[\]/,&:-]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 90) || String(info.q || "").slice(0, 90);
+  if (q.length < 3) return { ok: false, reason: "query too short" };
+  let items = [], via = "";
+  try { /* Marketplace Insights: only works if the app has access */
+    const d = await request(`/buy/marketplace_insights/v1_beta/item_sales/search?q=${encodeURIComponent(q)}&limit=100${num ? "&category_ids=183454" : ""}`);
+    items = (d?.itemSales || []).map((i) => ({ title: i.title, price: { value: i.lastSoldPrice?.value } })); via = "insights";
+  } catch (e) { soldComps.lastError = `insights: ${e.message}`; }
+  if (!items.length) {
+    try {
+      const url = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q)}&LH_Sold=1&LH_Complete=1&_ipg=120&rt=nc&LH_PrefLoc=1${num ? "&_sacat=183454" : ""}`;
+      const r = await fetchImpl(url, { headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36", "Accept-Language": "en-US,en;q=0.9", Accept: "text/html" }, signal: AbortSignal.timeout(12000) });
+      const html = await r.text(); soldComps.lastStatus = `${r.status} ${html.length}`;
+      items = parseSoldHtml(html); via = "sold page";
+    } catch (e) { soldComps.lastError = `${soldComps.lastError || ""} page: ${e.message}`; }
+  }
+  const prices = cleanComps(items, { name: info.name, number: info.number, graded: /psa|bgs|cgc|sgc|graded/i.test(`${info.finish} ${info.name}`) });
+  if (prices.length < 2) return { ok: false, reason: "not enough sold listings", count: prices.length, via, q };
+  return { ok: true, value: medianPrice(prices), count: prices.length, basis: "eBay sold (median)", via, q };
+}
+/** sold search page -> [{title, price}] (works on both old s-item and new s-card markup) */
+export function parseSoldHtml(html) {
+  const out = []; const blocks = String(html).split(/<li[^>]+class="[^"]*s-(?:item|card)[ "]/).slice(1);
+  for (const b of blocks) {
+    const t = (b.match(/class="[^"]*(?:s-item__title|s-card__title)[^"]*"[^>]*>(?:<[^>]+>)*([^<]+)/) || [])[1];
+    const p = (b.match(/class="[^"]*(?:s-item__price|s-card__price)[^"]*"[^>]*>(?:<[^>]+>)*\$([\d,]+\.\d{2})/) || [])[1];
+    if (!t || !p || /shop on ebay/i.test(t)) continue;
+    out.push({ title: t.replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"').trim(), price: { value: Number(p.replace(/,/g, "")) } });
+  }
+  return out;
+}
