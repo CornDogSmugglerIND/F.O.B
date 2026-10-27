@@ -147,3 +147,25 @@ test("full revise: title, description, specifics, condition, price, returns, off
   assert.equal(op.listingPolicies.bestOfferTerms.autoDeclinePrice.value, "5.60");
   assert.equal(op.status, undefined);
 });
+
+test("variation revise: group title/description/specifics, then each variation's price, qty and offers", async () => {
+  const { reviseEbayGroupFull } = await import("../src/channels/ebay.js");
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => { const u = String(url); calls.push([u, init.method || "GET", (() => { try { return JSON.parse(init.body); } catch { return null; } })()]);
+    if (u.includes("/oauth2/token")) return res(200, { access_token: "t", expires_in: 7200 });
+    if (u.includes("/inventory_item_group/G") && (init.method || "GET") === "GET") return res(200, { inventoryItemGroupKey: "G", title: "Old", imageUrls: ["https://x/c.jpg"], variantSKUs: ["A", "B"], variesBy: { specifications: [{ name: "Card", values: ["a", "b"] }] }, aspects: { Game: ["Pokémon TCG"] } });
+    if (u.includes("/inventory_item_group/G") && init.method === "PUT") return res(204, {});
+    if (/\/inventory_item\/[AB]$/.test(u) && (init.method || "GET") === "GET") return res(200, { product: { title: "x", aspects: { Card: ["a"] } } });
+    if (/\/inventory_item\/[AB]$/.test(u)) return res(204, {});
+    if (u.includes("/offer?sku=")) { const sku = u.match(/sku=(\w)/)[1]; return res(200, { offers: [{ offerId: "o" + sku, pricingSummary: { price: { value: "2.00" } }, listingPolicies: { fulfillmentPolicyId: "F" } }] }); }
+    if (/\/offer\/o[AB]$/.test(u)) return res(204, {});
+    return res(404, {}); };
+  const out = await reviseEbayGroupFull({ groupKey: "G", title: "New group", description: "Hi\n- Set: X", aspects: { Game: "Pokémon TCG", Set: "X" }, variants: [{ sku: "A", price: 3, quantity: 2 }, { sku: "B", price: 4, quantity: 0 }], returnPolicyId: "R", bestOffer: true, offerFloorPct: 80 }, { fetchImpl });
+  assert.equal(out.ok, true, JSON.stringify(out));
+  const gp = calls.find((c) => c[0].includes("/inventory_item_group/G") && c[1] === "PUT")[2];
+  assert.equal(gp.title, "New group"); assert.deepEqual(gp.variantSKUs, ["A", "B"]); assert.deepEqual(gp.aspects.Set, ["X"]); assert.equal(gp.inventoryItemGroupKey, "G");
+  const oa = calls.find((c) => c[0].endsWith("/offer/oA") && c[1] === "PUT")[2];
+  assert.equal(oa.pricingSummary.price.value, "3.00"); assert.equal(oa.availableQuantity, 2); assert.equal(oa.listingPolicies.returnPolicyId, "R"); assert.equal(oa.listingPolicies.bestOfferTerms.autoDeclinePrice.value, "2.40");
+  const ib = calls.find((c) => c[0].endsWith("/inventory_item/B") && c[1] === "PUT")[2];
+  assert.deepEqual(ib.product.aspects.Card, ["a"]);
+});

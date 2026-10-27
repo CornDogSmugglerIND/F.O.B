@@ -738,8 +738,8 @@ html .shx h2,html .shx .ed-head,html .shx .back,html .shx .pk-top>h2,html .shx .
 .bl-lh{display:flex;align-items:center;justify-content:space-between;gap:10px}.bl-lh em{font:500 12px var(--text);color:var(--mute);font-style:normal}
 .bl-mini{appearance:none;border:0;background:none;color:var(--holo);font:600 12.5px var(--text);cursor:pointer;padding:4px 0;text-decoration:underline}
 .bl-hint{margin:2px 0 8px!important;font-size:12.5px!important}
-.bl-asp .bl-ar.empty [data-ak]{color:var(--mute)}
-.bl-asp .bl-ar.req.empty [data-av]{box-shadow:inset 0 -2px 0 #FFB27A}
+.bl-asp .bl-ar.blank [data-ak]{color:var(--mute)}
+.bl-asp .bl-ar.req.blank [data-av]{box-shadow:inset 0 -2px 0 #FFB27A}
 .bl-cat{margin:4px 0 2px}.bl-cat b{color:var(--ink)}
 .bl-off{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;font:600 14px var(--text);color:var(--ink)}
 .bl-off label{display:flex;align-items:center;gap:8px}.bl-offp input{width:52px;text-align:center}
@@ -749,3 +749,9 @@ html .shx h2,html .shx .ed-head,html .shx .back,html .shx .pk-top>h2,html .shx .
 .fe #feMsg.bad{color:#FFB27A}
 .fe .ed-f select,.fe .ed-f textarea{width:100%}
 .fe .fe-row .ed-f{min-width:0}.fe .fe-row input{width:100%;min-width:0;box-sizing:border-box}
+.ge-bulk{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 8px}.ge-bulk input{flex:1 1 120px;min-width:0}
+.ge-vars{display:flex;flex-direction:column;gap:6px;max-height:min(52vh,520px);overflow-y:auto;padding-right:2px}
+.ge-v{display:grid;grid-template-columns:40px minmax(0,1fr) 92px 58px;gap:8px;align-items:center;padding:6px;border-radius:10px;background:rgba(8,16,13,.6);border:1px solid rgba(125,242,180,.12)}
+.ge-v img,.ge-v>i{width:40px;height:54px;object-fit:cover;border-radius:4px;background:#0a1512;cursor:zoom-in}
+.ge-n{font:600 13px/1.25 var(--text);color:var(--ink);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ge-v label{display:flex;align-items:center;gap:2px}.ge-v label i{font-style:normal;color:var(--mute)}.ge-v input{width:100%;min-width:0;text-align:right}

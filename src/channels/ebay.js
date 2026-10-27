@@ -1046,3 +1046,49 @@ export async function reviseEbayListingFull(u, opts = {}) {
   await ebayRequest(`/sell/inventory/v1/offer/${encodeURIComponent(o.offerId)}`, { method: "PUT", fetchImpl, body });
   return { ok: true, sku, offerId: o.offerId };
 }
+
+/** A whole variation listing (inventory item group): shared title/description/specifics/photos + every variation's price and qty. */
+export async function getEbayGroupDetail(groupKey, opts = {}) {
+  const fetchImpl = opts.fetchImpl;
+  const { data: g } = await ebayRequest(`/sell/inventory/v1/inventory_item_group/${encodeURIComponent(groupKey)}`, { fetchImpl });
+  const skus = g?.variantSKUs || [], axis = g?.variesBy?.specifications?.[0]?.name || "Card";
+  const variants = [];
+  let pol = {}, bo = null, cat = null;
+  for (const sku of skus) {
+    try {
+      const [{ data: inv }, { data: of }] = await Promise.all([
+        ebayRequest(`/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, { fetchImpl }),
+        ebayRequest(`/sell/inventory/v1/offer?sku=${encodeURIComponent(sku)}&marketplace_id=${encodeURIComponent(ebayMarketplaceId())}`, { fetchImpl }),
+      ]);
+      const o = (of?.offers || [])[0] || {};
+      if (!pol.fulfillmentPolicyId && o.listingPolicies) { pol = o.listingPolicies; bo = o.listingPolicies.bestOfferTerms || null; cat = o.categoryId || null; }
+      variants.push({ sku, name: (inv?.product?.aspects?.[axis] || [])[0] || inv?.product?.title || sku, price: Number(o.pricingSummary?.price?.value) || null, quantity: o.availableQuantity ?? inv?.availability?.shipToLocationAvailability?.quantity ?? 0, image: (inv?.product?.imageUrls || [])[0] || null });
+    } catch (e) { variants.push({ sku, name: sku, error: e.message }); }
+  }
+  const p0 = variants.find((v) => v.price)?.price;
+  return { groupKey, title: g?.title || "", description: g?.description || "", aspects: g?.aspects || {}, imageUrls: g?.imageUrls || [], axis, variants, categoryId: cat,
+    fulfillmentPolicyId: pol.fulfillmentPolicyId || null, returnPolicyId: pol.returnPolicyId || null, bestOffer: !!bo?.bestOfferEnabled, offerFloorPct: bo?.autoDeclinePrice && p0 ? Math.round((Number(bo.autoDeclinePrice.value) / p0) * 100) : null };
+}
+
+/** Change a whole variation listing: group title/description/specifics, then each variation's price/qty and the shared policies/offers. */
+export async function reviseEbayGroupFull(u, opts = {}) {
+  const fetchImpl = opts.fetchImpl, key = String(u.groupKey || "").trim();
+  if (!key) { const e = new Error("No variation group on this listing."); e.code = "VALIDATION"; throw e; }
+  const { descriptionHtml } = await import("../listing/engine.js");
+  const gpath = `/sell/inventory/v1/inventory_item_group/${encodeURIComponent(key)}`;
+  const { data: g } = await ebayRequest(gpath, { fetchImpl });
+  const body = { ...(g || {}) }; delete body.inventoryItemGroupKey;
+  if (u.title != null && String(u.title).trim()) body.title = String(u.title).trim().slice(0, 80);
+  if (u.description != null) body.description = descriptionHtml(u.description);
+  if (u.aspects && typeof u.aspects === "object") body.aspects = Object.fromEntries(Object.entries(u.aspects).filter(([k, v]) => k && v != null && String(v).trim()).map(([k, v]) => [k, Array.isArray(v) ? v.map(String) : String(v).split(/\s*,\s*/).filter(Boolean)]));
+  await ebayRequest(gpath, { method: "PUT", fetchImpl, body: { inventoryItemGroupKey: key, ...body } });
+  const results = [];
+  for (const v of u.variants || []) {
+    try {
+      await reviseEbayListingFull({ sku: v.sku, price: v.price, quantity: v.quantity, description: u.description, fulfillmentPolicyId: u.fulfillmentPolicyId, returnPolicyId: u.returnPolicyId, bestOffer: u.bestOffer, offerFloorPct: u.offerFloorPct }, { fetchImpl });
+      results.push({ sku: v.sku, ok: true });
+    } catch (e) { results.push({ sku: v.sku, ok: false, error: e.message }); }
+  }
+  const bad = results.filter((r) => !r.ok);
+  return { ok: bad.length === 0, results, error: bad[0]?.error };
+}

@@ -174,6 +174,26 @@ export function channelsRouter() {
       res.json({ ok: true, ...d, descriptionText: txt, more, shippingOptions, returnOptions });
     } catch (e) { res.status(e.code === "VALIDATION" ? 400 : 502).json({ ok: false, error: e.message }); }
   });
+  router.get("/ebay/group-detail", async (req, res) => {
+    try {
+      assertChannelConfigured("ebay");
+      const { getEbayGroupDetail } = await import("../channels/ebay.js");
+      const d = await getEbayGroupDetail(String(req.query?.key || ""));
+      const { categoryAspectList } = await import("../comps.js");
+      let list = []; try { list = await categoryAspectList(d.categoryId || "183454"); } catch { list = []; }
+      const more = list.filter((a) => a.name !== d.axis && !Object.keys(d.aspects || {}).some((k) => k.toLowerCase() === a.name.toLowerCase()) && !/prop 65|autograph|signed by|customized|card name|card number|^hp$|attack|defense|cost/i.test(a.name)).sort((a, b) => (a.required ? 0 : a.recommended ? 1 : 2) - (b.required ? 0 : b.recommended ? 1 : 2)).slice(0, 20).map((a) => ({ name: a.name, required: a.required, values: a.values.slice(0, 200) }));
+      let shippingOptions = [], returnOptions = []; try { const p = await listEbayPolicies(); shippingOptions = p.fulfillment || []; returnOptions = p.returns || []; } catch { /* ids only */ }
+      const txt = String(d.description || "").replace(/<li[^>]*>/gi, "- ").replace(/<\/(p|li|div|h\d)>|<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\n{3,}/g, "\n\n").trim();
+      res.json({ ok: true, ...d, descriptionText: txt, more, shippingOptions, returnOptions });
+    } catch (e) { res.status(e.code === "VALIDATION" ? 400 : 502).json({ ok: false, error: e.message }); }
+  });
+  router.post("/ebay/revise-group", async (req, res) => {
+    try {
+      assertChannelConfigured("ebay");
+      const { reviseEbayGroupFull } = await import("../channels/ebay.js");
+      res.json(await reviseEbayGroupFull(req.body || {}));
+    } catch (e) { res.status(e.code === "VALIDATION" ? 400 : 502).json({ ok: false, error: e.message }); }
+  });
   router.post("/ebay/revise-full", async (req, res) => {
     try {
       assertChannelConfigured("ebay");

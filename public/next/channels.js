@@ -172,7 +172,7 @@ function fullEdit(it) {
   const s = ctx.openSheet(`<div class="ed fe"><div class="ed-head">${src ? `<img src="${esc(src)}" alt="" data-view-photo="${esc(JSON.stringify((it.photos || []).map((p) => p.dataUrl || p.url).filter(Boolean)))}">` : ""}<div><em>Live on eBay</em><b>${esc(nameOf(it))}</b></div></div><p class="sub" id="feMsg">Loading the listing from eBay…</p><div id="feBody"></div></div>`);
   const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#feMsg"); m.textContent = t; m.classList.toggle("bad", !!bad); };
   let dlN = 0;
-  const row = (k = "", v = "", vals = [], req = false) => { const dl = vals.length ? `fe-dl-${++dlN}` : ""; return `<div class="bl-ar${req ? " req" : ""}${v ? "" : " empty"}" style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="${req ? "Required" : "Optional"}" aria-label="${esc(k || "Item specific")} value" style="flex:1;min-width:0"${dl ? ` list="${dl}"` : ""}>${dl ? `<datalist id="${dl}">${vals.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>` : ""}<button class="btn" data-rm type="button" aria-label="Remove" style="flex:none;padding:6px 12px">×</button></div>`; };
+  const row = (k = "", v = "", vals = [], req = false) => { const dl = vals.length ? `fe-dl-${++dlN}` : ""; return `<div class="bl-ar${req ? " req" : ""}${v ? "" : " blank"}" style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="${req ? "Required" : "Optional"}" aria-label="${esc(k || "Item specific")} value" style="flex:1;min-width:0"${dl ? ` list="${dl}"` : ""}>${dl ? `<datalist id="${dl}">${vals.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>` : ""}<button class="btn" data-rm type="button" aria-label="Remove" style="flex:none;padding:6px 12px">×</button></div>`; };
   fetch(`/api/channels/ebay/listing-detail?sku=${encodeURIComponent(sku)}`).then((r) => r.json()).then((d) => {
     if (!s.isConnected) return;
     if (!d.ok) { msg(`Couldn't load it from eBay: ${d.error || "try again"}`, true); return; }
@@ -194,7 +194,7 @@ function fullEdit(it) {
       <label class="ed-f"><span>Returns</span>${sel("feRet", d.returnOptions || [], d.returnPolicyId)}</label>
       <div class="ed-go"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn go" id="feSave">Save to eBay</button></div>`;
     photoManager($("#fePh"), it.id, { toast: ctx.toast, refresh: ctx.refresh });
-    const cnt = () => { const rows = [...s.querySelectorAll("#feAsp > div")]; $("#feAspN").textContent = `${rows.filter((r) => r.querySelector("[data-av]").value.trim()).length} of ${rows.length} filled`; rows.forEach((r) => r.classList.toggle("empty", !r.querySelector("[data-av]").value.trim())); };
+    const cnt = () => { const rows = [...s.querySelectorAll("#feAsp > div")]; $("#feAspN").textContent = `${rows.filter((r) => r.querySelector("[data-av]").value.trim()).length} of ${rows.length} filled`; rows.forEach((r) => r.classList.toggle("blank", !r.querySelector("[data-av]").value.trim())); };
     cnt(); $("#feAsp").addEventListener("input", cnt);
     $("#feAsp").addEventListener("click", (e) => { const b = e.target.closest("[data-rm]"); if (b) { b.parentElement.remove(); cnt(); } });
     $("#feAdd").addEventListener("click", () => { $("#feAsp").insertAdjacentHTML("beforeend", row()); cnt(); });
@@ -221,9 +221,67 @@ function fullEdit(it) {
     });
   }).catch(() => { if (s.isConnected) msg("Couldn't reach eBay. Try again.", true); });
 }
+/* Full editor for a variation listing: the shared parts once, then every variation's price and qty. */
+function groupEdit(it, key) {
+  const src = photoOf(it);
+  const s = ctx.openSheet(`<div class="ed fe"><div class="ed-head">${src ? `<img src="${esc(src)}" alt="">` : ""}<div><em>Live on eBay · ${it._n} variations</em><b>${esc(it.groupTitle || nameOf(it))}</b></div></div><p class="sub" id="feMsg">Loading the listing from eBay…</p><div id="feBody"></div></div>`);
+  const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#feMsg"); m.textContent = t; m.classList.toggle("bad", !!bad); };
+  let dlN = 0;
+  const row = (k = "", v = "", vals = [], req = false) => { const dl = vals.length ? `ge-dl-${++dlN}` : ""; return `<div class="bl-ar${req ? " req" : ""}${v ? "" : " blank"}" style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="${req ? "Required" : "Optional"}" style="flex:1;min-width:0"${dl ? ` list="${dl}"` : ""}>${dl ? `<datalist id="${dl}">${vals.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>` : ""}<button class="btn" data-rm type="button" aria-label="Remove" style="flex:none;padding:6px 12px">×</button></div>`; };
+  fetch(`/api/channels/ebay/group-detail?key=${encodeURIComponent(key)}`).then((r) => r.json()).then((d) => {
+    if (!s.isConnected) return;
+    if (!d.ok) { msg(`Couldn't load it from eBay: ${d.error || "try again"}`, true); return; }
+    const pct = d.offerFloorPct || (() => { try { return Number(localStorage.getItem("fob-offer-pct")) || 80; } catch { return 80; } })();
+    const sel = (id, opts, cur) => opts.length ? `<select id="${id}">${opts.map((o) => `<option value="${esc(o.id)}"${String(o.id) === String(cur) ? " selected" : ""}>${esc(o.name)}</option>`).join("")}</select>` : `<span class="sub">Your eBay default</span>`;
+    msg("Changes go straight to your live eBay listing.");
+    $("#feBody").innerHTML = `
+      <label class="ed-f"><span>Title</span><input id="feTitle" maxlength="80" value="${esc(d.title)}"><small id="feTn">${d.title.length}/80</small></label>
+      <div class="ed-f"><span class="bl-lh">Variations <em>${d.variants.length}</em></span>
+        <div class="ge-bulk"><input id="geAll" inputmode="decimal" placeholder="Set every price" aria-label="Set every price"><button type="button" class="btn" id="geAllGo">Apply</button><button type="button" class="btn" data-gp="-10">−10%</button><button type="button" class="btn" data-gp="10">+10%</button></div>
+        <div class="ge-vars">${d.variants.map((v, j) => `<div class="ge-v" data-j="${j}">${v.image ? `<img src="${esc(v.image)}" alt="" data-view-photo="${esc(JSON.stringify([v.image]))}">` : "<i></i>"}<span class="ge-n">${esc(v.name)}</span><label><i>$</i><input data-price inputmode="decimal" value="${v.price != null ? Number(v.price).toFixed(2) : ""}" aria-label="Price"></label><label class="ge-q"><input data-qty inputmode="numeric" value="${esc(v.quantity ?? 0)}" aria-label="Quantity"></label></div>`).join("")}</div></div>
+      <div class="ed-f"><span class="bl-lh">Description <button type="button" class="bl-mini" id="feRedo">Rewrite clean (no filler)</button></span><textarea id="feDesc" rows="9" style="width:100%;resize:vertical">${esc(d.descriptionText || "")}</textarea></div>
+      <div class="ed-f"><span class="bl-lh">Item specifics (whole listing) <em id="feAspN"></em></span><div id="feAsp" class="bl-vars bl-asp" style="max-height:none">${Object.entries(d.aspects || {}).map(([k, v]) => row(k, (Array.isArray(v) ? v : [v]).join(", "))).join("")}${(d.more || []).map((m) => row(m.name, "", m.values || [], m.required)).join("")}</div><button class="btn" id="feAdd" type="button" style="margin-top:6px">Add item specific</button></div>
+      <div class="ed-f"><span>Offers</span><div class="bl-off"><label><input type="checkbox" id="feOffer"${d.bestOffer ? " checked" : ""}> Accept offers</label><label class="bl-offp">Auto-decline under <input id="feOfferPct" inputmode="numeric" value="${pct}">% of price</label></div></div>
+      <label class="ed-f"><span>Shipping</span>${sel("feShip", d.shippingOptions || [], d.fulfillmentPolicyId)}</label>
+      <label class="ed-f"><span>Returns</span>${sel("feRet", d.returnOptions || [], d.returnPolicyId)}</label>
+      <div class="ed-go"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn go" id="feSave">Save to eBay</button></div>`;
+    const cnt = () => { const rows = [...s.querySelectorAll("#feAsp > div")]; $("#feAspN").textContent = `${rows.filter((r) => r.querySelector("[data-av]").value.trim()).length} of ${rows.length} filled`; rows.forEach((r) => r.classList.toggle("blank", !r.querySelector("[data-av]").value.trim())); };
+    cnt(); $("#feAsp").addEventListener("input", cnt);
+    $("#feAsp").addEventListener("click", (e) => { const b = e.target.closest("[data-rm]"); if (b) { b.parentElement.remove(); cnt(); } });
+    $("#feAdd").addEventListener("click", () => { $("#feAsp").insertAdjacentHTML("beforeend", row()); cnt(); });
+    $("#feTitle").addEventListener("input", (e) => { $("#feTn").textContent = `${e.target.value.length}/80`; });
+    $("#geAllGo").addEventListener("click", () => { const p = parseFloat(String($("#geAll").value).replace(/[^0-9.]/g, "")); if (p > 0) s.querySelectorAll("[data-price]").forEach((x) => { x.value = p.toFixed(2); }); });
+    s.querySelectorAll("[data-gp]").forEach((b) => b.addEventListener("click", () => { const k = 1 + Number(b.dataset.gp) / 100; s.querySelectorAll("[data-price]").forEach((x) => { const v = parseFloat(x.value); if (v > 0) x.value = Math.max(0.99, Math.round(v * k * 100) / 100).toFixed(2); }); }));
+    $("#feRedo").addEventListener("click", (e) => { const b = e.currentTarget; b.textContent = "Rewriting…";
+      fetch("/api/channels/ebay/listing-preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item: { ...it, title: $("#feTitle").value, description: "", quantity: 1 } }) }).then((r) => r.json()).then((p) => {
+        b.textContent = "Rewrite clean (no filler)"; if (!p.ok) return;
+        const head = p.description.split("\n")[0].replace(/^[^|]*\|/, $("#feTitle").value + " |"), list = d.variants.map((v, j) => `- ${v.name}${Number(s.querySelector(`.ge-v[data-j="${j}"] [data-qty]`).value) > 1 ? ` (${s.querySelector(`.ge-v[data-j="${j}"] [data-qty]`).value} available)` : ""}`).join("\n");
+        $("#feDesc").value = `${$("#feTitle").value}.\n\nPick your card from the drop-down. You get the exact card shown in its photo.\n\n${list}\n\nCornDogSmuggler Coalition - Operating To Marine Corps Standards.`;
+      }).catch(() => { b.textContent = "Rewrite clean (no filler)"; });
+    });
+    s.querySelector("[data-close]").addEventListener("click", () => ctx.closeSheet());
+    $("#feSave").addEventListener("click", async () => {
+      const variants = d.variants.map((v, j) => { const r = s.querySelector(`.ge-v[data-j="${j}"]`); return { sku: v.sku, price: parseFloat(String(r.querySelector("[data-price]").value).replace(/[^0-9.]/g, "")), quantity: Math.max(0, parseInt(r.querySelector("[data-qty]").value, 10) || 0) }; });
+      const badP = variants.findIndex((v) => !(v.price > 0)); if (badP >= 0) { msg(`${d.variants[badP].name} needs a price.`, true); s.querySelector(`.ge-v[data-j="${badP}"] [data-price]`).focus(); return; }
+      const miss = [...s.querySelectorAll("#feAsp > div.req")].find((r) => !r.querySelector("[data-av]").value.trim()); if (miss) { msg(`eBay requires ${miss.querySelector("[data-ak]").value}.`, true); miss.querySelector("[data-av]").focus(); return; }
+      const aspects = {}; s.querySelectorAll("#feAsp > div").forEach((r) => { const k = r.querySelector("[data-ak]").value.trim(), v = r.querySelector("[data-av]").value.trim(); if (k && v) aspects[k] = v; });
+      const pc = Math.min(99, Math.max(1, parseInt($("#feOfferPct").value, 10) || 80)); try { localStorage.setItem("fob-offer-pct", String(pc)); } catch { /* ignore */ }
+      const body = { groupKey: key, title: $("#feTitle").value.trim(), description: $("#feDesc").value, aspects, variants, bestOffer: $("#feOffer").checked, offerFloorPct: pc, ...(s.querySelector("#feShip") ? { fulfillmentPolicyId: $("#feShip").value } : {}), ...(s.querySelector("#feRet") ? { returnPolicyId: $("#feRet").value } : {}) };
+      const b = $("#feSave"); b.disabled = true; b.textContent = `Saving ${variants.length} variations…`; msg("");
+      try {
+        const r = await fetch("/api/channels/ebay/revise-group", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }), out = await r.json().catch(() => ({}));
+        const okSkus = new Set((out.results || []).filter((x) => x.ok).map((x) => x.sku));
+        const l = loadItems(); for (const v of variants) { if (!okSkus.has(v.sku)) continue; const k = l.find((i) => (i.channels?.ebay?.sku || i.sku) === v.sku); if (k) { k.price = v.price; k.quantity = v.quantity; k.groupTitle = body.title; } } saveItems(l);
+        if (!r.ok || !out.ok) { const e = String(out.error || "eBay said no.").replace(/^eBay API \S+ \S+ failed \(\d+\): /, ""); msg(okSkus.size ? `Saved ${okSkus.size} of ${variants.length}. eBay said no to the rest: ${e}` : `eBay said no: ${e}`, true); b.disabled = false; b.textContent = "Save to eBay"; return; }
+        ctx.closeSheet(); paint(); ctx.refresh?.(); ctx.toast(`Saved. All ${variants.length} variations updated on eBay.`);
+      } catch { msg("Couldn't reach eBay. Nothing confirmed. Reopen to check.", true); b.disabled = false; b.textContent = "Save to eBay"; }
+    });
+  }).catch(() => { if (s.isConnected) msg("Couldn't reach eBay. Try again.", true); });
+}
 function editSheet(all, id) {
   const it = all.find((x) => String(x.id) === String(id)); if (!it) return;
   if (!(it._n > 1) && (it.channels?.ebay?.sku || it.sku)) return fullEdit(it);
+  { const gk = (it._kids || []).find((k) => k.groupId)?.groupId || it.groupId; if (it._n > 1 && gk) return groupEdit(it, gk); }
   const kids = it._n > 1 ? it._kids.slice() : [it], multi = kids.length > 1, src = photoOf(it);
   const skuOf = (k) => k.channels?.ebay?.sku || k.sku || "", offerOf = (k) => k.channels?.ebay?.offerId || "";
   const names = kids.map((k) => nameOf(k)), words = names.map((t) => t.split(/\s+/)); let cut = 0;
@@ -485,7 +543,7 @@ function buildSheet(it) {
     <label class="sc-f" style="flex-direction:row;gap:10px;align-items:center"><input type="checkbox" id="blDH" checked><span>Also download the Double Holo files (cards + photos) after listing</span></label>
     <div id="blMsg" class="sub bl-msg" role="status">Nothing goes live until you tap List on eBay twice.</div>
     <div class="co-znav bl-act"><button class="btn" id="blSave" type="button">Save draft</button><button class="btn go" id="blGo" type="button">List on eBay</button></div>`);
-  let dlN = 0; const aspRow = (k = "", v = "", vals = [], req = false) => { const dl = vals.length ? `bl-dl-${++dlN}` : ""; return `<div class="bl-ar${req ? " req" : ""}${v ? "" : " empty"}" style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" aria-label="Item specific name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="${req ? "Required" : "Optional"}" aria-label="${esc(k || "Item specific")} value" style="flex:1;min-width:0"${dl ? ` list="${dl}"` : ""}>${dl ? `<datalist id="${dl}">${vals.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>` : ""}<button class="btn" data-rm type="button" aria-label="Remove this item specific" style="flex:none;padding:6px 12px">×</button></div>`; };
+  let dlN = 0; const aspRow = (k = "", v = "", vals = [], req = false) => { const dl = vals.length ? `bl-dl-${++dlN}` : ""; return `<div class="bl-ar${req ? " req" : ""}${v ? "" : " blank"}" style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" aria-label="Item specific name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="${req ? "Required" : "Optional"}" aria-label="${esc(k || "Item specific")} value" style="flex:1;min-width:0"${dl ? ` list="${dl}"` : ""}>${dl ? `<datalist id="${dl}">${vals.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>` : ""}<button class="btn" data-rm type="button" aria-label="Remove this item specific" style="flex:none;padding:6px 12px">×</button></div>`; };
   const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#blMsg"); m.textContent = t; m.style.color = bad ? "var(--org)" : ""; };
   let armed = null;
   const paintPh = () => { const cur = loadItems().find((x) => String(x.id) === String(it.id)) || it, list = cur.photos || []; $("#blPh").innerHTML = list.map((p, k) => `<button type="button" class="bl-pic${k === 0 ? " on" : ""}" data-k="${k}" aria-label="${k === 0 ? "Main photo" : "Make this the main photo"}"><img src="${esc(p.dataUrl || p.url || "")}" alt="" draggable="false">${k === 0 ? "<b>Main</b>" : ""}</button>`).join(""); };
@@ -500,7 +558,7 @@ function buildSheet(it) {
     fetch(`/api/scouter/comps?${qs}`).then((r) => r.json()).then((r) => { if (!s.isConnected || pe.value) return; if (r.ok && r.value > 0) { pe.value = Number(r.value).toFixed(2); pe.dispatchEvent(new Event("input", { bubbles: true })); msg(`Price filled from ${r.basis || "eBay"}${r.count ? ` (${r.count} listings)` : ""}. Change it if you want.`); } else { pe.placeholder = "Type a price"; msg("Couldn't find a price. Type one.", true); } }).catch(() => { if (s.isConnected) pe.placeholder = "Type a price"; });
   }
   let pv = null;
-  const countAsp = () => { const rows = [...s.querySelectorAll("#blAsp > div")], n = rows.filter((r) => r.querySelector("[data-av]").value.trim()).length; $("#blAspN").textContent = `${n} of ${rows.length} filled`; rows.forEach((r) => r.classList.toggle("empty", !r.querySelector("[data-av]").value.trim())); };
+  const countAsp = () => { const rows = [...s.querySelectorAll("#blAsp > div")], n = rows.filter((r) => r.querySelector("[data-av]").value.trim()).length; $("#blAspN").textContent = `${n} of ${rows.length} filled`; rows.forEach((r) => r.classList.toggle("blank", !r.querySelector("[data-av]").value.trim())); };
   $("#blAsp").addEventListener("input", countAsp);
   $("#blDesc").addEventListener("input", (e) => { if (e.isTrusted) patchItem(it.id, (i) => { i.descEdited = true; }); });
   $("#blRedo").addEventListener("click", () => { if (pv && pv.description) { $("#blDesc").value = pv.description; $("#blDesc").dispatchEvent(new Event("input", { bubbles: true })); } });
