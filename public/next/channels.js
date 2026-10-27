@@ -643,4 +643,4 @@ export function renderChannels(host, api) { ctx = { host, ...api }; if (window._
 /* Listing is built from Command, never from the Channels page (Channels = what is live on eBay). */
 export function editListing(id, api) { ctx = { host: document.createElement("div"), ...api }; const it = loadItems().find((x) => String(x.id) === String(id)); if (it) editSheet([it], id); }
 export function buildListing(id, api) { ctx = { host: document.createElement("div"), ...api }; const it = loadItems().find((x) => String(x.id) === String(id)); if (it) buildSheet(it); }
-export function variationListing(api) { ctx = { host: document.createElement("div"), ...api }; varSheet(shown().filter((i) => i.phase === "staged" && !i.ended)); }
+export function variationListing(api) { ctx = { host: document.createElement("div"), ...api }; varSheet(loadItems().filter((i) => i.phase === "staged" && !i.ended && !isArchived(i.id))); }

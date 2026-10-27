@@ -160,6 +160,16 @@ export function channelsRouter() {
       res.status(e.code === "VALIDATION" ? 400 : 502).json({ ok: false, error: e.message });
     }
   });
+  /* host one photo on eBay's picture service: the app keeps only the link, so a big batch never fills phone storage */
+  router.post("/ebay/upload-image", async (req, res) => {
+    try {
+      assertChannelConfigured("ebay");
+      const { uploadEbayImage } = await import("../channels/ebay.js");
+      const d = String(req.body?.dataUrl || ""); if (!/^data:image\//.test(d)) return res.status(400).json({ ok: false, error: "Send a photo." });
+      if (d.length > 3_500_000) return res.status(413).json({ ok: false, error: "Photo too large." });
+      res.json({ ok: true, url: await uploadEbayImage(d) });
+    } catch (e) { res.status(e.code === "VALIDATION" ? 400 : 502).json({ ok: false, error: e.message }); }
+  });
   router.get("/ebay/listing-detail", async (req, res) => {
     try {
       assertChannelConfigured("ebay");

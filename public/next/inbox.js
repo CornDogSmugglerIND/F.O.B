@@ -20,10 +20,12 @@ async function shrink(file, max, q) {
 
 export async function inboxAdd(files, onProgress) {
   const imgs = [...files].filter((f) => f.type.startsWith("image/") || /\.(jpe?g|png|webp|heic)$/i.test(f.name || ""));
+  /* scanner order: front, back, front, back... file names keep that order (IMG_0001, IMG_0002, ...) */
+  imgs.sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), undefined, { numeric: true }));
   let done = 0;
   for (const f of imgs) {
     try {
-      const full = await shrink(f, 1000, .82), thumb = await shrink(f, 240, .7);
+      const full = await shrink(f, 1600, .85), thumb = await shrink(f, 240, .7);
       await tx("readwrite", (s) => s.put({ id: nid(), full, thumb, name: f.name || "", createdAt: Date.now() + done }));
     } catch { /* skip unreadable photo */ }
     done++; onProgress && onProgress(done, imgs.length);
