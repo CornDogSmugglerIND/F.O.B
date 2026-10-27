@@ -160,6 +160,27 @@ export function channelsRouter() {
       res.status(e.code === "VALIDATION" ? 400 : 502).json({ ok: false, error: e.message });
     }
   });
+  router.get("/ebay/listing-detail", async (req, res) => {
+    try {
+      assertChannelConfigured("ebay");
+      const { getEbayListingDetail } = await import("../channels/ebay.js");
+      const d = await getEbayListingDetail(String(req.query?.sku || ""));
+      /* the category's specifics (with eBay's values) and your policies, so the editor can offer them */
+      const { categoryAspectList } = await import("../comps.js");
+      let list = []; try { list = await categoryAspectList(d.categoryId || "183454"); } catch { list = []; }
+      const more = list.filter((a) => !Object.keys(d.aspects || {}).some((k) => k.toLowerCase() === a.name.toLowerCase()) && !/prop 65|autograph authentication number|signed by|customized/i.test(a.name)).sort((a, b) => (a.required ? 0 : a.recommended ? 1 : 2) - (b.required ? 0 : b.recommended ? 1 : 2)).slice(0, 24).map((a) => ({ name: a.name, required: a.required, values: a.values.slice(0, 200) }));
+      let shippingOptions = [], returnOptions = []; try { const p = await listEbayPolicies(); shippingOptions = p.fulfillment || []; returnOptions = p.returns || []; } catch { /* ids only */ }
+      const txt = String(d.description || "").replace(/<li[^>]*>/gi, "- ").replace(/<\/(p|li|div|h\d)>|<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\n{3,}/g, "\n\n").trim();
+      res.json({ ok: true, ...d, descriptionText: txt, more, shippingOptions, returnOptions });
+    } catch (e) { res.status(e.code === "VALIDATION" ? 400 : 502).json({ ok: false, error: e.message }); }
+  });
+  router.post("/ebay/revise-full", async (req, res) => {
+    try {
+      assertChannelConfigured("ebay");
+      const { reviseEbayListingFull } = await import("../channels/ebay.js");
+      res.json(await reviseEbayListingFull(req.body || {}));
+    } catch (e) { res.status(e.code === "VALIDATION" ? 400 : 502).json({ ok: false, error: e.message }); }
+  });
   router.post("/ebay/offers-on", async (req, res) => {
     const skus = Array.isArray(req.body?.skus) ? req.body.skus.filter(Boolean).slice(0, 300) : [];
     try {

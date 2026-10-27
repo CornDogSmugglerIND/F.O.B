@@ -3,10 +3,10 @@ import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./s
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=9";
 import { phaseFromItem } from "/visor/phases.js?v=3";
 import { renderScouter } from "./scouter.js?v=31";
-import { renderCollection, openImport } from "./collection.js?v=36";
+import { renderCollection, openImport } from "./collection.js?v=37";
 import { photoManager } from "./photos.js?v=5";
 import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=24";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=48";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=49";
 import { renderSettings } from "./settings.js?v=11";
 import { initSync } from "./sync.js?v=4";
 import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=9";
@@ -119,7 +119,7 @@ window.__fob = { openSheet: (h) => openSheet(h), closeSheet: () => closeSheet(),
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
 
 function nextAction(ph, it) {
-  const ed = it && (it.channels?.ebay?.sku || it.sku) ? `<button class="btn go" data-edit-live type="button">Edit price or quantity</button>` : "";
+  const ed = it && (it.channels?.ebay?.sku || it.sku) ? `<button class="btn go" data-edit-live type="button">Edit listing</button>` : "";
   if (ph === "listed" && it && it.spaceId) return `<p class="sub" style="margin-top:12px">Live on eBay and put away in its bin.</p><div class="it-acts">${ed}<button class="btn" data-act="spaces" type="button">Open Spaces</button></div>`;
   if (ph === "listed") return `<p class="sub" style="margin-top:12px">Live on eBay. Next: pick its bin below.</p>${ed}`;
   if (ph === "intake") return `<p class="sub" style="margin-top:12px">Next: identify it from its photos.</p><button class="btn go" data-act="scouter" type="button">Identify it in Scouter</button>`;

@@ -745,3 +745,7 @@ html .shx h2,html .shx .ed-head,html .shx .back,html .shx .pk-top>h2,html .shx .
 .bl-off label{display:flex;align-items:center;gap:8px}.bl-offp input{width:52px;text-align:center}
 .bl-var{margin:6px 0 2px}
 .road .pc{touch-action:pan-y!important}.road .pc.lift{transform:scale(1.04);box-shadow:0 0 0 2px var(--holo),0 18px 40px rgba(0,0,0,.6)!important}
+.fe .fe-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fe #feMsg.bad{color:#FFB27A}
+.fe .ed-f select,.fe .ed-f textarea{width:100%}
+.fe .fe-row .ed-f{min-width:0}.fe .fe-row input{width:100%;min-width:0;box-sizing:border-box}

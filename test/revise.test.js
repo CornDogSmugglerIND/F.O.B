@@ -125,3 +125,25 @@ test("enable offers on a live listing keeps its policies and adds best offer", a
   assert.equal(put[2].listingPolicies.bestOfferTerms.autoDeclinePrice.value, "4.00");
   assert.equal(put[2].status, undefined); assert.equal(put[2].listing, undefined);
 });
+
+test("full revise: title, description, specifics, condition, price, returns, offers all go to eBay", async () => {
+  const { reviseEbayListingFull } = await import("../src/channels/ebay.js");
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => { const u = String(url); calls.push([u, init.method || "GET", (() => { try { return JSON.parse(init.body); } catch { return null; } })()]);
+    if (u.includes("/oauth2/token")) return res(200, { access_token: "t", expires_in: 7200 });
+    if (u.includes("/inventory_item/A") && (init.method || "GET") === "GET") return res(200, { sku: "A", locale: "en_US", condition: "USED_VERY_GOOD", product: { title: "Old", imageUrls: ["https://x/1.jpg"], aspects: { Game: ["Pokémon TCG"] } }, availability: { shipToLocationAvailability: { quantity: 1 } } });
+    if (u.includes("/inventory_item/A") && init.method === "PUT") return res(204, {});
+    if (u.includes("/offer?sku=A")) return res(200, { offers: [{ offerId: "o1", status: "PUBLISHED", listing: { listingId: "L" }, categoryId: "4098", availableQuantity: 1, pricingSummary: { price: { value: "5.00", currency: "USD" } }, listingPolicies: { fulfillmentPolicyId: "F", returnPolicyId: "R1" } }] });
+    if (u.includes("/offer/o1") && init.method === "PUT") return res(204, {});
+    return res(404, {}); };
+  await reviseEbayListingFull({ sku: "A", title: "New title", description: "Line.\n- Brand: PEZ", aspects: { Brand: "PEZ", Color: "Yellow, Red" }, condition: "NEW", price: 7, quantity: 2, returnPolicyId: "R2", bestOffer: true, offerFloorPct: 80 }, { fetchImpl });
+  const ip = calls.find((c) => c[0].includes("/inventory_item/A") && c[1] === "PUT")[2];
+  assert.equal(ip.product.title, "New title"); assert.equal(ip.condition, "NEW"); assert.equal(ip.conditionDescriptors, undefined);
+  assert.deepEqual(ip.product.aspects, { Brand: ["PEZ"], Color: ["Yellow", "Red"] }); assert.deepEqual(ip.product.imageUrls, ["https://x/1.jpg"]);
+  assert.match(ip.product.description, /<ul><li>Brand: PEZ<\/li><\/ul>/);
+  const op = calls.find((c) => c[0].includes("/offer/o1") && c[1] === "PUT")[2];
+  assert.equal(op.pricingSummary.price.value, "7.00"); assert.equal(op.availableQuantity, 2);
+  assert.equal(op.listingPolicies.returnPolicyId, "R2"); assert.equal(op.listingPolicies.fulfillmentPolicyId, "F");
+  assert.equal(op.listingPolicies.bestOfferTerms.autoDeclinePrice.value, "5.60");
+  assert.equal(op.status, undefined);
+});

@@ -166,8 +166,60 @@ function wireDesk(all) {
   h.querySelectorAll("[data-noopen]").forEach((a) => a.addEventListener("click", (e) => e.stopPropagation()));
 }
 /* edit a live listing: price, quantity, title; one row per variation */
+/* Full editor for a live listing: everything you'd change in the eBay app, changed here (API listings can't be edited in eBay's app). */
+function fullEdit(it) {
+  const sku = it.channels?.ebay?.sku || it.sku, src = photoOf(it);
+  const s = ctx.openSheet(`<div class="ed fe"><div class="ed-head">${src ? `<img src="${esc(src)}" alt="" data-view-photo="${esc(JSON.stringify((it.photos || []).map((p) => p.dataUrl || p.url).filter(Boolean)))}">` : ""}<div><em>Live on eBay</em><b>${esc(nameOf(it))}</b></div></div><p class="sub" id="feMsg">Loading the listing from eBay…</p><div id="feBody"></div></div>`);
+  const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#feMsg"); m.textContent = t; m.classList.toggle("bad", !!bad); };
+  let dlN = 0;
+  const row = (k = "", v = "", vals = [], req = false) => { const dl = vals.length ? `fe-dl-${++dlN}` : ""; return `<div class="bl-ar${req ? " req" : ""}${v ? "" : " empty"}" style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="${req ? "Required" : "Optional"}" aria-label="${esc(k || "Item specific")} value" style="flex:1;min-width:0"${dl ? ` list="${dl}"` : ""}>${dl ? `<datalist id="${dl}">${vals.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>` : ""}<button class="btn" data-rm type="button" aria-label="Remove" style="flex:none;padding:6px 12px">×</button></div>`; };
+  fetch(`/api/channels/ebay/listing-detail?sku=${encodeURIComponent(sku)}`).then((r) => r.json()).then((d) => {
+    if (!s.isConnected) return;
+    if (!d.ok) { msg(`Couldn't load it from eBay: ${d.error || "try again"}`, true); return; }
+    const card = !d.categoryId || d.categoryId === "183454", cd = (d.conditionDescriptors || [])[0]?.values?.[0], CC = { 400010: "NM", 400011: "LP", 400012: "MP", 400013: "HP" };
+    const cond = card ? (CC[cd] || "NM") : (/^NEW/.test(d.condition || "") ? "NEW" : "USED");
+    const condOpts = card ? [["NM", "Near Mint"], ["LP", "Lightly Played"], ["MP", "Moderately Played"], ["HP", "Heavily Played"]] : [["NEW", "New"], ["USED", "Used (pre-owned)"]];
+    const pct = d.offerFloorPct || (() => { try { return Number(localStorage.getItem("fob-offer-pct")) || 80; } catch { return 80; } })();
+    const sel = (id, opts, cur) => opts.length ? `<select id="${id}">${opts.map((o) => `<option value="${esc(o.id)}"${String(o.id) === String(cur) ? " selected" : ""}>${esc(o.name)}</option>`).join("")}</select>` : `<span class="sub">Your eBay default</span>`;
+    msg(`Changes go straight to your live eBay listing.`);
+    $("#feBody").innerHTML = `
+      <div id="fePh"></div>
+      <label class="ed-f"><span>Title</span><input id="feTitle" maxlength="80" value="${esc(d.title)}"><small id="feTn">${d.title.length}/80</small></label>
+      <div class="fe-row"><label class="ed-f"><span>Price</span><input id="fePrice" inputmode="decimal" value="${d.price != null ? Number(d.price).toFixed(2) : ""}"></label><label class="ed-f"><span>Quantity</span><input id="feQty" inputmode="numeric" value="${esc(d.quantity ?? 1)}"></label></div>
+      <label class="ed-f"><span>Condition</span><select id="feCond">${condOpts.map(([k, l]) => `<option value="${k}"${k === cond ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+      <div class="ed-f"><span>Description</span><textarea id="feDesc" rows="9" style="width:100%;resize:vertical">${esc(d.descriptionText || "")}</textarea></div>
+      <div class="ed-f"><span class="bl-lh">Item specifics <em id="feAspN"></em></span><div id="feAsp" class="bl-vars bl-asp" style="max-height:none">${Object.entries(d.aspects || {}).map(([k, v]) => row(k, (Array.isArray(v) ? v : [v]).join(", "))).join("")}${(d.more || []).map((m) => row(m.name, "", m.values || [], m.required)).join("")}</div><button class="btn" id="feAdd" type="button" style="margin-top:6px">Add item specific</button></div>
+      <div class="ed-f"><span>Offers</span><div class="bl-off"><label><input type="checkbox" id="feOffer"${d.bestOffer || !d.offerId ? " checked" : ""}> Accept offers</label><label class="bl-offp">Auto-decline under <input id="feOfferPct" inputmode="numeric" value="${pct}">% of price</label></div></div>
+      <label class="ed-f"><span>Shipping</span>${sel("feShip", d.shippingOptions || [], d.fulfillmentPolicyId)}</label>
+      <label class="ed-f"><span>Returns</span>${sel("feRet", d.returnOptions || [], d.returnPolicyId)}</label>
+      <div class="ed-go"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn go" id="feSave">Save to eBay</button></div>`;
+    photoManager($("#fePh"), it.id, { toast: ctx.toast, refresh: ctx.refresh });
+    const cnt = () => { const rows = [...s.querySelectorAll("#feAsp > div")]; $("#feAspN").textContent = `${rows.filter((r) => r.querySelector("[data-av]").value.trim()).length} of ${rows.length} filled`; rows.forEach((r) => r.classList.toggle("empty", !r.querySelector("[data-av]").value.trim())); };
+    cnt(); $("#feAsp").addEventListener("input", cnt);
+    $("#feAsp").addEventListener("click", (e) => { const b = e.target.closest("[data-rm]"); if (b) { b.parentElement.remove(); cnt(); } });
+    $("#feAdd").addEventListener("click", () => { $("#feAsp").insertAdjacentHTML("beforeend", row()); cnt(); });
+    $("#feTitle").addEventListener("input", (e) => { $("#feTn").textContent = `${e.target.value.length}/80`; });
+    s.querySelector("[data-close]").addEventListener("click", () => ctx.closeSheet());
+    $("#feSave").addEventListener("click", async () => {
+      const price = parseFloat(String($("#fePrice").value).replace(/[^0-9.]/g, "")), qty = parseInt($("#feQty").value, 10);
+      if (!(price > 0)) { msg("Price needs to be more than $0.", true); $("#fePrice").focus(); return; }
+      const miss = [...s.querySelectorAll("#feAsp > div.req")].find((r) => !r.querySelector("[data-av]").value.trim()); if (miss) { msg(`eBay requires ${miss.querySelector("[data-ak]").value}.`, true); miss.querySelector("[data-av]").focus(); return; }
+      const aspects = {}; s.querySelectorAll("#feAsp > div").forEach((r) => { const k = r.querySelector("[data-ak]").value.trim(), v = r.querySelector("[data-av]").value.trim(); if (k && v) aspects[k] = v; });
+      const pc = Math.min(99, Math.max(1, parseInt($("#feOfferPct").value, 10) || 80)); try { localStorage.setItem("fob-offer-pct", String(pc)); } catch { /* ignore */ }
+      const body = { sku, title: $("#feTitle").value.trim(), price, quantity: Number.isFinite(qty) ? Math.max(0, qty) : undefined, condition: $("#feCond").value, description: $("#feDesc").value, aspects, bestOffer: $("#feOffer").checked, offerFloorPct: pc, ...(s.querySelector("#feShip") ? { fulfillmentPolicyId: $("#feShip").value } : {}), ...(s.querySelector("#feRet") ? { returnPolicyId: $("#feRet").value } : {}) };
+      const b = $("#feSave"); b.disabled = true; b.textContent = "Saving to eBay…"; msg("");
+      try {
+        const r = await fetch("/api/channels/ebay/revise-full", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }), out = await r.json().catch(() => ({}));
+        if (!r.ok || !out.ok) { const e = String(out.error || "eBay said no.").replace(/^eBay API \S+ \S+ failed \(\d+\): /, ""); msg(`eBay said no: ${e}`, true); b.disabled = false; b.textContent = "Save to eBay"; return; }
+        patchItem(it.id, (i) => { i.title = body.title; i.price = price; if (body.quantity != null) i.quantity = body.quantity; i.description = body.description; i.descEdited = true; i.aspects = aspects; i.condition = body.condition; if (body.returnPolicyId) i.returnPolicyId = body.returnPolicyId; if (body.fulfillmentPolicyId) i.fulfillmentPolicyId = body.fulfillmentPolicyId; });
+        ctx.closeSheet(); paint(); ctx.refresh?.(); ctx.toast("Saved. Your eBay listing is updated.");
+      } catch { msg("Couldn't reach eBay. Nothing changed.", true); b.disabled = false; b.textContent = "Save to eBay"; }
+    });
+  }).catch(() => { if (s.isConnected) msg("Couldn't reach eBay. Try again.", true); });
+}
 function editSheet(all, id) {
   const it = all.find((x) => String(x.id) === String(id)); if (!it) return;
+  if (!(it._n > 1) && (it.channels?.ebay?.sku || it.sku)) return fullEdit(it);
   const kids = it._n > 1 ? it._kids.slice() : [it], multi = kids.length > 1, src = photoOf(it);
   const skuOf = (k) => k.channels?.ebay?.sku || k.sku || "", offerOf = (k) => k.channels?.ebay?.offerId || "";
   const names = kids.map((k) => nameOf(k)), words = names.map((t) => t.split(/\s+/)); let cut = 0;

@@ -988,3 +988,61 @@ export async function enableBestOffer(skus, opts = {}) {
   }
   return out;
 }
+
+/** Everything about one live listing, straight from eBay, for the full editor. */
+export async function getEbayListingDetail(sku, opts = {}) {
+  const fetchImpl = opts.fetchImpl;
+  const { data: inv } = await ebayRequest(`/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, { fetchImpl });
+  const { data: of } = await ebayRequest(`/sell/inventory/v1/offer?sku=${encodeURIComponent(sku)}&marketplace_id=${encodeURIComponent(ebayMarketplaceId())}`, { fetchImpl });
+  const o = (of?.offers || [])[0] || {};
+  const lp = o.listingPolicies || {}, bo = lp.bestOfferTerms || null, price = Number(o.pricingSummary?.price?.value) || null;
+  return {
+    sku, offerId: o.offerId || null, listingId: o.listing?.listingId || null, status: o.status || null,
+    title: inv?.product?.title || "", description: o.listingDescription || inv?.product?.description || "",
+    aspects: inv?.product?.aspects || {}, imageUrls: inv?.product?.imageUrls || [],
+    condition: inv?.condition || null, conditionDescriptors: inv?.conditionDescriptors || null,
+    quantity: o.availableQuantity ?? inv?.availability?.shipToLocationAvailability?.quantity ?? 1, price,
+    categoryId: o.categoryId || null, fulfillmentPolicyId: lp.fulfillmentPolicyId || null, returnPolicyId: lp.returnPolicyId || null, paymentPolicyId: lp.paymentPolicyId || null,
+    bestOffer: !!bo?.bestOfferEnabled, offerFloorPct: bo?.autoDeclinePrice && price ? Math.round((Number(bo.autoDeclinePrice.value) / price) * 100) : null,
+    groupIds: inv?.groupIds || [],
+  };
+}
+
+/** Change anything on a live listing: the item (title, description, specifics, condition, photos) and the offer (price, qty, category, policies, offers). eBay updates the live listing. */
+export async function reviseEbayListingFull(u, opts = {}) {
+  const fetchImpl = opts.fetchImpl, sku = String(u.sku || "").trim();
+  if (!sku) { const e = new Error("No eBay SKU on this item."); e.code = "VALIDATION"; throw e; }
+  const { descriptionHtml } = await import("../listing/engine.js");
+  const ipath = `/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`;
+  const { data: cur } = await ebayRequest(ipath, { fetchImpl });
+  const item = { ...(cur || {}) }; delete item.sku; delete item.locale; delete item.groupIds; delete item.inventoryItemGroupKeys;
+  item.product = { ...(item.product || {}) };
+  if (u.title != null && String(u.title).trim()) item.product.title = String(u.title).trim().slice(0, 80);
+  if (u.description != null) item.product.description = descriptionHtml(u.description);
+  if (u.aspects && typeof u.aspects === "object") item.product.aspects = Object.fromEntries(Object.entries(u.aspects).filter(([k, v]) => k && v != null && String(v).trim()).map(([k, v]) => [k, Array.isArray(v) ? v.map(String) : String(v).split(/\s*,\s*/).filter(Boolean)]));
+  if (Array.isArray(u.imageUrls) && u.imageUrls.length) item.product.imageUrls = u.imageUrls.filter((x) => /^https:\/\//.test(x)).slice(0, 24);
+  if (u.condition) {
+    const c = String(u.condition).toUpperCase();
+    if (/^(NM|LP|MP|HP|DMG)$/.test(c)) { item.condition = "USED_VERY_GOOD"; item.conditionDescriptors = [{ name: "40001", values: [CARD_COND[c] || "400010"] }]; }
+    else if (c === "NEW") { item.condition = "NEW"; delete item.conditionDescriptors; }
+    else if (/^USED/.test(c)) { item.condition = "USED_EXCELLENT"; delete item.conditionDescriptors; }
+  }
+  if (u.quantity != null) item.availability = { ...(item.availability || {}), shipToLocationAvailability: { ...((item.availability || {}).shipToLocationAvailability || {}), quantity: Math.max(0, Math.round(Number(u.quantity))) } };
+  await ebayRequest(ipath, { method: "PUT", fetchImpl, body: item });
+
+  const { data: of } = await ebayRequest(`/sell/inventory/v1/offer?sku=${encodeURIComponent(sku)}&marketplace_id=${encodeURIComponent(ebayMarketplaceId())}`, { fetchImpl });
+  const o = (of?.offers || [])[0]; if (!o) { const e = new Error("eBay has no offer for this SKU."); e.code = "EBAY_API_ERROR"; throw e; }
+  const KEEP = ["availableQuantity", "categoryId", "charity", "hideBuyerDetails", "includeCatalogProductDetails", "listingDescription", "listingDuration", "listingPolicies", "listingStartDate", "lotSize", "merchantLocationKey", "pricingSummary", "quantityLimitPerBuyer", "regulatory", "secondaryCategoryId", "storeCategoryNames", "tax"];
+  const body = {}; for (const k of KEEP) if (o[k] !== undefined) body[k] = o[k];
+  if (u.description != null) body.listingDescription = descriptionHtml(u.description);
+  if (u.price != null && Number(u.price) > 0) body.pricingSummary = { ...(body.pricingSummary || {}), price: { currency: "USD", value: Number(u.price).toFixed(2) } };
+  if (u.quantity != null) body.availableQuantity = Math.max(0, Math.round(Number(u.quantity)));
+  if (u.categoryId) body.categoryId = String(u.categoryId);
+  const lp = { ...(body.listingPolicies || {}) };
+  if (u.fulfillmentPolicyId) lp.fulfillmentPolicyId = String(u.fulfillmentPolicyId);
+  if (u.returnPolicyId) lp.returnPolicyId = String(u.returnPolicyId);
+  if (u.bestOffer != null) { const p = Number(body.pricingSummary?.price?.value); const bo = bestOfferTerms({ bestOffer: !!u.bestOffer, offerFloorPct: u.offerFloorPct }, p); lp.bestOfferTerms = bo || { bestOfferEnabled: false }; }
+  body.listingPolicies = lp;
+  await ebayRequest(`/sell/inventory/v1/offer/${encodeURIComponent(o.offerId)}`, { method: "PUT", fetchImpl, body });
+  return { ok: true, sku, offerId: o.offerId };
+}
