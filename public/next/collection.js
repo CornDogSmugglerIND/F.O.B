@@ -7,9 +7,17 @@ let ctx = null;
 const S = { bset: "", bpg: 0, q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 48 };
 const phoneNow = () => matchMedia("(max-width:820px)").matches;
 
+/* Collection is TCG only: card singles, graded slabs and sealed TCG product. Figures, Pez, binders, sleeves, golf clubs etc. stay in Channels. */
+const NOT_TCG = /\b(dispenser|pez|figures?|figurine|statue|plush|toys?|funko|keychain|poster|t-?shirt|mug|lunch ?box|backpack|lego|puzzle|game boy|nintendo switch|cartridge|dvd|lamp|blanket|binder|album|portfolio|sleeves|playmat|deck box|toploaders?|card storage|golf|taylormade|callaway|ping g\d+|headphones?|controller|sneakers?)\b/i;
+/* cards, slabs and sealed TCG product. Unnamed drafts (sku-…, IMG_…, barcodes) wait in Command until they're identified. */
+export function isTcg(it) {
+  const t = nameOf(it).trim();
+  if (/^(sku-\d+|img_\d+|\d{8,}|draft listing.*|untitled.*)$/i.test(t)) return false;
+  return !NOT_TCG.test(t);
+}
 function rows() {
   const q = S.q.trim().toLowerCase();
-  return peekItems().filter(onHand).filter((it) => {
+  return peekItems().filter(onHand).filter(isTcg).filter((it) => {
     if (S.stage === "ready" && it.phase !== "staged") return false;
     if (S.stage === "live" && it.phase !== "listed") return false;
     if (S.stage === "new" && it.phase !== "intake") return false;
