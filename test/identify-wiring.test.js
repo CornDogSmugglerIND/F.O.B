@@ -86,11 +86,9 @@ test("POST /api/scouter/identify manual entry validates through the gate", async
   }
 });
 
-test("removed A.R.I. queue endpoints are gone", async () => {
+test("removed A.R.I. identify-poll endpoint is gone (/api/identify/queue is now the scanner intake queue)", async () => {
   const { baseUrl, close } = await startServer();
   try {
-    const worker = await fetch(`${baseUrl}/api/identify/queue`);
-    assert.equal(worker.status, 404);
     const poll = await fetch(`${baseUrl}/api/scouter/identify/queue/deadbeef`);
     assert.equal(poll.status, 404);
   } finally {

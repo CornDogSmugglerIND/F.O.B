@@ -5,6 +5,7 @@ import { scouterRouter } from "./routes/scouter.js";
 import { channelsRouter } from "./routes/channels.js";
 import { csvRouter } from "./routes/csv.js";
 import { deviceSyncRouter } from "./routes/deviceSync.js";
+import { identifyQueueRouter } from "./routes/identifyQueue.js";
 import { getUploadsDir } from "./store.js";
 import { getChannelStatuses } from "./channels/config.js";
 
@@ -15,6 +16,8 @@ export function createApp() {
   // Device sync carries the full item store (photos included): its own big parser, before the global one.
   app.use("/api/sync", express.json({ limit: "25mb" }), deviceSyncRouter());
   app.use(["/api/channels/ebay/publish-item", "/api/channels/ebay/publish-variation", "/api/channels/ebay/upload-image"], express.json({ limit: "25mb" }));
+  /* scanner intake: one scan per POST */
+  app.use("/api/identify/queue", express.json({ limit: "8mb" }), identifyQueueRouter());
   app.use(express.json({ limit: "2mb" }));
 
   const startedAt = Date.now();

@@ -26,7 +26,7 @@ export async function inboxAdd(files, onProgress) {
   for (const f of imgs) {
     try {
       const full = await shrink(f, 1600, .85), thumb = await shrink(f, 240, .7);
-      await tx("readwrite", (s) => s.put({ id: nid(), full, thumb, name: f.name || "", createdAt: Date.now() + done }));
+      await tx("readwrite", (s) => s.put({ id: nid(), full, thumb, name: f.name || "", createdAt: Date.now() + done, ...(f._remote ? { remote: f._remote, batch: f._batch || "" } : {}) }));
     } catch { /* skip unreadable photo */ }
     done++; onProgress && onProgress(done, imgs.length);
   }
@@ -35,5 +35,12 @@ export async function inboxAdd(files, onProgress) {
 }
 export async function inboxList() { try { const all = await tx("readonly", (s) => s.getAll()); return (all || []).sort((a, b) => a.createdAt - b.createdAt); } catch { return []; } }
 export async function inboxCount() { try { return await tx("readonly", (s) => s.count()); } catch { return 0; } }
-export async function inboxRemove(ids) { if (!ids.length) return; await tx("readwrite", (s) => { ids.forEach((id) => s.delete(id)); }); window.__fobInboxN = await inboxCount(); dispatchEvent(new CustomEvent("fob:inbox")); }
+/* removing a scanner photo here (identified or deleted) takes it off the server queue too, so your other devices drop it */
+export async function inboxRemove(ids, { keepRemote = false } = {}) {
+  if (!ids.length) return;
+  const set = new Set(ids), remote = keepRemote ? [] : (await inboxList()).filter((r) => set.has(r.id) && r.remote).map((r) => r.remote);
+  await tx("readwrite", (s) => { ids.forEach((id) => s.delete(id)); });
+  if (remote.length) fetch("/api/identify/queue", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paths: remote }) }).catch(() => {});
+  window.__fobInboxN = await inboxCount(); dispatchEvent(new CustomEvent("fob:inbox"));
+}
 inboxCount().then((n) => { window.__fobInboxN = n; dispatchEvent(new CustomEvent("fob:inbox")); });

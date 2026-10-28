@@ -1,6 +1,6 @@
 /* Batch identify: dump a stack of scans (front + back per card) and let Identify run through all of them,
    like TCGAutomate / carduploader. Each card is saved as it finishes; photos are hosted on eBay so storage never fills. */
-import { inboxList, inboxRemove } from "./inbox.js?v=2";
+import { inboxList, inboxRemove } from "./inbox.js?v=3";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const money = (n) => "$" + (Number(n) || 0).toFixed(2);
@@ -62,13 +62,27 @@ async function start(api) {
   run.live = false; api.paint(); api.done();
 }
 
+async function sig(src) {
+  return new Promise((res) => { const im = new Image(); im.onload = () => { const c = document.createElement("canvas"); c.width = 12; c.height = 16; const g = c.getContext("2d"); g.drawImage(im, 0, 0, 12, 16); const d = g.getImageData(0, 0, 12, 16).data, v = []; for (let i = 0; i < d.length; i += 4) v.push(d[i], d[i + 1], d[i + 2]); res(v); }; im.onerror = () => res(null); im.src = src; });
+}
+const dist = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]); return s / a.length; };
+const spread = (vs) => { let s = 0, n = 0; for (let i = 0; i < vs.length; i++) for (let j = i + 1; j < vs.length; j++) { s += dist(vs[i], vs[j]); n++; } return n ? s / n : 0; };
+export async function detectPer(list) {
+  if (list.length < 4) return 0;
+  const v = (await Promise.all(list.slice(0, 40).map((x) => sig(x.thumb)))); if (v.some((x) => !x)) return 0;
+  const odd = v.filter((_, i) => i % 2 === 1), even = v.filter((_, i) => i % 2 === 0), all = spread(v), o = spread(odd), e = spread(even);
+  if (o < e * 0.45 && o < all * 0.55) return 2; /* every 2nd photo is the same card back */
+  return 1;
+}
 export async function openBatch(api) {
   const f = window.__fob; if (!f) return;
   if (run && run.live) return sheet(api);
   const list = await inboxList();
   if (list.length < 1) { api.toast("Dump your scans in the Photo inbox first."); return; }
   let per = 2; try { per = Number(localStorage.getItem(PER_KEY)) || 2; } catch { /* default */ }
-  const s = f.openSheet(`<div class="bt"><h2>Identify a batch</h2><p class="sub">${list.length} photos in the inbox, in file-name order (scanner order).</p>
+  /* front+back or fronts only? card backs all look alike, fronts don't: compare the even photos to each other vs the odd ones */
+  const auto = await detectPer(list); if (auto) per = auto;
+  const s = f.openSheet(`<div class="bt"><h2>Identify a batch</h2><p class="sub">${list.length} photos in the inbox, in scan order.${auto ? ` Looks like <b>${auto === 2 ? "front + back" : "fronts only"}</b>: change it below if not.` : ""}</p>
     <div class="bt-per" role="radiogroup" aria-label="Photos per card"><span>Photos per card</span>${[[2, "Front + back"], [1, "Front only"]].map(([n, l]) => `<button type="button" role="radio" class="bt-pb${per === n ? " on" : ""}" data-per="${n}" aria-checked="${per === n}">${l}</button>`).join("")}</div>
     <div class="bt-pairs" id="btPairs"></div>
     <p class="sub" id="btNote"></p>
