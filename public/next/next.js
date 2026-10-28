@@ -1,5 +1,5 @@
 import "./viewer.js?v=4";
-import { startScanLink } from "./scanlink.js?v=1";
+import { startScanLink } from "./scanlink.js?v=2";
 import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=7";
 import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=9";
 import { phaseFromItem } from "/visor/phases.js?v=3";
@@ -9,7 +9,7 @@ import { photoManager } from "./photos.js?v=5";
 import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=24";
 import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=53";
 import { renderSettings } from "./settings.js?v=11";
-import { initSync } from "./sync.js?v=4";
+import { initSync } from "./sync.js?v=5";
 import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=9";
 
 const LS_ITEMS = "coalition-items-v4";

@@ -57,12 +57,15 @@ function outgoing() {
   return { items: items.list, spaces: spaces.list, removedItems: fresh(items.list, sh.items, sh.tombItems), removedSpaces: fresh(spaces.list, sh.spaces, sh.tombSpaces), updatedAt: at };
 }
 
-let timer = null, pushing = false, again = false, onMerged = null;
+let timer = null, pushing = false, again = false, onMerged = null, lastSent = "", lastPull = 0;
 async function push() {
   if (pushing) { again = true; return; }
   pushing = true;
   try {
-    const r = await fetch("/api/sync", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(outgoing()) });
+    const out = outgoing(), sig = hash(out);
+    if (sig === lastSent) { pushing = false; return; } // nothing changed since the last push: no storage write
+    const r = await fetch("/api/sync", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(out) });
+    if (r.ok) lastSent = sig;
     if (r.ok) { const d = await r.json(); if (d.doc) { const changed = applyDoc(d.doc); if (changed && onMerged) onMerged(); } }
   } catch { /* offline or no backend: local cache keeps working */ }
   pushing = false;
@@ -75,7 +78,18 @@ export function initSync(cb) {
   try { localStorage.removeItem("coalition-sync-shadow-v1"); } catch { /* ignore */ }
   rawSet = localStorage.setItem.bind(localStorage);
   localStorage.setItem = (k, v) => { const r = rawSet(k, v); if (k === LS_ITEMS || k === LS_SPACES) schedule(); return r; };
-  (async () => {
+  pull(true);
+  addEventListener("online", schedule);
+  /* pull what the other device did: when this tab comes back into view (at most once a minute), and every 5 min while it is open.
+     Pulls are reads; a write only happens when this device actually changed something (Blob writes are the scarce quota). */
+  const soft = () => { if (!document.hidden && Date.now() - lastPull > 60000) pull(); };
+  addEventListener("focus", soft);
+  document.addEventListener("visibilitychange", soft);
+  setInterval(() => { if (!document.hidden) pull(); }, 5 * 60 * 1000);
+}
+async function pull(boot) {
+  lastPull = Date.now();
+  {
     try {
       const r = await fetch("/api/sync");
       if (r.ok) {
@@ -90,11 +104,6 @@ export function initSync(cb) {
         }
       }
     } catch { /* local-only mode */ }
-    schedule();
-  })();
-  addEventListener("online", schedule);
-  /* pull what the other device did: when this tab comes back into view, and every 30s while it is open */
-  addEventListener("focus", schedule);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) schedule(); });
-  setInterval(() => { if (!document.hidden) schedule(); }, 30000);
+    schedule(); // pushes only if the merge left local changes the server doesn't have
+  }
 }

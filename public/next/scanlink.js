@@ -26,7 +26,8 @@ export async function pullScans({ toast } = {}) {
   } catch { return 0; } finally { busy = false; }
 }
 export function startScanLink(api) {
-  const go = () => pullScans(api);
-  setTimeout(go, 2500); setInterval(go, 60000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) go(); });
+  /* each check lists the queue (a scarce Blob "advanced" op), so: on open, when the app comes back into view (max once a minute), and every 10 min while visible */
+  let last = 0; const go = (force) => { if (document.hidden || (!force && Date.now() - last < 60000)) return; last = Date.now(); pullScans(api); };
+  setTimeout(() => go(true), 2500); setInterval(() => go(true), 10 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => go());
 }
