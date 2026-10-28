@@ -6,6 +6,7 @@ import { channelsRouter } from "./routes/channels.js";
 import { csvRouter } from "./routes/csv.js";
 import { deviceSyncRouter } from "./routes/deviceSync.js";
 import { identifyQueueRouter } from "./routes/identifyQueue.js";
+import { scannerRouter } from "./routes/scanner.js";
 import { getUploadsDir } from "./store.js";
 import { getChannelStatuses } from "./channels/config.js";
 
@@ -18,6 +19,7 @@ export function createApp() {
   app.use(["/api/channels/ebay/publish-item", "/api/channels/ebay/publish-variation", "/api/channels/ebay/upload-image"], express.json({ limit: "25mb" }));
   /* scanner intake: one scan per POST */
   app.use("/api/identify/queue", express.json({ limit: "8mb" }), identifyQueueRouter());
+  app.use("/api/scanner", express.json(), scannerRouter());
   app.use(express.json({ limit: "2mb" }));
 
   const startedAt = Date.now();

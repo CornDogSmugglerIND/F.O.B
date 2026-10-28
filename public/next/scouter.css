@@ -259,3 +259,34 @@
 .scr-mkt em,.scr-mini em{text-align:left!important}
 #main .scr-card input{background:none!important;box-shadow:none!important;padding:0!important;border-radius:0!important}
 .sc-vf .sc-deck{background:linear-gradient(0deg,rgba(0,0,0,.6),rgba(0,0,0,0))!important;box-shadow:none!important}
+
+/* scanner strip (scanconnect.js) */
+.ss{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;margin:0 0 14px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02))}
+.ss b{font:700 15px var(--disp,system-ui);color:#F3F6F4}
+.ss small{display:block;color:rgba(230,240,235,.62);font-size:13px;margin-top:2px}
+.ss .ss-err{color:#FFB4A2}
+.ss-t{flex:1 1 200px;min-width:0}
+.ss-dot{width:10px;height:10px;border-radius:50%;background:#6B746F;flex:none}
+.ss.on .ss-dot,.ss-dot.on{background:#57E39B;box-shadow:0 0 0 4px rgba(87,227,155,.16)}
+.ss.busy .ss-dot{background:#F5A12E;box-shadow:0 0 0 4px rgba(245,161,46,.2);animation:ssPulse 1.2s ease-in-out infinite}
+.ss.warn .ss-dot{background:#F5A12E}
+.ss.off .ss-dot,.ss-dot.off{background:#6B746F}
+.ss.busy{border-color:rgba(245,161,46,.45)}
+.ss-per{display:flex;gap:6px}
+.ss-go{min-width:96px;font-size:15px}
+.ss-more{appearance:none;background:none;border:0;color:rgba(230,240,235,.6);font-size:20px;line-height:1;padding:6px 8px;cursor:pointer;border-radius:8px}
+.ss-more:hover,.ss-more:focus-visible{color:#fff;background:rgba(255,255,255,.08)}
+@keyframes ssPulse{50%{box-shadow:0 0 0 8px rgba(245,161,46,.05)}}
+@media (prefers-reduced-motion:reduce){.ss.busy .ss-dot{animation:none}}
+.ssx h2{margin:0 0 14px}
+.ssx-steps{margin:0;padding-left:22px;display:grid;gap:18px}
+.ssx-steps li{padding-left:4px}
+.ssx-steps small{display:block;color:rgba(230,240,235,.62);margin-top:6px}
+.ssx-dl{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+.ssx-dl .btn{text-decoration:none}
+.ssx-soon{color:rgba(230,240,235,.5);font-size:13px}
+.ssx-code{font:800 44px/1 var(--disp,system-ui);letter-spacing:.08em;margin-top:10px;color:#F5A12E;font-variant-numeric:tabular-nums}
+.ssx-code.ok{color:#57E39B}
+.ssx-dev{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.ssx-dev>div{flex:1}
+.ssx-dev small{display:block;color:rgba(230,240,235,.62)}

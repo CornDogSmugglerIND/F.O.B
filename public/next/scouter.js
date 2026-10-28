@@ -1,5 +1,6 @@
 import { isArchived, loadSpaces, assign } from "./shared.js?v=7";
 import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=3";
+import { paintScanBar } from "./scanconnect.js?v=1";
 import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=5";
 import { phaseFromItem } from "/visor/phases.js?v=3";
 /* Scouter: one upload = one item. Photos preview instantly, get shrunk off the
@@ -459,10 +460,11 @@ async function paintInbox() {
   const list = await inboxList(); if (!box.isConnected) return;
   for (const id of [...ibSel]) if (!list.some((x) => x.id === id)) ibSel.delete(id);
   const n = ibSel.size;
-  box.innerHTML = `<div class="sc-qh"><h3>Photo inbox</h3><em>${list.length}</em><small>${list.length ? "Identify all at once, or pick the photos of one item" : "Dump a whole stack of scans here, front then back for each card"}</small>
+  box.innerHTML = `<div id="scScan"></div><div class="sc-qh"><h3>Photo inbox</h3><em>${list.length}</em><small>${list.length ? "Identify all at once, or pick the photos of one item" : "Dump a whole stack of scans here, front then back for each card"}</small>
       <label class="sc-qa ib-add">Dump photos<input type="file" id="ibFile" accept="image/*" multiple hidden></label>${!batchRunning() && lastBatchCount(ctx.getItems) ? `<button type="button" class="sc-qa" id="ibReview">Check last batch (${lastBatchCount(ctx.getItems)})</button>` : ""}${list.length > 1 || batchRunning() ? `<button type="button" class="sc-qa go" id="ibBatch">${batchRunning() ? "Batch running…" : `Identify all ${list.length}`}</button>` : ""}</div>
     ${list.length ? `<div class="ib-grid">${list.slice(0, 120).map((p) => `<button type="button" class="ib-t${ibSel.has(p.id) ? " on" : ""}" data-ib="${p.id}" aria-pressed="${ibSel.has(p.id)}"><img src="${p.thumb}" alt="" loading="lazy" draggable="false"><i></i></button>`).join("")}</div>
       <div class="ib-bar${n ? " on" : ""}"><b>${n ? `${n} picked` : `${list.length} photo${list.length === 1 ? "" : "s"} waiting`}</b><button type="button" class="btn" id="ibDel"${n ? "" : " disabled"}>Delete</button><button type="button" class="btn go" id="ibGo"${n ? "" : " disabled"}>Identify ${n || ""}</button></div>` : ""}`;
+  paintScanBar(box.querySelector("#scScan"), { toast: ctx.toast });
   box.querySelector("#ibFile").addEventListener("change", async (e) => { const fs = [...e.target.files]; e.target.value = ""; if (!fs.length) return; ctx.toast(`Adding ${fs.length} photo${fs.length === 1 ? "" : "s"} to the inbox…`); await inboxAdd(fs); ctx.toast(`${fs.length} photo${fs.length === 1 ? "" : "s"} in the inbox.`); paintInbox(); });
   box.querySelectorAll("[data-ib]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.ib; if (ibSel.has(id)) ibSel.delete(id); else { if (ibSel.size >= MAX_PICK) { ctx.toast(`Up to ${MAX_PICK} photos of one item.`); return; } ibSel.add(id); } paintInbox(); }));
   const bApi = { toast: ctx.toast, getItems: ctx.getItems, setItems: ctx.setItems, go: ctx.go, variation: ctx.variation, refresh: () => { paintInbox(); window.__fobScRepaint?.(); } };
