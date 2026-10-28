@@ -4,7 +4,7 @@
 import { pullScans } from "./scanlink.js?v=2";
 
 const DUPLEX_KEY = "fob-scan-duplex";
-const DL_MAC = "/downloads/FOB-Scan-mac.zip";
+const DL_MAC = "/api/scanner/download/mac";
 let devs = null, last = 0, timer = null, watching = false, api = null;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const duplex = () => { try { return localStorage.getItem(DUPLEX_KEY) === "1"; } catch { return false; } };

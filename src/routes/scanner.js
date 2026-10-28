@@ -24,5 +24,14 @@ export function scannerRouter() {
   }));
   r.post("/stop", wrap((req) => cf("/scan/cmd", { method: "POST", body: { device: String(req.body?.device || ""), cmd: { action: "stop" } } })));
   r.post("/forget", wrap((req) => cf("/scan/forget", { method: "POST", body: { device: String(req.body?.device || "") } })));
+  /* the desktop app installer, kept in the store so a new build doesn't need a site deploy */
+  r.get("/download/mac", async (_req, res) => {
+    try {
+      const { get } = await import("../kv.js"); const g = await get("downloads/FOB-Scan-mac.zip");
+      if (!g || g.statusCode !== 200) return res.status(404).send("Not built yet.");
+      res.set("Content-Type", "application/zip"); res.set("Content-Disposition", 'attachment; filename="FOB-Scan-mac.zip"'); res.set("Cache-Control", "no-store");
+      res.send(Buffer.from(await new Response(g.stream).arrayBuffer()));
+    } catch (e) { res.status(502).send(e.message); }
+  });
   return r;
 }
