@@ -57,7 +57,7 @@ async function readDoc() {
   const t = token();
   if (!t) return null;
   try {
-    const { get } = await import("@vercel/blob");
+    const { get } = await import("../kv.js");
     const r = await get(PATH, { access: "private", useCache: false, token: t });
     if (!r || r.statusCode !== 200) return emptyDoc();
     return { ...emptyDoc(), ...JSON.parse(await new Response(r.stream).text()) };
@@ -66,7 +66,7 @@ async function readDoc() {
 async function writeDoc(doc) {
   const t = token();
   if (!t) { const e = new Error("Durable storage isn't attached."); e.status = 503; throw e; }
-  const { put } = await import("@vercel/blob");
+  const { put } = await import("../kv.js");
   await put(PATH, JSON.stringify(doc), { access: "private", addRandomSuffix: false, allowOverwrite: true, contentType: "application/json", token: t });
 }
 

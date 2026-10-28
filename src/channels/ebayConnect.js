@@ -112,7 +112,7 @@ export async function loadEbayTokenStore() {
   try {
     let raw;
     if (blobOn()) {
-      const { get } = await import("@vercel/blob");
+      const { get } = await import("../kv.js");
       const r = await get(BLOB_PATH, { access: "private", useCache: false, token: blobToken() });
       if (!r || r.statusCode !== 200) return null;
       raw = await new Response(r.stream).text();
@@ -137,7 +137,7 @@ export async function saveEbayTokenStore(tokens) {
     obtained_at: new Date().toISOString(),
   };
   if (blobOn()) {
-    const { put } = await import("@vercel/blob");
+    const { put } = await import("../kv.js");
     await put(BLOB_PATH, JSON.stringify(next), {
       access: "private",
       token: blobToken(),
@@ -148,7 +148,7 @@ export async function saveEbayTokenStore(tokens) {
     return next;
   }
   if (blobOn()) {
-    const { put } = await import("@vercel/blob");
+    const { put } = await import("../kv.js");
     await put(BLOB_PATH, JSON.stringify(next), {
       access: "private",
       token: blobToken(),

@@ -1,0 +1,9 @@
+name = "fob-store"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fob-store"
+database_id = "01633825-e6c8-49c1-b50b-5f3a39198d72"

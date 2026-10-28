@@ -21,7 +21,7 @@ export async function hydrateEbaySettings(force = false) {
   const t = token();
   if (!t) return;
   try {
-    const { get } = await import("@vercel/blob");
+    const { get } = await import("../kv.js");
     const r = await get(PATH, { access: "private", useCache: false, token: t });
     if (!r || r.statusCode !== 200) return;
     const d = JSON.parse(await new Response(r.stream).text());
@@ -39,7 +39,7 @@ export async function saveEbaySettings(body) {
   const next = { ...currentEbaySettings() };
   for (const k of Object.keys(MAP)) if (body[k] !== undefined) next[k] = String(body[k]).trim();
   if (next.cardThresholdUsd && !(Number(next.cardThresholdUsd) > 0)) { const e = new Error("Threshold must be a number above 0"); e.code = "VALIDATION"; e.status = 400; throw e; }
-  const { put } = await import("@vercel/blob");
+  const { put } = await import("../kv.js");
   await put(PATH, JSON.stringify(next), { access: "private", addRandomSuffix: false, allowOverwrite: true, contentType: "application/json", token: t });
   for (const [k, envName] of Object.entries(MAP)) if (next[k]) process.env[envName] = next[k];
   at = Date.now();

@@ -28,7 +28,7 @@ export async function hydrateMisprintKeys(force = false) {
   const token = mpBlobToken();
   if (!token) return;
   try {
-    const { get } = await import("@vercel/blob");
+    const { get } = await import("../kv.js");
     const r = await get(MP_BLOB_PATH, { access: "private", useCache: false, token });
     if (!r || r.statusCode !== 200) return;
     const d = JSON.parse(await new Response(r.stream).text());
@@ -59,7 +59,7 @@ export async function saveMisprintKeys({ apiKey, sellerId, apiBase, currentKey }
     err.code = "VALIDATION";
     throw err;
   }
-  const { put } = await import("@vercel/blob");
+  const { put } = await import("../kv.js");
   await put(MP_BLOB_PATH, JSON.stringify(rec), { access: "private", token, allowOverwrite: true, addRandomSuffix: false, contentType: "application/json" });
   process.env.MISPRINT_API_KEY = rec.apiKey;
   if (rec.sellerId) process.env.MISPRINT_SELLER_ID = rec.sellerId;

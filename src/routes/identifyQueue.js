@@ -21,7 +21,7 @@ export function identifyQueueRouter() {
   /* what's waiting, oldest batch first, scan order inside a batch */
   r.get("/", async (_req, res) => {
     try {
-      const { list, del } = await import("@vercel/blob"); const t = token(); let cursor, blobs = [];
+      const { list, del } = await import("../kv.js"); const t = token(); let cursor, blobs = [];
       do { const page = await list({ prefix: ROOT, cursor, limit: 1000, token: t }); blobs = blobs.concat(page.blobs); cursor = page.hasMore ? page.cursor : undefined; } while (cursor);
       const old = Date.now() - MAX_AGE_DAYS * 864e5, stale = blobs.filter((b) => Date.parse(b.uploadedAt) < old).map((b) => b.url);
       if (stale.length) del(stale, { token: t }).catch(() => {});
@@ -40,7 +40,7 @@ export function identifyQueueRouter() {
     if (!batch) return res.status(400).json({ ok: false, error: "batch is required." });
     if (!m) return res.status(400).json({ ok: false, error: "dataUrl must be a base64 image." });
     try {
-      const { put } = await import("@vercel/blob");
+      const { put } = await import("../kv.js");
       const path = `${ROOT}${batch}/${String(seq).padStart(5, "0")}__${file}`;
       await put(path, Buffer.from(m[2], "base64"), { access: "private", addRandomSuffix: false, allowOverwrite: true, contentType: `image/${m[1].toLowerCase() === "jpg" ? "jpeg" : m[1].toLowerCase()}`, token: token() });
       res.json({ ok: true, path, batch, seq, file });
@@ -51,7 +51,7 @@ export function identifyQueueRouter() {
   r.get("/photo", async (req, res) => {
     const p = String(req.query.path || ""); if (!p.startsWith(ROOT) || p.includes("..")) return res.status(400).json({ ok: false, error: "Bad path." });
     try {
-      const { get } = await import("@vercel/blob"); const g = await get(p, { access: "private", token: token() });
+      const { get } = await import("../kv.js"); const g = await get(p, { access: "private", token: token() });
       if (!g || g.statusCode !== 200) return res.status(404).json({ ok: false, error: "Not found." });
       res.set("Content-Type", g.blob?.contentType || "image/jpeg"); res.set("Cache-Control", "private, max-age=3600");
       res.send(Buffer.from(await new Response(g.stream).arrayBuffer()));
@@ -62,7 +62,7 @@ export function identifyQueueRouter() {
   r.delete("/", async (req, res) => {
     const paths = (Array.isArray(req.body?.paths) ? req.body.paths : []).filter((p) => typeof p === "string" && p.startsWith(ROOT) && !p.includes("..")).slice(0, 500);
     if (!paths.length) return res.json({ ok: true, removed: 0 });
-    try { const { del } = await import("@vercel/blob"); await del(paths, { token: token() }); res.json({ ok: true, removed: paths.length }); }
+    try { const { del } = await import("../kv.js"); await del(paths, { token: token() }); res.json({ ok: true, removed: paths.length }); }
     catch (e) { res.status(502).json({ ok: false, error: e.message }); }
   });
   return r;
