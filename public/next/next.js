@@ -547,7 +547,7 @@ async function syncAll(auto) {
     const bySku = await ordersP;
     for (const it of list) { if (!(it.source === "scouter" || it.source === "app")) continue; const hit = bySku.get(it.sku || it.channels?.ebay?.sku); if (hit && it.phase !== hit && ["listed", "staged", "intake", "sold", "packed"].includes(it.phase)) { it.phase = hit; it.ended = false; } }
     /* anything you did while eBay was syncing wins: bins, prices you paid, notes, drafts, new items, deletes */
-    { const fresh = loadItems(), fm = new Map(fresh.map((i) => [String(i.id), i])), KEEP = ["spaceId", "purchasePrice", "notes", "draft", "description", "aspects", "condition", "collections", "fulfillmentPolicyId"];
+    { const fresh = loadItems(), fm = new Map(fresh.map((i) => [String(i.id), i])), KEEP = ["spaceId", "purchasePrice", "notes", "draft", "description", "aspects", "condition", "collections", "notCollection", "fulfillmentPolicyId"];
       for (let k = list.length - 1; k >= 0; k--) { const it = list[k], f = fm.get(String(it.id)); if (f) { for (const key of KEEP) if (key in f) it[key] = f[key]; } else if (syncStartIds.has(String(it.id))) list.splice(k, 1); }
       const have = new Set(list.map((i) => String(i.id))); for (const f of fresh) if (!have.has(String(f.id))) list.unshift(f); }
     dedupeListings(list);

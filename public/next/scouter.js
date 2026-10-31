@@ -463,16 +463,22 @@ async function paintInbox() {
   box.innerHTML = `<div id="scScan"></div><div class="sc-qh"><h3>Photo inbox</h3><em>${list.length}</em><small>${list.length ? "Identify all at once, or pick the photos of one item" : "Dump a whole stack of scans here, front then back for each card"}</small>
       <label class="sc-qa ib-add">Dump photos<input type="file" id="ibFile" accept="image/*" multiple hidden></label>${!batchRunning() && lastBatchCount(ctx.getItems) ? `<button type="button" class="sc-qa" id="ibReview">Check last batch (${lastBatchCount(ctx.getItems)})</button>` : ""}${list.length > 1 || batchRunning() ? `<button type="button" class="sc-qa go" id="ibBatch">${batchRunning() ? "Batch running…" : `Identify all ${list.length}`}</button>` : ""}</div>
     ${list.length ? `<div class="ib-grid">${list.slice(0, 120).map((p) => `<button type="button" class="ib-t${ibSel.has(p.id) ? " on" : ""}" data-ib="${p.id}" aria-pressed="${ibSel.has(p.id)}"><img src="${p.thumb}" alt="" loading="lazy" draggable="false"><i></i></button>`).join("")}</div>
-      <div class="ib-bar${n ? " on" : ""}"><b>${n ? `${n} picked` : `${list.length} photo${list.length === 1 ? "" : "s"} waiting`}</b><button type="button" class="btn" id="ibDel"${n ? "" : " disabled"}>Delete</button><button type="button" class="btn go" id="ibGo"${n ? "" : " disabled"}>Identify ${n || ""}</button></div>` : ""}`;
+      <div class="ib-bar${n ? " on" : ""}"><b>${n ? `${n} picked` : `${list.length} photo${list.length === 1 ? "" : "s"} waiting`}</b>${list.length ? `<button type="button" class="btn" id="ibAll">Select all</button>` : ""}${n ? `<button type="button" class="btn" id="ibClear">Clear</button>` : ""}<button type="button" class="btn" id="ibDel"${n ? "" : " disabled"}>Delete</button><button type="button" class="btn go" id="ibGo"${n ? "" : " disabled"}>Identify ${n || ""}</button></div>` : ""}`;
   paintScanBar(box.querySelector("#scScan"), { toast: ctx.toast });
   box.querySelector("#ibFile").addEventListener("change", async (e) => { const fs = [...e.target.files]; e.target.value = ""; if (!fs.length) return; ctx.toast(`Adding ${fs.length} photo${fs.length === 1 ? "" : "s"} to the inbox…`); await inboxAdd(fs); ctx.toast(`${fs.length} photo${fs.length === 1 ? "" : "s"} in the inbox.`); paintInbox(); });
-  box.querySelectorAll("[data-ib]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.ib; if (ibSel.has(id)) ibSel.delete(id); else { if (ibSel.size >= MAX_PICK) { ctx.toast(`Up to ${MAX_PICK} photos of one item.`); return; } ibSel.add(id); } paintInbox(); }));
+  /* bulk selection is NOT the per-item photo cap: Delete works on everything picked
+     (fix list item 2 — deleting a scan dump a few at a time). The per-item cap
+     (MAX_PICK) applies only to "Identify", checked there. */
+  box.querySelectorAll("[data-ib]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.ib; if (ibSel.has(id)) ibSel.delete(id); else ibSel.add(id); paintInbox(); }));
+  box.querySelector("#ibAll")?.addEventListener("click", () => { list.slice(0, 120).forEach((p) => ibSel.add(p.id)); paintInbox(); });
+  box.querySelector("#ibClear")?.addEventListener("click", () => { ibSel.clear(); paintInbox(); });
   const bApi = { toast: ctx.toast, getItems: ctx.getItems, setItems: ctx.setItems, go: ctx.go, variation: ctx.variation, refresh: () => { paintInbox(); window.__fobScRepaint?.(); } };
   box.querySelector("#ibReview")?.addEventListener("click", () => reviewBatch(bApi));
   box.querySelector("#ibBatch")?.addEventListener("click", () => openBatch({ toast: ctx.toast, getItems: ctx.getItems, setItems: ctx.setItems, go: ctx.go, variation: ctx.variation, refresh: () => { paintInbox(); window.__fobScRepaint?.(); } }));
   box.querySelector("#ibDel")?.addEventListener("click", async () => { const ids = [...ibSel]; ibSel.clear(); await inboxRemove(ids); ctx.toast(`Deleted ${ids.length} photo${ids.length === 1 ? "" : "s"}.`); paintInbox(); });
   box.querySelector("#ibGo")?.addEventListener("click", () => {
     const pick = list.filter((p) => ibSel.has(p.id)); if (!pick.length) return;
+    if (pick.length > MAX_PICK) { ctx.toast(`One item takes up to ${MAX_PICK} photos. Unpick down to ${MAX_PICK} for one item, or use Identify all for the whole stack.`); return; }
     d.photos.forEach((p) => p.preview && p.preview.startsWith("blob:") && URL.revokeObjectURL(p.preview)); d = blank();
     d.photos = pick.map((p) => ({ id: nid(), preview: p.full, data: p.full, picked: true, err: false }));
     d.fromInbox = pick.map((p) => p.id); ibSel.clear(); paintAll();

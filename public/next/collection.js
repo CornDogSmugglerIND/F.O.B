@@ -10,14 +10,22 @@ const phoneNow = () => matchMedia("(max-width:820px)").matches;
 /* Collection is TCG only: card singles, graded slabs and sealed TCG product. Figures, Pez, binders, sleeves, golf clubs etc. stay in Channels. */
 const NOT_TCG = /\b(dispenser|pez|figures?|figurine|statue|plush|toys?|funko|keychain|poster|t-?shirt|mug|lunch ?box|backpack|lego|puzzle|game boy|nintendo switch|cartridge|dvd|lamp|blanket|binder|album|portfolio|sleeves|playmat|deck box|toploaders?|card storage|golf|taylormade|callaway|ping g\d+|headphones?|controller|sneakers?)\b/i;
 /* cards, slabs and sealed TCG product. Unnamed drafts (sku-…, IMG_…, barcodes) wait in Command until they're identified. */
+const TCG_GAMES = /pok[eé]mon|magic|one piece|dragon ball|digimon|yu-?gi-?oh|lorcana|flesh and blood/i;
+const CARD_SIGNAL = /\b\d{1,3}\/\d{1,3}\b|\b(holo|reverse holo|promo|tcg|ccg|booster|etb|elite trainer|blister|booster pack|starter deck|theme deck|rookie|upper deck|topps|panini|wwe)\b/i;
 export function isTcg(it) {
   const t = nameOf(it).trim();
   if (/^(sku-\d+|img_\d+|\d{8,}|draft listing.*|untitled.*)$/i.test(t)) return false;
-  return !NOT_TCG.test(t);
+  if (NOT_TCG.test(t)) return false;
+  /* membership needs a positive signal it IS a card or sealed TCG product —
+     the old negative-only test let every bow, TV and gadget in (Oct 31 2026) */
+  if (TCG_GAMES.test(String(it.game || "")) || TCG_GAMES.test(t)) return true;
+  if (it.setName || it.collectorNumber || it.cardName) return true;
+  if (it.kind === "card" || it.kind === "sealed") return true;
+  return CARD_SIGNAL.test(t);
 }
 function rows() {
   const q = S.q.trim().toLowerCase();
-  return peekItems().filter(onHand).filter(isTcg).filter((it) => {
+  return peekItems().filter(onHand).filter((it) => !it.notCollection).filter(isTcg).filter((it) => {
     if (S.stage === "ready" && it.phase !== "staged") return false;
     if (S.stage === "live" && it.phase !== "listed") return false;
     if (S.stage === "new" && it.phase !== "intake") return false;
@@ -64,8 +72,10 @@ function vaultBody(all) {
   const kind = S.kind || "all", pick = (k) => all.filter((i) => kindOf(i) === k), val = (l) => money(l.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0));
   const graded = pick("graded").sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)), singles = pick("singles"), sealed = pick("sealed");
   const ph = (it) => { const s = photoOf(it); return s ? `<img src="${esc(s)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`; };
-  /* tapping a photo opens it full screen (zoom in); "Details" from there opens the item */
-  const pv = (it) => { const all = (it.photos || []).map((p) => p.dataUrl || p.url).filter(Boolean); return all.length ? ` data-view-photo="${esc(JSON.stringify(all))}" data-view-id="${esc(it.id)}"` : ""; };
+  /* tapping a photo opens it full screen (zoom in); "Details" from there opens the item.
+     The attribute carries at most 4 photos, URLs first — embedding every photo as a
+     data URL made tiles megabytes of HTML and could break the viewer's parse. */
+  const pv = (it) => { const all = (it.photos || []).map((p) => p.url || p.dataUrl).filter(Boolean).slice(0, 4); return all.length ? ` data-view-photo="${esc(JSON.stringify(all))}" data-view-id="${esc(it.id)}"` : ""; };
   const gradeOf = (it) => { const m = nameOf(it).match(SLAB); return m ? `${m[1].toUpperCase()} ${m[2]}` : "Graded"; };
   let out = "";
   if ((kind === "all" || kind === "singles") && singles.length) {
@@ -118,7 +128,7 @@ const val = (l) => l.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.qua
 function paint() {
   const host = ctx.host, keep = host.querySelector(".cx-grid")?.parentElement?.scrollTop;
   const typed = host.querySelector("#coPct")?.value || "", typedFocus = document.activeElement && document.activeElement.id === "coPct";
-  const base = peekItems().filter(onHand), cats = new Map(); base.forEach((i) => { const c = catOf(i); cats.set(c, (cats.get(c) || 0) + 1); });
+  const base = peekItems().filter(onHand).filter((it) => !it.notCollection).filter(isTcg), cats = new Map(); base.forEach((i) => { const c = catOf(i); cats.set(c, (cats.get(c) || 0) + 1); });
   const all = rows(), shown = all.slice(0, S.more), total = val(all), SP = new Map(loadSpaces().map((x) => [x.id, x.name])), binName = (id) => (id && SP.get(id)) || "";
   host.innerHTML = `<div class="co-wrap cx">
     ${vaultTop(all, total, base)}
@@ -146,7 +156,7 @@ function bar() {
   const n = S.sel.size, spaces = loadSpaces();
   return `<div class="cx-bar"><div class="cx-bh"><b>${n ? `${n} selected` : "Tap cards to select"}</b><button type="button" class="cx-link" id="coAll">Select all ${rows().length}</button></div>
     <div class="cx-bins">${spaces.map((s) => `<button class="cx-bin" data-bin="${esc(s.id)}" type="button" ${n ? "" : "disabled"}>${esc(s.name)}</button>`).join("")}</div>
-    <div class="cx-row"><span class="co-pct"><input id="coPct" inputmode="numeric" placeholder="±%" aria-label="Percent change"><button class="cx-btn" data-bulk="pct" type="button" ${n ? "" : "disabled"}>Change price</button></span><button class="cx-btn warn" data-bulk="del" type="button" ${n ? "" : "disabled"}>Remove</button></div><small>Price and remove change this app only, not eBay.</small></div>`;
+    <div class="cx-row"><span class="co-pct"><input id="coPct" inputmode="numeric" placeholder="±%" aria-label="Percent change"><button class="cx-btn" data-bulk="pct" type="button" ${n ? "" : "disabled"}>Change price</button></span><button class="cx-btn" data-bulk="out" type="button" ${n ? "" : "disabled"}>Remove from Collection</button><button class="cx-btn warn" data-bulk="del" type="button" ${n ? "" : "disabled"}>Remove</button></div><small>Price and remove change this app only, not eBay.</small></div>`;
 }
 function commit(mut) { const list = loadItems(); mut(list); if (!saveItems(list)) { ctx.toast("Couldn't save. Storage is full."); return false; } ctx.refresh(); return true; }
 function wire() {
@@ -173,6 +183,7 @@ function setLane(ids, lane) { const set = new Set(ids.map(String)); if (commit((
 function bulk(kind) {
   const ids = [...S.sel]; if (!ids.length) return; const set = new Set(ids);
   if (kind === "sealed" || kind === "singles") { setLane(ids, kind); S.sel.clear(); paint(); }
+  else if (kind === "out") { moveOutOfCollection(ids); }
   else if (kind === "pct") { const p = parseFloat(String(ctx.host.querySelector("#coPct").value).replace(/[^0-9.\-+]/g, "")); if (!Number.isFinite(p) || !p) { ctx.toast("Type a percent, like -10 or 15."); return; } const prevRaw = localStorage.getItem("coalition-items-v4"); if (commit((l) => l.forEach((i) => { if (set.has(String(i.id))) i.price = Math.max(0, Math.round((Number(i.price) || 0) * (1 + p / 100) * 100) / 100); }))) { (ctx.toastUndo || ctx.toast)(`Changed ${ids.length} prices by ${p > 0 ? "+" : ""}${p}% (this app only)`, () => { try { localStorage.setItem("coalition-items-v4", prevRaw); } catch { /* ignore */ } ctx.refresh(); paint(); }); S.sel.clear(); paint(); } }
   else if (kind === "del") removeItems([...set], () => { S.sel.clear(); });
 }
@@ -186,13 +197,25 @@ function removeItems(ids, after) {
   ctx.toastUndo(removed.length === 1 ? `Deleted ${nameOf(removed[0])}` : `Deleted ${removed.length} items`, () => { unhideIds(ebay); saveItems(before); ctx.refresh(); paint(); ctx.toast("Restored"); });
 }
 function openZoom(id, fromEl) {
-  const list = rows(), i = list.findIndex((x) => String(x.id) === String(id)); if (i < 0) return;
+  let list = rows(); let i = list.findIndex((x) => String(x.id) === String(id));
+  if (i < 0) { /* filters changed since the tile was painted: open the item itself, never a dead tap */
+    const it = peekItems().find((x) => String(x.id) === String(id)); if (!it) return; list = [it]; i = 0;
+  }
   openCard(list, { index: i, from: fromEl || null, photo: photoOf, name: nameOf, backLabel: "Collection",
     info: (it) => { const profit = it.purchasePrice != null && it.purchasePrice !== "" ? (Number(it.price) || 0) - Number(it.purchasePrice) : null, sp = loadSpaces().find((s) => s.id === it.spaceId);
-      return `<div class="sub">${esc(where(it))} · ${esc(laneOf(it) === "sealed" ? "Sealed" : "Single")} · ${esc(gameOf(it))}</div><div class="row"><span>Market value</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${profit != null ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div><div class="row"><span>Profit</span><span>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div><button class="btn" id="zLane" type="button">Move to ${laneOf(it) === "sealed" ? "Singles" : "Sealed"}</button>${it.phase === "listed" && (it.channels?.ebay?.sku || it.sku) ? `<button class="btn go" id="zEdit" type="button">Edit listing</button>` : ""}<button class="btn warn" id="zDel" type="button">Delete from this app</button>${it.phase === "listed" && !it.ended ? `<small class="z-note">Still live on eBay. To take it down, end it in Channels.</small>` : ""}`; },
+      return `<div class="sub">${esc(where(it))} · ${esc(laneOf(it) === "sealed" ? "Sealed" : "Single")} · ${esc(gameOf(it))}</div><div class="row"><span>Market value</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${profit != null ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div><div class="row"><span>Profit</span><span>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div><button class="btn" id="zLane" type="button">Move to ${laneOf(it) === "sealed" ? "Singles" : "Sealed"}</button><button class="btn" id="zOut" type="button">Remove from Collection</button>${it.phase === "listed" && (it.channels?.ebay?.sku || it.sku) ? `<button class="btn go" id="zEdit" type="button">Edit listing</button>` : ""}<button class="btn warn" id="zDel" type="button">Delete from this app</button>${it.phase === "listed" && !it.ended ? `<small class="z-note">Still live on eBay. To take it down, end it in Channels.</small>` : ""}`; },
     wire: (root, it, api) => { { const d = document.createElement("div"); (root.querySelector(".k-zinfo") || root).appendChild(d); photoManager(d, it.id, { toast: ctx.toast, refresh: ctx.refresh }); } root.querySelector("#zDel")?.addEventListener("click", (e) => { const b = e.currentTarget; if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Tap again to delete"; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = "Delete from this app"; } }, 4000); return; } api.close(); removeItems([it.id]); });
+      root.querySelector("#zOut")?.addEventListener("click", () => { api.close(); moveOutOfCollection([it.id]); });
       root.querySelector("#zEdit")?.addEventListener("click", () => { api.close(); setTimeout(() => dispatchEvent(new CustomEvent("fob:edit-live", { detail: it.id })), 280); });
       return root.querySelector("#zLane")?.addEventListener("click", () => { api.close(); setLane([it.id], laneOf(it) === "sealed" ? "singles" : "sealed"); }); } });
+}
+/* Move out of Collection: the item stays in the app (Channels, Command, its bin) —
+   only Collection stops showing it. Undo puts it back. (Fix list item 11.) */
+function moveOutOfCollection(ids) {
+  const set = new Set(ids.map(String));
+  if (!commit((l) => l.forEach((i) => { if (set.has(String(i.id))) i.notCollection = true; }))) return;
+  S.sel.clear(); paint();
+  ctx.toastUndo(ids.length === 1 ? "Removed from Collection. Still in Channels." : `Removed ${ids.length} from Collection. Still in Channels.`, () => { commit((l) => l.forEach((i) => { if (set.has(String(i.id))) delete i.notCollection; })); paint(); });
 }
 export function renderCollection(host, api) { ctx = { host, ...api }; if (!host.querySelector(".co-wrap")) S.sel.clear(); paint(); }
 /* Import / Export from anywhere (Scouter has an Import button too) */

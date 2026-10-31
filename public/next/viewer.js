@@ -62,6 +62,11 @@ document.addEventListener("click", (e) => {
   const img = e.target.closest && e.target.closest(TAP); if (!img || open) return;
   const el = img.tagName === "IMG" ? img : img.querySelector("img"); if (!el || !(el.currentSrc || el.src)) return;
   e.preventDefault(); e.stopPropagation();
-  const own = img.closest("[data-view-photo]"), list = own && own.dataset.viewPhoto ? JSON.parse(own.dataset.viewPhoto) : srcsNear(el);
+  const own = img.closest("[data-view-photo]");
+  let list = null;
+  /* a bad attribute must never eat the tap: the click is already stopped, so a
+     throw here left Sawyer's taps doing literally nothing (Oct 31 2026) */
+  if (own && own.dataset.viewPhoto) { try { const p = JSON.parse(own.dataset.viewPhoto); if (Array.isArray(p) && p.length) list = p; } catch { list = null; } }
+  if (!list) list = srcsNear(el);
   if (own && own.dataset.viewId) openViewer(list, 0, { details: () => own.dispatchEvent(new CustomEvent("pv:details", { bubbles: true })) }); else openViewer(list, 0);
 }, true);

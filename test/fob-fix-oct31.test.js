@@ -79,3 +79,24 @@ test("packageWeightAndSize: weight required, dims optional", () => {
   assert.deepEqual(packageWeightAndSize({ weightOz: 4 }), { weight: { value: 4, unit: "OUNCE" } });
   assert.deepEqual(packageWeightAndSize({ weightOz: "4.5", dimL: 9, dimW: 6, dimH: 1 }), { weight: { value: 4.5, unit: "OUNCE" }, dimensions: { length: 9, width: 6, height: 1, unit: "INCH" } });
 });
+
+/* Phase 2 guards (client modules load with ?v= URLs, so these pin the source) */
+import { readFile } from "node:fs/promises";
+const srcOf = (p) => readFile(new URL(`../public/next/${p}`, import.meta.url), "utf8");
+
+test("inbox bulk select is not the per-item photo cap; Select all exists", async () => {
+  const s = await srcOf("scouter.js");
+  assert.doesNotMatch(s, /ibSel\.size >= MAX_PICK/);
+  assert.match(s, /id="ibAll"/);
+  assert.match(s, /pick\.length > MAX_PICK/); /* the cap lives on the Identify action only */
+});
+
+test("collection membership: positive TCG signal + a real way out", async () => {
+  const s = await srcOf("collection.js");
+  assert.match(s, /TCG_GAMES\.test/);
+  assert.match(s, /!it\.notCollection/);
+  assert.match(s, /Remove from Collection/);
+  assert.match(s, /moveOutOfCollection/);
+  const v = await srcOf("viewer.js");
+  assert.match(v, /try \{ const p = JSON\.parse\(own\.dataset\.viewPhoto\)/); /* a bad attribute never eats the tap */
+});
