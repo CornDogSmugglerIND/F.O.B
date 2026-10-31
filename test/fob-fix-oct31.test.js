@@ -100,3 +100,13 @@ test("collection membership: positive TCG signal + a real way out", async () => 
   const v = await srcOf("viewer.js");
   assert.match(v, /try \{ const p = JSON\.parse\(own\.dataset\.viewPhoto\)/); /* a bad attribute never eats the tap */
 });
+
+test("freeze guards: sync hash truncates photo bodies; observer scans coalesce", async () => {
+  const sync = await srcOf("sync.js");
+  assert.match(sync, /v\.length > 200/);
+  assert.match(sync, /docSig/);
+  const nat = await srcOf("native.js");
+  assert.match(nat, /scanQueued/);
+  const ch = await srcOf("channels.js");
+  assert.match(ch, /chQT = setTimeout/);
+});

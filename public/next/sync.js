@@ -12,7 +12,12 @@ import { mergeDocs } from "./syncMerge.js?v=1";
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";
 const SHADOW = "coalition-sync-shadow-v2"; // v1 kept a full JSON copy of every record: too big for localStorage, so it silently never saved
-const hash = (r) => { const t = JSON.stringify({ ...r, updatedAt: undefined }); let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + "." + t.length; };
+/* Change fingerprint for a record. Was: char-by-char FNV over the record's full
+   JSON — photos are base64 data URLs, so every save hashed megabytes character
+   by character and the app froze on each edit (Oct 31 2026). Photo bodies are
+   fingerprinted by length + head + tail instead; every other field hashes in
+   full, so a photo swap still changes the fingerprint. */
+const hash = (r) => { const t = JSON.stringify({ ...r, updatedAt: undefined }, (k, v) => (typeof v === "string" && v.length > 200 ? `${v.length}:${v.slice(0, 96)}…${v.slice(-32)}` : v)); let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + "." + t.length; };
 
 let rawSet = null; // localStorage.setItem before our hook: internal writes use it so they don't retrigger pushes
 const read = (k, dflt) => { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v ?? dflt; } catch { return dflt; } };
@@ -20,15 +25,19 @@ const writeRaw = (k, v) => { try { (rawSet || localStorage.setItem.bind(localSto
 const local = () => ({ items: read(LS_ITEMS, []), spaces: read(LS_SPACES, []) });
 const idSet = (list) => new Set((list || []).map((r) => String(r.id)));
 
+const docSig = (items, spaces) => { let s = `${items.length}|${spaces.length}|`; for (const r of items) s += hash(r) + ","; for (const r of spaces) s += hash(r) + ","; return s; };
 function applyDoc(doc) {
-  const before = JSON.stringify(local());
+  /* was: two full JSON.stringify passes over the whole doc (photos included)
+     just to answer "did anything change" — now a fingerprint compare */
+  const cur = local();
+  const before = docSig(cur.items || [], cur.spaces || []);
   writeRaw(LS_ITEMS, doc.items || []);
   writeRaw(LS_SPACES, doc.spaces || []);
   const shadow = { items: {}, spaces: {}, tombItems: doc.removedItems || [], tombSpaces: doc.removedSpaces || [] };
   for (const r of doc.items || []) shadow.items[String(r.id)] = hash(r);
   for (const r of doc.spaces || []) shadow.spaces[String(r.id)] = hash(r);
   writeRaw(SHADOW, shadow);
-  return JSON.stringify(local()) !== before;
+  return docSig(doc.items || [], doc.spaces || []) !== before;
 }
 function diffed(curList, shadowMap, at) {
   // stamp records whose content changed since the last sync; return list + whether stamps were written

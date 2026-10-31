@@ -161,7 +161,9 @@ function bar() {
 function commit(mut) { const list = loadItems(); mut(list); if (!saveItems(list)) { ctx.toast("Couldn't save. Storage is full."); return false; } ctx.refresh(); return true; }
 function wire() {
   const h = ctx.host; const $ = (q) => h.querySelector(q);
-  $("#coQ")?.addEventListener("input", (e) => { S.q = e.target.value; S.more = 90; const p = e.target.selectionStart; paint(); const q = h.querySelector("#coQ"); q.focus(); q.setSelectionRange(p, p); });
+  /* debounced: a full repaint per keystroke over ~1000 items froze typing (Oct 31 2026) */
+  let coQT = 0;
+  $("#coQ")?.addEventListener("input", (e) => { S.q = e.target.value; S.more = 90; const p = e.target.selectionStart; clearTimeout(coQT); coQT = setTimeout(() => { paint(); const q = h.querySelector("#coQ"); if (q) { q.focus(); try { q.setSelectionRange(p, p); } catch { /* ignore */ } } }, 150); });
   $("#coMenuBtn").addEventListener("click", () => { S.menu = !S.menu; paint(); });
   $("#coSort")?.addEventListener("change", (e) => { S.sort = e.target.value; paint(); });
   $("#coStage")?.addEventListener("change", (e) => { S.stage = e.target.value; S.more = 90; paint(); });

@@ -142,7 +142,7 @@ function deskList(all) {
   if (S.sort === "old" && S.stage === "listed") list = [...list].sort((a, b) => (Date.parse(a.channels?.ebay?.listedAt || a.createdAt || 0) || 0) - (Date.parse(b.channels?.ebay?.listedAt || b.createdAt || 0) || 0));
   if (!list.length) return `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing live yet."}</div>`;
   const sp = new Map(loadSpaces().map((x) => [x.id, x.name]));
-  const vp = (it, withId) => { const all = (it._n > 1 ? it._kids : [it]).flatMap((k) => (k.photos || []).map((p) => p.dataUrl || p.url)).filter(Boolean).slice(0, 24); return all.length ? ` data-view-photo="${esc(JSON.stringify(all))}"${withId ? ` data-view-id="${esc(it.id)}"` : ""}` : ""; };
+  const vp = (it, withId) => { const all = (it._n > 1 ? it._kids : [it]).flatMap((k) => (k.photos || []).map((p) => p.url || p.dataUrl)).filter(Boolean).slice(0, 6); return all.length ? ` data-view-photo="${esc(JSON.stringify(all))}"${withId ? ` data-view-id="${esc(it.id)}"` : ""}` : ""; };
   const row = (it) => {
     const src = photoOf(it), on = S.sel.has(String(it.id));
     if (it._order) { const o = it._order, d = daysSince(o.createdAt), st = track(o).step, n = it.phase === "sold" ? 0 : Math.max(1, st + 1);
@@ -392,7 +392,9 @@ function zoom(list, el) {
 }
 function wire(all) {
   const h = ctx.host, $ = (s) => h.querySelector(s);
-  $("#chQ").addEventListener("input", (e) => { S.q = e.target.value; const p = e.target.selectionStart; paint(); const q = h.querySelector("#chQ"); q.focus(); q.setSelectionRange(p, p); });
+  /* debounced: a full repaint per keystroke froze typing (Oct 31 2026) */
+  let chQT = 0;
+  $("#chQ").addEventListener("input", (e) => { S.q = e.target.value; const p = e.target.selectionStart; clearTimeout(chQT); chQT = setTimeout(() => { paint(); const q = h.querySelector("#chQ"); if (q) { q.focus(); try { q.setSelectionRange(p, p); } catch { /* ignore */ } } }, 150); });
   $("#chCtl").addEventListener("click", () => { S.drawer = !S.drawer; paint(); });
   $("#chSort")?.addEventListener("change", (e) => { S.sort = e.target.value; paint(); });
   $("#chGroup")?.addEventListener("change", (e) => { S.group = e.target.value; S.more = {}; paint(); });
