@@ -193,8 +193,7 @@ export async function categoryAspectList(categoryId, { fetchImpl = fetch } = {})
 }
 const rxEsc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** Fill as many specifics as the item's own words support. Never invents: a value is used only if it appears in the text, or is a safe known fact (brand, franchise, language). */
-export function autoAspects(list, text, known = {}) {
-  const t = ` ${String(text || "").toLowerCase().replace(/[^a-z0-9éè&+/.' -]+/g, " ")} `, out = {};
+export function autoAspects(list, text, known = {}) {  const t = ` ${String(text || "").toLowerCase().replace(/[^a-z0-9éè&+/.' -]+/g, " ")} `, out = {};
   const pok = /pok[eé]mon/i.test(text), have = (n) => Object.keys(out).some((k) => k.toLowerCase() === n.toLowerCase());
   for (const [k, v] of Object.entries(known)) if (v != null && String(v).trim()) out[k] = Array.isArray(v) ? v.map(String) : [String(v)];
   for (const a of list) {
@@ -207,10 +206,45 @@ export function autoAspects(list, text, known = {}) {
     if (!v && /^(country\/region of manufacture)$/.test(n)) v = "";
     if (!v && a.values.length) {
       const hits = a.values.filter((x) => x.length >= 3 && !/^\d+$/.test(x) && !/^(other|unknown|none|n\/a|yes|no)$/i.test(x) && new RegExp(`(^|[^a-z0-9])${rxEsc(x.toLowerCase())}s?([^a-z0-9]|$)`).test(t));
-      v = hits.sort((x, y) => y.length - x.length)[0] || "";
+      /* a hit that is just the tail of a longer hit is the wrong value ("Rivals" inside "Destined Rivals"): drop it */
+      const clean = hits.filter((h) => !hits.some((o) => o !== h && o.toLowerCase().includes(h.toLowerCase())));
+      v = clean.sort((x, y) => y.length - x.length)[0] || "";
     }
     if (v) out[a.name] = [v];
   }
+  return out;
+}
+
+/**
+ * THE item-specifics template — the one builder every listing path uses
+ * (Build-the-listing preview AND the actual publish), so what Sawyer sees in
+ * the builder is exactly what eBay gets. (Oct 31 2026: the preview and the
+ * publish each built specifics their own way; ~4 landed and half were wrong.)
+ * Order of truth: the item's identified facts first (Set is the item's own
+ * set name, verbatim — never a text-matched category value), the operator's
+ * builder edits on top, then category values the item's own words support.
+ * @param {Record<string, any>} item scout-shaped item (title/productName/setName/aspects/…)
+ * @param {Array<{name:string, required?:boolean, recommended?:boolean, mode?:string, values:string[]}>} list category aspect list
+ * @param {Record<string, string[]>|null} [cardFacts] cardAspects(item) for card items, when the caller has them
+ * @returns {Record<string, string[]>}
+ */
+export function listingSpecifics(item = {}, list = [], cardFacts = null) {
+  const known = {};
+  /* identified facts first: the full card identity for cards; the item's own set name for everything */
+  if (cardFacts) for (const [k, v] of Object.entries(cardFacts)) known[k] = v;
+  if (item.setName) known.Set = [String(item.setName)];
+  const names = new Set((list || []).map((a) => String(a.name).toLowerCase()));
+  for (const k of Object.keys(known)) if (list.length && !names.has(k.toLowerCase())) delete known[k];
+  const text = `${item.title || ""} ${item.productName || ""} ${item.setName || ""} ${item.description || ""}`;
+  const filled = autoAspects(list || [], text, known);
+  /* operator edits (item.aspects from the builder) win over auto-fill */
+  const out = { ...filled };
+  for (const [k, v] of Object.entries(item.aspects || {})) {
+    if (v == null || String(v).trim() === "") continue;
+    out[k] = Array.isArray(v) ? v.map(String) : [String(v)];
+  }
+  /* …except Set: the identified set stands unless the operator edited Set itself */
+  if (item.setName && !Object.keys(item.aspects || {}).some((k) => k.toLowerCase() === "set")) out.Set = [String(item.setName)];
   return out;
 }
 

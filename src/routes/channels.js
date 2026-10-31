@@ -99,7 +99,7 @@ export function channelsRouter() {
   /** Everything the Build-the-listing screen shows before it goes live: description, item specifics, shipping / returns / payment. Read-only, nothing is sent to eBay. */
   router.post("/ebay/listing-preview", async (req, res) => {
     const item = req.body?.item || {};
-    const { resolveCategory, categoryAspectList, autoAspects, looksLikeCard } = await import("../comps.js");
+    const { resolveCategory, categoryAspectList, listingSpecifics, looksLikeCard } = await import("../comps.js");
     const { buildEbayDescription, itemKind } = await import("../listing/engine.js");
     let cat = { id: "183454", name: "CCG Individual Cards" };
     try { cat = await resolveCategory(item); } catch { /* keep cards */ }
@@ -136,7 +136,8 @@ export function channelsRouter() {
     }
     const names = new Set(list.map((a) => a.name.toLowerCase()));
     for (const k of Object.keys(known)) if (list.length && !names.has(k.toLowerCase())) delete known[k]; /* only specifics this category has */
-    const filled = autoAspects(list, `${item.title || ""} ${item.productName || ""} ${item.setName || ""} ${item.description || ""}`, known);
+    /* one specifics builder for preview AND publish (comps.listingSpecifics): the item's own set name wins, never a text-matched value */
+    const filled = listingSpecifics(item, list, known);
     const aspects = {}; for (const [k, v] of Object.entries(filled)) aspects[k] = (Array.isArray(v) ? v : [v]).join(", ");
     const rank = (a) => (a.required ? 0 : a.recommended ? 1 : 2);
     const more = list.filter((a) => !aspects[a.name] && !/prop 65|autograph authentication number|signed by|customized/i.test(a.name)).sort((a, b) => rank(a) - rank(b)).slice(0, 24).map((a) => ({ name: a.name, required: a.required, values: a.values.slice(0, 200) }));
