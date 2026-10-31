@@ -117,7 +117,23 @@ export function cardAspects(item = {}) {
 }
 
 function imgsOf(item = {}) {
-  return (item.photos || item.imageUrls || []).map((x) => (typeof x === "string" ? x : x?.url)).filter((u) => /^https:\/\//.test(u || "")).slice(0, 12);
+  return (item.photos || item.imageUrls || []).map((x) => (typeof x === "string" ? x : x?.url)).filter((u) => /^https:\/\//.test(u || "")).slice(0, 24);
+}
+
+/**
+ * eBay will not publish an offer on a calculated-shipping fulfillment policy
+ * (costType CALCULATED — his "Calculated: USPSParcel" policy is his only USPS
+ * one) unless the inventory item carries package weight/size. The app never
+ * sent it, so picking USPS blocked the listing at publish (Oct 31 2026).
+ * @param {{ weightOz?: number|string, dimL?: number|string, dimW?: number|string, dimH?: number|string }} item
+ */
+export function packageWeightAndSize(item = {}) {
+  const w = Number(item.weightOz);
+  if (!(w > 0)) return null;
+  const out = { weight: { value: Math.round(w * 100) / 100, unit: "OUNCE" } };
+  const L = Number(item.dimL), W = Number(item.dimW), H = Number(item.dimH);
+  if (L > 0 && W > 0 && H > 0) out.dimensions = { length: L, width: W, height: H, unit: "INCH" };
+  return out;
 }
 
 function skuForItem(item) {
@@ -203,9 +219,20 @@ export async function publishEbayListing(item, opts = {}) {
   /* card singles stay in Individual Cards; everything else goes in the category eBay picks for it (or the one chosen in the builder) */
   let category = null;
   try { const { resolveCategory } = await import("../comps.js"); const c = await resolveCategory(item, { fetchImpl: opts.fetchImpl }); if (c && c.id !== "183454") category = c; } catch { category = null; }
-  /* the builder's item specifics are the source of truth; only top up what eBay requires */
-  let aspects = item.aspects && Object.keys(item.aspects).length ? Object.fromEntries(Object.entries(item.aspects).map(([k, v]) => [k, Array.isArray(v) ? v.map(String) : [String(v)]])) : (category ? {} : cardAspects(item) || {});
-  try { const { fillRequiredAspects } = await import("../comps.js"); aspects = await fillRequiredAspects(category ? category.id : "183454", item.title, aspects, { fetchImpl: opts.fetchImpl }); } catch { /* keep what we have */ }
+  /* THE specifics template (comps.listingSpecifics) — the same builder the
+     Build-the-listing preview uses, so what Sawyer sees is what eBay gets.
+     (Was: builder aspects replaced cardAspects wholesale, or nothing at all.) */
+  let aspects;
+  try {
+    const { categoryAspectList, listingSpecifics, fillRequiredAspects } = await import("../comps.js");
+    const catId = category ? category.id : "183454";
+    const list = await categoryAspectList(catId, { fetchImpl: opts.fetchImpl }).catch(() => []);
+    aspects = listingSpecifics(item, list, category ? null : cardAspects(item));
+    aspects = await fillRequiredAspects(catId, item.title, aspects, { fetchImpl: opts.fetchImpl });
+  } catch {
+    aspects = item.aspects && Object.keys(item.aspects).length ? Object.fromEntries(Object.entries(item.aspects).map(([k, v]) => [k, Array.isArray(v) ? v.map(String) : [String(v)]])) : (category ? {} : cardAspects(item) || {});
+  }
+  const pkg = packageWeightAndSize(item);
   await ebayRequest(`/sell/inventory/v1/inventory_item/${encodeURIComponent(sku)}`, {
     method: "PUT",
     fetchImpl: opts.fetchImpl,
@@ -217,6 +244,7 @@ export async function publishEbayListing(item, opts = {}) {
         condition: "USED_VERY_GOOD", // 4000 = Ungraded in Trading Cards (183454)
         conditionDescriptors: [{ name: "40001", values: [CARD_COND[String(item.condition || "NM").toUpperCase()] || "400010"] }],
       }),
+      ...(pkg ? { packageWeightAndSize: pkg } : {}),
       product: {
         title: String(item.title).slice(0, 80),
         description: (await import("../listing/engine.js")).descriptionHtml(item.description || item.title),
@@ -915,7 +943,7 @@ export async function updateEbayPhotos(sku, photos, opts = {}) {
   return { sku, imageUrls };
 }
 export async function resolveEbayImages(item, opts = {}) {
-  const raw = (item.photos || item.imageUrls || []).map((x) => (typeof x === "string" ? x : x?.dataUrl || x?.url)).filter(Boolean).slice(0, 6);
+  const raw = (item.photos || item.imageUrls || []).map((x) => (typeof x === "string" ? x : x?.dataUrl || x?.url)).filter(Boolean).slice(0, 24);
   const out = [];
   for (const u of raw) out.push(/^https:\/\//.test(u) ? u : await uploadEbayImage(u, opts));
   return out;

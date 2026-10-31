@@ -52,7 +52,17 @@ export async function listEbayPolicies(opts = {}) {
     try {
       const r = await ebayRequest(`/sell/account/v1/${kind}${q}`, opts);
       const d = r?.data ?? r;
-      return (d?.[key] || []).map((p) => ({ id: p[idKey], name: p.name }));
+      return (d?.[key] || []).map((p) => {
+        const o = { id: p[idKey], name: p.name };
+        /* the builder needs to know when a policy prices shipping by weight:
+           eBay refuses to publish those without package weight/size on the item */
+        if (kind === "fulfillment_policy") {
+          const opts2 = Array.isArray(p.shippingOptions) ? p.shippingOptions : [];
+          const dom = opts2.find((s) => s.optionType === "DOMESTIC") || opts2[0];
+          if (dom?.costType) o.costType = String(dom.costType);
+        }
+        return o;
+      });
     } catch { return []; }
   };
   const [fulfillment, payment, returns] = await Promise.all([

@@ -577,10 +577,16 @@ function buildSheet(it) {
     countAsp();
     const line = (l, o) => `<div class="row"><span>${l}</span><span>${o ? esc(o.name) : "Not set up in eBay yet"}</span></div>`;
     const opts = p.shippingOptions || [], cur = it.fulfillmentPolicyId || (p.shipping && p.shipping.id) || "";
-    const shipRow = opts.length ? `<label class="sc-f"><span>Shipping</span><select id="blShip">${opts.map((o) => `<option value="${esc(o.id)}"${String(o.id) === String(cur) ? " selected" : ""}>${esc(o.name)}</option>`).join("")}</select></label>` : line("Shipping", p.shipping);
+    const shipRow = opts.length ? `<label class="sc-f"><span>Shipping</span><select id="blShip">${opts.map((o) => `<option value="${esc(o.id)}" data-cost="${esc(o.costType || "")}"${String(o.id) === String(cur) ? " selected" : ""}>${esc(o.name)}</option>`).join("")}</select></label>` : line("Shipping", p.shipping);
     const ropts = p.returnOptions || [], rcur = it.returnPolicyId || (p.returns && p.returns.id) || "";
     const retRow = ropts.length ? `<label class="sc-f"><span>Returns</span><select id="blRet">${ropts.map((o) => `<option value="${esc(o.id)}"${String(o.id) === String(rcur) ? " selected" : ""}>${esc(o.name)}</option>`).join("")}</select></label>` : line("Returns", p.returns);
-    $("#blPol").innerHTML = shipRow + retRow + line("Payment", p.payment);
+    /* calculated-shipping policies (his USPS one) price by weight: eBay refuses to publish
+       without package weight/size on the item, so collect them here when one is picked */
+    const pkgRow = `<div class="sc-f" id="blPkg" style="display:none"><span>Package — this shipping prices by weight, eBay needs these</span><div class="bl-off"><label>Weight (oz) <input id="blWt" inputmode="decimal" value="${esc(it.weightOz || 4)}" style="width:64px"></label><label>L <input id="blDL" inputmode="decimal" value="${esc(it.dimL || 9)}" style="width:48px"></label><label>W <input id="blDW" inputmode="decimal" value="${esc(it.dimW || 6)}" style="width:48px"></label><label>H <input id="blDH2" inputmode="decimal" value="${esc(it.dimH || 1)}" style="width:48px"></label><span class="sub">inches</span></div></div>`;
+    $("#blPol").innerHTML = shipRow + retRow + line("Payment", p.payment) + pkgRow;
+    const shipSel = s.querySelector("#blShip"), pkgEl = s.querySelector("#blPkg");
+    const syncPkg = () => { const cal = shipSel?.selectedOptions?.[0]?.dataset.cost === "CALCULATED"; if (pkgEl) pkgEl.style.display = cal ? "" : "none"; };
+    shipSel?.addEventListener("change", syncPkg); syncPkg();
   }).catch(() => { if (s.isConnected) $("#blPol").textContent = "Couldn't load your eBay policies. eBay will use your defaults."; });
   const read = () => {
     const title = $("#blTitle").value.trim().slice(0, 80), price = parseFloat(String($("#blPrice").value).replace(/[^0-9.]/g, "")), qty = Math.max(1, parseInt($("#blQty").value, 10) || 1), cond = $("#blCond").value;
@@ -590,7 +596,15 @@ function buildSheet(it) {
     const aspects = {}; s.querySelectorAll("#blAsp > div").forEach((r) => { const k = r.querySelector("[data-ak]").value.trim(), v = r.querySelector("[data-av]").value.trim(); if (k && v) aspects[k] = v; });
     const ship = s.querySelector("#blShip"), ret = s.querySelector("#blRet"), pct = Math.min(99, Math.max(1, parseInt($("#blOfferPct").value, 10) || 80)); try { localStorage.setItem("fob-offer-pct", String(pct)); } catch { /* ignore */ }
     const missing = [...s.querySelectorAll("#blAsp > div.req")].find((r) => !r.querySelector("[data-av]").value.trim()); if (missing) return need(null, `eBay requires ${missing.querySelector("[data-ak]").value}. Fill the highlighted box.`, missing.querySelector("[data-av]"));
-    return { title, price, quantity: qty, condition: cond, ...(ship ? { fulfillmentPolicyId: ship.value } : {}), ...(ret ? { returnPolicyId: ret.value } : {}), ...(pv?.category?.id ? { categoryId: pv.category.id, categoryName: pv.category.name } : {}), bestOffer: $("#blOffer").checked, offerFloorPct: pct, description: $("#blDesc").value.trim() || title, aspects };
+    let pkgFields = {};
+    const pkgEl = s.querySelector("#blPkg");
+    if (pkgEl && pkgEl.style.display !== "none") {
+      const w = parseFloat(String(s.querySelector("#blWt").value).replace(/[^0-9.]/g, ""));
+      if (!(w > 0)) return need("#blWt", "This shipping prices by weight. Add the package weight — it's highlighted.");
+      const dn = (id) => { const v = parseFloat(String(s.querySelector(id)?.value || "").replace(/[^0-9.]/g, "")); return v > 0 ? v : undefined; };
+      pkgFields = { weightOz: w, dimL: dn("#blDL"), dimW: dn("#blDW"), dimH: dn("#blDH2") };
+    }
+    return { title, price, quantity: qty, condition: cond, ...pkgFields, ...(ship ? { fulfillmentPolicyId: ship.value } : {}), ...(ret ? { returnPolicyId: ret.value } : {}), ...(pv?.category?.id ? { categoryId: pv.category.id, categoryName: pv.category.name } : {}), bestOffer: $("#blOffer").checked, offerFloorPct: pct, description: $("#blDesc").value.trim() || title, aspects };
   };
   const call = async (dryRun) => {
     const f = read(); if (!f) return null;
@@ -616,7 +630,8 @@ function buildSheet(it) {
   /* drafts: everything you type is kept on the item, so closing the builder never loses work */
   const draftRead = () => { const g = (q) => s.querySelector(q); const price = parseFloat(String(g("#blPrice")?.value || "").replace(/[^0-9.]/g, "")), aspects = {};
     s.querySelectorAll("#blAsp > div").forEach((r) => { const k = r.querySelector("[data-ak]").value.trim(), v = r.querySelector("[data-av]").value.trim(); if (k && v) aspects[k] = v; });
-    const ship = g("#blShip"), ret = g("#blRet"); return Object.assign({ ...(ret ? { returnPolicyId: ret.value } : {}), title: (g("#blTitle")?.value || "").trim().slice(0, 80), quantity: Math.max(1, parseInt(g("#blQty")?.value, 10) || 1), condition: g("#blCond")?.value, description: (g("#blDesc")?.value || "").trim(), aspects, draft: { savedAt: new Date().toISOString() } }, price > 0 ? { price } : {}, ship ? { fulfillmentPolicyId: ship.value } : {}); };
+    const ship = g("#blShip"), ret = g("#blRet"); const wt = parseFloat(String(g("#blWt")?.value || "").replace(/[^0-9.]/g, "")); const dn = (id) => { const v = parseFloat(String(g(id)?.value || "").replace(/[^0-9.]/g, "")); return v > 0 ? v : undefined; };
+    return Object.assign({ ...(ret ? { returnPolicyId: ret.value } : {}), title: (g("#blTitle")?.value || "").trim().slice(0, 80), quantity: Math.max(1, parseInt(g("#blQty")?.value, 10) || 1), condition: g("#blCond")?.value, description: (g("#blDesc")?.value || "").trim(), aspects, draft: { savedAt: new Date().toISOString() } }, price > 0 ? { price } : {}, ship ? { fulfillmentPolicyId: ship.value } : {}, wt > 0 ? { weightOz: wt, dimL: dn("#blDL"), dimW: dn("#blDW"), dimH: dn("#blDH2") } : {}); };
   const saveDraft = () => { const d = draftRead(); patchItem(it.id, (i) => { Object.assign(i, d); if (!i.title) delete i.title; }); };
   let dT = 0; s.addEventListener("input", () => { clearTimeout(dT); dT = setTimeout(saveDraft, 600); }); s.addEventListener("change", () => { clearTimeout(dT); dT = setTimeout(saveDraft, 300); });
   $("#blSave").addEventListener("click", () => { clearTimeout(dT); saveDraft(); ctx.closeSheet(); ctx.rerender?.(); window.__fobScRepaint?.(); ctx.toast("Draft saved. It's waiting in Ready to list."); });
