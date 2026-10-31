@@ -5,10 +5,11 @@ import SwiftUI
 import ImageCaptureCore
 import Vision
 import CoreImage
+import ImageIO
 import AppKit
 
 let SERVER = "https://fob-store.corndogsmugglerinc.workers.dev"
-let VERSION = "1.0"
+let VERSION = "1.1" /* 1.1: crop only warps to a quad that is plausibly the whole card, with margin; doubtful pages upload raw */
 
 // MARK: - saved pairing
 struct Config: Codable { var token: String; var account: String; var name: String }
@@ -32,23 +33,51 @@ func call(_ path: String, method: String = "POST", token: String? = nil, json: A
 }
 
 // MARK: - card crop: find the card's edges and straighten it; fall back to the raw page
+// Oct 31 2026 fix (Sawyer: scans "cropped wrong, cropped out, broken"): the old
+// version warped to the FIRST rectangle Vision found — often an inner frame on
+// the card — with no margin, so borders got clipped and wrong quads distorted
+// the card. Now a detection is used only when it is plausibly the whole card
+// (covers most of the page, card-shaped in either orientation); the quad is
+// expanded ~4% so the border survives; anything doubtful uploads the raw page.
 func cropCard(_ url: URL) -> Data? {
-  guard let ci = CIImage(contentsOf: url) else { return try? Data(contentsOf: url) }
-  let req = VNDetectRectanglesRequest(); req.minimumAspectRatio = 0.55; req.maximumAspectRatio = 0.85; req.minimumSize = 0.25; req.maximumObservations = 1; req.minimumConfidence = 0.6; req.quadratureTolerance = 20
+  let raw = try? Data(contentsOf: url)
+  guard let src = CIImage(contentsOf: url) else { return raw }
+  /* honor the file's EXIF orientation before measuring or warping */
+  var exif = 1
+  if let s = CGImageSourceCreateWithURL(url as CFURL, nil), let p = CGImageSourceCopyPropertiesAtIndex(s, 0, nil) as? [String: Any], let o = p[kCGImagePropertyOrientation as String] as? Int { exif = o }
+  let ci = exif == 1 ? src : src.oriented(forExifOrientation: Int32(exif))
+  let req = VNDetectRectanglesRequest(); req.minimumAspectRatio = 0.5; req.maximumAspectRatio = 0.9; req.minimumSize = 0.2; req.maximumObservations = 4; req.minimumConfidence = 0.6; req.quadratureTolerance = 20
   try? VNImageRequestHandler(ciImage: ci).perform([req])
   var out = ci
-  if let r = req.results?.first {
-    let w = ci.extent.width, h = ci.extent.height
-    let pt = { (p: CGPoint) in CIVector(x: p.x * w, y: p.y * h) }
+  let W = ci.extent.width, H = ci.extent.height
+  if W > 0, H > 0, let r = (req.results ?? []).first(where: { quad in
+    /* plausibility: the quad must cover most of the page and be card-shaped.
+       Points are normalized; convert to page pixels before measuring. */
+    let cs = [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft].map { CGPoint(x: $0.x * W, y: $0.y * H) }
+    let area2 = abs(cs.indices.reduce(0.0) { acc, i in let a = cs[i], b = cs[(i + 1) % 4]; return acc + (a.x * b.y - b.x * a.y) })
+    let area = area2 / 2
+    guard area >= 0.45 * W * H else { return false }
+    let wTop = hypot(cs[1].x - cs[0].x, cs[1].y - cs[0].y), wBot = hypot(cs[2].x - cs[3].x, cs[2].y - cs[3].y)
+    let hL = hypot(cs[3].x - cs[0].x, cs[3].y - cs[0].y), hR = hypot(cs[2].x - cs[1].x, cs[2].y - cs[1].y)
+    let qw = (wTop + wBot) / 2, qh = (hL + hR) / 2
+    guard qw > 0, qh > 0 else { return false }
+    let ratio = qw / qh
+    return (ratio >= 0.55 && ratio <= 0.9) || (ratio >= 1.15 && ratio <= 1.85) /* portrait card ≈0.72, landscape ≈1.40 */
+  }) {
+    /* expand the quad 4% outward from its center so the card border is kept */
+    let cx = (r.topLeft.x + r.topRight.x + r.bottomRight.x + r.bottomLeft.x) / 4
+    let cy = (r.topLeft.y + r.topRight.y + r.bottomRight.y + r.bottomLeft.y) / 4
+    let grow = { (p: CGPoint) in CGPoint(x: cx + (p.x - cx) * 1.04, y: cy + (p.y - cy) * 1.04) }
+    let pt = { (p: CGPoint) in CIVector(x: p.x * W, y: p.y * H) }
     if let f = CIFilter(name: "CIPerspectiveCorrection") {
       f.setValue(ci, forKey: kCIInputImageKey)
-      f.setValue(pt(r.topLeft), forKey: "inputTopLeft"); f.setValue(pt(r.topRight), forKey: "inputTopRight")
-      f.setValue(pt(r.bottomLeft), forKey: "inputBottomLeft"); f.setValue(pt(r.bottomRight), forKey: "inputBottomRight")
+      f.setValue(pt(grow(r.topLeft)), forKey: "inputTopLeft"); f.setValue(pt(grow(r.topRight)), forKey: "inputTopRight")
+      f.setValue(pt(grow(r.bottomLeft)), forKey: "inputBottomLeft"); f.setValue(pt(grow(r.bottomRight)), forKey: "inputBottomRight")
       if let o = f.outputImage { out = o }
     }
   }
   let ctx = CIContext()
-  return ctx.jpegRepresentation(of: out, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, options: [kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.88])
+  return ctx.jpegRepresentation(of: out, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, options: [kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.88]) ?? raw
 }
 
 // MARK: - the scanner side
