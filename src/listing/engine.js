@@ -30,7 +30,7 @@ export const LISTING_CONFIG = {
   orderFee: 0.3,
   pokemonManufacturer: "The Pokémon Company",
   sealedCondition: "New/Factory Sealed",
-  signOff: "CornDogSmuggler Coalition - Operating To Marine Corps Standards.",
+  signOff: "CornDogSmuggler Coalition — Operating To Marine Corps Standards.",
 };
 
 /** @param {string} s */
@@ -129,9 +129,12 @@ export function buildVariationTitle(id = {}) {
 }
 
 /**
- * Plain-text description written for buyers and for eBay/Google AI shopping:
- * a clear first line saying exactly what it is, then only the facts we actually know,
- * then the locked sign-off. No shipping boilerplate, no empty "—" fields, no card fields on non-card items.
+ * THE locked description template — every listing the app writes, every time:
+ * line 1 says exactly what the item is, then only the facts we actually know
+ * (one "- Key: Value" line each), the variation list when there is one, and
+ * the locked sign-off last. No stock filler sentences, no shipping boilerplate,
+ * no empty fields. (Sawyer, Oct 31 2026: descriptions were cluttered filler and
+ * carried shipping text he never asked for; output runs off locked templates.)
  * @param {Record<string, any>} id
  */
 const SEALED_RX = /\b(booster|pack|box|(?<!upper )deck|tin|bundle|blister|etb|elite trainer|display|binder|album|portfolio|sleeves?|playmat|figure|figurine|statue|plush|collection|case|toploaders?|storage|deck box|dispenser|pez|toy|funko|keychain|pin|poster|shirt|hat|mug|cup|lunch|backpack|lego|puzzle|game boy|switch|cartridge|dvd|book|manga|sticker|lamp|blanket)\b/i;
@@ -156,8 +159,6 @@ export function buildEbayDescription(id = {}) {
     const fr = (sp.find(([k]) => /^franchise$/i.test(k)) || [])[1] || (/pok/i.test(game) ? "Pokémon" : "");
     lines.push(`${name}${fr && !name.toLowerCase().includes(String(fr).toLowerCase().replace("é", "e")) && !name.toLowerCase().includes(String(fr).toLowerCase()) ? ` (${fr})` : ""}.`);
     lines.push("");
-    lines.push(`You get the exact item shown in the photos.`);
-    lines.push("");
     if (sp.length) for (const [k, v] of sp) fact(k, Array.isArray(v) ? v.join(", ") : String(v));
     else fact("Product", name);
     if (!sp.some(([k]) => /^condition$/i.test(k))) fact("Condition", cond || "New");
@@ -166,8 +167,6 @@ export function buildEbayDescription(id = {}) {
     const g = (`${id.productName || ""} ${id.title || ""}`).match(GRADED_RX);
     const head = [name, clean(id.setName), clean(id.collectorNumber) && !name.includes(clean(id.collectorNumber)) ? clean(id.collectorNumber) : ""].filter(Boolean).join(" - ");
     lines.push(`${head}${game ? ` | ${game} TCG` : ""}${kind === "graded" && g ? ` | ${g[1].toUpperCase()} ${g[2]}` : ""}.`);
-    lines.push("");
-    lines.push(kind === "graded" ? "You get the exact graded card shown in the photos, in its original slab." : "You get the exact card shown in the photos.");
     lines.push("");
     fact("Game", game ? `${game} TCG` : "");
     fact("Card name", name);
@@ -239,12 +238,22 @@ export function buildItemSpecifics(id = {}) {
   return specs;
 }
 
+/** Packaging words that mean factory-sealed product for the locked sealed title ending. */
+const SEALED_TITLE_RX = /\b(booster|packs?|box|tin|bundle|blister|etb|elite trainer|display|starter deck|theme deck|collection box|booster pack|sleeved)\b/i;
+
 /**
  * Run engine on a scout-shaped item → listing fields.
  * @param {Record<string, unknown>} item
  * @param {{ mode?: 'regular'|'variation', soldAvg?: number|null }} [opts]
  */
 export function runListingEngine(item, opts = {}) {
+  const nameForKind = String(item.productName || item.title || "");
+  const sealed =
+    item.sealed === true ||
+    item.kind === "sealed" ||
+    /sealed/i.test(String(item.category || "")) ||
+    /sealed/i.test(String(item.condition || "")) ||
+    (!item.collectorNumber && SEALED_TITLE_RX.test(nameForKind));
   const id = {
     productName: item.productName || item.title,
     setName: item.setName,
@@ -256,7 +265,7 @@ export function runListingEngine(item, opts = {}) {
     game: item.game,
     quantity: item.quantity,
     title: item.title,
-    sealed: /sealed/i.test(String(item.category || "")) || /sealed/i.test(String(item.condition || "")),
+    sealed,
   };
   const title =
     opts.mode === "variation" ? buildVariationTitle(id) : buildEbayTitle(id);

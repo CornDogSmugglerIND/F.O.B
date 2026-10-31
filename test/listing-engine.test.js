@@ -88,8 +88,9 @@ test("buildEbayDescription includes facts + locked sign-off", () => {
     game: "Pokemon",
   });
   assert.match(d, /Card name: Pikachu/);
-  assert.doesNotMatch(d, /Combined shipping|—/);
-  assert.match(d, /CornDogSmuggler Coalition - Operating To Marine Corps Standards\./);
+  assert.doesNotMatch(d, /Combined shipping/);
+  /* Sawyer's locked sign-off carries the em dash (Oct 31 2026 fix list) */
+  assert.match(d, /CornDogSmuggler Coalition — Operating To Marine Corps Standards\./);
   assert.doesNotMatch(d, /premium|authentic|genuine/i);
 });
 
@@ -125,8 +126,9 @@ test("runListingEngine returns title description specifics", () => {
 test("description: non-card product gets no card filler", async () => {
   const { buildEbayDescription } = await import("../src/listing/engine.js");
   const d = buildEbayDescription({ productName: "Pokemon TCG Mini Card Binder/Album - Greninja & Lapras (2024)", game: "pokemon", condition: "NEW" });
-  assert.doesNotMatch(d, /Card number|Rarity|Set:|Finish|Combined shipping|—/);
-  assert.match(d, /exact item/);
+  assert.doesNotMatch(d, /Card number|Rarity|Set:|Finish|Combined shipping/);
+  /* Oct 31 2026: the "exact item shown" stock line is the filler Sawyer ordered out of the template */
+  assert.doesNotMatch(d, /exact item/);
   assert.match(d, /Condition: New/);
 });
 test("description html: bullets become a list, lines become paragraphs", async () => {
