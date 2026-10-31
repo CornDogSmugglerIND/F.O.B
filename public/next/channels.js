@@ -332,14 +332,16 @@ function wireDeck(all) { wireHoloWall(ctx.host, all, { info: wallInfo, onOpen: (
 function paint() {
   const all = rows(), h = ctx.host; const groups = new Map();
   const typedPct = h.querySelector("#chPct")?.value || "", typedQ = document.activeElement && document.activeElement.id === "chQ";
-  for (const it of all) { const k = keyOf(it); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(it); }
+  /* grouped sections are built only in list mode — desk mode built and threw
+     them away on every paint (Oct 31 2026) */
+  if (S.list) for (const it of all) { const k = keyOf(it); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(it); }
   const total = all.reduce((a, i) => a + (i._order ? Number(i.price) || 0 : valOf(i)), 0);
   const counts = Object.fromEntries(STAGES.map(([k]) => [k, pool(k).length]));
-  const sections = [...groups.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, list]) => {
+  const sections = S.list ? [...groups.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, list]) => {
     const shown = list.slice(0, S.more[k] || 120), closed = S.closed.has(k);
     return `<section class="ch-group"><header><button class="ch-fold" data-fold="${esc(k)}" type="button" aria-expanded="${!closed}">${closed ? "▸" : "▾"} ${esc(k)} <em>${list.length}</em></button><span>${money(list.reduce((a, i) => a + (i._order ? Number(i.price) || 0 : valOf(i)), 0))}</span><button class="chip" data-selgrp="${esc(k)}" type="button">Select this group (${list.length})</button></header>
       ${closed ? "" : `<div class="${S.view === "list" ? "sp-list" : S.view === "rows" ? "chr-list" : "co-grid ch-grid " + S.view}">${shown.map(tile).join("")}</div>${list.length > shown.length ? `<button class="btn" data-more="${esc(k)}" type="button">Show ${Math.min(120, list.length - shown.length)} more of ${list.length - shown.length}</button>` : ""}`}</section>`;
-  }).join("");
+  }).join("") : "";
   const n = S.sel.size;
   h.innerHTML = `<div class="co-wrap ch-wrap dk">
     ${deskTop(all, total, counts)}

@@ -85,7 +85,7 @@ function vaultBody(all) {
       if (!sets.has(S.bset)) { S.bset = order[0][0]; S.bpg = 0; }
       const l = [...sets.get(S.bset)].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)), per = innerWidth > 820 ? 18 : 9, spreads = Math.max(1, Math.ceil(l.length / per));
       S.bpg = Math.min(Math.max(0, S.bpg), spreads - 1);
-      const pg = (from) => { const c = l.slice(from, from + 9); return `<div class="bn-pg">${c.map((it) => `<button type="button" class="bd-p" data-vid="${esc(it.id)}"${pv(it)} aria-label="${esc(nameOf(it))} ${money(it.price)}">${ph(it)}<em>${money(it.price)}</em></button>`).join("")}${Array.from({ length: 9 - c.length }, () => `<span class="bd-p empty"></span>`).join("")}</div>`; };
+      const pg = (from) => { const c = l.slice(from, from + 9); return `<div class="bn-pg">${c.map((it) => `<button type="button" class="bd-p" data-vid="${esc(it.id)}"${pv(it)} aria-label="${esc(nameOf(it))} ${money(it.price)}">${ph(it)}<em>${money(it.price)}</em></button>`).join("")}</div>`; };
       const at = S.bpg * per;
       out += `<section class="vs bn-sec"><header class="vs-h"><b>Binder</b><span>${val(l)} in ${esc(S.bset)}</span></header>
       <div class="bn-tabs hscroll" role="tablist">${order.map(([k, x]) => `<button type="button" role="tab" class="bn-t${k === S.bset ? " on" : ""}" aria-selected="${k === S.bset}" data-bset="${esc(k)}">${esc(k)}<b>${x.length}</b></button>`).join("")}</div>
@@ -108,12 +108,15 @@ function catBar(base, cats) {
   return `<div class="cb"><div class="cb-bar" aria-hidden="true">${list.slice(1).map(([c, n], i) => `<i style="flex:${n};--h:${hues[i % hues.length]}"${S.cat === c ? ' class="on"' : ""}></i>`).join("")}</div>
     <div class="cb-keys hscroll" role="tablist" aria-label="Categories">${list.map(([c, n], i) => `<button type="button" role="tab" aria-selected="${S.cat === c}" class="cb-k${S.cat === c ? " on" : ""}" data-cat="${esc(c)}" style="--h:${i ? hues[(i - 1) % hues.length] : "#D3F2E4"}"><i></i>${esc(c === "Pokémon singles" ? "Pokémon" : c)} <b>${n}</b></button>`).join("")}</div></div>`;
 }
-function vaultShelves(all) {
+/* Top value shelf: the 14 priciest things in the vault, price-ranked, with
+   paid-vs-value chips. (Replaces the old vaultShelves group shelves, which
+   duplicated the category bar's filtering and were never painted.) */
+function topShelf(all) {
   const card = (it) => { const paid = it.purchasePrice != null && it.purchasePrice !== "" ? Number(it.purchasePrice) : null, g = paid != null ? (Number(it.price) || 0) - paid : null; return svCard(it, { photo: photoOf(it), chip: g != null && Math.abs(g) >= .01 ? `${g >= 0 ? "+" : "−"}${money(Math.abs(g))}` : "", chipHot: g != null && g < 0 }); };
   const top = [...all].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)).slice(0, 14);
-  const groups = new Map(); if (S.cat === "All") all.forEach((i) => { const c = catOf(i); if (!groups.has(c)) groups.set(c, []); groups.get(c).push(i); }); else all.forEach((i) => { const w = where(i); if (!groups.has(w)) groups.set(w, []); groups.get(w).push(i); });
-  const v = (l) => money(l.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0));
-  return shelf("Top value", `${top.length} · ${v(top)}`, top.map(card).join(""), "Top value") + [...groups.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, l]) => shelf(k, `${l.length} · ${v(l)}${l.length > 14 ? ` · <button type="button" class="sv-all" data-allgrp="${esc(k)}">See all</button>` : ""}`, l.slice(0, 14).map(card).join(""), k)).join("");
+  if (!top.length) return "";
+  const v = money(top.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0));
+  return shelf("Top value", `${top.length} · ${v}`, top.map(card).join(""), "Top value");
 }
 function vaultInfo(it) {
   const paid = it.purchasePrice != null && it.purchasePrice !== "" ? Number(it.purchasePrice) : null, g = paid != null ? (Number(it.price) || 0) - paid : null;
@@ -132,17 +135,19 @@ function paint() {
   const all = rows(), shown = all.slice(0, S.more), total = val(all), SP = new Map(loadSpaces().map((x) => [x.id, x.name])), binName = (id) => (id && SP.get(id)) || "";
   host.innerHTML = `<div class="co-wrap cx">
     ${vaultTop(all, total, base)}
+    ${!(S.list || S.q || S.selecting) ? catBar(base, cats) : ""}
     ${S.menu ? `<div class="cx-menu"><label><span>Sort</span><select id="coSort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest value</option><option value="new"${S.sort === "new" ? " selected" : ""}>Newest</option><option value="name"${S.sort === "name" ? " selected" : ""}>Name</option></select></label>
       <label><span>Show</span><select id="coStage">${[["all", "All"], ["new", "Intake"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<option value="${k}"${S.stage === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
       <button class="cx-btn" id="coIO" type="button">Import / Export</button></div>` : ""}
     ${S.list || S.q || S.selecting ? `<div class="cx-lbar"><input id="coQ" class="cx-q" type="search" placeholder="Search your collection" value="${esc(S.q)}"><button type="button" class="cx-btn${S.list ? " on" : ""}" id="coList" aria-pressed="${!!S.list}">${S.list ? "Close" : "Show list"}</button></div>` : ""}
-    ${!(S.list || S.q || S.selecting) ? vaultBody(all) : ""}
+    ${!(S.list || S.q || S.selecting) ? vaultBody(all) + ((S.kind || "all") === "all" ? topShelf(all) : "") : ""}
     ${S.list || S.q || S.selecting ? `<div class="cx-scroll"><div class="cx-grid">${shown.map((it) => { const src = photoOf(it), on = S.sel.has(String(it.id)), bn = binName(it.spaceId); return `<article class="cx-card${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0">
       <div class="cx-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<span class="cx-price">${money(it.price)}</span>${Number(it.quantity) > 1 ? `<span class="cx-qty">x${Number(it.quantity)}</span>` : ""}${S.selecting ? `<i class="cx-ck"></i>` : ""}</div>
       <div class="cx-cap"><span>${esc(nameOf(it))}</span><em>${esc(where(it))}${bn ? " · " + esc(bn) : ""}</em></div></article>`; }).join("") || `<div class="co-empty">Nothing matches.</div>`}${all.length > S.more ? `<button type="button" class="cx-more" id="coMore">Show more (${all.length - S.more})</button>` : ""}</div></div>` : ""}
     ${S.selecting ? bar() : ""}</div>`;
   wire();
   host.querySelectorAll("[data-vid]").forEach((c) => { c.addEventListener("click", () => openZoom(c.dataset.vid, c)); c.addEventListener("pv:details", () => openZoom(c.dataset.vid, c)); });
+  host.querySelectorAll(".sv-c").forEach((c) => c.addEventListener("click", () => openZoom(c.dataset.id, c)));
   host.querySelectorAll("[data-kind]").forEach((b) => b.addEventListener("click", () => { S.kind = b.dataset.kind; paint(); }));
   host.querySelectorAll("[data-bset]").forEach((b) => b.addEventListener("click", () => { S.bset = b.dataset.bset; S.bpg = 0; paint(); }));
   host.querySelectorAll("[data-bflip]").forEach((b) => b.addEventListener("click", () => { S.bpg += Number(b.dataset.bflip); const sp = host.querySelector(".bn-spread"); paint(); const n = host.querySelector(".bn-spread"); n && n.classList.add(Number(b.dataset.bflip) > 0 ? "fl-n" : "fl-p"); }));
