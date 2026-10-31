@@ -84,6 +84,7 @@ Look at the photo(s). Return ONLY valid JSON (no markdown) with this shape:
 Rules:
 - Never guess finish/variant if unsure — set confidence low.
 - Prefer exact printed name and collector number from the card.
+- set_name is the SPECIFIC expansion set for this exact product (e.g. "Destined Rivals", "Surging Sparks", "Journey Together") — NEVER the era, block or generation the set sits inside (never "Scarlet and Violet", "Sword and Shield", "Sun and Moon"). Exception: when the product IS that base set itself. For sealed product, read the set name off the packaging.
 - If photo is blurry / hair / glare, set unusable_photo true.
 - kind=card for TCG/sports cards; sealed/toy/electronics/movie/other otherwise.
 - search_query should be what a buyer would type into eBay for this exact item.`;

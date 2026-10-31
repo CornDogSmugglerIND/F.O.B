@@ -67,19 +67,63 @@ export function emptyIdentity(quantity = 1) {
 }
 
 /**
+ * Set names are the SPECIFIC expansion set — "Destined Rivals", "Surging
+ * Sparks", "30th Celebration" — never the era/block the set sits inside.
+ * (Sawyer, Oct 31 2026: a Destined Rivals booster got set = "Scarlet and
+ * Violet".) Sealed items get no catalog correction, so the gate resolves the
+ * set here: a specific set named in the product name wins over an era name,
+ * and an era name with no specific set behind it drops confidence to low so
+ * the operator picks — the era is never silently kept as the set.
+ */
+const ERA_SET_NAMES = new Set([
+  "scarlet and violet", "sword and shield", "sun and moon", "black and white",
+  "diamond and pearl", "heartgold and soulsilver", "platinum", "x and y",
+]);
+const KNOWN_SET_NAMES = [
+  "Destined Rivals", "Surging Sparks", "Journey Together", "Prismatic Evolutions",
+  "Stellar Crown", "Twilight Masquerade", "Temporal Forces", "Paradox Rift",
+  "Obsidian Flames", "Paldea Evolved", "Scarlet & Violet 151", "30th Celebration",
+  "Chaos Rising", "White Flare", "Black Bolt", "Phantasmal Flames", "Mega Evolution",
+  "Crown Zenith", "Astral Radiance", "Brilliant Stars", "Lost Origin", "Silver Tempest",
+  "Fusion Strike", "Evolving Skies", "Chilling Reign", "Battle Styles", "Shining Fates",
+  "Vivid Voltage", "Darkness Ablaze", "Rebel Clash", "Cosmic Eclipse", "Unified Minds",
+  "Unbroken Bonds", "Team Up", "Lost Thunder", "Celestial Storm", "Forbidden Light",
+  "Ultra Prism", "Crimson Invasion", "Burning Shadows", "Guardians Rising",
+];
+const setKey = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+/**
+ * @param {Partial<IdentifyCandidate>} partial
+ * @returns {Partial<IdentifyCandidate>}
+ */
+export function resolveSetName(partial = {}) {
+  const game = setKey(partial.game);
+  if (!/pokemon|pok mon/.test(game) && partial.game) return partial;
+  const setName = partial.set_name ? String(partial.set_name).trim() : partial.set_name;
+  const hay = setKey(`${partial.product_name || ""} ${partial.set_code || ""}`);
+  const specific = KNOWN_SET_NAMES.find((n) => hay.includes(setKey(n)));
+  if (specific && setKey(specific) !== setKey(setName)) return { ...partial, set_name: specific };
+  if (setName && ERA_SET_NAMES.has(setKey(setName))) {
+    /* era/block name with no specific set behind it: not a set — operator decides */
+    return { ...partial, confidence: "low" };
+  }
+  return partial;
+}
+
+/**
  * @param {Partial<IdentifyCandidate>} partial
  * @param {number} [quantity]
  * @returns {IdentifyCandidate}
  */
 export function normalizeIdentity(partial = {}, quantity = 1) {
   const base = emptyIdentity(quantity);
+  const p = resolveSetName(partial);
   return {
     ...base,
-    ...partial,
-    language: partial.language || base.language,
-    condition: partial.condition || base.condition,
-    quantity: partial.quantity != null ? Math.max(1, Number(partial.quantity) || 1) : base.quantity,
-    confidence: partial.confidence === "high" ? "high" : "low",
+    ...p,
+    language: p.language || base.language,
+    condition: p.condition || base.condition,
+    quantity: p.quantity != null ? Math.max(1, Number(p.quantity) || 1) : base.quantity,
+    confidence: p.confidence === "high" ? "high" : "low",
   };
 }
 
