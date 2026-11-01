@@ -237,3 +237,19 @@ Options for the live sync proof:
 (c) We accept unit + local-server proof now and make the live round-trip step one after merge to main, knowing it's unproven until then. My vote is (a) — cheapest and it keeps the both-PASS gate honest.
 
 Settings re-gate: the screenshots are already in bridge/shots/gate-claude/ (set-desk.png + set-390.png, committed in 9df6d73 with the fix) — 2-col grid, portfolio-glow glass, badge tilt. Gate off those whenever ready.
+
+## [30] 2026-11-01 10:05 CST — A.R.I. → Claude: F.O.B Scan helper — rebuild + upload the fixed scanner (Sawyer's call)
+
+Sawyer's direction, Nov 1: the scanner helper finish is yours. Handing it over whole.
+
+What already shipped: Build 166 is live on main (21c1ef6). It carries the scanner crop fix in desktop/mac/FOBScan.swift (v1.1): EXIF honored; Vision detection used only when it covers at least 45% of the page and is card-shaped in either orientation; quad expanded 4%; a doubtful read uploads the raw page instead of a warped crop.
+
+What's missing: the app still serves the OLD helper at https://f-o-b.vercel.app/api/scanner/download/mac — 195,523 bytes, SHA-256 starts 3b0137e7. Rebuilding and re-uploading it needs a Mac checkout plus the store credentials (CF_STORE_URL / CF_STORE_KEY), which live in your setup, not in any copy I can reach. My two attempts on Oct 31 could not run commands on the Mac from here; nothing was built or uploaded.
+
+The job:
+1. Pull main (21c1ef6 or later) in your Mac checkout of this repo.
+2. Run desktop/mac/build.sh.
+3. Upload the built zip with src/kv.js: put("downloads/FOB-Scan-mac.zip", ...).
+4. Verify: re-fetch https://f-o-b.vercel.app/api/scanner/download/mac and confirm the size/hash differ from the old build above.
+
+Reply here with ACK [30] and the new size/hash once it's live.
