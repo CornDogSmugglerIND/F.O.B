@@ -1,10 +1,10 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=167";
-import { photoManager } from "./photos.js?v=167";
-import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=167";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=167";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=168";
+import { photoManager } from "./photos.js?v=168";
+import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=168";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=168";
 
 let ctx = null;
-const S = { stage: "listed", view: "cards", group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
+const S = { stage: "listed", view: (() => { try { return localStorage.getItem("fob-ch-view") || "cards"; } catch { return "cards"; } })(), group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
 /* Stage selector follows the Command roadmap: same stops, same order, same colors. */
 const STAGES = [
   ["listed", "Live on eBay", "#90FFEE"],
@@ -134,6 +134,7 @@ function deskTop(all, total, counts) {
     ${!orders && stale.length ? `<button type="button" class="dk-alert${S.stale ? " on" : ""}" id="dkStale"><b>${stale.length} listing${stale.length === 1 ? "" : "s"} sitting 45+ days</b><span>${S.stale ? "Showing them. Tap to show everything." : "Tap to see them and fix the price."}</span></button>` : ""}
     <div class="dk-find"><input id="chQ" type="search" placeholder="Search title or SKU" value="${esc(S.q)}" aria-label="Search title or SKU">
       ${orders ? "" : `<select id="dkSort" aria-label="Sort"><option value="value"${S.sort === "value" ? " selected" : ""}>Price: high</option><option value="low"${S.sort === "low" ? " selected" : ""}>Price: low</option><option value="old"${S.sort === "old" ? " selected" : ""}>Oldest first</option><option value="name"${S.sort === "name" ? " selected" : ""}>Name</option></select>`}
+      ${orders ? "" : `<button type="button" class="btn dk-view" id="dkView" aria-label="${S.view === "rows" ? "Show as cards" : "Show as rows"}">${S.view === "rows" ? "Cards" : "Rows"}</button>`}
       <button class="btn ch-controls${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}" aria-label="Bulk tools">Bulk</button></div>`;
 }
 function deskList(all) {
@@ -151,17 +152,24 @@ function deskList(all) {
         <div class="dk-mid"><b>${esc(nameOf(it))}</b><span>${esc(o.buyer || "Buyer")} · ${d == null ? "" : d === 0 ? "today" : d + "d ago"}</span><span class="dk-trk">${[0, 1, 2, 3].map((k) => `<i${k < n ? ' class="on"' : ""}></i>`).join("")}<em>${esc(badge(it))}</em></span></div>
         <div class="dk-end"><b>${money(o.total ?? it.price)}</b>${it.phase === "sold" ? `<a class="dk-act hot" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener" data-noopen>Print label</a>` : ""}</div></article>`; }
     const d = daysSince(it.channels?.ebay?.listedAt || it.createdAt), q = it._n > 1 ? it._kids.reduce((a, k) => a + (Number(k.quantity) || 1), 0) : Number(it.quantity) || 1;
+    if (S.view !== "rows") { const bin = sp.get(it.spaceId);
+      return `<article class="lc ch-tile${on ? " sel" : ""}${d > 45 ? " stale" : ""}" data-id="${esc(it.id)}" data-edit="1" tabindex="0">
+      <div class="lc-art">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`}<b class="lc-price">${ptxt(it)}</b><button type="button" class="co-pick lc-pick" data-pick="${esc(it.id)}" aria-label="Select" aria-pressed="${on}"></button>${it._n > 1 ? `<span class="lc-var">${it._n} variations</span>` : ""}</div>
+      <div class="lc-body"><span class="lc-t">${esc(nameOf(it))}</span>
+        <span class="lc-meta">${d == null ? "" : `<i class="lc-d${d > 45 ? " old" : ""}">${d === 0 ? "Listed today" : d + "d live"}</i>`}<i class="${bin ? "" : "lc-nobin"}">${esc(bin || "No bin")}</i>${q > 1 ? `<i>qty ${q}</i>` : ""}</span></div></article>`; }
     return `<article class="dk-row ch-tile${on ? " sel" : ""}" data-id="${esc(it.id)}" data-edit="1" tabindex="0"><button type="button" class="co-pick" data-pick="${esc(it.id)}" aria-label="Select" aria-pressed="${on}"></button>
       <span class="co-img dk-img"${vp(it, true)}>${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`}</span>
       <div class="dk-mid"><b>${esc(nameOf(it))}</b><span>${it._n > 1 ? `${it._n} variations · ` : ""}${d == null ? "" : `<i class="${d > 45 ? "old" : ""}">${d}d live</i> · `}${esc(sp.get(it.spaceId) || "No bin")}</span></div>
       <div class="dk-end"><b>${ptxt(it)}</b><span>qty ${q}</span><em class="dk-act">Edit</em></div></article>`;
   };
-  return `<div class="dk-list">${list.slice(0, S.more.dk || 80).map(row).join("")}</div>${list.length > (S.more.dk || 80) ? `<button class="btn dk-more" type="button" id="dkMore">Show ${Math.min(80, list.length - (S.more.dk || 80))} more</button>` : ""}`;
+  const cards = S.view !== "rows" && !["sold", "shipped", "delivered"].includes(S.stage);
+  return `<div class="${cards ? "lc-grid" : "dk-list"}">${list.slice(0, S.more.dk || 80).map(row).join("")}</div>${list.length > (S.more.dk || 80) ? `<button class="btn dk-more" type="button" id="dkMore">Show ${Math.min(80, list.length - (S.more.dk || 80))} more</button>` : ""}`;
 }
 function wireDesk(all) {
   const h = ctx.host;
   h.querySelector("#dkStale")?.addEventListener("click", () => { S.stale = !S.stale; paint(); });
   h.querySelector("#dkSort")?.addEventListener("change", (e) => { S.sort = e.target.value; paint(); });
+  h.querySelector("#dkView")?.addEventListener("click", () => { S.view = S.view === "rows" ? "cards" : "rows"; try { localStorage.setItem("fob-ch-view", S.view); } catch { /* ignore */ } paint(); });
   h.querySelector("#dkMore")?.addEventListener("click", () => { S.more.dk = (S.more.dk || 80) + 80; paint(); });
   h.querySelectorAll("[data-noopen]").forEach((a) => a.addEventListener("click", (e) => e.stopPropagation()));
 }

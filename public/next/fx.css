@@ -792,3 +792,37 @@ html .shx h2,html .shx .ed-head,html .shx .back,html .shx .pk-top>h2,html .shx .
 .bt-pick:hover,.bt-pick:focus-visible{box-shadow:0 0 0 2px var(--holo)}.bt-pick.busy{opacity:.5}
 .bt-list{max-height:62vh!important}
 .bt-row .bt-th img{width:40px!important;height:56px!important}.bt-row .bt-th{gap:4px}
+
+/* ===== Channels: live listings as a storefront wall (Build 168) ===== */
+.lc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 12px;margin-top:4px}
+@media (min-width:600px){.lc-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:1000px){.lc-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:20px 18px}}
+html.fx #main .lc{position:relative;display:flex;flex-direction:column;gap:9px;cursor:pointer;padding:0;background:none;border:0;border-radius:14px;outline:none;contain-intrinsic-size:auto 320px}
+.lc-art{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:radial-gradient(120% 80% at 50% 0%,#14251f,#070d0b);box-shadow:0 0 0 1px rgba(125,242,180,.14),0 14px 26px rgba(0,0,0,.45);transition:transform .22s var(--ease,ease),box-shadow .22s}
+.lc-art img{width:100%;height:100%;object-fit:contain;display:block;padding:6px;box-sizing:border-box}
+.lc-art>i{display:flex;height:100%;align-items:center;justify-content:center;font:700 40px var(--disp);color:var(--mute);font-style:normal}
+html.fx #main .lc:hover .lc-art,html.fx #main .lc:focus-visible .lc-art{transform:translateY(-3px);box-shadow:0 0 0 1.5px var(--holo,#7DF2B4),0 0 22px rgba(125,242,180,.25),0 18px 30px rgba(0,0,0,.55)}
+html.fx #main .lc.sel .lc-art{box-shadow:0 0 0 2px var(--holo,#7DF2B4),0 0 22px rgba(125,242,180,.3)}
+.lc-price{position:absolute;right:8px;bottom:8px;padding:4px 10px;border-radius:9px;background:rgba(4,10,8,.86);backdrop-filter:blur(6px);color:#E6FFF2;font:700 15px var(--disp);font-variant-numeric:tabular-nums;box-shadow:inset 0 0 0 1px rgba(125,242,180,.35)}
+.lc-var{position:absolute;left:8px;bottom:8px;padding:3px 8px;border-radius:8px;background:rgba(4,10,8,.86);color:#B3FBD5;font:600 11.5px var(--text)}
+html.fx #main .lc-pick{position:absolute!important;left:8px;top:8px;width:24px;height:24px;border-radius:50%;appearance:none;border:0;padding:0;background:rgba(4,10,8,.6);box-shadow:inset 0 0 0 1.5px rgba(211,242,228,.55);opacity:0;transition:opacity .15s;cursor:pointer}
+html.fx #main .lc:hover .lc-pick,html.fx #main .lc.sel .lc-pick,.dk-has-sel .lc-pick{opacity:1}
+html.fx #main .lc.sel .lc-pick{background:var(--holo,#7DF2B4);box-shadow:0 0 10px rgba(125,242,180,.6)}
+@media (hover:none){html.fx #main .lc-pick{opacity:.85}}
+.lc-body{display:flex;flex-direction:column;gap:5px;padding:0 2px;min-width:0}
+.lc-t{font:600 13.5px/1.3 var(--text);color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lc-meta{display:flex;flex-wrap:wrap;gap:4px}
+.lc-meta i{font:600 11px var(--text);font-style:normal;color:var(--mute);padding:2px 7px;border-radius:6px;background:rgba(125,242,180,.07)}
+.lc-meta i.old{color:#FFC69C;background:rgba(232,146,74,.14)}
+.lc-meta i.lc-nobin{color:#FFC69C}
+.lc.stale .lc-art{box-shadow:0 0 0 1px rgba(232,146,74,.45),0 14px 26px rgba(0,0,0,.45)}
+.dk-view{flex:none}
+@media (min-width:821px){.dk.ch-wrap{max-width:1180px}}
+
+/* ===== Collection (Build 168): growth chart with real month labels, binder pockets show the name ===== */
+.vgw{margin:4px 0 18px}
+.vgw .vg{height:84px;margin:0}
+.vg-m{display:grid;grid-template-columns:repeat(12,1fr);margin-top:4px}
+.vg-m span{font:600 11px var(--text);color:#6F9585;text-align:center}
+.vg-m span:first-child{text-align:left}
+@media (min-width:821px){.vgw .vg{height:110px}}

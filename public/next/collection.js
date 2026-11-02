@@ -1,7 +1,7 @@
-import { photoManager } from "./photos.js?v=167";
-import { hideIds, unhideIds } from "./orders.js?v=167";
-import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=167";
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=167";
+import { photoManager } from "./photos.js?v=168";
+import { hideIds, unhideIds } from "./orders.js?v=168";
+import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=168";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=168";
 
 let ctx = null;
 const S = { bset: "", bpg: 0, q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 48 };
@@ -56,9 +56,9 @@ function growth(all) {
   const mx = Math.max(1, ...series), W = 300, H = 70, xs = (j) => (j / 11) * W, ys = (v) => H - 6 - (v / mx) * (H - 14);
   const line = series.map((v, j) => `${j ? "L" : "M"}${xs(j).toFixed(1)},${ys(v).toFixed(1)}`).join(" ");
   const mo = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-  return `<svg class="vg" viewBox="0 0 ${W} ${H + 14}" preserveAspectRatio="none" aria-label="Collection value over the last 12 months"><defs><linearGradient id="vgF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7DF2B4" stop-opacity=".35"/><stop offset="1" stop-color="#7DF2B4" stop-opacity="0"/></linearGradient></defs>
+  return `<div class="vgw"><svg class="vg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Collection value over the last 12 months"><defs><linearGradient id="vgF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7DF2B4" stop-opacity=".35"/><stop offset="1" stop-color="#7DF2B4" stop-opacity="0"/></linearGradient></defs>
     <path d="${line} L${W},${H} L0,${H} Z" fill="url(#vgF)"/><path d="${line}" fill="none" stroke="#7DF2B4" stroke-width="2" vector-effect="non-scaling-stroke"/>
-    <circle cx="${xs(11)}" cy="${ys(series[11])}" r="3.5" fill="#D2FFE6"/>${series.map((_, j) => j % 2 === 1 ? "" : `<text x="${xs(j)}" y="${H + 12}" text-anchor="${j === 0 ? "start" : "middle"}">${mo[(start + j) % 12]}</text>`).join("")}</svg>`;
+    </svg><div class="vg-m" aria-hidden="true">${series.map((_, j) => `<span>${j % 2 ? "" : mo[(start + j) % 12]}</span>`).join("")}</div></div>`;
 }
 function vaultTop(all, total, base) {
   const paid = all.reduce((a, i) => a + (Number(i.purchasePrice) || 0) * (Number(i.quantity) || 1), 0), d = total - paid;
@@ -85,7 +85,7 @@ function vaultBody(all) {
       if (!sets.has(S.bset)) { S.bset = order[0][0]; S.bpg = 0; }
       const l = [...sets.get(S.bset)].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)), per = innerWidth > 820 ? 18 : 9, spreads = Math.max(1, Math.ceil(l.length / per));
       S.bpg = Math.min(Math.max(0, S.bpg), spreads - 1);
-      const pg = (from) => { const c = l.slice(from, from + 9); return `<div class="bn-pg">${c.map((it) => `<button type="button" class="bd-p" data-vid="${esc(it.id)}"${pv(it)} aria-label="${esc(nameOf(it))} ${money(it.price)}">${ph(it)}<em>${money(it.price)}</em></button>`).join("")}</div>`; };
+      const pg = (from) => { const c = l.slice(from, from + 9); return `<div class="bn-pg">${c.map((it) => `<button type="button" class="bd-p" data-vid="${esc(it.id)}" aria-label="${esc(nameOf(it))} ${money(it.price)}">${ph(it)}<em>${money(it.price)}</em></button>`).join("")}</div>`; };
       const at = S.bpg * per;
       out += `<section class="vs bn-sec"><header class="vs-h"><b>Binder</b><span>${val(l)} in ${esc(S.bset)}</span></header>
       <div class="bn-tabs hscroll" role="tablist">${order.map(([k, x]) => `<button type="button" role="tab" class="bn-t${k === S.bset ? " on" : ""}" aria-selected="${k === S.bset}" data-bset="${esc(k)}">${esc(k)}<b>${x.length}</b></button>`).join("")}</div>
@@ -95,9 +95,9 @@ function vaultBody(all) {
   }
   let side = "";
   if ((kind === "all" || kind === "graded") && graded.length) side += `<section class="vs"><header class="vs-h"><b>Graded case</b><span>${graded.length} · ${val(graded)}</span></header>
-    <div class="slabs hscroll">${graded.slice(0, kind === "graded" ? 200 : 24).map((it) => `<button type="button" class="slab" data-vid="${esc(it.id)}"${pv(it)} aria-label="${esc(nameOf(it))}"><span class="slab-l"><b>${esc(gradeOf(it))}</b><em>${money(it.price)}</em></span><span class="slab-w">${ph(it)}</span></button>`).join("")}</div></section>`;
+    <div class="slabs hscroll">${graded.slice(0, kind === "graded" ? 200 : 24).map((it) => `<button type="button" class="slab" data-vid="${esc(it.id)}" aria-label="${esc(nameOf(it))}"><span class="slab-l"><b>${esc(gradeOf(it))}</b><em>${money(it.price)}</em></span><span class="slab-w">${ph(it)}</span></button>`).join("")}</div></section>`;
   if ((kind === "all" || kind === "sealed") && sealed.length) side += `<section class="vs"><header class="vs-h"><b>Sealed shelf</b><span>${sealed.length} · ${val(sealed)}</span></header>
-    <div class="shelf hscroll">${sealed.slice(0, kind === "sealed" ? 200 : 30).map((it) => `<button type="button" class="box" data-vid="${esc(it.id)}"${pv(it)} aria-label="${esc(nameOf(it))}"><span class="box-a">${ph(it)}</span><em>${money(it.price)}</em><span class="box-n">${esc(nameOf(it))}</span></button>`).join("")}</div></section>`;
+    <div class="shelf hscroll">${sealed.slice(0, kind === "sealed" ? 200 : 30).map((it) => `<button type="button" class="box" data-vid="${esc(it.id)}" aria-label="${esc(nameOf(it))}"><span class="box-a">${ph(it)}</span><em>${money(it.price)}</em><span class="box-n">${esc(nameOf(it))}</span></button>`).join("")}</div></section>`;
   if (side) out += `<div class="vrow">${side}</div>`;
   return out || `<div class="co-empty">Nothing here yet.</div>`;
 }
@@ -135,12 +135,11 @@ function paint() {
   const all = rows(), shown = all.slice(0, S.more), total = val(all), SP = new Map(loadSpaces().map((x) => [x.id, x.name])), binName = (id) => (id && SP.get(id)) || "";
   host.innerHTML = `<div class="co-wrap cx">
     ${vaultTop(all, total, base)}
-    ${!(S.list || S.q || S.selecting) ? catBar(base, cats) : ""}
     ${S.menu ? `<div class="cx-menu"><label><span>Sort</span><select id="coSort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest value</option><option value="new"${S.sort === "new" ? " selected" : ""}>Newest</option><option value="name"${S.sort === "name" ? " selected" : ""}>Name</option></select></label>
       <label><span>Show</span><select id="coStage">${[["all", "All"], ["new", "Intake"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<option value="${k}"${S.stage === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
       <button class="cx-btn" id="coIO" type="button">Import / Export</button></div>` : ""}
     ${S.list || S.q || S.selecting ? `<div class="cx-lbar"><input id="coQ" class="cx-q" type="search" placeholder="Search your collection" value="${esc(S.q)}"><button type="button" class="cx-btn${S.list ? " on" : ""}" id="coList" aria-pressed="${!!S.list}">${S.list ? "Close" : "Show list"}</button></div>` : ""}
-    ${!(S.list || S.q || S.selecting) ? vaultBody(all) + ((S.kind || "all") === "all" ? topShelf(all) : "") : ""}
+    ${!(S.list || S.q || S.selecting) ? ((S.kind || "all") === "all" ? topShelf(all) : "") + vaultBody(all) : ""}
     ${S.list || S.q || S.selecting ? `<div class="cx-scroll"><div class="cx-grid">${shown.map((it) => { const src = photoOf(it), on = S.sel.has(String(it.id)), bn = binName(it.spaceId); return `<article class="cx-card${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0">
       <div class="cx-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<span class="cx-price">${money(it.price)}</span>${Number(it.quantity) > 1 ? `<span class="cx-qty">x${Number(it.quantity)}</span>` : ""}${S.selecting ? `<i class="cx-ck"></i>` : ""}</div>
       <div class="cx-cap"><span>${esc(nameOf(it))}</span><em>${esc(where(it))}${bn ? " · " + esc(bn) : ""}</em></div></article>`; }).join("") || `<div class="co-empty">Nothing matches.</div>`}${all.length > S.more ? `<button type="button" class="cx-more" id="coMore">Show more (${all.length - S.more})</button>` : ""}</div></div>` : ""}
