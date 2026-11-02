@@ -826,3 +826,4 @@ html.fx #main .lc.sel .lc-pick{background:var(--holo,#7DF2B4);box-shadow:0 0 10p
 .vg-m span{font:600 11px var(--text);color:#6F9585;text-align:center}
 .vg-m span:first-child{text-align:left}
 @media (min-width:821px){.vgw .vg{height:110px}}
+@media (max-width:600px){.dk-find{flex-wrap:wrap}.dk-find input{flex:1 1 100%}.dk-find select{flex:1}}
