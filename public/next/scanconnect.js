@@ -1,7 +1,7 @@
 /* Connect scanner: F.O.B <-> the F.O.B Scan desktop app (desktop/mac).
    Scouter's Photo inbox shows a scanner strip: Connect (download + 6-digit code), then Scan.
    Pages go scanner -> F.O.B Scan -> server -> this inbox, live while the scanner runs. */
-import { pullScans } from "./scanlink.js?v=170";
+import { pullScans } from "./scanlink.js?v=171";
 
 const DUPLEX_KEY = "fob-scan-duplex";
 const DL_MAC = "/api/scanner/download/mac";

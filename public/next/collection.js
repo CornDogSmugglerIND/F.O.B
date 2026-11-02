@@ -1,7 +1,7 @@
-import { photoManager } from "./photos.js?v=170";
-import { hideIds, unhideIds } from "./orders.js?v=170";
-import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=170";
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=170";
+import { photoManager } from "./photos.js?v=171";
+import { hideIds, unhideIds } from "./orders.js?v=171";
+import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=171";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=171";
 
 let ctx = null;
 const S = { bset: "", bpg: 0, q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 48 };
@@ -63,10 +63,17 @@ function growth(all) {
 function vaultTop(all, total, base) {
   const paid = all.reduce((a, i) => a + (Number(i.purchasePrice) || 0) * (Number(i.quantity) || 1), 0), d = total - paid;
   const n = (k) => base.filter((i) => kindOf(i) === k).length, kind = S.kind || "all";
-  return `<header class="vt"><div class="vt-v"><em>Collection value</em><b>${money(total)}</b><span>${all.length} item${all.length === 1 ? "" : "s"}${paid ? ` · <i class="${d >= 0 ? "up" : "down"}">${d >= 0 ? "+" : "−"}${money(Math.abs(d))} vs paid</i>` : ""}</span></div>
-      <div class="vk" role="tablist" aria-label="Show">${VK.map(([k, l]) => `<button type="button" role="tab" aria-selected="${kind === k}" class="vk-b${kind === k ? " on" : ""}" data-kind="${k}">${l}<b>${k === "all" ? base.length : n(k)}</b></button>`).join("")}</div>
-      <span class="cx-tools"><button class="cx-btn cx-find${S.list ? " on" : ""}" id="coFind" type="button" aria-label="Search and list" aria-pressed="${!!S.list}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button><button class="cx-btn${S.selecting ? " on" : ""}" id="coSel" type="button">${S.selecting ? "Done" : "Select"}</button><button class="cx-btn" id="coMenuBtn" type="button" aria-expanded="${!!S.menu}" aria-label="Sort, filter, import">⋯</button></span></header>
-    ${growth(base)}`;
+  const grail = [...base].filter((i) => photoOf(i)).sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0))[0];
+  const games = new Map(); for (const it of base) { const g = gameOf(it); games.set(g, (games.get(g) || 0) + (Number(it.price) || 0) * (Number(it.quantity) || 1)); }
+  const gl = [...games.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4), gt = gl.reduce((a, [, v]) => a + v, 0) || 1, hues = ["#7DF2B4", "#5FD3E8", "#B6A4FF", "#F2D27D"];
+  return `<header class="vh">
+      ${grail ? `<button type="button" class="vh-grail" data-vid="${esc(grail.id)}" aria-label="Your top card: ${esc(nameOf(grail))}"><span class="vh-case"><span class="vh-card k-tilt" data-tilt="1.2"><img src="${esc(photoOf(grail))}" alt="" draggable="false"></span></span><span class="vh-tag"><em>Crown jewel</em><b>${money(grail.price)}</b><span>${esc(nameOf(grail))}</span></span></button>` : ""}
+      <div class="vh-v"><em>The vault is worth</em><b>${money(total)}</b>
+        <span>${all.length} piece${all.length === 1 ? "" : "s"}${paid ? ` · <i class="${d >= 0 ? "up" : "down"}">${d >= 0 ? "+" : "−"}${money(Math.abs(d))} over cost</i>` : ""}</span>
+        ${gl.length > 1 ? `<div class="vh-mix" aria-label="Value by game">${gl.map(([g, v], i) => `<i style="flex:${v};--h:${hues[i]}"></i>`).join("")}</div><div class="vh-keys">${gl.map(([g, v], i) => `<span style="--h:${hues[i]}"><u></u>${esc(g)} ${Math.round(v / gt * 100)}%</span>`).join("")}</div>` : ""}
+        <nav class="vh-k" aria-label="Show">${VK.map(([k, l]) => `<button type="button" class="${kind === k ? "on" : ""}" aria-pressed="${kind === k}" data-kind="${k}">${k === "singles" ? "Binder" : l} <b>${k === "all" ? base.length : n(k)}</b></button>`).join("")}</nav>
+      </div>
+      <span class="cx-tools vh-tools"><button class="cx-btn cx-find${S.list ? " on" : ""}" id="coFind" type="button" aria-label="Search and list" aria-pressed="${!!S.list}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button><button class="cx-btn${S.selecting ? " on" : ""}" id="coSel" type="button">${S.selecting ? "Done" : "Select"}</button><button class="cx-btn" id="coMenuBtn" type="button" aria-expanded="${!!S.menu}" aria-label="Sort, filter, import">⋯</button></span></header>`;
 }
 function vaultBody(all) {
   const kind = S.kind || "all", pick = (k) => all.filter((i) => kindOf(i) === k), val = (l) => money(l.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0));
@@ -113,10 +120,10 @@ function catBar(base, cats) {
    duplicated the category bar's filtering and were never painted.) */
 function topShelf(all) {
   const card = (it) => { const paid = it.purchasePrice != null && it.purchasePrice !== "" ? Number(it.purchasePrice) : null, g = paid != null ? (Number(it.price) || 0) - paid : null; return svCard(it, { photo: photoOf(it), chip: g != null && Math.abs(g) >= .01 ? `${g >= 0 ? "+" : "−"}${money(Math.abs(g))}` : "", chipHot: g != null && g < 0 }); };
-  const top = [...all].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)).slice(0, 14);
+  const top = [...all].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0)).slice(1, 15);
   if (!top.length) return "";
   const v = money(top.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0));
-  return shelf("Top value", `${top.length} · ${v}`, top.map(card).join(""), "Top value");
+  return shelf("Showcase", `Your ${top.length} most valuable · ${v}`, top.map(card).join(""), "Top value");
 }
 function vaultInfo(it) {
   const paid = it.purchasePrice != null && it.purchasePrice !== "" ? Number(it.purchasePrice) : null, g = paid != null ? (Number(it.price) || 0) - paid : null;

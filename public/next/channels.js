@@ -1,10 +1,10 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=170";
-import { photoManager } from "./photos.js?v=170";
-import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=170";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=170";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=171";
+import { photoManager } from "./photos.js?v=171";
+import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=171";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=171";
 
 let ctx = null;
-const S = { stage: "listed", view: (() => { try { return localStorage.getItem("fob-ch-view") || "cards"; } catch { return "cards"; } })(), group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
+const S = { stage: "listed", view: (() => { try { return localStorage.getItem("fob-ch-view2") || "rows"; } catch { return "rows"; } })(), group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
 /* Stage selector follows the Command roadmap: same stops, same order, same colors. */
 const STAGES = [
   ["listed", "Live on eBay", "#90FFEE"],
@@ -126,20 +126,28 @@ function shelvesHtml(groups) {
 const DESK_TABS = [["listed", "Live"], ["sold", "To ship"], ["shipped", "Shipped"], ["delivered", "Delivered"]];
 function deskTop(all, total, counts) {
   const orders = ["sold", "shipped", "delivered"].includes(S.stage);
-  const stale = orders ? [] : pool("listed").filter((it) => (daysSince(it.channels?.ebay?.listedAt || it.createdAt) || 0) > 45);
-  const wk = weekSales(), wkNow = wk[7], wkSum = wk.reduce((a, b) => a + b, 0);
-  return `<header class="dk-top"><div class="dk-id"><img src="img/icon.jpg" alt=""><div><b>eBay</b><span>CornDogSmuggler Coalition · ${counts.listed || 0} live</span></div></div>
-      <div class="dk-kpi"><div><em>Live value</em><b>${money(pool("listed").reduce((a, i) => a + valOf(i), 0))}</b></div><div><em>Sold, 8 weeks</em><b>${money(wkSum)}</b></div><div><em>This week</em><b>${money(wkNow)}</b></div></div></header>
-    <div class="dk-tabs" role="tablist" aria-label="Stage">${DESK_TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${S.stage === k}" class="dk-tab ch-stop${S.stage === k ? " on" : ""}${k === "sold" && counts.sold ? " hot" : ""}" data-stage="${k}"><b>${counts[k] || 0}</b><span>${l}</span></button>`).join("")}</div>
-    ${!orders && stale.length ? `<button type="button" class="dk-alert${S.stale ? " on" : ""}" id="dkStale"><b>${stale.length} listing${stale.length === 1 ? "" : "s"} sitting 45+ days</b><span>${S.stale ? "Showing them. Tap to show everything." : "Tap to see them and fix the price."}</span></button>` : ""}
+  const live = pool("listed"), stale = live.filter((it) => (daysSince(it.channels?.ebay?.listedAt || it.createdAt) || 0) > 45), nobin = live.filter((it) => !it.spaceId);
+  const wk = weekSales(), wkNow = wk[7], wkSum = wk.reduce((a, b) => a + b, 0), mx = Math.max(1, ...wk);
+  const sum = (k) => pool(k).reduce((a, i) => a + (i._order ? Number(i._order.total ?? i.price) || 0 : valOf(i)), 0);
+  const step = (k, l, sub) => `<button type="button" role="tab" aria-selected="${S.stage === k}" class="pl-s${S.stage === k ? " on" : ""}${k === "sold" && counts.sold ? " hot" : ""}" data-stage="${k}"><b>${counts[k] || 0}</b><span>${l}</span><em>${sub}</em></button>`;
+  const act = [];
+  if (counts.sold) act.push(`<button type="button" class="aq hot" data-stage="sold"><b>${counts.sold}</b><span>to ship. Print the label${counts.sold === 1 ? "" : "s"}</span><i>›</i></button>`);
+  if (stale.length) act.push(`<button type="button" class="aq warn${S.stale ? " on" : ""}" id="dkStale"><b>${stale.length}</b><span>${S.stale ? "sitting 45+ days. Showing them, tap to clear" : "sitting 45+ days. Drop the price or end"}</span><i>›</i></button>`);
+  if (nobin.length) act.push(`<button type="button" class="aq" id="dkNoBin"><b>${nobin.length}</b><span>live without a bin. Put them away</span><i>›</i></button>`);
+  return `<header class="ops"><div class="ops-id"><img src="img/icon.jpg" alt=""><div><b>Sales desk</b><span>eBay · CornDogSmuggler Coalition</span></div></div>
+      <div class="ops-wk"><div><em>This week</em><b>${money(wkNow)}</b></div><div><em>8 weeks</em><b>${money(wkSum)}</b></div><div class="ops-spark" aria-label="Sales per week, last 8 weeks">${wk.map((v, i) => `<i style="height:${Math.max(6, Math.round(v / mx * 100))}%"${i === 7 ? ' class="now"' : ""}></i>`).join("")}</div></div></header>
+    <nav class="pl" role="tablist" aria-label="Order flow">${step("listed", "Live", money(sum("listed")))}<i class="pl-a" aria-hidden="true"></i>${step("sold", "To ship", counts.sold ? "Ship now" : "All clear")}<i class="pl-a" aria-hidden="true"></i>${step("shipped", "In transit", "")}<i class="pl-a" aria-hidden="true"></i>${step("delivered", "Delivered", "")}</nav>
+    ${act.length && !orders ? `<div class="aqs">${act.join("")}</div>` : ""}
     <div class="dk-find"><input id="chQ" type="search" placeholder="Search title or SKU" value="${esc(S.q)}" aria-label="Search title or SKU">
       ${orders ? "" : `<select id="dkSort" aria-label="Sort"><option value="value"${S.sort === "value" ? " selected" : ""}>Price: high</option><option value="low"${S.sort === "low" ? " selected" : ""}>Price: low</option><option value="old"${S.sort === "old" ? " selected" : ""}>Oldest first</option><option value="name"${S.sort === "name" ? " selected" : ""}>Name</option></select>`}
-      ${orders ? "" : `<button type="button" class="btn dk-view" id="dkView" aria-label="${S.view === "rows" ? "Show as cards" : "Show as rows"}">${S.view === "rows" ? "Cards" : "Rows"}</button>`}
-      <button class="btn ch-controls${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}" aria-label="Bulk tools">Bulk</button></div>`;
+      ${orders ? "" : `<button type="button" class="btn dk-view" id="dkView">${S.view === "rows" ? "Photos" : "Table"}</button>`}
+      <button class="btn ch-controls${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}" aria-label="Bulk tools">Bulk</button></div>
+    ${!orders && S.view === "rows" ? `<div class="tb-h" aria-hidden="true"><span></span><span>Listing</span><span>Price</span><span>Live</span><span>Bin</span><span>Qty</span><span></span></div>` : ""}`;
 }
 function deskList(all) {
   let list = all;
   if (S.stale && S.stage === "listed") list = list.filter((it) => (daysSince(it.channels?.ebay?.listedAt || it.createdAt) || 0) > 45);
+  if (S.nobin && S.stage === "listed") list = list.filter((it) => !it.spaceId);
   if (S.sort === "old" && S.stage === "listed") list = [...list].sort((a, b) => (Date.parse(a.channels?.ebay?.listedAt || a.createdAt || 0) || 0) - (Date.parse(b.channels?.ebay?.listedAt || b.createdAt || 0) || 0));
   if (!list.length) return `<div class="co-empty">${S.q ? "Nothing matches that search." : ["sold", "shipped", "delivered"].includes(S.stage) ? "No orders here. Tap Sync to pull your eBay orders." : "Nothing live yet."}</div>`;
   const sp = new Map(loadSpaces().map((x) => [x.id, x.name]));
@@ -157,19 +165,20 @@ function deskList(all) {
       <div class="lc-art">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`}<b class="lc-price">${ptxt(it)}</b><button type="button" class="co-pick lc-pick" data-pick="${esc(it.id)}" aria-label="Select" aria-pressed="${on}"></button>${it._n > 1 ? `<span class="lc-var">${it._n} variations</span>` : ""}</div>
       <div class="lc-body"><span class="lc-t">${esc(nameOf(it))}</span>
         <span class="lc-meta">${d == null ? "" : `<i class="lc-d${d > 45 ? " old" : ""}">${d === 0 ? "Listed today" : d + "d live"}</i>`}<i class="${bin ? "" : "lc-nobin"}">${esc(bin || "No bin")}</i>${q > 1 ? `<i>qty ${q}</i>` : ""}</span></div></article>`; }
-    return `<article class="dk-row ch-tile${on ? " sel" : ""}" data-id="${esc(it.id)}" data-edit="1" tabindex="0"><button type="button" class="co-pick" data-pick="${esc(it.id)}" aria-label="Select" aria-pressed="${on}"></button>
-      <span class="co-img dk-img"${vp(it, true)}>${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`}</span>
-      <div class="dk-mid"><b>${esc(nameOf(it))}</b><span>${it._n > 1 ? `${it._n} variations · ` : ""}${d == null ? "" : `<i class="${d > 45 ? "old" : ""}">${d}d live</i> · `}${esc(sp.get(it.spaceId) || "No bin")}</span></div>
-      <div class="dk-end"><b>${ptxt(it)}</b><span>qty ${q}</span><em class="dk-act">Edit</em></div></article>`;
+    const bin = sp.get(it.spaceId), sku = it.channels?.ebay?.sku || it.sku || "";
+    return `<article class="tr ch-tile${on ? " sel" : ""}" data-id="${esc(it.id)}" data-edit="1" tabindex="0"><button type="button" class="co-pick tr-pick" data-pick="${esc(it.id)}" aria-label="Select" aria-pressed="${on}"></button>
+      <div class="tr-l"><span class="co-img tr-img"${vp(it, true)}>${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(it).charAt(0))}</i>`}</span><div class="tr-t"><b>${esc(nameOf(it))}</b><span>${it._n > 1 ? `${it._n} variations` : esc(sku)}</span></div></div>
+      <b class="tr-p">${ptxt(it)}</b><span class="tr-d${d > 45 ? " old" : ""}">${d == null ? "—" : d === 0 ? "today" : d + "d"}</span><span class="tr-b${bin ? "" : " none"}">${esc(bin || "No bin")}</span><span class="tr-q">${q}</span><em class="tr-e">Edit</em></article>`;
   };
   const cards = S.view !== "rows" && !["sold", "shipped", "delivered"].includes(S.stage);
-  return `<div class="${cards ? "lc-grid" : "dk-list"}">${list.slice(0, S.more.dk || 80).map(row).join("")}</div>${list.length > (S.more.dk || 80) ? `<button class="btn dk-more" type="button" id="dkMore">Show ${Math.min(80, list.length - (S.more.dk || 80))} more</button>` : ""}`;
+  return `<div class="${cards ? "lc-grid" : ["sold", "shipped", "delivered"].includes(S.stage) ? "dk-list" : "tb"}">${list.slice(0, S.more.dk || 80).map(row).join("")}</div>${list.length > (S.more.dk || 80) ? `<button class="btn dk-more" type="button" id="dkMore">Show ${Math.min(80, list.length - (S.more.dk || 80))} more</button>` : ""}`;
 }
 function wireDesk(all) {
   const h = ctx.host;
   h.querySelector("#dkStale")?.addEventListener("click", () => { S.stale = !S.stale; paint(); });
   h.querySelector("#dkSort")?.addEventListener("change", (e) => { S.sort = e.target.value; paint(); });
-  h.querySelector("#dkView")?.addEventListener("click", () => { S.view = S.view === "rows" ? "cards" : "rows"; try { localStorage.setItem("fob-ch-view", S.view); } catch { /* ignore */ } paint(); });
+  h.querySelector("#dkNoBin")?.addEventListener("click", () => { S.sort = "value"; S.q = ""; S.nobin = !S.nobin; paint(); });
+  h.querySelector("#dkView")?.addEventListener("click", () => { S.view = S.view === "rows" ? "cards" : "rows"; try { localStorage.setItem("fob-ch-view2", S.view); } catch { /* ignore */ } paint(); });
   h.querySelector("#dkMore")?.addEventListener("click", () => { S.more.dk = (S.more.dk || 80) + 80; paint(); });
   h.querySelectorAll("[data-noopen]").forEach((a) => a.addEventListener("click", (e) => e.stopPropagation()));
 }
