@@ -642,7 +642,7 @@ html.fx #main .dk-row.sel{background:rgba(125,242,180,.1)!important}
 .box::after{content:"";position:absolute;left:-10px;right:-10px;top:134px;height:6px;border-radius:2px;background:linear-gradient(180deg,#3a4a44,#1a2420);box-shadow:0 6px 12px rgba(0,0,0,.6)}
 .box em{font:700 12px var(--text);font-style:normal;color:var(--ink);margin-top:8px}.box-n{font:500 11.5px/1.3 var(--text);color:var(--mute);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* retire the earlier collection pieces */
-.co-wrap.cx .ix,.co-wrap.cx .cb,.co-wrap.cx .sv{display:none!important}
+.co-wrap.cx .ix,.co-wrap.cx .cb{display:none!important}
 @media (min-width:821px){.co-wrap.cx{max-width:1100px;margin:0 auto}.vt-v b{font-size:46px}.vg{height:120px}.vk{max-width:560px}.slab{flex-basis:150px}.slab-w{height:180px}.bd-page{flex-basis:360px}.box{flex-basis:130px}.box-a{height:150px}.box::after{top:154px}}
 html.fx #main .dk-row{grid-template-columns:36px 56px minmax(0,1fr) auto!important;gap:8px!important}
 .dk-row .co-pick{width:36px!important;height:36px!important;background:none!important;box-shadow:none!important;position:relative!important;display:flex;align-items:center;justify-content:center}
