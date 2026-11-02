@@ -790,6 +790,14 @@ export function mapFulfillmentStatus(order, shipment, delivery) {
   const tracking = pickShipmentField(shipment, "shipmentTrackingNumber", "trackingNumber");
   const fs = (order?.orderFulfillmentStatus || "").toUpperCase();
   if (fs === "FULFILLED" || fs === "IN_PROGRESS" || tracking) return "in_transit";
+  /* cancelled or fully refunded: nothing to ship */
+  const cs = String(order?.cancelStatus?.cancelState || "").toUpperCase(), pay = String(order?.orderPaymentStatus || "").toUpperCase();
+  if (cs === "CANCELED" || pay === "FULLY_REFUNDED") return "cancelled";
+  /* shipped without uploading tracking (envelope): eBay never flips it to fulfilled. Once it's 7+ days past the
+     latest delivery date it can't still be waiting on a label, so it stops showing as "To ship". */
+  const est = Date.parse(delivery?.estDeliveryAt || order?.fulfillmentStartInstructions?.[0]?.maxEstimatedDeliveryDate || "");
+  const made = Date.parse(order?.creationDate || "");
+  if ((est && Date.now() > est + 7 * 864e5) || (!est && made && Date.now() - made > 21 * 864e5)) return "untracked";
   return "label_created";
 }
 

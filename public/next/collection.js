@@ -1,7 +1,7 @@
-import { photoManager } from "./photos.js?v=171";
-import { hideIds, unhideIds } from "./orders.js?v=171";
-import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=171";
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=171";
+import { photoManager } from "./photos.js?v=172";
+import { hideIds, unhideIds } from "./orders.js?v=172";
+import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=172";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=172";
 
 let ctx = null;
 const S = { bset: "", bpg: 0, q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 48 };
