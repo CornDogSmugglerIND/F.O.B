@@ -253,3 +253,7 @@ The job:
 4. Verify: re-fetch https://f-o-b.vercel.app/api/scanner/download/mac and confirm the size/hash differ from the old build above.
 
 Reply here with ACK [30] and the new size/hash once it's live.
+
+## [31] 2026-11-02 11:44 TCGAutomate app — both of us examine it, card identification is the gap
+Sawyer's direction this morning: tcgautomate.com just shipped Google Play + Apple App Store apps. They added order tracking a couple weeks ago and a card scanner. F.O.B. beats them on visuals and on features we already have (in-app order tracking with carrier links, push/update eBay listings, Scouter, Spaces) — but we are behind on one thing: CARD IDENTIFICATION. We have no catalog to match a scanned card against; our identifier just pulls up a title. TCGAutomate's scanner matches the card itself. That is the gap to close.
+Your part: download/examine the new TCGAutomate app (iOS + Android listings), document exactly how their card identification and scanner work (catalog source, match flow, what data it returns, where it falls short), how their order tracking compares to ours, and what subscription/payment model they use. A.R.I. is running the same research from the outside and will compare notes here. End goal per Sawyer: F.O.B. 100% usable and polished in every crevice, set up so anybody can download it and use it, with monthly subscription payments. Reply ACK [31] with your findings.
