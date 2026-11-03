@@ -1,16 +1,16 @@
-import "./viewer.js?v=177";
-import { startScanLink } from "./scanlink.js?v=177";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=177";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=177";
-import { phaseFromItem } from "/visor/phases.js?v=177";
-import { renderScouter } from "./scouter.js?v=177";
-import { renderCollection, openImport } from "./collection.js?v=177";
-import { photoManager } from "./photos.js?v=177";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=177";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=177";
-import { renderSettings } from "./settings.js?v=177";
-import { initSync } from "./sync.js?v=177";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=177";
+import "./viewer.js?v=178";
+import { startScanLink } from "./scanlink.js?v=178";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=178";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=178";
+import { phaseFromItem } from "/visor/phases.js?v=178";
+import { renderScouter } from "./scouter.js?v=178";
+import { renderCollection, openImport } from "./collection.js?v=178";
+import { photoManager } from "./photos.js?v=178";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=178";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=178";
+import { renderSettings } from "./settings.js?v=178";
+import { initSync } from "./sync.js?v=178";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=178";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -214,7 +214,7 @@ function stageSheet(sid) {
   const s = openSheet(`
     <div class="iv-bar"><button type="button" class="iv-back" data-close>‹ Back to Command</button></div>
     <h2>${esc(stop.label)}</h2><div class="sub">${list.length} ${list.length === 1 ? "item" : "items"} · ${esc(stop.note)}</div>
-    ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : `<div class="tini">${esc(nameOf(it).replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "?")}</div>`}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}.</p>` : ""}${sid === "staged" ? `<button class="btn go" id="varAll" type="button" style="margin-top:12px">List several as one variation listing</button>` : sid === "intake" ? `<button class="btn go" id="toSc" type="button" style="margin-top:12px">Identify these in Scouter</button>` : `<button class="btn go" id="seeAll" type="button" style="margin-top:12px">Open ${esc(stop.label)} in Channels</button>`}${canArch ? `<button class="btn iv-arch" id="archAll" type="button">Archive all ${list.length}</button>` : ""}` : `<div class="st-empty"><p>${esc(EMPTY_HINT[sid] || "Nothing here yet.")}</p>${sid === "intake" || sid === "staged" ? `<button class="btn go" id="toSc" type="button">Open Scouter</button>` : `<button class="btn go" id="seeAll" type="button">Open Channels</button>`}</div>`}`);
+    ${list.length ? `<div class="grid">${list.slice(0, cap).map((it) => { const src = photoOf(it); return `<button class="tile" data-item="${esc(it.id)}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : `<div class="tini">${esc(nameOf(it).replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase() || "?")}</div>`}<span class="cap">${esc(nameOf(it))}</span></button>`; }).join("")}</div>${list.length > cap ? `<p class="sub" style="margin-top:12px">Showing ${cap} of ${list.length}.</p>` : ""}${sid === "staged" ? `<button class="btn go" id="varAll" type="button" style="margin-top:12px">Make a variation listing variation listing</button>` : sid === "intake" ? `<button class="btn go" id="toSc" type="button" style="margin-top:12px">Identify these in Scouter</button>` : `<button class="btn go" id="seeAll" type="button" style="margin-top:12px">Open ${esc(stop.label)} in Channels</button>`}${canArch ? `<button class="btn iv-arch" id="archAll" type="button">Archive all ${list.length}</button>` : ""}` : `<div class="st-empty"><p>${esc(EMPTY_HINT[sid] || "Nothing here yet.")}</p>${sid === "intake" || sid === "staged" ? `<button class="btn go" id="toSc" type="button">Open Scouter</button>` : `<button class="btn go" id="seeAll" type="button">Open Channels</button>`}</div>`}`);
   s.querySelector("#archAll")?.addEventListener("click", (e) => { const b = e.currentTarget; if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = `Yes, archive all ${list.length}`; return; } archive(list); render(); stageSheet(sid); toastUndo(`Archived ${list.length} from ${stop.label}`, () => { unarchive(list.map((x) => x.id)); render(); }); });
   s.querySelectorAll("[data-item]").forEach((b) => b.addEventListener("click", () => itemSheet(b.dataset.item)));
   s.querySelector("#varAll")?.addEventListener("click", () => { closeSheet(); variationListing(chApi()); });

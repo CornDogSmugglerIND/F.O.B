@@ -1,8 +1,8 @@
-import { isArchived, loadSpaces, assign } from "./shared.js?v=177";
-import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=177";
-import { paintScanBar } from "./scanconnect.js?v=177";
-import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=177";
-import { phaseFromItem } from "/visor/phases.js?v=177";
+import { isArchived, loadSpaces, assign } from "./shared.js?v=178";
+import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=178";
+import { paintScanBar } from "./scanconnect.js?v=178";
+import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=178";
+import { phaseFromItem } from "/visor/phases.js?v=178";
 /* Scouter: one upload = one item. Photos preview instantly, get shrunk off the
  * hot path, nothing is saved until Save is pressed. */
 const MAX_PICK = 24; /* eBay allows 24 photos on a listing; the item cap matches it (was 5 — Sawyer, Oct 31 2026) */
@@ -156,7 +156,7 @@ function attachCam() {
   const v = $("#scLive"), dz = $("#scDrop"); if (!v || !dz) return;
   if (stream) {
     if (v.srcObject !== stream) v.srcObject = stream;
-    v.hidden = false; v.play?.().catch(() => {}); dz.classList.add("live"); track();
+    v.hidden = false; v.play?.().catch(() => {}); dz.classList.add("live"); /* auto-tracking retired: it locked onto random things. A fixed card frame shows where to hold the card. */
     const t = stream.getVideoTracks()[0], cap = t && t.getCapabilities ? t.getCapabilities() : {};
     const tb = $("#scTorch"); if (tb) tb.hidden = !cap.torch;
   } else { v.hidden = true; dz.classList.remove("live"); }
@@ -284,7 +284,7 @@ function queue_(noInbox) {
   const wait = all.filter((i) => phaseFromItem(i) === "intake"), ready = all.filter((i) => phaseFromItem(i) === "staged");
   const tile = (i, k) => `<button class="sc-q k-tilt" data-q="${esc(i.id)}" data-k="${k}" type="button">${i.photos?.[0] ? `<img src="${esc(i.photos[0].dataUrl || i.photos[0].url || "")}" alt="" loading="lazy" draggable="false">` : "<i></i>"}<span>${esc(i.title || "Untitled item")}</span>${i.price ? `<em>${money(i.price)}</em>` : ""}<u class="sc-qx" data-qdel="${esc(i.id)}" role="button" aria-label="Delete this item">×</u></button>`;
   const row = (t, sub, l, k, acts = "") => l.length ? `<div class="sc-qh"><h3>${t}</h3><em>${l.length}</em><small>${sub}</small>${acts}</div><div class="sc-qs">${l.slice(0, 30).map((i) => tile(i, k)).join("")}</div>` : "";
-  const out = row("Waiting to identify", "Tap one to read it", wait, "wait") + row("Ready to list", "Tap one to list it, bin it or fix it", ready, "ready", ready.length > 1 ? `<button type="button" class="sc-qa" id="scVar">List several as one</button>` : "");
+  const out = row("Waiting to identify", "Tap one to identify it", wait, "wait") + row("Ready to list", "Identified. Tap one to build its eBay listing", ready, "ready", ready.length > 1 ? `<button type="button" class="sc-qa" id="scVar">Make a variation listing</button>` : "");
   const tools = `<div class="sc-qtools"><button type="button" class="sc-qa" id="scCsv">Import a CSV</button></div>`;
   return `<section class="sc-queue">${noInbox ? "" : `<section class="sc-inbox" id="scInbox"></section>`}${out}${tools}</section>`;
 }
@@ -355,11 +355,11 @@ function loadForId(id) {
 function shell() {
   if (focus) return `<div class="sc-wrap hh">${hud()}<div class="sc-card" id="scCard">${focusPanel()}</div>${pkgs()}${queue_()}</div>`;
   if (d.saved) return `<div class="sc-wrap hh">${hud()}<div class="sc-saved" id="scSaved"></div>${pkgs()}${queue_()}</div>`;
-  return `<div class="sc-wrap hh"><div class="pg-title"><h2>Scouter</h2><span>Snap a few photos of one item, tap Identify, save it.</span></div>${hud()}
+  return `<div class="sc-wrap hh"><div class="pg-title"><h2>Scouter</h2><span>Photograph one item, identify it, save it. Batches go through the Photo inbox.</span></div>${hud()}
     <section class="sc-left">
       <div class="sc-drop sc-vf" id="scDrop" aria-label="Camera">
         <video id="scLive" playsinline muted autoplay hidden></video><img id="scVfImg" alt="" hidden draggable="false"><div class="sc-lock" id="scLock" data-mode="seek" aria-hidden="true"><i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i><svg class="sc-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="bg" cx="50" cy="50" r="44"/><circle class="fg" id="scRingFg" cx="50" cy="50" r="44" pathLength="100"/></svg><svg class="sc-core" viewBox="0 0 40 40"><circle cx="20" cy="20" r="13" class="ring"/><path d="M20 3v7M20 30v7M3 20h7M30 20h7" class="tk"/><circle cx="20" cy="20" r="1.6" class="dot"/></svg><span class="sc-lk" id="scLk">Seeking</span></div><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
-        <div class="sc-ret" aria-hidden="true"><svg viewBox="0 0 300 300"><g class="r-out"><path d="M60 52 A132 132 0 0 1 240 52"/><path d="M240 248 A132 132 0 0 1 60 248"/></g><g class="r-seg"><circle cx="150" cy="150" r="112"/></g><g class="r-tk"><path d="M22 96 V204 M278 96 V204"/></g><rect class="r-card" x="104" y="86" width="92" height="128" rx="6"/><path class="r-x" d="M150 140 V160 M140 150 H160"/></svg></div><div class="sc-aim"><b>Point at the item</b><span>Tap the big button to take a photo. On a computer, drop or paste photos here.</span></div><div class="sc-scanmsg">Identifying…</div>
+        <div class="sc-ret" aria-hidden="true"><svg viewBox="0 0 300 300"><g class="r-out"><path d="M60 52 A132 132 0 0 1 240 52"/><path d="M240 248 A132 132 0 0 1 60 248"/></g><g class="r-seg"><circle cx="150" cy="150" r="112"/></g><g class="r-tk"><path d="M22 96 V204 M278 96 V204"/></g><rect class="r-card" x="104" y="86" width="92" height="128" rx="6"/><path class="r-x" d="M150 140 V160 M140 150 H160"/></svg></div><div class="sc-aim"><b>Hold the card inside the frame</b><span>On a computer: drop, paste or upload photos here.</span></div><div class="sc-scanmsg">Identifying…</div>
         <div class="sc-tools"><button class="sc-tool" id="scType" type="button">Type it in</button><button class="sc-tool" id="scTorch" type="button" hidden aria-pressed="false">Light</button></div>
         <div class="sc-deck"><button class="sc-side" id="scPick" type="button" aria-label="Choose photos from your library"><i class="ic-lib"></i><span>Photos</span></button>
         <button class="sc-big snap sc-trig" id="scCam" type="button" aria-label="Take photo"><i></i><span>Take photo</span><em id="scShotN"></em></button>
@@ -460,11 +460,12 @@ async function paintInbox() {
   const list = await inboxList(); if (!box.isConnected) return;
   for (const id of [...ibSel]) if (!list.some((x) => x.id === id)) ibSel.delete(id);
   const n = ibSel.size;
-  box.innerHTML = `<div id="scScan"></div><div class="sc-qh"><h3>Photo inbox</h3><em>${list.length}</em><small>${list.length ? "Identify all at once, or pick the photos of one item" : "Dump a whole stack of scans here, front then back for each card"}</small>
-      <label class="sc-qa ib-add">Dump photos<input type="file" id="ibFile" accept="image/*" multiple hidden></label>${!batchRunning() && lastBatchCount(ctx.getItems) ? `<button type="button" class="sc-qa" id="ibReview">Check last batch (${lastBatchCount(ctx.getItems)})</button>` : ""}${list.length > 1 || batchRunning() ? `<button type="button" class="sc-qa go" id="ibBatch">${batchRunning() ? "Batch running…" : `Identify all ${list.length}`}</button>` : ""}</div>
+  box.innerHTML = `<div id="scScan"></div><div class="sc-qh"><h3>Photo inbox</h3><em>${list.length}</em><small>${list.length ? "Identify them all at once, or pick the photos of one item" : "Scans and uploads wait here until you identify them"}</small>${(() => { let pv = "1"; try { pv = localStorage.getItem("fob-batch-per") || "1"; } catch { /* default */ } return `<span class="ib-per" role="radiogroup" aria-label="Photos per card">${[["1", "Fronts only"], ["2", "Front + back"]].map(([v, l]) => `<button type="button" role="radio" class="${pv === v ? "on" : ""}" aria-checked="${pv === v}" data-iper="${v}">${l}</button>`).join("")}</span>`; })()}
+      <label class="sc-qa ib-add">Upload photos<input type="file" id="ibFile" accept="image/*" multiple hidden></label>${!batchRunning() && lastBatchCount(ctx.getItems) ? `<button type="button" class="sc-qa" id="ibReview">Check last batch (${lastBatchCount(ctx.getItems)})</button>` : ""}${list.length > 1 || batchRunning() ? `<button type="button" class="sc-qa go" id="ibBatch">${batchRunning() ? "Batch running…" : `Identify all ${list.length}`}</button>` : ""}</div>
     ${list.length ? `<div class="ib-grid">${list.slice(0, 120).map((p) => `<button type="button" class="ib-t${ibSel.has(p.id) ? " on" : ""}" data-ib="${p.id}" aria-pressed="${ibSel.has(p.id)}"><img src="${p.thumb}" alt="" loading="lazy" draggable="false"><i></i></button>`).join("")}</div>
       <div class="ib-bar${n ? " on" : ""}"><b>${n ? `${n} picked` : `${list.length} photo${list.length === 1 ? "" : "s"} waiting`}</b>${list.length ? `<button type="button" class="btn" id="ibAll">Select all</button>` : ""}${n ? `<button type="button" class="btn" id="ibClear">Clear</button>` : ""}<button type="button" class="btn" id="ibDel"${n ? "" : " disabled"}>Delete</button><button type="button" class="btn go" id="ibGo"${n ? "" : " disabled"}>Identify ${n || ""}</button></div>` : ""}`;
   paintScanBar(box.querySelector("#scScan"), { toast: ctx.toast });
+  box.querySelectorAll("[data-iper]").forEach((b) => b.addEventListener("click", () => { try { localStorage.setItem("fob-batch-per", b.dataset.iper); localStorage.setItem("fob-batch-per-set", "1"); } catch { /* ignore */ } paintInbox(); }));
   box.querySelector("#ibFile").addEventListener("change", async (e) => { const fs = [...e.target.files]; e.target.value = ""; if (!fs.length) return; ctx.toast(`Adding ${fs.length} photo${fs.length === 1 ? "" : "s"} to the inbox…`); await inboxAdd(fs); ctx.toast(`${fs.length} photo${fs.length === 1 ? "" : "s"} in the inbox.`); paintInbox(); });
   /* bulk selection is NOT the per-item photo cap: Delete works on everything picked
      (fix list item 2 — deleting a scan dump a few at a time). The per-item cap

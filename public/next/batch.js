@@ -1,6 +1,6 @@
 /* Batch identify: dump a stack of scans (front + back per card) and let Identify run through all of them,
    like TCGAutomate / carduploader. Each card is saved as it finishes; photos are hosted on eBay so storage never fills. */
-import { inboxList, inboxRemove } from "./inbox.js?v=177";
+import { inboxList, inboxRemove } from "./inbox.js?v=178";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const money = (n) => "$" + (Number(n) || 0).toFixed(2);
@@ -81,7 +81,9 @@ export async function openBatch(api) {
   if (list.length < 1) { api.toast("Dump your scans in the Photo inbox first."); return; }
   let per = 2; try { per = Number(localStorage.getItem(PER_KEY)) || 2; } catch { /* default */ }
   /* front+back or fronts only? card backs all look alike, fronts don't: compare the even photos to each other vs the odd ones */
-  const auto = await detectPer(list); if (auto) per = auto;
+  /* his choice in the inbox wins; the guess only fills in when he never picked */
+  let chose = false; try { chose = localStorage.getItem("fob-batch-per-set") === "1"; } catch { /* ignore */ }
+  const auto = chose ? 0 : await detectPer(list); if (auto) per = auto;
   const s = f.openSheet(`<div class="bt"><h2>Identify a batch</h2><p class="sub">${list.length} photos in the inbox, in scan order.${auto ? ` Looks like <b>${auto === 2 ? "front + back" : "fronts only"}</b>: change it below if not.` : ""}</p>
     <div class="bt-per" role="radiogroup" aria-label="Photos per card"><span>Photos per card</span>${[[2, "Front + back"], [1, "Front only"]].map(([n, l]) => `<button type="button" role="radio" class="bt-pb${per === n ? " on" : ""}" data-per="${n}" aria-checked="${per === n}">${l}</button>`).join("")}</div>
     <div class="bt-pairs" id="btPairs"></div>
