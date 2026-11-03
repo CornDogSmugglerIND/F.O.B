@@ -1,16 +1,16 @@
-import "./viewer.js?v=172";
-import { startScanLink } from "./scanlink.js?v=172";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=172";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=172";
-import { phaseFromItem } from "/visor/phases.js?v=172";
-import { renderScouter } from "./scouter.js?v=172";
-import { renderCollection, openImport } from "./collection.js?v=172";
-import { photoManager } from "./photos.js?v=172";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=172";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=172";
-import { renderSettings } from "./settings.js?v=172";
-import { initSync } from "./sync.js?v=172";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=172";
+import "./viewer.js?v=173";
+import { startScanLink } from "./scanlink.js?v=173";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=173";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=173";
+import { phaseFromItem } from "/visor/phases.js?v=173";
+import { renderScouter } from "./scouter.js?v=173";
+import { renderCollection, openImport } from "./collection.js?v=173";
+import { photoManager } from "./photos.js?v=173";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=173";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=173";
+import { renderSettings } from "./settings.js?v=173";
+import { initSync } from "./sync.js?v=173";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=173";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -535,7 +535,7 @@ async function syncAll(auto) {
       const photos = (r.photos || []).filter((p) => p.dataUrl || p.url).map((p) => ({ id: p.id, dataUrl: p.dataUrl || p.url }));
       if (!photos.length && r.imageUrl) photos.push({ id: `img-${sku}`, dataUrl: r.imageUrl });
       const mapped = { id: r.id || `ebay-${sku}`, title: r.title || r.productName, productName: r.productName || r.title, sku, quantity: r.quantity || 1, price: r.price,
-        phase: r.phase || (live === "listed" ? "listed" : "staged"), ended: Boolean(r.ended), listingStatus: r.ended ? "draft" : live, staged: false, spaceId: r.spaceId || null, channels: r.channels, photos, groupId: r.groupId || null, groupImage: r.groupImage || null, groupTitle: r.groupTitle || null };
+        phase: r.phase || (live === "listed" ? "listed" : "staged"), ended: Boolean(r.ended), listingStatus: r.ended ? "draft" : live, staged: false, spaceId: r.spaceId || null, channels: r.channels, photos, groupId: r.groupId || null, groupImage: r.groupImage || null, groupTitle: r.groupTitle || null, ...(r.variant ? { variant: r.variant } : {}) };
       if (idx >= 0) { const keep = list[idx]; list[idx] = { ...keep, ...mapped, id: keep.id, source: keep.source || mapped.source, spaceId: keep.spaceId || mapped.spaceId, photos: (keep.photos?.length ? keep.photos : mapped.photos) };
         { const u = list[idx]; const eb = (r.imageUrls || []).filter((x) => /^https:/.test(x)); if (!u.photosDirty && live === "listed" && eb.length && eb.length === (u.photos || []).length && (u.photos || []).some((p) => String(p.dataUrl || "").startsWith("data:"))) u.photos = eb.map((x, k) => ({ id: `eb-${k}`, dataUrl: x })); } }
       else list.unshift(mapped);

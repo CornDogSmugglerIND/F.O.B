@@ -581,6 +581,8 @@ function toRecord(inv, offer, offerKnown) {
     status: offer.status || offer.listing?.listingStatus || "active",
     imageUrl: product.imageUrls?.[0] || null,
     imageUrls: (product.imageUrls || []).slice(0, 12),
+    /* variation child: which card this SKU is ("Oddish 001/094 Reverse Holo"), from its varying aspect */
+    variant: (() => { if (!(inv.groupIds || []).length) return null; const a = product.aspects || {}; const k = Object.keys(a).find((x) => /^(card|card name|choose.*|pick.*|select.*|player|character|variation)$/i.test(x)); return k && a[k]?.[0] ? String(a[k][0]) : null; })(),
     // false = eBay never answered for this SKU's offer; callers must NOT change its state.
     offerKnown,
     // Truth from eBay: only a PUBLISHED offer is live. UNPUBLISHED = never listed or already ended/sold.

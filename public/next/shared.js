@@ -19,7 +19,7 @@ const SEALED = /booster|\bbox\b|\betb\b|elite trainer|bundle|\btin\b|\bpacks?\b|
 export const laneOf = (it) => it.lane === "sealed" || it.lane === "singles" ? it.lane : (SEALED.test(nameOf(it)) && !/\bsingle\b/i.test(nameOf(it)) ? "sealed" : "singles");
 const POKE = /pok[eé]mon|pikachu|charizard|\bvmax\b|\bvstar\b|\bex\b|\bholo\b|reverse holo|\b(DRI|SFA|SSP|PRE|JTT|TWM|TEF|PAL|OBF|SCR|SVI|MEW|PAF|PAR|ME\d*|SV\d+)\b|30th celebration|pitch black|destined rivals|prismatic|surging sparks|temporal forces|twilight masquerade|stellar crown|silver tempest|lost origin|brilliant stars|evolving skies|crown zenith|mega evolution|journey together|ethan'?s adventure|\b\d{2,3}\/\d{2,3}\b/i;
 const GAMES = [["Pokemon", POKE],
-  ["One Piece", /one piece|luffy|\bop-?\d\d/i], ["Dragon Ball", /dragon ball|goku|gogeta|vegeta|\bdbs\b|fusion world|indomitable/i], ["Magic", /magic|\bmtg\b|commander|modern horizons/i], ["Digimon", /digimon/i],
+  ["One Piece", /one piece|luffy|\bop-?\d\d/i], ["Dragon Ball", /dragon ball|goku|gogeta|vegeta|gohan|bardock|raditz|majin buu|saiyan|\bdbs\b|fusion world|indomitable|vermilion bloodline|critical blow|\b(BT|SB|FB|EX|SD)\d{1,2}-\d{3}\b/i], ["Magic", /magic|\bmtg\b|commander|modern horizons|\bLTR\b|lord of the rings|rivendell/i], ["Digimon", /digimon/i],
   ["Hockey", /hockey|nhl|upper deck|parkhurst|o-pee-chee|\bopc\b|sp authentic|clear cut|\bleaf\b|young guns|\bSP\b|tipsport|certified|\bcmp-?\d|\bP-\d+/i], ["Wrestling", /\bwwf\b|\bwcw\b|nwo|wwe|aew/i],
   ["Sports cards", /nba|nfl|baseball|topps|panini|prizm|rookie|\brc\b|donruss|fleer/i], ["Yu-Gi-Oh", /yu-?gi-?oh/i], ["Lorcana", /lorcana/i]];
 export function gameOf(it) {

@@ -1,10 +1,12 @@
-import { photoManager } from "./photos.js?v=172";
-import { hideIds, unhideIds } from "./orders.js?v=172";
-import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=172";
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=172";
+import { photoManager } from "./photos.js?v=173";
+import { hideIds, unhideIds } from "./orders.js?v=173";
+import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=173";
+import { openFocus } from "./focus.js?v=173";
+import { setOf, rarityOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=173";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=173";
 
 let ctx = null;
-const S = { bset: "", bpg: 0, q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 48 };
+const S = { type: "all", game: "", set: "", rar: "", bset: "", bpg: 0, q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 48 };
 const phoneNow = () => matchMedia("(max-width:820px)").matches;
 
 /* Collection is TCG only: card singles, graded slabs and sealed TCG product. Figures, Pez, binders, sleeves, golf clubs etc. stay in Channels. */
@@ -23,7 +25,7 @@ export function isTcg(it) {
   if (it.kind === "card" || it.kind === "sealed") return true;
   return CARD_SIGNAL.test(t);
 }
-function rows() {
+function rowsOld() {
   const q = S.q.trim().toLowerCase();
   return peekItems().filter(onHand).filter((it) => !it.notCollection).filter(isTcg).filter((it) => {
     if (S.stage === "ready" && it.phase !== "staged") return false;
@@ -135,33 +137,66 @@ function vaultRead(it) {
   return { l: `${R("Market", money(it.price), "money")}${R("Paid", paid != null ? money(paid) : "—")}`, r: `${R("Gain", g == null ? "—" : (g >= 0 ? "+" : "−") + money(Math.abs(g)), g == null ? "" : g >= 0 ? "up" : "down")}${R("Where", esc(where(it).replace("Live on eBay", "eBay").replace("On Double Holo", "Double Holo")))}` };
 }
 const val = (l) => l.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
+/* ===== Collection (Build 173): one clean page. Filters up top, sealed shelf, graded case, then every card as a labeled grid. ===== */
+const priceOf = (it) => (Number(it.price) || 0) * (Number(it.quantity) || 1);
+function rows() { return filtered(base()).sort(sorter); }
+function base() { return peekItems().filter(onHand).filter((it) => !it.notCollection).filter(isTcg); }
+function filtered(list, skip = "") {
+  const q = S.q.trim().toLowerCase();
+  return list.filter((it) => (skip === "type" || S.type === "all" || kindOf2(it) === S.type)
+    && (skip === "game" || !S.game || gameOf(it) === S.game)
+    && (skip === "set" || !S.set || setOf(it) === S.set)
+    && (skip === "rar" || !S.rar || rarityOf(it) === S.rar)
+    && (!q || `${nameOf(it)} ${setOf(it)} ${numOf(it)}`.toLowerCase().includes(q)));
+}
+const sorter = (a, b) => S.sort === "low" ? (Number(a.price) || 0) - (Number(b.price) || 0) : S.sort === "new" ? String(b.createdAt || b.updatedAt || "").localeCompare(String(a.createdAt || a.updatedAt || "")) : S.sort === "name" ? cardName(a).localeCompare(cardName(b)) : (Number(b.price) || 0) - (Number(a.price) || 0);
+const tally = (list, f) => { const m = new Map(); for (const it of list) { const k = f(it); if (k) m.set(k, (m.get(k) || 0) + 1); } return [...m.entries()].sort((a, b) => b[1] - a[1]); };
+function tile(it) {
+  const src = photoOf(it), on = S.sel.has(String(it.id)), set = setOf(it), num = numOf(it), r = rarityOf(it);
+  return `<article class="cx-card cv-c${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0" aria-label="${esc(cardName(it))} ${money(it.price)}">
+    <div class="cv-art">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<i>${esc(cardName(it).charAt(0))}</i>`}${S.selecting ? `<span class="cv-ck"></span>` : ""}${Number(it.quantity) > 1 ? `<span class="cv-q">×${Number(it.quantity)}</span>` : ""}</div>
+    <div class="cv-cap"><b>${esc(cardName(it))}</b><span>${esc([set, num].filter(Boolean).join(" · ") || gameOf(it))}</span><div class="cv-row"><strong>${money(it.price)}</strong>${r ? `<em>${esc(r)}</em>` : ""}</div></div></article>`;
+}
+function shelfHtml(list, title, sub, cls) {
+  if (!list.length) return "";
+  return `<section class="cv-shelf ${cls}"><header><h2>${title}</h2><span>${sub}</span></header><div class="cv-rail">${list.map((it) => { const src = photoOf(it); return `<button type="button" class="cv-box" data-vid="${esc(it.id)}"><span class="cv-boxart">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(cardName(it).charAt(0))}</i>`}</span><b>${esc(cardName(it))}</b><strong>${money(it.price)}</strong></button>`; }).join("")}</div><i class="cv-plank" aria-hidden="true"></i></section>`;
+}
 function paint() {
-  const host = ctx.host, keep = host.querySelector(".cx-grid")?.parentElement?.scrollTop;
-  const typed = host.querySelector("#coPct")?.value || "", typedFocus = document.activeElement && document.activeElement.id === "coPct";
-  const base = peekItems().filter(onHand).filter((it) => !it.notCollection).filter(isTcg), cats = new Map(); base.forEach((i) => { const c = catOf(i); cats.set(c, (cats.get(c) || 0) + 1); });
-  const all = rows(), shown = all.slice(0, S.more), total = val(all), SP = new Map(loadSpaces().map((x) => [x.id, x.name])), binName = (id) => (id && SP.get(id)) || "";
-  host.innerHTML = `<div class="co-wrap cx">
-    ${vaultTop(all, total, base)}
-    ${S.menu ? `<div class="cx-menu"><label><span>Sort</span><select id="coSort"><option value="value"${S.sort === "value" ? " selected" : ""}>Highest value</option><option value="new"${S.sort === "new" ? " selected" : ""}>Newest</option><option value="name"${S.sort === "name" ? " selected" : ""}>Name</option></select></label>
-      <label><span>Show</span><select id="coStage">${[["all", "All"], ["new", "Intake"], ["ready", "Ready to list"], ["live", "Live on eBay"]].map(([k, l]) => `<option value="${k}"${S.stage === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
-      <button class="cx-btn" id="coIO" type="button">Import / Export</button></div>` : ""}
-    ${S.list || S.q || S.selecting ? `<div class="cx-lbar"><input id="coQ" class="cx-q" type="search" placeholder="Search your collection" value="${esc(S.q)}"><button type="button" class="cx-btn${S.list ? " on" : ""}" id="coList" aria-pressed="${!!S.list}">${S.list ? "Close" : "Show list"}</button></div>` : ""}
-    ${!(S.list || S.q || S.selecting) ? ((S.kind || "all") === "all" ? topShelf(all) : "") + vaultBody(all) : ""}
-    ${S.list || S.q || S.selecting ? `<div class="cx-scroll"><div class="cx-grid">${shown.map((it) => { const src = photoOf(it), on = S.sel.has(String(it.id)), bn = binName(it.spaceId); return `<article class="cx-card${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0">
-      <div class="cx-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<span class="cx-price">${money(it.price)}</span>${Number(it.quantity) > 1 ? `<span class="cx-qty">x${Number(it.quantity)}</span>` : ""}${S.selecting ? `<i class="cx-ck"></i>` : ""}</div>
-      <div class="cx-cap"><span>${esc(nameOf(it))}</span><em>${esc(where(it))}${bn ? " · " + esc(bn) : ""}</em></div></article>`; }).join("") || `<div class="co-empty">Nothing matches.</div>`}${all.length > S.more ? `<button type="button" class="cx-more" id="coMore">Show more (${all.length - S.more})</button>` : ""}</div></div>` : ""}
+  const host = ctx.host, typedFocus = document.activeElement && document.activeElement.id === "coQ";
+  const all = base(), shown = filtered(all).sort(sorter), total = all.reduce((a, i) => a + priceOf(i), 0);
+  const paid = all.reduce((a, i) => a + (Number(i.purchasePrice) || 0) * (Number(i.quantity) || 1), 0), gain = total - paid;
+  const types = [["all", "All"], ["singles", "Singles"], ["sealed", "Sealed"], ["graded", "Graded"]], tc = (k) => k === "all" ? filtered(all, "type").length : filtered(all, "type").filter((i) => kindOf2(i) === k).length;
+  const games = tally(filtered(all, "game"), gameOf), sets = tally(filtered(all, "set"), setOf), rars = tally(filtered(all, "rar"), rarityOf);
+  const browsing = !S.q && !S.game && !S.set && !S.rar && S.type === "all" && !S.selecting;
+  const sealed = browsing ? all.filter((i) => kindOf2(i) === "sealed").sort(sorter) : [], graded = browsing ? all.filter((i) => kindOf2(i) === "graded").sort(sorter) : [];
+  const grid = browsing ? shown.filter((i) => kindOf2(i) === "singles") : shown, cut = grid.slice(0, S.more);
+  const sel = (id, label, cur, opts, allLabel) => `<label class="cv-sel"><span>${label}</span><select id="${id}"><option value="">${allLabel}</option>${opts.map(([k, n]) => `<option value="${esc(k)}"${cur === k ? " selected" : ""}>${esc(k)} (${n})</option>`).join("")}</select></label>`;
+  host.innerHTML = `<div class="co-wrap cv">
+    <header class="cv-top"><div class="cv-title"><h1>Collection</h1><p><b>${money(total)}</b><span>${all.length} items</span>${paid ? `<span class="${gain >= 0 ? "up" : "down"}">${gain >= 0 ? "+" : "−"}${money(Math.abs(gain))} over cost</span>` : ""}</p></div>
+      <div class="cv-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="coQ" type="search" placeholder="Search name, set or number" value="${esc(S.q)}" aria-label="Search the collection"></div>
+      <div class="cv-acts"><button type="button" class="cv-btn${S.selecting ? " on" : ""}" id="coSel">${S.selecting ? "Done" : "Select"}</button><button type="button" class="cv-btn" id="coMenuBtn" aria-label="Import or export">Import / Export</button></div></header>
+    <div class="cv-bar">
+      <div class="cv-seg" role="tablist" aria-label="Type">${types.map(([k, l]) => `<button type="button" role="tab" aria-selected="${S.type === k}" class="${S.type === k ? "on" : ""}" data-type="${k}">${l}<b>${tc(k)}</b></button>`).join("")}</div>
+      <div class="cv-games" role="tablist" aria-label="Game"><button type="button" class="${!S.game ? "on" : ""}" data-game="">All games</button>${games.map(([g, n]) => `<button type="button" class="${S.game === g ? "on" : ""}" data-game="${esc(g)}">${esc(g)}<b>${n}</b></button>`).join("")}</div>
+      <div class="cv-more">${sel("vxSet", "Set", S.set, sets.slice(0, 80), "All sets")}${sel("vxRar", "Rarity", S.rar, rars, "Any rarity")}<label class="cv-sel"><span>Sort</span><select id="vxSort">${[["value", "Value: high to low"], ["low", "Value: low to high"], ["new", "Newest first"], ["name", "Name A–Z"]].map(([k, l]) => `<option value="${k}"${S.sort === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>${S.game || S.set || S.rar || S.q || S.type !== "all" ? `<button type="button" class="cv-clear" id="vxClear">Clear filters</button>` : ""}</div>
+    </div>
+    ${S.menu ? `<div class="cv-menu"><button type="button" class="cv-btn" id="coIO">Import or export a CSV</button></div>` : ""}
+    ${shelfHtml(sealed, "Sealed shelf", `${sealed.length} · ${money(sealed.reduce((a, i) => a + priceOf(i), 0))}`, "sealed")}
+    ${shelfHtml(graded, "Graded case", `${graded.length} · ${money(graded.reduce((a, i) => a + priceOf(i), 0))}`, "graded")}
+    <section class="cv-cards"><header><h2>${browsing ? "Singles" : `${shown.length} result${shown.length === 1 ? "" : "s"}`}</h2><span>${browsing ? `${grid.length} cards · ${money(grid.reduce((a, i) => a + priceOf(i), 0))}` : money(shown.reduce((a, i) => a + priceOf(i), 0))}</span></header>
+      <div class="cv-grid cx-grid">${cut.map(tile).join("") || `<p class="cv-empty">Nothing matches these filters.</p>`}</div>
+      ${grid.length > cut.length ? `<button type="button" class="cv-btn cv-loadmore" id="coMore">Show ${Math.min(60, grid.length - cut.length)} more</button>` : ""}</section>
     ${S.selecting ? bar() : ""}</div>`;
   wire();
-  host.querySelectorAll("[data-vid]").forEach((c) => { c.addEventListener("click", () => openZoom(c.dataset.vid, c)); c.addEventListener("pv:details", () => openZoom(c.dataset.vid, c)); });
-  host.querySelectorAll(".sv-c").forEach((c) => c.addEventListener("click", () => openZoom(c.dataset.id, c)));
-  host.querySelectorAll("[data-kind]").forEach((b) => b.addEventListener("click", () => { S.kind = b.dataset.kind; paint(); }));
-  host.querySelectorAll("[data-bset]").forEach((b) => b.addEventListener("click", () => { S.bset = b.dataset.bset; S.bpg = 0; paint(); }));
-  host.querySelectorAll("[data-bflip]").forEach((b) => b.addEventListener("click", () => { S.bpg += Number(b.dataset.bflip); const sp = host.querySelector(".bn-spread"); paint(); const n = host.querySelector(".bn-spread"); n && n.classList.add(Number(b.dataset.bflip) > 0 ? "fl-n" : "fl-p"); }));
-  { const sp = host.querySelector(".bn-spread"); if (sp) { let x0 = null; sp.addEventListener("pointerdown", (e) => { x0 = e.clientX; }); sp.addEventListener("pointerup", (e) => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 60) host.querySelector(`[data-bflip="${dx < 0 ? 1 : -1}"]:not([disabled])`)?.click(); }); } }
-  host.querySelectorAll("[data-allgrp]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); if (S.cat === "All" && b.dataset.allgrp !== "Top value") S.cat = b.dataset.allgrp; S.list = true; paint(); }));
-  host.querySelector("#coList")?.addEventListener("click", () => { S.list = !S.list; if (!S.list) S.q = ""; paint(); });
-  host.querySelector("#coFind")?.addEventListener("click", () => { S.list = !S.list; if (!S.list) S.q = ""; paint(); if (S.list) host.querySelector("#coQ")?.focus(); });
-  { const pc = host.querySelector("#coPct"); if (pc && typed) { pc.value = typed; if (typedFocus) pc.focus(); } }
+  const h = host;
+  h.querySelectorAll("[data-vid]").forEach((c) => c.addEventListener("click", () => openZoom(c.dataset.vid)));
+  h.querySelectorAll("[data-type]").forEach((b) => b.addEventListener("click", () => { S.type = b.dataset.type; S.more = 48; paint(); }));
+  h.querySelectorAll("[data-game]").forEach((b) => b.addEventListener("click", () => { S.game = b.dataset.game; S.set = ""; S.more = 48; paint(); }));
+  h.querySelector("#vxSet")?.addEventListener("change", (e) => { S.set = e.target.value; S.more = 48; paint(); });
+  h.querySelector("#vxRar")?.addEventListener("change", (e) => { S.rar = e.target.value; S.more = 48; paint(); });
+  h.querySelector("#vxSort")?.addEventListener("change", (e) => { S.sort = e.target.value; paint(); });
+  h.querySelector("#vxClear")?.addEventListener("click", () => { S.game = S.set = S.rar = S.q = ""; S.type = "all"; paint(); });
+  if (typedFocus) { const q = h.querySelector("#coQ"); if (q) { q.focus(); const n = q.value.length; try { q.setSelectionRange(n, n); } catch { /* ignore */ } } }
 }
 function bar() {
   const n = S.sel.size, spaces = loadSpaces();
@@ -209,18 +244,25 @@ function removeItems(ids, after) {
   after && after(); paint();
   ctx.toastUndo(removed.length === 1 ? `Deleted ${nameOf(removed[0])}` : `Deleted ${removed.length} items`, () => { unhideIds(ebay); saveItems(before); ctx.refresh(); paint(); ctx.toast("Restored"); });
 }
-function openZoom(id, fromEl) {
+function openZoom(id) {
   let list = rows(); let i = list.findIndex((x) => String(x.id) === String(id));
-  if (i < 0) { /* filters changed since the tile was painted: open the item itself, never a dead tap */
-    const it = peekItems().find((x) => String(x.id) === String(id)); if (!it) return; list = [it]; i = 0;
-  }
-  openCard(list, { index: i, from: fromEl || null, photo: photoOf, name: nameOf, backLabel: "Collection",
-    info: (it) => { const profit = it.purchasePrice != null && it.purchasePrice !== "" ? (Number(it.price) || 0) - Number(it.purchasePrice) : null, sp = loadSpaces().find((s) => s.id === it.spaceId);
-      return `<div class="sub">${esc(where(it))} · ${esc(laneOf(it) === "sealed" ? "Sealed" : "Single")} · ${esc(gameOf(it))}</div><div class="row"><span>Market value</span><span>${money(it.price)}</span></div><div class="row"><span>Quantity</span><span>${Number(it.quantity) || 1}</span></div>${profit != null ? `<div class="row"><span>You paid</span><span>${money(it.purchasePrice)}</span></div><div class="row"><span>Profit</span><span>${profit < 0 ? "-" : ""}${money(Math.abs(profit))}</span></div>` : ""}<div class="row"><span>Bin</span><span>${esc(sp ? sp.name : "Not filed yet")}</span></div><button class="btn" id="zLane" type="button">Move to ${laneOf(it) === "sealed" ? "Singles" : "Sealed"}</button><button class="btn" id="zOut" type="button">Remove from Collection</button>${it.phase === "listed" && (it.channels?.ebay?.sku || it.sku) ? `<button class="btn go" id="zEdit" type="button">Edit listing</button>` : ""}<button class="btn warn" id="zDel" type="button">Delete from this app</button>${it.phase === "listed" && !it.ended ? `<small class="z-note">Still live on eBay. To take it down, end it in Channels.</small>` : ""}`; },
-    wire: (root, it, api) => { { const d = document.createElement("div"); (root.querySelector(".k-zinfo") || root).appendChild(d); photoManager(d, it.id, { toast: ctx.toast, refresh: ctx.refresh }); } root.querySelector("#zDel")?.addEventListener("click", (e) => { const b = e.currentTarget; if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Tap again to delete"; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = "Delete from this app"; } }, 4000); return; } api.close(); removeItems([it.id]); });
-      root.querySelector("#zOut")?.addEventListener("click", () => { api.close(); moveOutOfCollection([it.id]); });
-      root.querySelector("#zEdit")?.addEventListener("click", () => { api.close(); setTimeout(() => dispatchEvent(new CustomEvent("fob:edit-live", { detail: it.id })), 280); });
-      return root.querySelector("#zLane")?.addEventListener("click", () => { api.close(); setLane([it.id], laneOf(it) === "sealed" ? "singles" : "sealed"); }); } });
+  if (i < 0) { const it = peekItems().find((x) => String(x.id) === String(id)); if (!it) return; list = [it]; i = 0; }
+  const binOf = (it) => loadSpaces().find((s) => s.id === it.spaceId)?.name || "";
+  openFocus(list, i, {
+    photos: (it) => (it.photos || []).map((p) => p.url || p.dataUrl).filter(Boolean).map((u) => /ebayimg\.com/.test(u) ? u.replace(/s-l\d+(\.\w+)/, "s-l1600$1").replace(/\$_\d+\.(jpe?g|png|webp)/i, "$_57.$1") : u),
+    title: cardName,
+    facts: (it) => [["Game", gameOf(it)], ["Set", setOf(it)], ["Number", numOf(it)], ["Rarity", rarityOf(it)], ["Type", { singles: "Single", sealed: "Sealed", graded: "Graded" }[kindOf2(it)]]],
+    stats: (it) => { const paid = it.purchasePrice != null && it.purchasePrice !== "" && it.purchasePrice !== "None" ? Number(it.purchasePrice) : null, g = paid != null ? (Number(it.price) || 0) - paid : null;
+      return [["Market value", money(it.price), "big"], ["You paid", paid != null ? money(paid) : "—"], ["Profit", g == null ? "—" : `${g >= 0 ? "+" : "−"}${money(Math.abs(g))}`, g == null ? "" : g >= 0 ? "up" : "down"], ["Quantity", String(Number(it.quantity) || 1)], ["Bin", esc(binOf(it) || "Not put away"), binOf(it) ? "" : "warn"], ["Where", esc(where(it))]]; },
+    extra: (it) => `<p class="fc-listing">Listing title: ${esc(nameOf(it))}</p>`,
+    actions: (it) => [...(it.phase === "listed" && (it.channels?.ebay?.sku || it.sku) ? [["edit", "Edit listing", "go"]] : []), ["out", "Remove from Collection"], ["lane", kindOf2(it) === "sealed" ? "Mark as single" : "Mark as sealed"], ["del", "Delete", "warn"]],
+    onAction: (a, it, api) => {
+      if (a === "edit") { api.close(); setTimeout(() => dispatchEvent(new CustomEvent("fob:edit-live", { detail: it.id })), 220); }
+      else if (a === "out") { api.close(); moveOutOfCollection([it.id]); }
+      else if (a === "lane") { api.close(); setLane([it.id], kindOf2(it) === "sealed" ? "singles" : "sealed"); }
+      else if (a === "del") { const b = api.button; if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Tap again to delete"; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = "Delete"; } }, 4000); return; } api.close(); removeItems([it.id]); }
+    },
+  });
 }
 /* Move out of Collection: the item stays in the app (Channels, Command, its bin) —
    only Collection stops showing it. Undo puts it back. (Fix list item 11.) */
