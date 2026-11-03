@@ -1,16 +1,16 @@
-import "./viewer.js?v=178";
-import { startScanLink } from "./scanlink.js?v=178";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=178";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=178";
-import { phaseFromItem } from "/visor/phases.js?v=178";
-import { renderScouter } from "./scouter.js?v=178";
-import { renderCollection, openImport } from "./collection.js?v=178";
-import { photoManager } from "./photos.js?v=178";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=178";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=178";
-import { renderSettings } from "./settings.js?v=178";
-import { initSync } from "./sync.js?v=178";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=178";
+import "./viewer.js?v=179";
+import { startScanLink } from "./scanlink.js?v=179";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=179";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=179";
+import { phaseFromItem } from "/visor/phases.js?v=179";
+import { renderScouter } from "./scouter.js?v=179";
+import { renderCollection, openImport } from "./collection.js?v=179";
+import { photoManager } from "./photos.js?v=179";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=179";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=179";
+import { renderSettings } from "./settings.js?v=179";
+import { initSync } from "./sync.js?v=179";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=179";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -251,7 +251,7 @@ function initAvatar() {
 /* ---------- Command ---------- */
 const phone = () => matchMedia("(max-width:820px)").matches;
 function pileHtml(list, cls, emptyMsg, sid = "") {
-  if (!list.length) return emptyMsg ? `<button type="button" class="empty go ${cls}" data-goto="scouter"><i>+</i><span>${esc(emptyMsg)}</span></button>` : (sid ? `<button type="button" class="empty ${cls}" data-stage="${sid}"><i>○</i><span>Empty</span></button>` : `<div class="empty ${cls}"><i>○</i><span>Empty</span></div>`);
+  if (!list.length) return emptyMsg ? `<button type="button" class="empty go ${cls}" data-goto="scouter"><i>+</i><span>${esc(emptyMsg)}</span></button>` : "";
   const top = list[0]; const src = photoOf(top);
   const face = (it, k) => { const p = photoOf(it); return `<div class="pc ${k === "" ? "k-tilt" : k}" ${k === "" ? `data-item="${esc(it.id)}"` : ""}>${p ? `<img src="${esc(p)}" alt="" draggable="false">` : `<div class="ini">${esc(nameOf(it).charAt(0).toUpperCase())}</div>`}${k === "" ? `<span class="cap"><span>${esc(nameOf(it))}</span><em>${money(worth(it))}</em></span>` : ""}</div>`; };
   return `<div class="pile ${cls}">${list[2] ? face(list[2], "b2") : ""}${list[1] ? face(list[1], "b1") : ""}${face(top, "")}${list.length > 1 ? `<span class="more" data-stage="${sid}">+${list.length - 1} more</span>` : ""}</div>`;
@@ -268,7 +268,8 @@ function widgets(g) {
     </div></div>`;
 }
 /* ---------- your route, your way: stops can be dragged anywhere, the line always runs in order ---------- */
-const ROUTE_KEY = "coalition-route-v2";
+const ROUTE_KEY = "coalition-route-v3"; /* arranging retired (Nov 3): stops sit in the fixed route, nothing covers anything */
+try { localStorage.removeItem("coalition-route-v2"); } catch { /* ignore */ }
 let arranging = false;
 function routeSaved(kind) { try { return (JSON.parse(localStorage.getItem(ROUTE_KEY) || "{}") || {})[kind] || {}; } catch { return {}; } }
 function routeSave(kind, map) { try { const all = JSON.parse(localStorage.getItem(ROUTE_KEY) || "{}") || {}; all[kind] = map; localStorage.setItem(ROUTE_KEY, JSON.stringify(all)); } catch { /* ignore */ } }
@@ -333,7 +334,7 @@ function renderCommand() {
     const H = 1980, W = 390, sv = routeSaved("phone"), PX = [27, 73, 27, 73, 27, 73].map((x, i) => (sv[STOPS[i].id] || [])[0] ?? x), PY = [300, 590, 880, 1170, 1460, 1750].map((y, i) => (sv[STOPS[i].id] || [])[1] ?? y);
     const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
     const path = routePath(pts, true);
-    main.innerHTML = `${widgets(g)}<div class="arr-bar"><button type="button" class="arr-btn${arranging ? " on" : ""}" id="arrBtn">${arranging ? "Done arranging" : "Arrange route"}</button>${arranging ? `<button type="button" class="arr-btn" id="arrReset">Reset</button>` : ""}</div><div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
+    main.innerHTML = `${widgets(g)}<div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
       <defs><linearGradient id="rgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
       <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".12" stroke-width="14" stroke-linecap="round"/><path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".18" stroke-width="7" stroke-linecap="round"/>
       <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/></svg>
@@ -357,7 +358,7 @@ function renderCommand() {
         ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
         <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div></div>`).join("")}
       <div class="flag start" style="left:${POS[0][0] - 6}%;top:${POS[0][1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${POS[5][0] - 2}%;top:${POS[5][1] + 12}%"><i></i>Done</div>
-      <div class="dock">${pills}</div><div class="hint">Tap a stop to open it · hold a card and drop it on a stop to move it</div><div class="arr-bar desk"><button type="button" class="arr-btn${arranging ? " on" : ""}" id="arrBtn">${arranging ? "Done arranging" : "Arrange route"}</button>${arranging ? `<button type="button" class="arr-btn" id="arrReset">Reset</button>` : ""}</div></div>`;
+      <div class="dock">${pills}</div><div class="hint">Tap a stop to open it · drag a card onto a stop to move it</div></div>`;
   }
   // wire up
   main.querySelectorAll(".pc.b1,.pc.b2").forEach((m) => { m.dataset.stage = m.closest(".stop").dataset.drop; m.style.cursor = "pointer"; });
