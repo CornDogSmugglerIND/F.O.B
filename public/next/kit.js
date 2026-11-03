@@ -4,6 +4,8 @@
    - fly(): shared-element move between two rects (the camera moves in Spaces)
    Nothing here knows about eBay or storage. Pages just add classes. */
 
+import { setOf, numOf, cardName, rarityOf, gameOf } from "./cardmeta.js?v=175";
+import { loadSpaces } from "./shared.js?v=175";
 const reduce = () => false; // Reduce Motion is on for the owner, and the app animations are the point
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -107,6 +109,7 @@ function openCardSheet(items, opts, f) {
   return s;
 }
 export function openCard(items, opts = {}) {
+  return openItem(items, opts);
   const f = window.__fob; if (f && window.customElements && customElements.get("ion-modal")) { closeCard(true); return openCardSheet(items, opts, f); }
   closeCard(true);
   let i = Math.max(0, Math.min(items.length - 1, opts.index || 0));
@@ -233,4 +236,57 @@ export function shelf(title, meta, cards, key) {
 export function svCard(it, { price, chip, chipHot, sub, photo } = {}) {
   const nm = it.title || it.productName || "Untitled", ph = photo || (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "";
   return `<button type="button" class="sv-c" data-id="${esc(it.id)}" aria-label="${esc(nm)}"><span class="sv-art">${ph ? `<img src="${esc(ph)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nm.charAt(0))}</i>`}<em class="sv-p">${price != null ? price : $$m(it.price)}</em>${chip ? `<em class="sv-chip${chipHot ? " hot" : ""}">${esc(chip)}</em>` : ""}<span class="sv-k tl"></span><span class="sv-k br"></span></span><span class="sv-n">${esc(nm)}</span>${sub ? `<span class="sv-s">${sub}</span>` : ""}</button>`;
+}
+
+/* ===== Item screen (Build 175): the photo opens big and zoomable, the numbers are readable, the next step is one button.
+   Same frame as the Collection card focus. Callers' info(it) HTML renders below, restyled. ===== */
+const STEP = { intake: ["Intake", "Identify it in Scouter"], staged: ["Ready to list", "Build the eBay listing"], listed: ["Live on eBay", ""], stored: ["In a bin", ""], sold: ["Sold", "Pack and ship it"], shipped: ["Shipped", ""], delivered: ["Delivered", ""] };
+let itemEl = null;
+function closeItem() { if (!itemEl) return; const v = itemEl; itemEl = null; document.removeEventListener("keydown", v._key, true); v.classList.remove("on"); setTimeout(() => v.remove(), 180); }
+function openItem(items, opts) {
+  closeItem(); closeCard(true);
+  let i = Math.max(0, Math.min(items.length - 1, opts.index || 0)), ph = 0;
+  const v = document.createElement("div"); v.className = "fc it"; v.setAttribute("role", "dialog"); v.setAttribute("aria-modal", "true"); document.body.appendChild(v); itemEl = v;
+  const bigU = (u) => /ebayimg\.com/.test(u) ? u.replace(/s-l\d+(\.\w+)/, "s-l1600$1").replace(/\$_\d+\.(jpe?g|png|webp)/i, "$_57.$1") : u;
+  const photosOf = (it) => { const l = (it.photos || []).map((p) => p.url || p.dataUrl).filter(Boolean); const first = opts.photo ? opts.photo(it) : ""; return [...new Set([first, ...l].filter(Boolean))].map(bigU); };
+  const api = { close: () => { closeItem(); opts.onClose && opts.onClose(); }, next: () => { if (i < items.length - 1) { i++; ph = 0; paint(); } else closeItem(); } };
+  const paint = () => {
+    const it = items[i], o = it._order || null, photos = photosOf(it), src = photos[ph] || "";
+    const price = Number(o ? o.total ?? it.price : it.price) || 0, paid = it.purchasePrice != null && it.purchasePrice !== "" && it.purchasePrice !== "None" ? Number(it.purchasePrice) : null;
+    const keep = price ? Math.max(0, price - (price * 0.1325 + 0.3)) : 0, prof = paid != null && price ? keep - paid : null;
+    const phase = o ? it.phase : (it.phase || "intake"), st = STEP[phase] || [phase, ""], bin = loadSpaces().find((x) => x.id === it.spaceId)?.name || "";
+    const nm = opts.name ? cardName({ ...it, title: opts.name(it) }) : cardName(it);
+    const nextBtn = phase === "staged" ? `<button type="button" class="go" data-do="build">Build the eBay listing</button>` : phase === "listed" && (it.channels?.ebay?.sku || it.sku) ? `<button type="button" class="go" data-do="edit">Edit the live listing</button>` : phase === "intake" ? `<button type="button" class="go" data-do="scouter">Identify in Scouter</button>` : "";
+    v.innerHTML = `<div class="fc-bg" data-x></div>
+      <div class="fc-box">
+        <div class="fc-stage"><div class="fc-zoom">${src ? `<img src="${esc(src)}" alt="" draggable="false">` : `<i class="fc-none">No photo yet</i>`}</div>
+          ${photos.length > 1 ? `<div class="fc-thumbs">${photos.map((p, j) => `<button type="button" class="${j === ph ? "on" : ""}" data-ph="${j}" aria-label="Photo ${j + 1}"><img src="${esc(p)}" alt=""></button>`).join("")}</div>` : ""}
+          ${src ? `<span class="fc-hint">Click the photo to zoom</span>` : ""}</div>
+        <aside class="fc-info k-zinfo">
+          <div class="fc-nav"><span>${esc(opts.backLabel || "")}${items.length > 1 ? ` · ${i + 1} of ${items.length}` : ""}</span>${items.length > 1 ? `<button type="button" data-go="-1" aria-label="Previous">‹</button><button type="button" data-go="1" aria-label="Next">›</button>` : ""}<button type="button" class="fc-x" data-x aria-label="Close">✕</button></div>
+          <div class="fc-stat-line"><span class="fc-phase p-${esc(phase)}">${esc(st[0])}</span>${st[1] ? `<span class="fc-next">Next: ${esc(st[1])}</span>` : ""}</div>
+          <h2>${esc(nm)}</h2>
+          <div class="fc-facts">${[["Game", gameOf(it)], ["Set", setOf(it)], ["Number", numOf(it)], ["Rarity", rarityOf(it)], ["Condition", it.condition && it.condition !== "None" ? String(it.condition) : ""]].filter(([, x]) => x).map(([l, x]) => `<span><em>${esc(l)}</em>${esc(x)}</span>`).join("")}</div>
+          <div class="fc-stats"><div class="big"><em>${o ? "Sold for" : "Price"}</em><b>${$m(price)}</b></div><div><em>You keep after eBay fees</em><b>${$m(keep)}</b></div><div class="${prof == null ? "" : prof >= 0 ? "up" : "down"}"><em>${paid != null ? "Profit" : "You paid"}</em><b>${paid != null ? `${prof >= 0 ? "+" : "−"}${$m(Math.abs(prof))}` : "Not entered"}</b></div><div><em>Quantity</em><b>${Number(it.quantity) || 1}</b></div><div class="${bin ? "" : "warn"}"><em>Bin</em><b>${esc(bin || "Not put away")}</b></div></div>
+          ${nextBtn ? `<div class="fc-acts">${nextBtn}</div>` : ""}
+          <div class="fc-old">${opts.info ? opts.info(it) : ""}</div>
+          <p class="fc-listing">Listing title: ${esc(opts.name ? opts.name(it) : it.title || "")}</p>
+        </aside></div>`;
+    const z = v.querySelector(".fc-zoom"), img = z.querySelector("img");
+    if (img) { const move = (e) => { if (!z.classList.contains("zoomed")) return; const r = z.getBoundingClientRect(); img.style.transformOrigin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`; };
+      z.addEventListener("click", (e) => { if (z.classList.toggle("zoomed")) move(e); else img.style.transformOrigin = "50% 50%"; }); z.addEventListener("pointermove", move); }
+    v.querySelectorAll("[data-x]").forEach((b) => b.addEventListener("click", api.close));
+    v.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => { i = (i + Number(b.dataset.go) + items.length) % items.length; ph = 0; paint(); }));
+    v.querySelectorAll("[data-ph]").forEach((b) => b.addEventListener("click", () => { ph = Number(b.dataset.ph); paint(); }));
+    v.querySelector('[data-do="build"]')?.addEventListener("click", () => { closeItem(); setTimeout(() => dispatchEvent(new CustomEvent("fob:build", { detail: it.id })), 200); });
+    v.querySelector('[data-do="edit"]')?.addEventListener("click", () => { closeItem(); setTimeout(() => dispatchEvent(new CustomEvent("fob:edit-live", { detail: it.id })), 200); });
+    v.querySelector('[data-do="scouter"]')?.addEventListener("click", () => { closeItem(); location.hash = "scouter"; dispatchEvent(new CustomEvent("fob:go", { detail: "scouter" })); });
+    /* callers' old buttons: tidy labels that duplicate the new header */
+    v.querySelectorAll(".fc-old .sub").forEach((x) => x.remove());
+    opts.wire && opts.wire(v, it, api);
+  };
+  v._key = (e) => { if (e.key === "Escape") { e.stopPropagation(); api.close(); } else if (e.key === "ArrowRight" && items.length > 1) { i = (i + 1) % items.length; ph = 0; paint(); } else if (e.key === "ArrowLeft" && items.length > 1) { i = (i - 1 + items.length) % items.length; ph = 0; paint(); } };
+  document.addEventListener("keydown", v._key, true);
+  paint(); requestAnimationFrame(() => v.classList.add("on"));
+  return v;
 }

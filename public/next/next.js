@@ -1,16 +1,16 @@
-import "./viewer.js?v=174";
-import { startScanLink } from "./scanlink.js?v=174";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=174";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=174";
-import { phaseFromItem } from "/visor/phases.js?v=174";
-import { renderScouter } from "./scouter.js?v=174";
-import { renderCollection, openImport } from "./collection.js?v=174";
-import { photoManager } from "./photos.js?v=174";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=174";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=174";
-import { renderSettings } from "./settings.js?v=174";
-import { initSync } from "./sync.js?v=174";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=174";
+import "./viewer.js?v=175";
+import { startScanLink } from "./scanlink.js?v=175";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=175";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=175";
+import { phaseFromItem } from "/visor/phases.js?v=175";
+import { renderScouter } from "./scouter.js?v=175";
+import { renderCollection, openImport } from "./collection.js?v=175";
+import { photoManager } from "./photos.js?v=175";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=175";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=175";
+import { renderSettings } from "./settings.js?v=175";
+import { initSync } from "./sync.js?v=175";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=175";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -117,6 +117,8 @@ function openSheet(html) {
 $("#sheetBack").addEventListener("click", closeSheet);
 startScanLink({ toast: (t) => toast(t) });
 addEventListener("fob:edit-live", (e) => editListing(e.detail, chApi()));
+addEventListener("fob:build", (e) => buildListing(e.detail, chApi()));
+addEventListener("fob:go", (e) => { try { go(e.detail); } catch { /* ignore */ } });
 window.__fob = { openSheet: (h) => openSheet(h), closeSheet: () => closeSheet(), toast: (t) => toast(t), render: () => render() };
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
 

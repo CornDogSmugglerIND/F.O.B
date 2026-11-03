@@ -178,3 +178,23 @@ html.fx #main .cl.sel .cl-pick{background:var(--acc);box-shadow:none}
   .cm-tools .cv-sel{flex:1 1 130px}
 }
 html.fx #main .cl.ch-tile::before,html.fx #main .cl.ch-tile::after{display:none!important}html.fx #main .cl.ch-tile{background:none!important;backdrop-filter:none!important}
+
+/* ===== item screen (Build 175) ===== */
+.fc.it .fc-box{grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr)}
+.fc-stat-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fc-phase{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(125,242,180,.14);color:var(--acc)}
+.fc-phase.p-sold,.fc-phase.p-shipped{background:rgba(245,161,46,.16);color:#F5A12E}.fc-phase.p-intake{background:rgba(255,255,255,.08);color:var(--mute)}
+.fc-next{font-size:13px;color:var(--mute)}
+.fc-old{display:flex;flex-direction:column;gap:10px;font-size:14px;color:var(--ink)}
+.fc-old:empty{display:none}
+.fc-old .row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}.fc-old .row span:first-child{color:var(--mute)}
+.fc-old h3,.fc-old h4{margin:6px 0 0;font-size:14px;font-weight:700;color:var(--ink)}
+.fc-old small,.fc-old .z-note{font-size:12px;color:var(--dim)}
+.fc-old .btn,.fc-old button:not(.ph-tile button):not([data-ph]){min-height:0!important;height:auto;padding:10px 14px!important;border-radius:11px!important;border:1px solid var(--line)!important;background:rgba(255,255,255,.04)!important;color:var(--ink)!important;font:600 13px var(--f)!important;box-shadow:none!important;text-shadow:none!important;width:auto!important;margin:0!important}
+.fc-old .btn.go{background:var(--acc)!important;color:#04130C!important;border-color:var(--acc)!important}
+.fc-old .btn.warn{color:var(--down)!important}
+.fc-old .ph-row,.fc-old .ph-grid{display:flex;gap:8px;flex-wrap:wrap}
+.fc-old .ph-tile{width:84px!important;height:112px!important;border-radius:8px;overflow:hidden}
+.fc-old img{max-width:100%}
+.fc.it .fc-info>h2{font-size:24px}
+.fc.it .fc-acts{margin-top:0}.fc .fc-info h2{color:#E9F6EF!important}.fc-old .btn,.fc-old button{width:100%!important}
