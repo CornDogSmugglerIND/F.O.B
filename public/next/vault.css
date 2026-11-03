@@ -198,3 +198,19 @@ html.fx #main .cl.ch-tile::before,html.fx #main .cl.ch-tile::after{display:none!
 .fc-old img{max-width:100%}
 .fc.it .fc-info>h2{font-size:24px}
 .fc.it .fc-acts{margin-top:0}.fc .fc-info h2{color:#E9F6EF!important}.fc-old .btn,.fc-old button{width:100%!important}
+
+/* ===== Tools (Build 175): tiles, not a settings list ===== */
+.tools.tv{font-family:"Inter",system-ui,sans-serif}
+.tv-in{position:absolute;right:18px;bottom:96px;width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 140px);overflow-y:auto;padding:18px;border-radius:20px;background:rgba(8,15,12,.95);border:1px solid rgba(150,255,205,.14);box-shadow:0 30px 70px rgba(0,0,0,.6);transform:translateY(14px) scale(.98);opacity:0;transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .18s}
+.tools.tv.on .tv-in{transform:none;opacity:1}
+.tv-in header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.tv-in h3{margin:0;font-size:20px;font-weight:700;color:#E9F6EF}
+.tv-in h4{margin:14px 2px 8px;font-size:12px;font-weight:600;color:#5E776B;text-transform:none;letter-spacing:0}
+.tv-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.tt{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px;border-radius:14px;border:1px solid rgba(150,255,205,.12);background:rgba(255,255,255,.03);color:#E9F6EF;text-align:left;cursor:pointer;transition:transform .15s,border-color .15s,background .15s}
+.tt:hover,.tt:focus-visible{transform:translateY(-2px);border-color:rgba(125,242,180,.45);background:rgba(125,242,180,.07)}
+.tt svg{width:24px;height:24px;fill:none;stroke:#7DF2B4;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;margin-bottom:6px}
+.tt b{font-size:14px;font-weight:700}.tt small{font-size:12px;line-height:1.35;color:#8EA89B}
+.tt.hot{border-color:rgba(245,161,46,.45)}.tt.hot svg{stroke:#F5A12E}.tt.hot small{color:#FFC27A}
+.tools.tv .tools-x{width:36px;height:36px;border-radius:10px;border:1px solid rgba(150,255,205,.14);background:rgba(255,255,255,.04);color:#E9F6EF;font-size:15px;cursor:pointer}
+@media (max-width:700px){.tv-in{left:12px;right:12px;bottom:88px;width:auto}.tv-g{grid-template-columns:1fr 1fr}}

@@ -1,16 +1,16 @@
-import "./viewer.js?v=175";
-import { startScanLink } from "./scanlink.js?v=175";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=175";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=175";
-import { phaseFromItem } from "/visor/phases.js?v=175";
-import { renderScouter } from "./scouter.js?v=175";
-import { renderCollection, openImport } from "./collection.js?v=175";
-import { photoManager } from "./photos.js?v=175";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=175";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=175";
-import { renderSettings } from "./settings.js?v=175";
-import { initSync } from "./sync.js?v=175";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=175";
+import "./viewer.js?v=176";
+import { startScanLink } from "./scanlink.js?v=176";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=176";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=176";
+import { phaseFromItem } from "/visor/phases.js?v=176";
+import { renderScouter } from "./scouter.js?v=176";
+import { renderCollection, openImport } from "./collection.js?v=176";
+import { photoManager } from "./photos.js?v=176";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=176";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=176";
+import { renderSettings } from "./settings.js?v=176";
+import { initSync } from "./sync.js?v=176";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=176";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -79,6 +79,8 @@ function toastUndo(msg, fn) {
 let modal = null;
 const sheetIsOpen = () => !!(modal && modal.isConnected) || !$("#sheet").hidden;
 function closeSheet() { const m = modal; modal = null; if (m) {
+    /* the sheet stops catching taps the moment it starts closing: the first tap after closing used to land on the dying sheet */
+    m.style.pointerEvents = "none"; m.querySelectorAll("ion-backdrop").forEach((b) => { b.style.pointerEvents = "none"; });
     /* Back always works at once: if the sheet engine stalls, the sheet is pulled anyway */
     const kill = () => { if (m.isConnected) { m.remove(); if (!document.querySelector("ion-modal.show-modal")) document.body.classList.remove("backdrop-no-scroll"); } };
     try { Promise.resolve(m.__p).catch(() => {}).then(() => m.dismiss()).finally(kill); } catch { kill(); }
@@ -566,13 +568,13 @@ initKit(); initAvatar();
 function openTools() {
   if (document.getElementById("tools")) return;
   const g = groups();
-  const sec = (t, rows) => `<section><h4>${t}</h4>${rows.map(([k, label, sub]) => `<button type="button" class="tl" data-tool="${k}"><span><b>${label}</b>${sub ? `<small>${sub}</small>` : ""}</span><i>›</i></button>`).join("")}</section>`;
-  const el = document.createElement("div"); el.id = "tools"; el.className = "tools"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Tools");
-  el.innerHTML = `<div class="tools-in"><header><h3>Tools</h3><button type="button" class="tools-x" data-tool="close" aria-label="Close">×</button></header>
-    ${sec("Scan", [["scan", "Scan cards", "Open the camera"], ["type", "Type it in", "Name, number, set"]])}
-    ${sec("Sell", [["build", "Build a listing", `${g.staged.length} ready to list`], ["var", "List several as one", "One eBay listing, many cards"], ["ship", "Pack and ship", `${g.sold.length} waiting`], ["ebay", "Open eBay orders", "Print labels in eBay"]])}
-    ${sec("Inventory", [["csv", "Import or export a CSV", "Double Holo, Shiny Pro, eBay"], ["bins", "Put things in bins", "Spaces"], ["coll", "Collection", "Everything you own"]])}
-    ${sec("App", [["sync", "Sync with eBay", "Pull listings and orders now"], ["settings", "Settings", "Archive, storage, account"]])}</div>`;
+  const I = { scan: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M4 12h16"/>', type: '<path d="M5 6h14M5 12h10M5 18h7"/>', build: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/>', var: '<rect x="3" y="6" width="10" height="14" rx="1.5"/><path d="M8 4h10a1.5 1.5 0 0 1 1.5 1.5V17"/>', ship: '<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>', ebay: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>', csv: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/>', sync: '<path d="M20 11a8 8 0 0 0-14.6-4.5L4 8M4 13a8 8 0 0 0 14.6 4.5L20 16"/><path d="M4 4v4h4M20 20v-4h-4"/>' };
+  const tile = ([k, label, sub, hot]) => `<button type="button" class="tt${hot ? " hot" : ""}" data-tool="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${I[k]}</svg><b>${label}</b><small>${sub}</small></button>`;
+  const el = document.createElement("div"); el.id = "tools"; el.className = "tools tv"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Tools");
+  el.innerHTML = `<div class="tv-in"><header><h3>Tools</h3><button type="button" class="tools-x" data-tool="close" aria-label="Close">✕</button></header>
+    <h4>Get items in</h4><div class="tv-g">${[["scan", "Scan cards", "Camera or scanner"], ["type", "Type it in", "Name, number, set"], ["csv", "Import a CSV", "Double Holo, Shiny Pro, eBay"]].map(tile).join("")}</div>
+    <h4>Sell</h4><div class="tv-g">${[["build", "Build a listing", `${g.staged.length} ready to list`, g.staged.length > 0], ["var", "Variation listing", "Many cards in one pick-your-card listing"], ["ship", "Pack and ship", `${g.sold.length} to ship`, g.sold.length > 0], ["ebay", "eBay orders", "Print labels on eBay"]].map(tile).join("")}</div>
+    <h4>Keep it current</h4><div class="tv-g">${[["sync", "Sync with eBay", "Pull listings and orders now"]].map(tile).join("")}</div></div>`;
   document.body.appendChild(el); document.body.classList.add("tools-open");
   requestAnimationFrame(() => el.classList.add("on"));
   const close = () => { el.classList.remove("on"); document.body.classList.remove("tools-open"); setTimeout(() => el.remove(), 220); document.removeEventListener("keydown", esc_); };
