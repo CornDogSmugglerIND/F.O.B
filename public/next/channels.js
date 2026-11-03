@@ -1,8 +1,8 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=179";
-import { photoManager } from "./photos.js?v=179";
-import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=179";
-import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=179";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=179";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=180";
+import { photoManager } from "./photos.js?v=180";
+import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=180";
+import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=180";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=180";
 
 let ctx = null;
 const S = { f: { when: "", game: "", bin: "", price: "", type: "" }, groupBy: "set", shut: new Set(), stage: "listed", view: (() => { try { return localStorage.getItem("fob-ch-view2") || "rows"; } catch { return "rows"; } })(), group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
@@ -253,7 +253,7 @@ function fullEdit(it) {
   fetch(`/api/channels/ebay/listing-detail?sku=${encodeURIComponent(sku)}`).then((r) => r.json()).then((d) => {
     if (!s.isConnected) return;
     if (!d.ok) { msg(`Couldn't load it from eBay: ${d.error || "try again"}`, true); return; }
-    const card = !d.categoryId || d.categoryId === "183454", cd = (d.conditionDescriptors || [])[0]?.values?.[0], CC = { 400010: "NM", 400011: "LP", 400012: "MP", 400013: "HP" };
+    const sealedByName = kindOf2({ title: d.title || "" }) === "sealed", card = (!d.categoryId || d.categoryId === "183454") && !sealedByName, cd = (d.conditionDescriptors || [])[0]?.values?.[0], CC = { 400010: "NM", 400011: "LP", 400012: "MP", 400013: "HP" };
     const cond = card ? (CC[cd] || "NM") : (/^NEW/.test(d.condition || "") ? "NEW" : "USED");
     const condOpts = card ? [["NM", "Near Mint"], ["LP", "Lightly Played"], ["MP", "Moderately Played"], ["HP", "Heavily Played"]] : [["NEW", "New"], ["USED", "Used (pre-owned)"]];
     const pct = d.offerFloorPct || (() => { try { return Number(localStorage.getItem("fob-offer-pct")) || 80; } catch { return 80; } })();
