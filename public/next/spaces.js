@@ -1,5 +1,6 @@
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=176";
-import { fly, rectOf, sleep, openCard } from "./kit.js?v=176";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=177";
+import { fly, rectOf, sleep, openCard } from "./kit.js?v=177";
+import { setOf, numOf, cardName } from "./cardmeta.js?v=177";
 
 /* Spaces = his real storage, as a camera you fly through:
    area -> shelf -> bin (closed, lid flips) -> bin (open, items inside). */
@@ -91,15 +92,72 @@ function binView(w) {
     <section class="spx-items" id="items">${cards}</section></div></div>`;
 }
 
-/* ---------- paint + camera ---------- */
+/* ---------- Warehouse (Build 177): bins hang on a slatwall; inside a bin, everything in it sits in a foam case; drag items in from the tray ---------- */
+const WS = { q: "", tray: new Set(), bq: "" };
+const binPhoto = (id) => PHYS[id] ? `${IMG}${PHYS[id].closed}` : "";
+function trayHtml(w, here) {
+  const un = w.un.slice(0, 80), n = WS.tray.size;
+  return `<section class="wh-tray cv-shelf"><header><h2>To put away</h2><span>${w.un.length} item${w.un.length === 1 ? "" : "s"} not in a bin${w.un.length ? " · drag onto a bin, or tap to pick" : ""}</span>
+      <div class="wh-tacts">${n ? `<button type="button" class="cv-btn on" data-put="${here || ""}">${here ? `Put ${n} in this bin` : `${n} picked · tap a bin`}</button><button type="button" class="cv-btn" data-tclear>Clear</button>` : ""}${w.un.length ? `<button type="button" class="cv-btn" data-un>Open put-away list</button>` : ""}</div></header>
+    ${w.un.length ? `<div class="wh-trail">${un.map((i) => { const ph = photoOf(i), on = WS.tray.has(String(i.id)); return `<button type="button" class="wh-ti${on ? " on" : ""}" data-ti="${esc(i.id)}" draggable="true" aria-pressed="${on}">${ph ? `<img src="${esc(ph)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(i).charAt(0))}</i>`}<b>${esc(cardName(i))}</b><em>${money(i.price)}</em></button>`; }).join("")}${w.un.length > un.length ? `<span class="wh-more">+${w.un.length - un.length} more in the put-away list</span>` : ""}</div>` : `<p class="wh-done">Everything is in a bin.</p>`}</section>`;
+}
+function wallHtml(w) {
+  const all = w.spaces.filter((b) => b.phys || b.kind === "storage"), stored = w.hand.filter((i) => i.spaceId && w.spaces.some((s) => s.id === i.spaceId));
+  const q = WS.q.trim().toLowerCase(), hits = q ? stored.filter((i) => `${nameOf(i)} ${setOf(i)} ${numOf(i)} ${i.sku || ""}`.toLowerCase().includes(q)).slice(0, 60) : [];
+  return `<div class="wh cv">
+    <header class="cv-top"><div class="cv-title"><h1>Warehouse</h1><p><b>${money(val(stored))}</b><span>${stored.length} items in ${all.length} bins</span>${w.un.length ? `<span class="warn">${w.un.length} to put away</span>` : ""}</p></div>
+      <div class="cv-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="whQ" type="search" placeholder="Find a card: which bin is it in?" value="${esc(WS.q)}" aria-label="Find an item in the warehouse"></div></header>
+    ${q ? `<section class="cv-cards wh-find"><header><h2>${hits.length} found</h2><span>Tap one to open it</span></header>${hits.map((i) => `<button type="button" class="wh-hit" data-hit="${esc(i.id)}">${photoOf(i) ? `<img src="${esc(photoOf(i))}" alt="" loading="lazy">` : "<i></i>"}<span><b>${esc(cardName(i))}</b><em>${esc([setOf(i), numOf(i)].filter(Boolean).join(" · "))}</em></span><strong>${esc(nm(w, i.spaceId))}</strong><small>${i.phase === "listed" ? "Live on eBay" : String(i.id).startsWith("mp-") ? "Double Holo" : ""}</small></button>`).join("") || `<p class="cv-empty">Not in any bin.</p>`}</section>` : ""}
+    <section class="wh-wall" aria-label="Bins on the wall">${all.map((b) => { const its = w.inBin(b.id), ph = binPhoto(b.id); return `<button type="button" class="wh-bin" data-wbin="${esc(b.id)}"><i class="wh-hook l" aria-hidden="true"></i><i class="wh-hook r" aria-hidden="true"></i>
+        <span class="wh-binart">${ph ? `<img src="${esc(ph)}" alt="" draggable="false">` : `<b>${esc(b.name)}</b>`}</span>
+        <span class="wh-plate"><b>${esc(b.name)}</b><em>${esc(b.sub || PHYS[b.id]?.sub || "")}</em><span>${its.length} item${its.length === 1 ? "" : "s"} · ${money(val(its))}</span></span></button>`; }).join("")}</section>
+    ${trayHtml(w, "")}</div>`;
+}
+function caseHtml(w) {
+  const sp = w.spaces.find((s) => s.id === S.bin); if (!sp) return `<p class="cv-empty">That bin is gone.</p>`;
+  const q = WS.bq.trim().toLowerCase(), its = w.inBin(sp.id).filter((i) => !q || `${nameOf(i)} ${setOf(i)} ${numOf(i)}`.toLowerCase().includes(q)).sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+  const groups = new Map(); for (const i of its) { const k = setOf(i) || gameOf(i); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(i); }
+  const open = PHYS[sp.id] ? `${IMG}${PHYS[sp.id].open}` : "";
+  return `<div class="wh cv">
+    <header class="cv-top"><button type="button" class="cv-btn wh-back" data-wall>‹ Warehouse</button><div class="cv-title"><h1>${esc(sp.sub || PHYS[sp.id]?.sub || "Bin")}</h1><p><b>${esc(sp.name)}</b><span>${w.inBin(sp.id).length} items · ${money(val(w.inBin(sp.id)))}</span></p></div>
+      <div class="cv-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="whBQ" type="search" placeholder="Search this bin" value="${esc(WS.bq)}" aria-label="Search this bin"></div>
+      <div class="cv-acts"><button type="button" class="cv-btn" data-rename-bin>Rename</button>${w.inBin(sp.id).length ? `<button type="button" class="cv-btn" data-out>Empty bin</button>` : ""}</div></header>
+    <div class="wh-binv">${open ? `<figure class="wh-lid"><img src="${esc(open)}" alt="${esc(sp.name)} open" draggable="false"><figcaption>Inside ${esc(sp.name)}</figcaption></figure>` : ""}
+      <section class="wh-case" data-drop="${esc(sp.id)}" aria-label="Items in ${esc(sp.name)}">${its.length ? [...groups.entries()].map(([k, l]) => `<div class="wh-grp"><h3>${esc(k)}<span>${l.length}</span></h3><div class="wh-slots">${l.slice(0, 200).map((i) => { const ph = photoOf(i); return `<button type="button" class="wh-slot" data-item="${esc(i.id)}">${ph ? `<img src="${esc(ph)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(i).charAt(0))}</i>`}<b>${esc(cardName(i))}</b><em>${money(i.price)}${Number(i.quantity) > 1 ? ` · ×${Number(i.quantity)}` : ""}</em></button>`; }).join("")}</div></div>`).join("") : `<div class="wh-emptycase"><b>${q ? "Nothing in here matches." : "This bin is empty."}</b><span>Drag items from the tray below into the case.</span></div>`}</section></div>
+    ${trayHtml(w, sp.id)}</div>`;
+}
 function paint() {
-  const w = world(), sh = SHELVES.find((x) => x.id === S.shelf), sp = w.spaces.find((s) => s.id === S.bin);
-  const crumbs = [{ t: "Spaces", go: S.level !== "area" }];
-  if ((S.level === "bin" || S.level === "shelf") && sp) crumbs.push({ t: sp.name });
-  const body = S.level === "area" ? areaView(w) : S.level === "shelf" && PHYS[S.bin] ? shelfFocusView(w) : binView(w);
-  ctx.host.innerHTML = `<div class="sp-wrap spx" data-level="${S.level}">${head(w, crumbs)}${body}</div>`;
-  if (S.level === "bin" && S.open) setLid(true, true);
-  wire(w); fitPan();
+  const w = world();
+  ctx.host.innerHTML = `<div class="sp-wrap spx wh-root" data-level="${S.level}">${S.level === "bin" ? caseHtml(w) : wallHtml(w)}</div>`;
+  wireWh(w);
+}
+function wireWh(w) {
+  const h = ctx.host, $ = (x) => h.querySelector(x);
+  const put = (to) => { const ids = [...WS.tray]; if (!ids.length || !to) return; const prev = snapshot(); if (!assign(ids, to)) { ctx.toast("Couldn't save. Storage is full."); return; } WS.tray.clear(); ctx.refresh(); paint(); ctx.toastUndo(`Put ${ids.length} in ${nm(world(), to)}`, () => { restore(prev); ctx.refresh(); paint(); }); };
+  const keepFocus = (id, v) => { paint(); const n = h.querySelector(id); if (n) { n.focus(); try { n.setSelectionRange(v.length, v.length); } catch { /* ignore */ } } };
+  let t1 = 0; $("#whQ")?.addEventListener("input", (e) => { WS.q = e.target.value; clearTimeout(t1); t1 = setTimeout(() => keepFocus("#whQ", WS.q), 160); });
+  let t2 = 0; $("#whBQ")?.addEventListener("input", (e) => { WS.bq = e.target.value; clearTimeout(t2); t2 = setTimeout(() => keepFocus("#whBQ", WS.bq), 160); });
+  h.querySelectorAll("[data-wbin]").forEach((b) => {
+    b.addEventListener("click", () => { if (WS.tray.size) { put(b.dataset.wbin); return; } S.level = "bin"; S.bin = b.dataset.wbin; WS.bq = ""; paint(); ctx.host.closest("#main")?.scrollTo?.({ top: 0 }); });
+    b.addEventListener("dragover", (e) => { e.preventDefault(); b.classList.add("over"); }); b.addEventListener("dragleave", () => b.classList.remove("over"));
+    b.addEventListener("drop", (e) => { e.preventDefault(); b.classList.remove("over"); put(b.dataset.wbin); });
+  });
+  const cs = $("[data-drop]"); if (cs) { cs.addEventListener("dragover", (e) => { e.preventDefault(); cs.classList.add("over"); }); cs.addEventListener("dragleave", (e) => { if (!cs.contains(e.relatedTarget)) cs.classList.remove("over"); }); cs.addEventListener("drop", (e) => { e.preventDefault(); cs.classList.remove("over"); put(cs.dataset.drop); }); }
+  h.querySelectorAll("[data-ti]").forEach((t) => {
+    t.addEventListener("click", () => { const id = t.dataset.ti; WS.tray.has(id) ? WS.tray.delete(id) : WS.tray.add(id); paint(); });
+    t.addEventListener("dragstart", (e) => { WS.tray.add(t.dataset.ti); t.classList.add("on"); e.dataTransfer.setData("text/plain", t.dataset.ti); e.dataTransfer.effectAllowed = "move"; });
+  });
+  $("[data-put]")?.addEventListener("click", (e) => { const to = e.currentTarget.dataset.put; if (to) put(to); });
+  $("[data-tclear]")?.addEventListener("click", () => { WS.tray.clear(); paint(); });
+  $("[data-un]")?.addEventListener("click", () => pickSheet(S.level === "bin" ? S.bin : null));
+  $("[data-wall]")?.addEventListener("click", () => { S.level = "area"; S.bin = null; paint(); });
+  $("[data-rename-bin]")?.addEventListener("click", () => { const sp = loadSpaces().find((x) => x.id === S.bin); renameSheet("Rename bin", sp.name, (n) => { const all = loadSpaces(); all.find((x) => x.id === S.bin).name = n; saveSpaces(all); }, () => paint()); });
+  $("[data-out]")?.addEventListener("click", () => { const its = w.inBin(S.bin), name = nm(w, S.bin), prev = snapshot(); assign(its.map((i) => i.id), null); ctx.refresh(); paint(); ctx.toastUndo(`Took ${its.length} out of ${name}`, () => { restore(prev); ctx.refresh(); paint(); }); });
+  const open = (list, id) => openCard(list, { index: Math.max(0, list.findIndex((i) => String(i.id) === String(id))), photo: photoOf, name: nameOf, backLabel: list[0] && nm(w, list[0].spaceId),
+    info: () => `<button class="btn" data-takeout type="button">Take out of the bin</button>`,
+    wire: (root, it, api) => root.querySelector("[data-takeout]")?.addEventListener("click", () => { const prev = snapshot(); assign([it.id], null); api.close(); ctx.refresh(); paint(); ctx.toastUndo("Took it out of the bin", () => { restore(prev); ctx.refresh(); paint(); }); }) });
+  h.querySelectorAll("[data-item]").forEach((c) => c.addEventListener("click", () => open(w.inBin(S.bin), c.dataset.item)));
+  h.querySelectorAll("[data-hit]").forEach((c) => c.addEventListener("click", () => { const it = w.hand.find((i) => String(i.id) === c.dataset.hit); if (it) open(w.inBin(it.spaceId), it.id); }));
 }
 async function camera(next, fromEl) {
   if (busy) return; busy = true;
@@ -242,7 +300,7 @@ function wire(w) {
 }
 export function renderSpaces(host, api) {
   ctx = { host, ...api }; ensureBins(); Object.assign(S, { level: "area", shelf: null, bin: null, open: false }); busy = false; paint();
-  if (!keyBound) { keyBound = true; document.addEventListener("keydown", (e) => { const sh = document.getElementById("sheet"); if (e.key === "Escape" && ctx && ctx.host.querySelector(".spx") && !document.querySelector(".k-zoom") && (!sh || sh.hidden)) up(); }); }
+  if (!keyBound) { keyBound = true; document.addEventListener("keydown", (e) => { const sh = document.getElementById("sheet"); if (e.key === "Escape" && ctx && ctx.host.querySelector(".spx") && !document.querySelector(".k-zoom,.fc") && (!sh || sh.hidden) && S.level === "bin") { S.level = "area"; S.bin = null; paint(); } }); }
 }
 /* bulk put-away from anywhere (Command uses it) */
 export function unbinnedCount() { return world().un.length; }
