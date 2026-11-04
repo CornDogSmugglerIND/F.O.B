@@ -411,3 +411,51 @@ html.fx #main .cv .bn-a{width:42px;height:42px;border-radius:12px;border:1px sol
 .cv-shelf .cv-boxart{-webkit-box-reflect:unset!important}
 .cv .bn .bd-p.cv-pk em{opacity:1!important}html.fx #main .cv .bn .bd-p.cv-pk:not(.empty):hover{transform:none!important;box-shadow:none!important}
 .cv-pk-art{width:100%!important;max-width:none!important}.cv .bd-p.cv-pk img{width:100%!important;height:100%!important}@media (max-width:820px){.cv .bn-pg{gap:8px!important;padding:8px!important}html.fx #main .cv .bd-p.cv-pk{padding:4px!important}}
+
+/* Command sales desk, phone (Build 187): 3 x 2 grid, nothing wraps or overlaps */
+.sdesk .hr small{display:block;font:600 12px "Inter",system-ui,sans-serif;color:#8EA89B;margin-top:1px;font-variant-numeric:tabular-nums}
+.sdesk .hr em{white-space:nowrap}
+.sdesk .sd-bars{margin-top:4px}
+@media (max-width:820px){
+  html.fx #main .sdesk .holo-read{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 0!important}
+  html.fx #main .sdesk .holo-read .hr{padding:2px 6px 2px 10px!important;min-width:0}
+  html.fx #main .sdesk .holo-read .hr em{font-size:11px!important;overflow:hidden;text-overflow:ellipsis;display:block}
+  html.fx #main .sdesk .holo-read .hr b{font-size:20px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  .sdesk .sd-bars{height:16px;min-width:0}
+}
+/* bottom bar: labels never collide */
+@media (max-width:820px){#nav button span,nav button span{font-size:10.5px!important;letter-spacing:-.01em;white-space:nowrap}}
+/* phone polish (Build 187) */
+@media (max-width:820px){
+  .nav,html .nav{width:calc(100% - 72px)!important;padding-left:3px!important;padding-right:3px!important;gap:0!important;column-gap:0!important}
+  .nav button:not([data-view=scouter]){flex:1 1 0!important;min-width:0!important;width:auto!important;margin:0!important}
+  .nav button{font-size:9px!important;letter-spacing:-.02em!important;padding-left:0!important;padding-right:0!important}
+  .nav button[data-view=scouter]{width:60px!important;min-width:60px!important;height:60px!important}
+  .sc-queue .sc-qh{display:flex!important;flex-wrap:wrap!important;align-items:center;gap:6px 10px}
+  .sc-queue .sc-qh h3{white-space:nowrap;font:700 18px "Inter",system-ui,sans-serif!important}
+  .sc-queue .sc-qh small{flex:1 1 100%;order:3;text-align:left!important;font:500 13px "Inter",system-ui,sans-serif!important;color:#8EA89B}
+  .sc-queue .sc-qh .sc-qa{margin-left:auto!important;white-space:nowrap}
+  html.fx .spx.cv .spx-head{flex-wrap:wrap!important;row-gap:10px!important}.spx.cv .wh-find-in{flex:1 1 100%!important;order:3;min-width:0}
+  .cv-more{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px!important;overflow:visible!important}.cv-sel{min-width:0!important;max-width:none!important}
+}
+.empty.go span{max-width:150px;display:block}
+.st-me>div{min-width:0}.st-me b{font-size:clamp(20px,6.4vw,34px)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+@media (max-width:820px){.spx.cv .spx-head .spx-crumbs{flex:1 1 100%}.spx.cv .spx-un{flex:none}}
+.empty.go{min-width:140px!important}.empty.go span{max-width:none!important;white-space:normal}
+
+@media (max-width:820px){html.fx .spx.cv .spx-head{position:relative!important;background:none!important}}
+/* item screen, phone (Build 187): photo on top, details below, one scrolling column */
+@media (max-width:820px){
+  .fc.it .fc-box{display:block!important;overflow-y:auto!important;max-height:100%!important;height:100%!important}
+  .fc.it .fc-stage.it-stage{width:100%!important;min-width:0;min-height:max-content!important;justify-content:flex-start!important}
+  .fc.it .it-lock{height:46vh!important;width:100%!important;flex:none!important}
+  .fc.it .fc-info{width:auto!important;min-width:0!important;overflow:visible!important;margin-top:14px;padding-bottom:40px}
+  .fc.it .fc-hint{position:static!important;width:auto!important;text-align:center}
+}
+/* sales desk spans the full width on desktop (Build 187) */
+@media (min-width:821px){html.fx #main .hudw.holo.sdesk{left:12px!important;right:12px!important;width:auto!important}
+  html.fx #main .sdesk .holo-read{display:grid!important;grid-template-columns:1fr 1.4fr 1.2fr 1fr 1fr 1fr;gap:0!important}
+  html.fx #main .sdesk .hr{padding:0 18px!important}
+  html.fx #main .sdesk .holo-read{flex:1 1 auto!important;width:100%!important}}
+html.fx #main .sdesk .hr{display:flex!important;flex-direction:column!important;justify-content:flex-start!important;align-items:flex-start!important;text-align:left}
+html.fx #main .sdesk .sd-chart{gap:0!important}html.fx #main .sdesk .sd-chart b{margin:0!important;font-size:inherit}html.fx #main .sdesk .sd-bars{margin-top:8px}

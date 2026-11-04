@@ -1,16 +1,16 @@
-import "./viewer.js?v=186";
-import { startScanLink } from "./scanlink.js?v=186";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=186";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=186";
-import { phaseFromItem } from "/visor/phases.js?v=186";
-import { renderScouter } from "./scouter.js?v=186";
-import { renderCollection, openImport } from "./collection.js?v=186";
-import { photoManager } from "./photos.js?v=186";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=186";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=186";
-import { renderSettings } from "./settings.js?v=186";
-import { initSync } from "./sync.js?v=186";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=186";
+import "./viewer.js?v=187";
+import { startScanLink } from "./scanlink.js?v=187";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=187";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=187";
+import { phaseFromItem } from "/visor/phases.js?v=187";
+import { renderScouter } from "./scouter.js?v=187";
+import { renderCollection, openImport } from "./collection.js?v=187";
+import { photoManager } from "./photos.js?v=187";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=187";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=187";
+import { renderSettings } from "./settings.js?v=187";
+import { initSync } from "./sync.js?v=187";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=187";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -263,15 +263,17 @@ function widgets(g) {
   for (const o of ord) { const t = Date.parse(o._order?.createdAt || o.when || 0); if (!t) continue; const k = 7 - Math.floor((now - t) / (7 * day)); if (k >= 0 && k < 8) wk8[k] += Number(o._order?.total ?? o.price) || 0; }
   const wk = wk8[7], sum8 = wk8.reduce((a, b) => a + b, 0), mx = Math.max(1, ...wk8);
   const live = items.filter((i) => i.phase === "listed" && !i.ended && i.channels?.ebay?.listingId), liveV = live.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
-  const nobin = live.filter((i) => !i.spaceId).length;
+  /* count listings, not the cards inside variation listings, so this matches the header and Channels */
+  const lst = new Map(); for (const i of live) { const k = i.channels.ebay.listingId; (lst.get(k) || lst.set(k, []).get(k)).push(i); }
+  const nobin = [...lst.values()].filter((g) => g.every((i) => !i.spaceId)).length;
   return `<div class="hudw holo sdesk" role="group" aria-label="Sales desk">
     <div class="holo-read">
       <button type="button" class="hr" data-goto="channels" data-pst="sold"><em>Sold this week</em><b>${money(wk)}</b></button>
-      <div class="hr sd-chart" aria-label="Sales per week, last 8 weeks"><em>8 weeks · ${money(sum8)}</em><span class="sd-bars">${wk8.map((v, i) => `<i style="height:${Math.max(8, Math.round(v / mx * 100))}%"${i === 7 ? ' class="now"' : ""} title="${money(v)}"></i>`).join("")}</span></div>
-      <button type="button" class="hr" data-goto="channels"><em>Live on eBay</em><b>${live.length} · ${money(liveV)}</b></button>
+      <div class="hr sd-chart" aria-label="Sales per week, last 8 weeks"><em>Last 8 weeks</em><b>${money(sum8)}</b><span class="sd-bars">${wk8.map((v, i) => `<i style="height:${Math.max(8, Math.round(v / mx * 100))}%"${i === 7 ? ' class="now"' : ""} title="${money(v)}"></i>`).join("")}</span></div>
+      <button type="button" class="hr" data-goto="channels"><em>Live on eBay</em><b>${lst.size}</b><small>${money(liveV)}</small></button>
       <button type="button" class="hr hot" data-stage="sold"><em>To ship</em><b>${g.sold.length}</b></button>
       <button type="button" class="hr" data-stage="shipped"><em>On the way</em><b>${g.shipped.length}</b></button>
-      ${nobin ? `<button type="button" class="hr warn" data-goto="spaces"><em>Live, no bin</em><b>${nobin}</b></button>` : ""}
+      ${nobin ? `<button type="button" class="hr warn" data-goto="spaces"><em>No bin</em><b>${nobin}</b></button>` : ""}
     </div></div>`;
 }
 /* ---------- your route, your way: stops can be dragged anywhere, the line always runs in order ---------- */
@@ -351,11 +353,11 @@ function renderCommand() {
       <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[5] - 17}%;top:${PY[5] + 8}px"><i></i>Done</div></div>`;
   } else {
     main.style.overflowY = "hidden"; main.style.overflowX = "";
-    const W = Math.max(600, main.clientWidth || 1000), H = Math.max(420, main.clientHeight || 600);
+    const TOP = 128 /* the sales desk sits above the route; nothing overlaps it */, W = Math.max(600, main.clientWidth || 1000), H = Math.max(400, (main.clientHeight || 600) - TOP - 96);
     const sv = routeSaved("desk"), POS = STOPS.map((s) => sv[s.id] || s.pos);
     const pts = POS.map((p) => [p[0] / 100 * W, p[1] / 100 * H]);
     const path = routePath(pts, false);
-    main.innerHTML = `${widgets(g)}<div class="road"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    main.innerHTML = `${widgets(g)}<div class="road" style="top:${TOP}px !important;bottom:auto !important;height:${H}px !important"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
       <defs><linearGradient id="rg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${W}" y2="0"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
       <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".45" stroke-width="16" stroke-linecap="round" style="filter:blur(9px)"/>
       <path d="${path}" fill="none" stroke="url(#rg)" stroke-width="4" stroke-linecap="round"/>
