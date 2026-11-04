@@ -300,3 +300,52 @@ html.fx #main .wh-slot:hover{transform:translateY(-3px)}
 }
 .spx.cv .wh-case{padding:16px;border-radius:16px;border:1px solid rgba(0,0,0,.6);background:radial-gradient(circle at 6px 6px,rgba(255,255,255,.035) 2px,transparent 2.5px) 0 0/12px 12px,linear-gradient(180deg,#111614,#0a0e0c);box-shadow:inset 0 0 0 1px rgba(255,255,255,.04),inset 0 14px 40px rgba(0,0,0,.6)}
 .spx.cv .spx-side h3{font-size:24px;font-weight:700}.spx.cv .spx-note{font-size:14px;color:var(--mute)}
+
+/* Command sales desk readouts (Build 182) */
+.sdesk .holo-read{flex-wrap:wrap}
+.sdesk .sd-chart{display:flex;flex-direction:column;gap:4px;cursor:default}
+.sd-bars{display:flex;align-items:flex-end;gap:3px;height:26px;min-width:90px}
+.sd-bars i{flex:1;min-width:6px;border-radius:2px 2px 0 0;background:rgba(125,242,180,.35)}.sd-bars i.now{background:#7DF2B4;box-shadow:0 0 8px rgba(125,242,180,.6)}
+.sdesk .hr.warn b{color:#FFB27A}
+
+/* ===== Channels v3 (Build 182): every set is a lit display rack; cards stand in 3D, tilt to the cursor with a holo glare, and a HUD readout locks on ===== */
+.chx .pl{margin-top:4px}
+.rk{position:relative;padding:14px 0 26px;margin-bottom:18px;border-radius:18px;background:linear-gradient(180deg,rgba(14,22,19,.66),rgba(6,10,9,.82));border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 30px 60px -30px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.05);overflow:hidden}
+.rk::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(245,161,46,.7),transparent);opacity:.7}
+.rk header{display:flex;align-items:center;gap:12px;padding:0 18px 6px;flex-wrap:wrap}
+html.fx #main .rk-h{display:flex;align-items:center;gap:10px;padding:4px 0!important;border:0;background:none!important;color:var(--ink);cursor:pointer;min-height:0!important;box-shadow:none!important}
+.rk-h i{font-style:normal;color:var(--acc);width:12px}.rk-h h2{margin:0;font-size:18px;font-weight:700}
+.rk-m{font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}.rk-m .old{color:var(--warn)}
+.rk-nav{margin-left:auto;display:flex;gap:6px}
+html.fx #main .rk-nav button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line)!important;background:rgba(255,255,255,.04)!important;color:var(--ink);font-size:18px;cursor:pointer;padding:0!important;min-height:0!important}
+html.fx #main .rk-nav button:hover{border-color:rgba(245,161,46,.5)!important;color:var(--acc)}
+.rk-track{display:flex;gap:26px;overflow-x:auto;overflow-y:visible;padding:26px 26px 64px;scroll-snap-type:x proximity;scrollbar-width:none;perspective:1100px;position:relative;z-index:1}
+.rk-track::-webkit-scrollbar{display:none}
+.rk-glass{position:absolute;left:14px;right:14px;bottom:56px;height:12px;border-radius:4px;background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.03) 40%,rgba(0,0,0,.4));box-shadow:0 -10px 30px rgba(245,161,46,.12),0 10px 24px rgba(0,0,0,.7);z-index:0}
+html.fx #main .rk-c{position:relative;flex:0 0 150px;scroll-snap-align:start;cursor:pointer;outline:none;background:none!important;border:0!important;box-shadow:none!important;padding:0!important;transform-style:preserve-3d;contain-intrinsic-size:auto 280px}
+.rk-card{position:relative;display:block;aspect-ratio:63/88;border-radius:9px;overflow:hidden;background:#050b09;transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,-10deg));transform-style:preserve-3d;transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .3s;box-shadow:0 18px 26px -10px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.07);will-change:transform}
+.rk-card img{width:100%;height:100%;object-fit:cover;display:block}.rk-card>i{display:grid;place-items:center;height:100%;font-style:normal;font-size:30px;color:var(--dim)}
+.rk-glare{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at var(--gx,50%) var(--gy,30%),rgba(255,255,255,.55),rgba(255,214,150,.18) 22%,transparent 50%),linear-gradient(115deg,transparent 30%,rgba(140,255,220,.16) 45%,rgba(255,140,220,.14) 55%,transparent 70%);mix-blend-mode:screen;transition:opacity .25s}
+.rk-tag{display:flex;flex-direction:column;gap:2px;padding:10px 2px 0;transition:opacity .2s}
+.rk-tag b{font-size:16px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}.rk-tag span{font-size:12.5px;color:var(--mute);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rk-var{position:absolute;left:7px;bottom:7px;padding:2px 8px;border-radius:6px;background:rgba(0,0,0,.75);font-size:12px;font-weight:700;color:var(--acc2)}
+html.fx #main .rk-pick{position:absolute!important;right:7px;top:7px;width:22px;height:22px;border-radius:50%;border:0;padding:0!important;background:rgba(0,0,0,.55);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.75);opacity:0;cursor:pointer;min-height:0!important}
+html.fx #main .rk-c:hover .rk-pick,html.fx #main .rk-c.sel .rk-pick{opacity:1}html.fx #main .rk-c.sel .rk-pick{background:var(--acc);box-shadow:none}
+.rk-c.stale .rk-card{box-shadow:0 0 0 1.5px rgba(255,178,122,.6),0 18px 26px -10px rgba(0,0,0,.9)}
+/* the lock-on readout */
+.rk-hud{position:absolute;left:calc(100% + 14px);top:10px;z-index:5;display:grid;grid-template-columns:1fr 1fr;gap:1px;width:190px;border-radius:12px;overflow:hidden;background:rgba(245,161,46,.25);border:1px solid rgba(245,161,46,.45);box-shadow:0 20px 40px rgba(0,0,0,.6),0 0 24px rgba(245,161,46,.18);opacity:0;transform:translateX(-8px);pointer-events:none;transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1)}
+.rk-hud>div{display:flex;flex-direction:column;gap:1px;padding:8px 10px;background:rgba(10,9,6,.94)}.rk-hud>div.w{grid-column:1/-1}
+.rk-hud em{font-style:normal;font-size:11px;color:#B59A6E}.rk-hud b{font-size:14px;font-weight:700;color:#FFF3E0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rk-hud b.old{color:var(--warn)}
+.rk-lead{position:absolute;left:-14px;top:22px;width:14px;height:1px;background:rgba(245,161,46,.7)}
+@media (hover:hover){
+  html.fx #main .rk-c:hover,html.fx #main .rk-c:focus-visible{z-index:6}
+  .rk-c:hover .rk-card,.rk-c:focus-visible .rk-card{transform:translateZ(60px) scale(1.16) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));box-shadow:0 0 0 1.5px var(--acc),0 0 34px rgba(245,161,46,.35),0 40px 50px -14px rgba(0,0,0,.95)}
+  .rk-c:hover .rk-glare{opacity:1}
+  .rk-c:hover .rk-hud,.rk-c:focus-visible .rk-hud{opacity:1;transform:none}
+  .rk-c:hover .rk-tag{opacity:.25}
+}
+.rk-track>.rk-c:nth-last-child(-n+2) .rk-hud{left:auto;right:calc(100% + 14px)}.rk-track>.rk-c:nth-last-child(-n+2) .rk-lead{left:auto;right:-14px}
+@media (max-width:900px){.rk-track{gap:16px;padding:18px 16px 56px}html.fx #main .rk-c{flex-basis:128px}.rk-card{transform:none}.rk-hud{display:none}}
+@media (prefers-reduced-motion:reduce){.rk-card,.rk-hud{transition:none}}
+html.fx .ch-tile.rk-c{content-visibility:visible!important;contain:none!important}.rk-track{padding-top:40px!important}
+html.fx #main .ch-tile.rk-c{overflow:visible!important;transform:none!important;animation:none!important}html.fx #main .ch-tile.rk-c::before,html.fx #main .ch-tile.rk-c::after{display:none!important}

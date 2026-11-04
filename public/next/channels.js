@@ -1,8 +1,8 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=181";
-import { photoManager } from "./photos.js?v=181";
-import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=181";
-import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=181";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=181";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=182";
+import { photoManager } from "./photos.js?v=182";
+import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=182";
+import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=182";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=182";
 
 let ctx = null;
 const S = { f: { when: "", game: "", bin: "", price: "", type: "" }, groupBy: "set", shut: new Set(), stage: "listed", view: (() => { try { return localStorage.getItem("fob-ch-view2") || "rows"; } catch { return "rows"; } })(), group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
@@ -135,9 +135,7 @@ function deskTop(all, total, counts) {
   if (counts.sold) act.push(`<button type="button" class="aq hot" data-stage="sold"><b>${counts.sold}</b><span>to ship. Print the label${counts.sold === 1 ? "" : "s"}</span><i>›</i></button>`);
   if (stale.length) act.push(`<button type="button" class="aq warn${S.stale ? " on" : ""}" id="dkStale"><b>${stale.length}</b><span>${S.stale ? "sitting 45+ days. Showing them, tap to clear" : "sitting 45+ days. Drop the price or end"}</span><i>›</i></button>`);
   if (nobin.length) act.push(`<button type="button" class="aq" id="dkNoBin"><b>${nobin.length}</b><span>live without a bin. Put them away</span><i>›</i></button>`);
-  return `<header class="ops"><div class="ops-id"><img src="img/icon.jpg" alt=""><div><b>Sales desk</b><span>eBay · CornDogSmuggler Coalition</span></div></div>
-      <div class="ops-wk"><div><em>This week</em><b>${money(wkNow)}</b></div><div><em>8 weeks</em><b>${money(wkSum)}</b></div><div class="ops-spark" aria-label="Sales per week, last 8 weeks">${wk.map((v, i) => `<i style="height:${Math.max(6, Math.round(v / mx * 100))}%"${i === 7 ? ' class="now"' : ""}></i>`).join("")}</div></div></header>
-    <nav class="pl" role="tablist" aria-label="Order flow">${step("listed", "Live", money(sum("listed")))}<i class="pl-a" aria-hidden="true"></i>${step("sold", "To ship", counts.sold ? "Ship now" : "All clear")}<i class="pl-a" aria-hidden="true"></i>${step("shipped", "In transit", "")}<i class="pl-a" aria-hidden="true"></i>${step("delivered", "Delivered", "")}</nav>
+  return `<nav class="pl" role="tablist" aria-label="Order flow">${step("listed", "Live", money(sum("listed")))}<i class="pl-a" aria-hidden="true"></i>${step("sold", "To ship", counts.sold ? "Ship now" : "All clear")}<i class="pl-a" aria-hidden="true"></i>${step("shipped", "In transit", "")}<i class="pl-a" aria-hidden="true"></i>${step("delivered", "Delivered", "")}</nav>
     ${act.length && !orders ? `<div class="aqs">${act.join("")}</div>` : ""}
     ${S.stage === "listed" ? "" : `<div class="dk-find"><input id="chQ" type="search" placeholder="Search title or SKU" value="${esc(S.q)}" aria-label="Search title or SKU">
       ${orders ? "" : `<select id="dkSort" aria-label="Sort"><option value="value"${S.sort === "value" ? " selected" : ""}>Price: high</option><option value="low"${S.sort === "low" ? " selected" : ""}>Price: low</option><option value="old"${S.sort === "old" ? " selected" : ""}>Oldest first</option><option value="name"${S.sort === "name" ? " selected" : ""}>Name</option></select>`}
@@ -167,11 +165,11 @@ function railGroup(title, key, opts) {
 }
 function liveTile(it) {
   const src = photoOf(it), on = S.sel.has(String(it.id)), d = liveDays(it), bin = binName(it), set = setOf(it), num = numOf(it);
-  return `<article class="ch-tile cl${on ? " sel" : ""}${d > 45 ? " stale" : ""}" data-id="${esc(it.id)}" data-edit="1" tabindex="0">
-    <div class="cl-art">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<i>${esc(cardName(it).charAt(0))}</i>`}<button type="button" class="cl-pick" data-pick="${esc(it.id)}" aria-label="Select" aria-pressed="${on}"></button>${it._n > 1 ? `<span class="cl-var">${it._n} cards</span>` : ""}</div>
-    <div class="cl-cap"><b>${esc(it._n > 1 ? nameOf(it).replace(/\s*-\s*pick your card!?/i, "") : cardName(it))}</b><span>${esc([set, num].filter(Boolean).join(" · ") || gameOf(it))}</span>
-      <div class="cl-row"><strong>${ptxt(it)}</strong><em class="${d > 45 ? "old" : ""}">${d == null ? "" : d === 0 ? "Listed today" : `${d}d live`}</em></div>
-      <div class="cl-row"><i class="${bin ? "" : "none"}">${esc(bin || "No bin")}</i>${!it._n && (Number(it.quantity) || 1) > 1 ? `<i>qty ${Number(it.quantity)}</i>` : ""}</div></div></article>`;
+  const name = it._n > 1 ? nameOf(it).replace(/\s*-\s*pick your card!?.*$/i, "") : cardName(it);
+  return `<article class="ch-tile rk-c${on ? " sel" : ""}${d > 45 ? " stale" : ""}" data-id="${esc(it.id)}" data-edit="1" tabindex="0" aria-label="${esc(name)} ${ptxt(it)}">
+    <div class="rk-card">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<i>${esc(name.charAt(0))}</i>`}<span class="rk-glare" aria-hidden="true"></span>${it._n > 1 ? `<span class="rk-var">${it._n} cards</span>` : ""}<button type="button" class="rk-pick" data-pick="${esc(it.id)}" aria-label="Select" aria-pressed="${on}"></button></div>
+    <div class="rk-tag"><b>${ptxt(it)}</b><span>${esc(name)}</span></div>
+    <div class="rk-hud" aria-hidden="true"><i class="rk-lead"></i><div><em>Price</em><b>${ptxt(it)}</b></div><div><em>Live</em><b class="${d > 45 ? "old" : ""}">${d == null ? "—" : d === 0 ? "today" : d + " days"}</b></div><div><em>Bin</em><b class="${bin ? "" : "old"}">${esc(bin || "none")}</b></div><div><em>${it._n > 1 ? "Cards" : "Qty"}</em><b>${it._n > 1 ? it._n : Number(it.quantity) || 1}</b></div>${set ? `<div class="w"><em>Set</em><b>${esc([set, num].filter(Boolean).join(" · "))}</b></div>` : ""}</div></article>`;
 }
 function liveBody(all) {
   const tally = (list, f) => { const m = new Map(); for (const it of list) { const k = f(it); if (k) m.set(k, (m.get(k) || 0) + 1); } return [...m.entries()].sort((a, b) => b[1] - a[1]); };
@@ -194,8 +192,8 @@ function liveBody(all) {
         <label class="cv-sel"><span>Sort</span><select id="dkSort">${[["value", "Price: high to low"], ["low", "Price: low to high"], ["new", "Newest listed"], ["old", "Oldest listed"], ["name", "Name A–Z"]].map(([k, l]) => `<option value="${k}"${S.sort === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
         <button class="cv-btn ch-controls${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}">Bulk tools</button></div>
       <div class="cm-sum"><b>${list.length} listing${list.length === 1 ? "" : "s"}</b><span>${money(list.reduce((a, i) => a + valOf(i), 0))} live</span>${active ? `<button type="button" class="cv-clear" id="clClear">Clear filters</button>` : ""}</div>
-      ${secs.length ? secs.map(([k, l]) => { const shut = S.shut.has(k), shownL = l.slice(0, S.more[k] || 24); return `<section class="cs${shut ? " shut" : ""}"><header><button type="button" class="cs-h" data-shut="${esc(k)}" aria-expanded="${!shut}"><i aria-hidden="true">${shut ? "▸" : "▾"}</i><h2>${esc(k)}</h2><span>${l.length} · ${money(l.reduce((a, i) => a + valOf(i), 0))}</span></button></header>
-        ${shut ? "" : `<div class="cs-grid">${shownL.map(liveTile).join("")}</div>${l.length > shownL.length ? `<button type="button" class="cv-btn cs-more" data-more="${esc(k)}">Show ${Math.min(24, l.length - shownL.length)} more in ${esc(k)}</button>` : ""}`}</section>`; }).join("") : `<p class="cv-empty">Nothing matches these filters.</p>`}
+      ${secs.length ? secs.map(([k, l]) => { const shut = S.shut.has(k), stale = l.filter((i) => (liveDays(i) || 0) > 45).length; return `<section class="rk${shut ? " shut" : ""}"><header><button type="button" class="rk-h" data-shut="${esc(k)}" aria-expanded="${!shut}"><i aria-hidden="true">${shut ? "▸" : "▾"}</i><h2>${esc(k)}</h2></button><span class="rk-m">${l.length} listing${l.length === 1 ? "" : "s"} · ${money(l.reduce((a, i) => a + valOf(i), 0))}${stale ? ` · <b class="old">${stale} stale</b>` : ""}</span>${shut ? "" : `<span class="rk-nav"><button type="button" data-rk="-1" aria-label="Scroll left">‹</button><button type="button" data-rk="1" aria-label="Scroll right">›</button></span>`}</header>
+        ${shut ? "" : `<div class="rk-track">${l.map(liveTile).join("")}</div><i class="rk-glass" aria-hidden="true"></i>`}</section>`; }).join("") : `<p class="cv-empty">Nothing matches these filters.</p>`}
     </div>`;
   return `<div class="cl-wrap">${rail}${main}</div>`;
 }
@@ -237,6 +235,13 @@ function wireDesk(all) {
   h.querySelector("#clClear")?.addEventListener("click", () => { S.f = { when: "", game: "", bin: "", price: "", type: "" }; paint(); });
   h.querySelector("#clGroup")?.addEventListener("change", (e) => { S.groupBy = e.target.value; S.shut.clear(); paint(); });
   h.querySelectorAll("[data-shut]").forEach((b) => b.addEventListener("click", () => { const k = b.dataset.shut; S.shut.has(k) ? S.shut.delete(k) : S.shut.add(k); paint(); }));
+  h.querySelectorAll("[data-rk]").forEach((b) => b.addEventListener("click", () => { const t = b.closest(".rk")?.querySelector(".rk-track"); if (t) t.scrollBy({ left: Number(b.dataset.rk) * t.clientWidth * 0.8, behavior: "smooth" }); }));
+  h.querySelectorAll(".rk-c").forEach((c) => {
+    const card = c.querySelector(".rk-card");
+    c.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") return; const r = card.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height; c.style.setProperty("--rx", `${(0.5 - y) * 16}deg`); c.style.setProperty("--ry", `${(x - 0.5) * 18}deg`); c.style.setProperty("--gx", `${x * 100}%`); c.style.setProperty("--gy", `${y * 100}%`); });
+    c.addEventListener("pointerleave", () => { c.style.removeProperty("--rx"); c.style.removeProperty("--ry"); });
+  });
+  { const tracks = h.querySelectorAll(".rk-track"); tracks.forEach((t) => t.addEventListener("wheel", (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.shiftKey) { t.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false })); }
   h.querySelectorAll(".cs-more").forEach((b) => b.addEventListener("click", () => { const k = b.dataset.more; S.more[k] = (S.more[k] || 24) + 24; paint(); }));
   h.querySelector("#dkView")?.addEventListener("click", () => { S.view = S.view === "rows" ? "cards" : "rows"; try { localStorage.setItem("fob-ch-view2", S.view); } catch { /* ignore */ } paint(); });
   h.querySelector("#dkMore")?.addEventListener("click", () => { S.more.dk = (S.more.dk || 80) + 80; paint(); });
@@ -484,7 +489,7 @@ function wire(all) {
   h.querySelectorAll("[data-selgrp]").forEach((b) => b.addEventListener("click", () => { all.filter((i) => keyOf(i) === b.dataset.selgrp).forEach((i) => S.sel.add(String(i.id))); paint(); }));
   $("#chAll")?.addEventListener("click", () => { all.forEach((i) => S.sel.add(String(i.id))); paint(); });
   h.querySelectorAll("[data-pick]").forEach((p) => p.addEventListener("click", (e) => { e.stopPropagation(); toggle(p.dataset.pick); paint(); }));
-  h.querySelectorAll(".ch-tile").forEach((c) => { c.addEventListener("pv:details", () => zoom(all, c)); c.addEventListener("click", (e) => { if (e.target.closest("[data-pick]")) return; if (c.dataset.edit && !e.target.closest(".co-img")) editSheet(all, c.dataset.id); else zoom(all, c); }); c.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); zoom(all, c); } }); });
+  h.querySelectorAll(".ch-tile").forEach((c) => { c.addEventListener("pv:details", () => zoom(all, c)); c.addEventListener("click", (e) => { if (e.target.closest("[data-pick]")) return; zoom(all, c); }); c.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); zoom(all, c); } }); });
   h.querySelectorAll(".ch-row").forEach((r) => r.addEventListener("click", (e) => { if (e.target.closest("input")) return; zoom(all, r); }));
   h.querySelectorAll(".ch-row input").forEach((c) => c.addEventListener("change", () => { toggle(c.dataset.id); paint(); }));
   $("#chBin")?.addEventListener("change", (e) => { const v = e.target.value; if (!v) return; const ids = [...S.sel], prev = snap(); if (assign(ids, v)) { S.sel.clear(); ctx.refresh(); paint(); ctx.toastUndo(`Filed ${ids.length} into ${loadSpaces().find((s) => s.id === v)?.name}`, () => { restore(prev); ctx.refresh(); paint(); }); } });

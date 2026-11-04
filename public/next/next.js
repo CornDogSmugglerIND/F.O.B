@@ -1,16 +1,16 @@
-import "./viewer.js?v=181";
-import { startScanLink } from "./scanlink.js?v=181";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=181";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=181";
-import { phaseFromItem } from "/visor/phases.js?v=181";
-import { renderScouter } from "./scouter.js?v=181";
-import { renderCollection, openImport } from "./collection.js?v=181";
-import { photoManager } from "./photos.js?v=181";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=181";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=181";
-import { renderSettings } from "./settings.js?v=181";
-import { initSync } from "./sync.js?v=181";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=181";
+import "./viewer.js?v=182";
+import { startScanLink } from "./scanlink.js?v=182";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=182";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=182";
+import { phaseFromItem } from "/visor/phases.js?v=182";
+import { renderScouter } from "./scouter.js?v=182";
+import { renderCollection, openImport } from "./collection.js?v=182";
+import { photoManager } from "./photos.js?v=182";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=182";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=182";
+import { renderSettings } from "./settings.js?v=182";
+import { initSync } from "./sync.js?v=182";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=182";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -258,13 +258,20 @@ function pileHtml(list, cls, emptyMsg, sid = "") {
 }
 /* HUD widgets: the numbers you check first, tap to jump there */
 function widgets(g) {
-  const ord = orderItems(90), day = 864e5, now = Date.now();
-  const wk = ord.filter((o) => now - Date.parse(o._order?.createdAt || o.when || 0) < 7 * day).reduce((x, o) => x + (Number(o.price) || 0), 0);
-  return `<div class="hudw holo" role="group" aria-label="At a glance">
+  /* Sales desk lives here now (Nov 3): Command is the heads-up display */
+  const ord = orderItems(90), day = 864e5, now = Date.now(), wk8 = new Array(8).fill(0);
+  for (const o of ord) { const t = Date.parse(o._order?.createdAt || o.when || 0); if (!t) continue; const k = 7 - Math.floor((now - t) / (7 * day)); if (k >= 0 && k < 8) wk8[k] += Number(o._order?.total ?? o.price) || 0; }
+  const wk = wk8[7], sum8 = wk8.reduce((a, b) => a + b, 0), mx = Math.max(1, ...wk8);
+  const live = items.filter((i) => i.phase === "listed" && !i.ended && i.channels?.ebay?.listingId), liveV = live.reduce((a, i) => a + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
+  const nobin = live.filter((i) => !i.spaceId).length;
+  return `<div class="hudw holo sdesk" role="group" aria-label="Sales desk">
     <div class="holo-read">
       <button type="button" class="hr" data-goto="channels" data-pst="sold"><em>Sold this week</em><b>${money(wk)}</b></button>
+      <div class="hr sd-chart" aria-label="Sales per week, last 8 weeks"><em>8 weeks · ${money(sum8)}</em><span class="sd-bars">${wk8.map((v, i) => `<i style="height:${Math.max(8, Math.round(v / mx * 100))}%"${i === 7 ? ' class="now"' : ""} title="${money(v)}"></i>`).join("")}</span></div>
+      <button type="button" class="hr" data-goto="channels"><em>Live on eBay</em><b>${live.length} · ${money(liveV)}</b></button>
       <button type="button" class="hr hot" data-stage="sold"><em>To ship</em><b>${g.sold.length}</b></button>
       <button type="button" class="hr" data-stage="shipped"><em>On the way</em><b>${g.shipped.length}</b></button>
+      ${nobin ? `<button type="button" class="hr warn" data-goto="spaces"><em>Live, no bin</em><b>${nobin}</b></button>` : ""}
     </div></div>`;
 }
 /* ---------- your route, your way: stops can be dragged anywhere, the line always runs in order ---------- */
