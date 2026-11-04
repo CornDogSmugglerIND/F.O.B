@@ -1,9 +1,9 @@
-import { photoManager } from "./photos.js?v=183";
-import { hideIds, unhideIds } from "./orders.js?v=183";
-import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=183";
-import { openFocus } from "./focus.js?v=183";
-import { setOf, rarityOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=183";
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=183";
+import { photoManager } from "./photos.js?v=184";
+import { hideIds, unhideIds } from "./orders.js?v=184";
+import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=184";
+import { openFocus } from "./focus.js?v=184";
+import { setOf, rarityOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=184";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=184";
 
 let ctx = null;
 const S = { type: "all", game: "", set: "", rar: "", bset: "", bpg: 0, q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 48 };
@@ -161,6 +161,15 @@ function shelfHtml(list, title, sub, cls) {
   if (!list.length) return "";
   return `<section class="cv-shelf ${cls}"><header><h2>${title}</h2><span>${sub}</span></header><div class="cv-rail">${list.map((it) => { const src = photoOf(it); return `<button type="button" class="cv-box" data-vid="${esc(it.id)}"><span class="cv-boxart">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(cardName(it).charAt(0))}</i>`}</span><b>${esc(cardName(it))}</b><strong>${money(it.price)}</strong></button>`; }).join("")}</div><i class="cv-plank" aria-hidden="true"></i></section>`;
 }
+/* the binder: two facing pages of nine pockets on rings, every pocket labeled; flip with the arrows, a swipe or the arrow keys */
+function binderHtml(list, browsing) {
+  if (!list.length) return `<section class="cv-cards"><p class="cv-empty">Nothing matches these filters.</p></section>`;
+  const per = innerWidth > 820 ? 18 : 9, spreads = Math.max(1, Math.ceil(list.length / per)); S.bpg = Math.min(Math.max(0, S.bpg || 0), spreads - 1);
+  const at = S.bpg * per, pg = (from) => `<div class="bn-pg">${list.slice(from, from + 9).map((it) => { const src = photoOf(it); return `<button type="button" class="bd-p cv-pk" data-vid="${esc(it.id)}" aria-label="${esc(cardName(it))} ${money(it.price)}"><span class="cv-pk-art">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(cardName(it).charAt(0))}</i>`}<span class="cv-pk-glare" aria-hidden="true"></span></span><span class="cv-pk-l"><b>${esc(cardName(it))}</b><em>${money(it.price)}</em></span></button>`; }).join("")}</div>`;
+  return `<section class="cv-binder"><header><h2>${browsing ? "Binder" : `${list.length} result${list.length === 1 ? "" : "s"}`}</h2><span>${list.length} cards · ${money(list.reduce((a, i) => a + priceOf(i), 0))}</span></header>
+    <div class="bn"><div class="bn-spread${per === 9 ? " one" : ""}">${pg(at)}${per === 18 ? `<i class="bn-rings" aria-hidden="true"></i>${pg(at + 9)}` : ""}</div>
+    <div class="bn-nav"><button type="button" class="bn-a" data-bflip="-1" aria-label="Previous page"${S.bpg ? "" : " disabled"}>‹</button><span>Page ${S.bpg + 1} of ${spreads}</span><button type="button" class="bn-a" data-bflip="1" aria-label="Next page"${S.bpg < spreads - 1 ? "" : " disabled"}>›</button></div></div></section>`;
+}
 function paint() {
   const host = ctx.host, typedFocus = document.activeElement && document.activeElement.id === "coQ";
   const all = base(), shown = filtered(all).sort(sorter), total = all.reduce((a, i) => a + priceOf(i), 0);
@@ -183,17 +192,18 @@ function paint() {
     ${S.menu ? `<div class="cv-menu"><button type="button" class="cv-btn" id="coIO">Import or export a CSV</button></div>` : ""}
     ${shelfHtml(sealed, "Sealed shelf", `${sealed.length} · ${money(sealed.reduce((a, i) => a + priceOf(i), 0))}`, "sealed")}
     ${shelfHtml(graded, "Graded case", `${graded.length} · ${money(graded.reduce((a, i) => a + priceOf(i), 0))}`, "graded")}
-    <section class="cv-cards"><header><h2>${browsing ? "Singles" : `${shown.length} result${shown.length === 1 ? "" : "s"}`}</h2><span>${browsing ? `${grid.length} cards · ${money(grid.reduce((a, i) => a + priceOf(i), 0))}` : money(shown.reduce((a, i) => a + priceOf(i), 0))}</span></header>
-      <div class="cv-grid cx-grid">${cut.map(tile).join("") || `<p class="cv-empty">Nothing matches these filters.</p>`}</div>
-      ${grid.length > cut.length ? `<button type="button" class="cv-btn cv-loadmore" id="coMore">Show ${Math.min(60, grid.length - cut.length)} more</button>` : ""}</section>
+    ${S.selecting ? `<section class="cv-cards"><header><h2>${shown.length} items</h2><span>Tap to select</span></header><div class="cv-grid cx-grid">${cut.map(tile).join("")}</div>${grid.length > cut.length ? `<button type="button" class="cv-btn cv-loadmore" id="coMore">Show ${Math.min(60, grid.length - cut.length)} more</button>` : ""}</section>` : binderHtml(grid, browsing)}
     ${S.selecting ? bar() : ""}</div>`;
   wire();
   const h = host;
   h.querySelectorAll("[data-vid]").forEach((c) => c.addEventListener("click", () => openZoom(c.dataset.vid)));
-  h.querySelectorAll("[data-type]").forEach((b) => b.addEventListener("click", () => { S.type = b.dataset.type; S.more = 48; paint(); }));
-  h.querySelectorAll("[data-game]").forEach((b) => b.addEventListener("click", () => { S.game = b.dataset.game; S.set = ""; S.more = 48; paint(); }));
-  h.querySelector("#vxSet")?.addEventListener("change", (e) => { S.set = e.target.value; S.more = 48; paint(); });
-  h.querySelector("#vxRar")?.addEventListener("change", (e) => { S.rar = e.target.value; S.more = 48; paint(); });
+  h.querySelectorAll("[data-bflip]").forEach((b) => b.addEventListener("click", () => { const d = Number(b.dataset.bflip); S.bpg += d; paint(); const n = h.querySelector(".bn-spread"); if (n) n.animate([{ transform: `perspective(1400px) rotateY(${d > 0 ? 14 : -14}deg) translateX(${d > 0 ? 30 : -30}px)`, opacity: 0.3 }, { transform: "none", opacity: 1 }], { duration: 380, easing: "cubic-bezier(.2,.8,.2,1)" }); }));
+  { const sp = h.querySelector(".bn-spread"); if (sp) { let x0 = null; sp.addEventListener("pointerdown", (e) => { x0 = e.clientX; }); sp.addEventListener("pointerup", (e) => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 70) h.querySelector(`[data-bflip="${dx < 0 ? 1 : -1}"]:not([disabled])`)?.click(); }); } }
+  h.querySelectorAll(".cv-pk").forEach((c) => { c.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") return; const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height; c.style.setProperty("--rx", `${(0.5 - y) * 14}deg`); c.style.setProperty("--ry", `${(x - 0.5) * 16}deg`); c.style.setProperty("--gx", `${x * 100}%`); c.style.setProperty("--gy", `${y * 100}%`); }); c.addEventListener("pointerleave", () => { c.style.removeProperty("--rx"); c.style.removeProperty("--ry"); }); });
+  h.querySelectorAll("[data-type]").forEach((b) => b.addEventListener("click", () => { S.type = b.dataset.type; S.more = 48; S.bpg = 0; paint(); }));
+  h.querySelectorAll("[data-game]").forEach((b) => b.addEventListener("click", () => { S.game = b.dataset.game; S.set = ""; S.bpg = 0; S.more = 48; paint(); }));
+  h.querySelector("#vxSet")?.addEventListener("change", (e) => { S.set = e.target.value; S.bpg = 0; S.more = 48; paint(); });
+  h.querySelector("#vxRar")?.addEventListener("change", (e) => { S.rar = e.target.value; S.bpg = 0; S.more = 48; paint(); });
   h.querySelector("#vxSort")?.addEventListener("change", (e) => { S.sort = e.target.value; paint(); });
   h.querySelector("#vxClear")?.addEventListener("click", () => { S.game = S.set = S.rar = S.q = ""; S.type = "all"; paint(); });
   if (typedFocus) { const q = h.querySelector("#coQ"); if (q) { q.focus(); const n = q.value.length; try { q.setSelectionRange(n, n); } catch { /* ignore */ } } }
@@ -309,3 +319,5 @@ function ioSheet() {
     } catch { msg("Import failed. Nothing was added.", true); }
   });
 }
+/* arrow keys flip the binder */
+document.addEventListener("keydown", (e) => { if (!ctx || !ctx.host.isConnected || !ctx.host.querySelector(".cv-binder") || document.querySelector(".fc,ion-modal.show-modal") || /input|select|textarea/i.test(document.activeElement?.tagName || "")) return; if (e.key === "ArrowRight") ctx.host.querySelector('[data-bflip="1"]:not([disabled])')?.click(); else if (e.key === "ArrowLeft") ctx.host.querySelector('[data-bflip="-1"]:not([disabled])')?.click(); });

@@ -1,6 +1,6 @@
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=183";
-import { fly, rectOf, sleep, openCard } from "./kit.js?v=183";
-import { setOf, numOf, cardName } from "./cardmeta.js?v=183";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=184";
+import { fly, rectOf, sleep, openCard } from "./kit.js?v=184";
+import { setOf, numOf, cardName } from "./cardmeta.js?v=184";
 
 /* Spaces = his real storage, as a camera you fly through:
    area -> shelf -> bin (closed, lid flips) -> bin (open, items inside). */
