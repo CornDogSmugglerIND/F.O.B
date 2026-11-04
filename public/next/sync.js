@@ -7,7 +7,7 @@
    - Edits are detected by diffing against the last-synced shadow and get an
      updatedAt stamp at push time, so the other device's stale copy can never
      overwrite them. Removals travel as tombstones the same way. */
-import { mergeDocs } from "./syncMerge.js?v=182";
+import { mergeDocs } from "./syncMerge.js?v=183";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";

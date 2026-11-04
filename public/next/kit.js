@@ -4,8 +4,8 @@
    - fly(): shared-element move between two rects (the camera moves in Spaces)
    Nothing here knows about eBay or storage. Pages just add classes. */
 
-import { setOf, numOf, cardName, rarityOf, gameOf } from "./cardmeta.js?v=182";
-import { loadSpaces } from "./shared.js?v=182";
+import { setOf, numOf, cardName, rarityOf, gameOf } from "./cardmeta.js?v=183";
+import { loadSpaces } from "./shared.js?v=183";
 const reduce = () => false; // Reduce Motion is on for the owner, and the app animations are the point
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -259,22 +259,28 @@ function openItem(items, opts) {
     const nextBtn = phase === "staged" ? `<button type="button" class="go" data-do="build">Build the eBay listing</button>` : phase === "listed" && (it.channels?.ebay?.sku || it.sku) ? `<button type="button" class="go" data-do="edit">Edit the live listing</button>` : phase === "intake" ? `<button type="button" class="go" data-do="scouter">Identify in Scouter</button>` : "";
     v.innerHTML = `<div class="fc-bg" data-x></div>
       <div class="fc-box">
-        <div class="fc-stage"><div class="fc-zoom">${src ? `<img src="${esc(src)}" alt="" draggable="false">` : `<i class="fc-none">No photo yet</i>`}</div>
+        <div class="fc-stage it-stage"><div class="it-lock"><svg class="it-arcs" viewBox="0 0 400 400" aria-hidden="true"><circle class="a0" cx="200" cy="200" r="188"/><path class="a1" d="M60 300 A170 170 0 0 1 200 30"/><path class="a2" d="M340 100 A170 170 0 0 1 200 370"/><path class="a3" d="M70 140 A150 150 0 0 1 120 75"/></svg><i class="it-br tl"></i><i class="it-br tr"></i><i class="it-br bl"></i><i class="it-br br"></i>
+            <div class="fc-zoom it-card">${src ? `<img src="${esc(src)}" alt="" draggable="false"><span class="it-glare" aria-hidden="true"></span>` : `<i class="fc-none">No photo yet</i>`}</div></div>
           ${photos.length > 1 ? `<div class="fc-thumbs">${photos.map((p, j) => `<button type="button" class="${j === ph ? "on" : ""}" data-ph="${j}" aria-label="Photo ${j + 1}"><img src="${esc(p)}" alt=""></button>`).join("")}</div>` : ""}
-          ${src ? `<span class="fc-hint">Click the photo to zoom</span>` : ""}</div>
-        <aside class="fc-info k-zinfo">
+          ${src ? `<span class="fc-hint">Click the card to zoom · move to tilt</span>` : ""}</div>
+        <aside class="fc-info">
           <div class="fc-nav"><span>${esc(opts.backLabel || "")}${items.length > 1 ? ` · ${i + 1} of ${items.length}` : ""}</span>${items.length > 1 ? `<button type="button" data-go="-1" aria-label="Previous">‹</button><button type="button" data-go="1" aria-label="Next">›</button>` : ""}<button type="button" class="fc-x" data-x aria-label="Close">✕</button></div>
           <div class="fc-stat-line"><span class="fc-phase p-${esc(phase)}">${esc(st[0])}</span>${st[1] ? `<span class="fc-next">Next: ${esc(st[1])}</span>` : ""}</div>
           <h2>${esc(nm)}</h2>
-          <div class="fc-facts">${[["Game", gameOf(it)], ["Set", setOf(it)], ["Number", numOf(it)], ["Rarity", rarityOf(it)], ["Condition", it.condition && it.condition !== "None" ? String(it.condition) : ""]].filter(([, x]) => x).map(([l, x]) => `<span><em>${esc(l)}</em>${esc(x)}</span>`).join("")}</div>
-          <div class="fc-stats"><div class="big"><em>${o ? "Sold for" : "Price"}</em><b>${$m(price)}</b></div><div><em>You keep after eBay fees</em><b>${$m(keep)}</b></div><div class="${prof == null ? "" : prof >= 0 ? "up" : "down"}"><em>${paid != null ? "Profit" : "You paid"}</em><b>${paid != null ? `${prof >= 0 ? "+" : "−"}${$m(Math.abs(prof))}` : "Not entered"}</b></div><div><em>Quantity</em><b>${Number(it.quantity) || 1}</b></div><div class="${bin ? "" : "warn"}"><em>Bin</em><b>${esc(bin || "Not put away")}</b></div></div>
+          <div class="it-price"><b>${$m(price)}</b><span>${o ? "sold for" : "price"}${paid != null ? ` · <i class="${prof >= 0 ? "up" : "down"}">${prof >= 0 ? "+" : "−"}${$m(Math.abs(prof))} profit</i>` : ""}</span></div>
           ${nextBtn ? `<div class="fc-acts">${nextBtn}</div>` : ""}
-          <div class="fc-old">${opts.info ? opts.info(it) : ""}</div>
-          <p class="fc-listing">Listing title: ${esc(opts.name ? opts.name(it) : it.title || "")}</p>
+          <div class="it-tabs" role="tablist"><button type="button" role="tab" class="on" aria-selected="true" data-tab="ov">Overview</button><button type="button" role="tab" aria-selected="false" data-tab="more">Details &amp; actions</button></div>
+          <div class="it-pane" data-pane="ov">
+            <div class="fc-facts">${[["Game", gameOf(it)], ["Set", setOf(it)], ["Number", numOf(it)], ["Rarity", rarityOf(it)], ["Condition", it.condition && it.condition !== "None" ? String(it.condition) : ""]].filter(([, x]) => x).map(([l, x]) => `<span><em>${esc(l)}</em>${esc(x)}</span>`).join("")}</div>
+            <div class="fc-stats"><div><em>You keep after eBay fees</em><b>${$m(keep)}</b></div><div class="${prof == null ? "" : prof >= 0 ? "up" : "down"}"><em>${paid != null ? "Profit" : "You paid"}</em><b>${paid != null ? `${prof >= 0 ? "+" : "−"}${$m(Math.abs(prof))}` : "Not entered"}</b></div><div><em>Quantity</em><b>${Number(it.quantity) || 1}</b></div><div class="${bin ? "" : "warn"}"><em>Bin</em><b>${esc(bin || "Not put away")}</b></div></div>
+          </div>
+          <div class="it-pane k-zinfo" data-pane="more" hidden><div class="fc-old">${opts.info ? opts.info(it) : ""}</div><p class="fc-listing">Listing title: ${esc(opts.name ? opts.name(it) : it.title || "")}</p></div>
         </aside></div>`;
     const z = v.querySelector(".fc-zoom"), img = z.querySelector("img");
     if (img) { const move = (e) => { if (!z.classList.contains("zoomed")) return; const r = z.getBoundingClientRect(); img.style.transformOrigin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`; };
       z.addEventListener("click", (e) => { if (z.classList.toggle("zoomed")) move(e); else img.style.transformOrigin = "50% 50%"; }); z.addEventListener("pointermove", move); }
+    v.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { v.querySelectorAll("[data-tab]").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-selected", String(x === b)); }); v.querySelectorAll("[data-pane]").forEach((pn) => { pn.hidden = pn.dataset.pane !== b.dataset.tab; }); }));
+    { const lock = v.querySelector(".it-lock"), card = v.querySelector(".it-card"); if (lock && card) { lock.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse" || card.classList.contains("zoomed")) return; const r = lock.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height; card.style.setProperty("--rx", `${(0.5 - y) * 14}deg`); card.style.setProperty("--ry", `${(x - 0.5) * 16}deg`); card.style.setProperty("--gx", `${x * 100}%`); card.style.setProperty("--gy", `${y * 100}%`); }); lock.addEventListener("pointerleave", () => { card.style.removeProperty("--rx"); card.style.removeProperty("--ry"); }); } }
     v.querySelectorAll("[data-x]").forEach((b) => b.addEventListener("click", api.close));
     v.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => { i = (i + Number(b.dataset.go) + items.length) % items.length; ph = 0; paint(); }));
     v.querySelectorAll("[data-ph]").forEach((b) => b.addEventListener("click", () => { ph = Number(b.dataset.ph); paint(); }));
