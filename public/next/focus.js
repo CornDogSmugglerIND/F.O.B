@@ -1,6 +1,6 @@
 /* Card focus: the card opens BIG the moment you tap it. Click/tap the photo to zoom (follows the pointer),
    arrows or swipe for the next card, Esc or the backdrop to close. Details + actions sit beside it. */
-import { esc, money } from "./shared.js?v=185";
+import { esc, money } from "./shared.js?v=186";
 let open = null;
 export function closeFocus() { if (!open) return; const v = open; open = null; v.classList.remove("on"); document.removeEventListener("keydown", onKey, true); setTimeout(() => v.remove(), 200); }
 function onKey(e) { if (!open) return; if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeFocus(); } else if (e.key === "ArrowRight") open._go(1); else if (e.key === "ArrowLeft") open._go(-1); }

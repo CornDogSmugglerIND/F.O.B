@@ -410,3 +410,4 @@ html.fx #main .cv .bn-a{width:42px;height:42px;border-radius:12px;border:1px sol
 .cv-pk-l b{width:100%}
 .cv-shelf .cv-boxart{-webkit-box-reflect:unset!important}
 .cv .bn .bd-p.cv-pk em{opacity:1!important}html.fx #main .cv .bn .bd-p.cv-pk:not(.empty):hover{transform:none!important;box-shadow:none!important}
+.cv-pk-art{width:100%!important;max-width:none!important}.cv .bd-p.cv-pk img{width:100%!important;height:100%!important}@media (max-width:820px){.cv .bn-pg{gap:8px!important;padding:8px!important}html.fx #main .cv .bd-p.cv-pk{padding:4px!important}}
