@@ -1,6 +1,6 @@
 /* Scanner link: finished scan batches from the Mac (collage.py -> fob_push.py -> /api/identify/queue)
    land in this device's Photo inbox automatically. A scan leaves the queue once it's identified or deleted on any device. */
-import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=180";
+import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=181";
 
 let busy = false;
 export async function pullScans({ toast } = {}) {

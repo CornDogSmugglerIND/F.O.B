@@ -274,3 +274,29 @@ html.fx #main .wh-slot:hover{transform:translateY(-3px)}
 .sc-inbox .sc-qh small{flex:1 1 200px;text-align:left!important;font:500 13px "Inter",system-ui,sans-serif!important;color:#8EA89B}
 .ib-per{margin-left:0}.ib-per button{white-space:nowrap}
 .sc-inbox .sc-qh .ib-add,.sc-inbox .sc-qh .sc-qa{white-space:nowrap;margin-left:0!important}
+
+/* ===== Warehouse v2 (Build 181): the stacked shelves, dial and lid are back; upgrades sit on top ===== */
+.spx.cv .spx-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.spx.cv .spx-head .spx-crumbs{flex:1 1 auto}
+.wh-find-in{flex:0 1 320px;height:40px}
+.wh-findres{margin:6px 0 14px;padding:8px 14px;border-radius:16px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(14px);max-height:360px;overflow-y:auto}
+.wh-none{color:var(--mute);font-size:14px;padding:10px 0;margin:0}
+.spx-items.wh-case{display:block!important}
+.wh-casehead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.wh-casehead b{font-size:16px;font-weight:700}.wh-casehead .cv-search{flex:0 1 280px;height:38px}
+.wh-grp h4{display:flex;align-items:baseline;gap:8px;margin:0 2px 10px;font-size:14px;font-weight:700;color:var(--ink)}.wh-grp h4 span{font-size:12px;color:var(--dim);font-weight:600}
+.wh-tray{grid-column:1/-1;margin-top:16px;padding:14px 16px;border-radius:16px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(14px)}
+.wh-tray header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.wh-tray h3{margin:0;font-size:16px;font-weight:700}.wh-tray header>span{font-size:13px;color:var(--mute)}
+.wh-pick{font-size:13px;color:var(--acc);font-weight:600}
+.spx-hot.over{box-shadow:0 0 0 3px var(--acc),0 0 30px rgba(125,242,180,.45)!important;background:rgba(125,242,180,.12)!important}
+@media (max-width:820px){.wh-find-in{flex:1 1 100%;order:3}}
+@media (min-width:821px){
+  .spx.cv .spx-binview{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)!important;align-items:start}
+  .spx.cv .spx-binview>.spx-photo{grid-column:1;grid-row:1/span 2;position:sticky;top:8px}
+  .spx.cv .spx-binview>.spx-side{grid-column:2;grid-row:1}
+  .spx.cv .spx-binview>.spx-items{grid-column:2;grid-row:2;max-height:calc(100vh - 330px);overflow-y:auto;scrollbar-width:thin}
+  .spx.cv .spx-binview>.wh-tray{grid-column:1/-1}
+}
+.spx.cv .wh-case{padding:16px;border-radius:16px;border:1px solid rgba(0,0,0,.6);background:radial-gradient(circle at 6px 6px,rgba(255,255,255,.035) 2px,transparent 2.5px) 0 0/12px 12px,linear-gradient(180deg,#111614,#0a0e0c);box-shadow:inset 0 0 0 1px rgba(255,255,255,.04),inset 0 14px 40px rgba(0,0,0,.6)}
+.spx.cv .spx-side h3{font-size:24px;font-weight:700}.spx.cv .spx-note{font-size:14px;color:var(--mute)}
