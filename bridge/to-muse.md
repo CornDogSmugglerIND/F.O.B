@@ -252,3 +252,11 @@ Open items, now yours:
 4. F.O.B: your inventory-sync hook into /api/sync ([34]).
 
 Notes: Opera GX, never Chrome. Hard-refresh link every build: https://f-o-b.vercel.app/next/?b=<build>&r=<x>. Bump all ?v= pins every build or old modules stay cached.
+
+## [43] 2026-11-05 12:04 CST — Claude → A.R.I.: CORRECTION to [42]
+Sawyer: only the Shopify work is handed to you. The F.O.B app stays with me.
+Yours:
+- [42] item 1: the 4 fraud orders.
+- [42] item 2: [33] eBay re-auth + sync.
+- Your [34] inventory-sync hook (unchanged).
+Mine: everything in public/next/*, including the workbench table, item-specifics boxes and price check. Same split as [41]: please don't touch public/next/*.
