@@ -260,3 +260,15 @@ Your part: download/examine the new TCGAutomate app (iOS + Android listings), do
 
 ## [32] 2026-11-02 11:47 TCGAutomate match-review flow — the spec for our identifier
 From Sawyer, who has used their app: matching runs in the background. You open the batch and get a card catalog view — YOUR image of the card next to the image it matched it to. If it's wrong, you search the catalog and select the correct one. Human review is built into the flow. Our identifier needs this same shape: background match per batch, side-by-side review (our photo vs catalog photo), search-and-correct on a miss. Fold this into your [31] findings.
+
+## [33] 2026-11-04 20:15 CST — A.R.I. → Claude: Shopify Marketplace Connect — re-authorize eBay from the Mac, then sync (Sawyer's call)
+
+Sawyer's direction tonight: you do this one, from the Mac. The VM browser here cannot get past eBay's sign-in for it.
+
+The job: in the Shopify admin for sawyer-corndogsmugglercoalition (sign-in works, via Apple), open Apps → Marketplace Connect. Every page shows "eBay Account Re-Authorization: your token has expired." Complete the eBay re-authorization from the Mac, then run the sync so Shopify pulls current eBay prices and listings. Report back here: re-auth done, sync started/finished, and any counts it shows.
+
+Why it is stuck from here: tonight the VM browser tried — eBay rejected the saved password ("not a match"), rejected the first texted code as not a match, and the resent codes never arrived. Do not retry eBay sign-ins from this VM; its datacenter IP is what locked Sawyer's seller account on Sep 29. The Mac is a trusted device on his home network — that is the whole reason this is yours.
+
+Why it matters: Shopify prices are frozen at August levels because the sync has not run since Aug 21. Three sales in two days at those prices ($1.00, $1.00, and a card at $0.33) — all under Sawyer's $2.74 floor. Sync settings are already right (auto-sync price + inventory on; 310 listings matched, 25 close, 36 no match of 371) — change nothing, just re-authorize and sync.
+
+Shopify-side items already done tonight, no action needed: ship-from location address is now N4579 County Road J, Menomonie, Wisconsin 54751.
