@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 /** Device sync store — phone <-> desktop for the /next app.
  * One private Blob doc: coalition/device-sync.json
  *   { items: [], spaces: [], removedItems: [{id, at}], removedSpaces: [{id, at}], updatedAt }
@@ -70,11 +71,28 @@ async function writeDoc(doc) {
   await put(PATH, JSON.stringify(doc), { access: "private", addRandomSuffix: false, allowOverwrite: true, contentType: "application/json", token: t });
 }
 
+/* Fingerprint of a stored doc: lets a device skip the 2 MB download when nothing changed (Nov 6: the full doc
+   every 5 min per open tab is what blew through the Vercel free tier). */
+const stampAt = (r) => String(r?.updatedAt || r?.createdAt || "");
+const tagOf = (doc) => '"' + createHash("sha1").update(JSON.stringify(doc)).digest("base64url") + '"';
+/* true when the merged doc holds anything the device didn't send (a newer record, or one it doesn't have) */
+function hasNews(merged, body) {
+  for (const k of ["items", "spaces"]) {
+    const mine = new Map((body[k] || []).map((r) => [String(r.id), stampAt(r)]));
+    for (const r of merged[k] || []) if (mine.get(String(r.id)) !== stampAt(r)) return true;
+    if ((merged[k] || []).length !== mine.size) return true;
+  }
+  return false;
+}
+
 export function deviceSyncRouter() {
   const r = Router();
-  r.get("/", async (_req, res) => {
+  r.get("/", async (req, res) => {
     const doc = await readDoc();
     if (!doc) return res.status(503).json({ ok: false, error: "Durable storage isn't attached." });
+    const tag = tagOf(doc);
+    res.set({ ETag: tag, "Cache-Control": "no-cache" });
+    if (req.get("if-none-match") === tag) return res.status(304).end();
     res.json({ ok: true, doc });
   });
   r.put("/", async (req, res) => {
@@ -84,7 +102,10 @@ export function deviceSyncRouter() {
     if (!stored) return res.status(503).json({ ok: false, error: "Durable storage isn't attached." });
     const merged = mergeDocs(stored, body);
     await writeDoc(merged);
-    res.json({ ok: true, doc: merged });
+    const tag = tagOf(merged);
+    res.set("ETag", tag);
+    /* only send the doc back when the server had something this device didn't */
+    res.json(hasNews(merged, body) ? { ok: true, tag, doc: merged } : { ok: true, tag });
   });
   return r;
 }

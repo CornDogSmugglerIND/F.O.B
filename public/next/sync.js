@@ -7,7 +7,7 @@
    - Edits are detected by diffing against the last-synced shadow and get an
      updatedAt stamp at push time, so the other device's stale copy can never
      overwrite them. Removals travel as tombstones the same way. */
-import { mergeDocs } from "./syncMerge.js?v=188";
+import { mergeDocs } from "./syncMerge.js?v=189";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_SPACES = "coalition-spaces-v4";
@@ -66,7 +66,7 @@ function outgoing() {
   return { items: items.list, spaces: spaces.list, removedItems: fresh(items.list, sh.items, sh.tombItems), removedSpaces: fresh(spaces.list, sh.spaces, sh.tombSpaces), updatedAt: at };
 }
 
-let timer = null, pushing = false, again = false, onMerged = null, lastSent = "", lastPull = 0;
+let timer = null, pushing = false, again = false, onMerged = null, lastSent = "", lastPull = 0, tag = "";
 async function push() {
   if (pushing) { again = true; return; }
   pushing = true;
@@ -75,7 +75,7 @@ async function push() {
     if (sig === lastSent) { pushing = false; return; } // nothing changed since the last push: no storage write
     const r = await fetch("/api/sync", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(out) });
     if (r.ok) lastSent = sig;
-    if (r.ok) { const d = await r.json(); if (d.doc) { const changed = applyDoc(d.doc); if (changed && onMerged) onMerged(); } }
+    if (r.ok) { const d = await r.json(); if (d.tag) tag = d.tag; if (d.doc) { const changed = applyDoc(d.doc); if (changed && onMerged) onMerged(); } }
   } catch { /* offline or no backend: local cache keeps working */ }
   pushing = false;
   if (again) { again = false; schedule(); }
@@ -100,8 +100,10 @@ async function pull(boot) {
   lastPull = Date.now();
   {
     try {
-      const r = await fetch("/api/sync");
+      /* send the last fingerprint: the server answers 304 (no body) when nothing changed */
+      const r = await fetch("/api/sync", { cache: "no-store", headers: tag ? { "If-None-Match": tag } : {} });
       if (r.ok) {
+        tag = r.headers.get("ETag") || tag;
         const d = await r.json();
         if (d.doc && ((d.doc.items || []).length || (d.doc.spaces || []).length || (d.doc.removedItems || []).length)) {
           const sh = read(SHADOW, { items: {}, spaces: {}, tombItems: [], tombSpaces: [] }), cur = local(), at = new Date().toISOString();
