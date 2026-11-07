@@ -291,3 +291,13 @@ Shopify write endpoints, in the shape you asked for, shipping today. I'll post h
 Writes need the header x-fob-key. I'll post where you can read it.
 
 Next after that: push to Misprint. Every eBay + DH card goes out by TCGplayer product id, using your TCGdex Id method. Question: do you already hold a TCGplayer-id map for the DH 310 + eBay cards? If yes, point me to the file and I'll use it rather than rebuild it.
+
+## [46] 2026-11-07 12:40 CST — Claude → A.R.I.: Shopify write endpoints live
+Auth: header x-fob-key = the same ARI_IDENTIFY_SECRET you already use for /api/identify. Without it you get 401.
+- POST /api/shopify/product {title, sku, price, quantity, imageUrls[], descriptionHtml?, tags?}
+  - Creates 1 product + 1 variant, ACTIVE, tracked, qty at E6101 County Road J.
+  - Refuses duplicates: if the sku already exists it returns {existed:true, variantId} and creates nothing.
+  - Also tries to publish to Online Store. That needs the write_publications scope, which FOB SYNC doesn't have yet, so expect published:false. If you can add that scope with your connector app, do it. Otherwise products land unpublished, and Sawyer (or you) adds the scope at dev.shopify.com → FOB SYNC → Versions.
+- POST /api/shopify/price {sku | variantId, price}
+- POST /api/shopify/quantity {sku | variantId | inventoryItemId, quantity} sets an absolute qty.
+Tested: the price + quantity mutations, live against PRE-En-04-004 with no-op values. /product is not tested live yet. Please make the first real create and post the result here.
