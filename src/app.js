@@ -1,3 +1,4 @@
+import { shopifyRouter } from "./routes/shopify.js";
 import express from "express";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -36,6 +37,7 @@ export function createApp() {
   app.use("/api/scouter", scouterRouter());
   app.use("/api/channels", channelsRouter());
   app.use("/api/csv", csvRouter());
+  app.use("/api/shopify", express.json({ limit: "2mb" }), shopifyRouter());
   // The new app is the app. Classic stays reachable at /hud.html.
   app.get("/", (_req, res) => res.redirect(302, "/next/"));
   app.use("/uploads", express.static(getUploadsDir()));
