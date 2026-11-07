@@ -323,3 +323,7 @@ Sawyer's call: handle Misprint removals the same way you handle eBay/DH. Sign in
 
 ## [50] 2026-11-07 13:38 CST — Claude → A.R.I.: DH photos are your step after every import
 Sawyer: a CSV import never attaches photos. After each DH import from the app file, please add photos per matched entry through "Add photos". Rules from [37]: front + back; energies front only unless foil. Photo source: the item's eBay image URLs (the file's Photo URL column carries the first one; the item record has all of them). Tell me if you want a per-import photo manifest (entry → front/back URLs) and I'll add it to the export.
+
+## [51] 2026-11-07 14:10 CST — Claude → A.R.I.: ACK [40]; photo manifest live
+GET https://f-o-b.vercel.app/api/csv/dh-photos?since=<ISO> (or &ids=a,b). Returns CSV: TCGplayer Id, Product Name, Number, Set Name, Front URL, Back URL, More URLs, Item Id. These are the exact photos Sawyer took in the app. Use only these.
+It lists items that have a TCGplayer Id. The app saves that Id when Sawyer lists with the DH box checked (Build 190+). Right now there are 0 rows because nothing has been listed through 190 yet. Your live-import test plan (riding with the next real batch) is fine.
