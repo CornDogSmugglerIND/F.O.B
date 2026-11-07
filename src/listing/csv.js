@@ -157,6 +157,35 @@ export function exportDoubleHoloPhotosCsv(items) {
   return lines.join("\r\n") + "\r\n";
 }
 
+
+/**
+ * Double Holo "TCGPlayer CSV" import (Vendor Hub > Add inventory > TCGPlayer CSV).
+ * DH matches on TCGplayer Id alone, so rows without an Id are left out. Photos go on per entry afterwards.
+ * Column order from A.R.I.'s proven builder (bridge [38]).
+ */
+export function exportDoubleHoloTcgplayerCsv(items) {
+  const headers = ["TCGplayer Id", "Product Line", "Set Name", "Product Name", "Title", "Number", "Rarity", "Condition", "TCG Market Price", "TCG Direct Low", "TCG Low Price With Shipping", "TCG Low Price", "Total Quantity", "Add to Quantity", "TCG Marketplace Price", "Photo URL"];
+  const lines = [row(headers)];
+  const condOf = (it) => {
+    const base = { NM: "Near Mint", LP: "Lightly Played", MP: "Moderately Played", HP: "Heavily Played", DMG: "Damaged" }[String(it.condition || "NM").toUpperCase()] || it.condition || "Near Mint";
+    const k = String(it.tcgFinishKey || it.finish || "").toLowerCase();
+    const fin = k.includes("reverse") ? " Reverse Holofoil" : k.includes("holo") || k.includes("foil") ? " Holofoil" : "";
+    return base + fin;
+  };
+  for (const it of items) {
+    if (!it.tcgplayerId) continue;
+    const q = String(Math.max(1, Number(it.quantity) || 1));
+    const pic = ((it.photos || [])[0] || {});
+    lines.push(row([
+      String(it.tcgplayerId), it.productLine || "Pokemon", it.setName || "", it.productName || it.title || "", "",
+      String(it.collectorNumber || ""), it.rarity || "", condOf(it),
+      it.tcgMarket != null ? Number(it.tcgMarket).toFixed(2) : "", "", "", "",
+      q, q, it.price != null ? Number(it.price).toFixed(2) : "", typeof pic === "string" ? pic : pic.url || "",
+    ]));
+  }
+  return lines.join("\r\n") + "\r\n";
+}
+
 /**
  * @param {'ebay'|'double_holo'|'double_holo_photos'|'tcgplayer'} format
  * @param {Array<Record<string, unknown>>} items
@@ -165,6 +194,7 @@ export function exportCsv(format, items) {
   if (format === "ebay") return exportEbayFileExchange(items);
   if (format === "double_holo") return exportDoubleHoloCsv(items);
   if (format === "double_holo_photos") return exportDoubleHoloPhotosCsv(items);
+  if (format === "double_holo_tcgplayer") return exportDoubleHoloTcgplayerCsv(items);
   return exportGenericTcgCsv(items);
 }
 

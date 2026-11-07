@@ -275,3 +275,27 @@ export async function soldComps(info = {}, { request = browseRequest } = {}) {
   if (prices.length < 2) return { ok: false, reason: "not enough sold listings", count: prices.length };
   return { ok: true, value: medianPrice(prices), count: prices.length, basis: "eBay sold (median)" };
 }
+
+/** TCGplayer product id for a Pokémon card + finish, from TCGdex (pricing.tcgplayer[finish].productId).
+    Each finish is its own TCGplayer product. Returns {productId, finishKey, setName, name, number, market} or null. */
+export async function tcgplayerProductFor({ name, number, set, finish }, fetchImpl) {
+  if (!number || !set) return null;
+  const sets = await getJ(`${TCGDEX}/sets?name=${encodeURIComponent(set)}`, fetchImpl).catch(() => []);
+  const ns = norm(set);
+  const ranked = (Array.isArray(sets) ? sets : []).sort((a, b) => (norm(b.name) === ns) - (norm(a.name) === ns));
+  for (const st of ranked.slice(0, 3)) {
+    for (const f of numberForms(number)) {
+      const card = await getJ(`${TCGDEX}/cards/${encodeURIComponent(st.id)}-${encodeURIComponent(f)}`, fetchImpl).catch(() => null);
+      if (!card || !card.name) continue;
+      if (name && !norm(card.name).includes(norm(name).split(" ")[0])) continue;
+      const tp = card.pricing?.tcgplayer || {};
+      const fz = norm(finish);
+      const want = fz.includes("reverse") ? ["reverse-holofoil", "reverseHolofoil"] : fz.includes("holo") || fz.includes("foil") ? ["holofoil", "1st-edition-holofoil"] : ["normal", "unlimited", "holofoil"];
+      const keys = [...want, ...Object.keys(tp)].filter((k) => tp[k] && tp[k].productId);
+      const k = keys[0];
+      if (!k) return null;
+      return { productId: Number(tp[k].productId), finishKey: k, setName: card.set?.name || st.name, name: card.name, number: card.localId, market: tp[k].marketPrice ?? null };
+    }
+  }
+  return null;
+}

@@ -334,11 +334,6 @@ export function channelsRouter() {
     await Promise.all([lane(), lane(), lane(), lane()]);
     res.json({ ok: true, pushed: results.filter((r) => r.ok).length, failed: results.filter((r) => !r.ok).length, results });
   });
-  /** Read-only: what TCGdex returns for one card (to find the TCGplayer product id field). */
-  router.get("/tcgdex-probe", async (req, res) => {
-    try { const r = await fetch(`https://api.tcgdex.net/v2/en/cards/${encodeURIComponent(String(req.query.id || ""))}`); const c = await r.json(); res.json({ name: c.name, localId: c.localId, set: c.set?.name, variants: c.variants, thirdParty: c.thirdParty, pricing: c.pricing?.tcgplayer, keys: Object.keys(c || {}) }); }
-    catch (e) { res.status(502).json({ ok: false, error: e.message }); }
-  });
   /** In-app eBay policy pickers: current values + the account's real policies. */
   router.get("/ebay/settings", async (_req, res) => {
     let policies = { fulfillment: [], payment: [], returns: [] };

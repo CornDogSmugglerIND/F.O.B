@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { importCsv, exportCsv } from "../listing/csv.js";
 import { listScoutItems } from "../store.js";
+import { tcgplayerProductFor } from "../comps.js";
 
-const EXPORT_SOURCES = ["double_holo_photos", "ebay", "double_holo", "generic", "tcgplayer"];
+const EXPORT_SOURCES = ["double_holo_tcgplayer", "double_holo_photos", "ebay", "double_holo", "generic", "tcgplayer"];
 const IMPORT_SOURCES = ["ebay", "double_holo", "misprint", "seller_fb"];
 
 export function csvRouter() {
@@ -78,6 +79,17 @@ export function csvRouter() {
       }
       const items = Array.isArray(req.body && req.body.items) ? req.body.items : [];
       if (!items.length) return res.status(400).json({ ok: false, error: "No items to export", code: "VALIDATION" });
+      if (source === "double_holo_tcgplayer") {
+        /* fill missing TCGplayer Ids (one product per finish) from TCGdex; report back so the app can keep them */
+        const found = {};
+        await Promise.all(items.slice(0, 60).map(async (it) => {
+          if (it.tcgplayerId) return;
+          const hit = await tcgplayerProductFor({ name: it.productName || it.name, number: it.collectorNumber || it.number, set: it.setName || it.set, finish: it.finish }).catch(() => null);
+          if (hit) { it.tcgplayerId = hit.productId; it.tcgFinishKey = hit.finishKey; if (it.tcgMarket == null) it.tcgMarket = hit.market; found[it.id || it.sku || hit.productId] = hit.productId; }
+        }));
+        res.setHeader("X-TCGP-Ids", encodeURIComponent(JSON.stringify(found)));
+        res.setHeader("X-DH-Missing", String(items.filter((it) => !it.tcgplayerId).length));
+      }
       const csv = exportCsv(source === "generic" ? "tcgplayer" : source, items);
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
       res.send(csv);

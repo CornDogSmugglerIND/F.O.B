@@ -1,8 +1,8 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=189";
-import { photoManager } from "./photos.js?v=189";
-import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=189";
-import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=189";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=189";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=190";
+import { photoManager } from "./photos.js?v=190";
+import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=190";
+import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=190";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=190";
 
 let ctx = null;
 const S = { f: { when: "", game: "", bin: "", price: "", type: "" }, groupBy: "set", shut: new Set(), stage: "listed", view: (() => { try { return localStorage.getItem("fob-ch-view2") || "rows"; } catch { return "rows"; } })(), group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
@@ -626,7 +626,7 @@ function buildSheet(it) {
     <div class="sc-f"><span>Offers</span><div class="bl-off"><label><input type="checkbox" id="blOffer" checked> Accept offers</label><label class="bl-offp">Auto-decline under <input id="blOfferPct" inputmode="numeric" value="${(() => { try { return localStorage.getItem("fob-offer-pct") || "80"; } catch { return "80"; } })()}">% of price</label></div></div>
     <div class="sc-f"><span>Shipping, returns and payment</span><div id="blPol" class="sub">Loading your eBay policies…</div></div>
     <div class="bl-var sub">Several cards from one set? <button type="button" class="bl-mini" id="blVar">List them as one listing, buyers pick</button></div>
-    <label class="sc-f" style="flex-direction:row;gap:10px;align-items:center"><input type="checkbox" id="blDH" checked><span>Also download the Double Holo files (cards + photos) after listing</span></label>
+    <label class="sc-f" style="flex-direction:row;gap:10px;align-items:center"><input type="checkbox" id="blDH" checked><span>Also download the Double Holo file after listing</span></label>
     <div id="blMsg" class="sub bl-msg" role="status">Nothing goes live until you tap List on eBay twice.</div>
     <div class="co-znav bl-act"><button class="btn" id="blSave" type="button">Save draft</button><button class="btn go" id="blGo" type="button">List on eBay</button></div>`);
   let dlN = 0; const aspRow = (k = "", v = "", vals = [], req = false) => { const dl = vals.length ? `bl-dl-${++dlN}` : ""; return `<div class="bl-ar${req ? " req" : ""}${v ? "" : " blank"}" style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" aria-label="Item specific name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="${req ? "Required" : "Optional"}" aria-label="${esc(k || "Item specific")} value" style="flex:1;min-width:0"${dl ? ` list="${dl}"` : ""}>${dl ? `<datalist id="${dl}">${vals.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>` : ""}<button class="btn" data-rm type="button" aria-label="Remove this item specific" style="flex:none;padding:6px 12px">×</button></div>`; };
@@ -732,11 +732,14 @@ function buildSheet(it) {
     const wantDH = $("#blDH").checked, dhItem = Object.assign({}, it, f, { id: it.id });
     ctx.closeSheet(); S.stage = "listed"; paint(); ctx.rerender?.(); ctx.toast("Listed on eBay. Next: put it away in its bin.");
     if (wantDH) {
-      const dl = async (source, items, name) => { try { const r = await fetch("/api/csv/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source, items: items.map((x) => Object.assign({}, x, { photos: (x.photos || []).map((p) => ({ url: p.url || p.dataUrl || "" })).filter((p) => /^https?:/.test(p.url)) })) }) }); if (!r.ok) return false; const u = URL.createObjectURL(await r.blob()), a = document.createElement("a"); a.href = u; a.download = `${name}-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); return true; } catch { return false; } };
-      const ok1 = await dl("double_holo", [dhItem], "double-holo-cards");
-      await new Promise((r) => setTimeout(r, 700));
-      const ok2 = (out.imageUrls || []).length ? await dl("double_holo_photos", [Object.assign({}, dhItem, { picUrls: out.imageUrls })], "double-holo-photos") : false;
-      ctx.toast(ok1 && ok2 ? "Double Holo files downloaded: upload the cards file, then the photos file." : ok1 ? "Cards file downloaded. Photos file couldn't be made." : "Couldn't make the Double Holo files.");
+      /* one file: Double Holo "TCGPlayer CSV" import, matched on TCGplayer Id (bridge [38]). Photos go on per card in DH afterwards. */
+      try {
+        const r = await fetch("/api/csv/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ source: "double_holo_tcgplayer", items: [Object.assign({}, dhItem, { photos: (out.imageUrls || []).map((u) => ({ url: u })) })] }) });
+        const missing = Number(r.headers.get("X-DH-Missing") || 0);
+        try { const ids = JSON.parse(decodeURIComponent(r.headers.get("X-TCGP-Ids") || "%7B%7D")); const pid = ids[it.id]; if (pid) patchItem(it.id, (i) => { i.tcgplayerId = pid; }); } catch { /* ignore */ }
+        if (!r.ok || missing) { ctx.toast("Couldn't find this card's TCGplayer ID, so no Double Holo file. Add it on Double Holo by hand."); }
+        else { const u = URL.createObjectURL(await r.blob()), a = document.createElement("a"); a.href = u; a.download = `double-holo-tcgplayer-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); ctx.toast("Double Holo file downloaded. In Vendor Hub: Add inventory → TCGPlayer CSV. Then add photos on the card."); }
+      } catch { ctx.toast("Couldn't make the Double Holo file."); }
     }
   });
 }
