@@ -138,7 +138,8 @@ export async function setShopifyQuantity({ quantity, ...ref }, fetchImpl = fetch
   const v = await findShopifyVariant(ref, fetchImpl);
   if (!v) throw Object.assign(new Error("variant not found"), { status: 404 });
   const loc = await shopifyLocationId(fetchImpl);
-  const d = await shopifyGql(`mutation($input:InventorySetQuantitiesInput!){ inventorySetQuantities(input:$input){ inventoryAdjustmentGroup{ id } userErrors{ field message } } }`, {
+  const d = await shopifyGql(`mutation($input:InventorySetQuantitiesInput!,$key:String!){ inventorySetQuantities(input:$input) @idempotent(key:$key) { inventoryAdjustmentGroup{ id } userErrors{ field message } } }`, {
+    key: `fob-${v.inventoryItem.id.split("/").pop()}-${q}-${Date.now()}`,
     input: { name: "available", reason: "correction", referenceDocumentUri: "fob://sync", quantities: [{ inventoryItemId: v.inventoryItem.id, locationId: loc, quantity: q, changeFromQuantity: null }] },
   }, fetchImpl);
   userErr(d.inventorySetQuantities.userErrors);
