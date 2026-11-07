@@ -2,6 +2,7 @@ import { Router } from "express";
 import { importCsv, exportCsv } from "../listing/csv.js";
 import { listScoutItems } from "../store.js";
 import { tcgplayerProductFor } from "../comps.js";
+import { readDoc } from "./deviceSync.js";
 
 const EXPORT_SOURCES = ["double_holo_tcgplayer", "double_holo_photos", "ebay", "double_holo", "generic", "tcgplayer"];
 const IMPORT_SOURCES = ["ebay", "double_holo", "misprint", "seller_fb"];
@@ -96,6 +97,29 @@ export function csvRouter() {
     } catch (err) {
       next(err);
     }
+  });
+
+  /**
+   * DH photo manifest for A.R.I. (bridge [50]): one row per card that has a TCGplayer Id,
+   * with the exact photos Sawyer took, so "Add photos" on each DH entry uses those and nothing else.
+   * Query: ?since=ISO (default: last 7 days) &ids=a,b (optional)
+   */
+  router.get("/dh-photos", async (req, res) => {
+    const doc = await readDoc().catch(() => null);
+    if (!doc) return res.status(503).json({ ok: false, error: "store unavailable" });
+    const since = Date.parse(String(req.query.since || "")) || Date.now() - 7 * 864e5;
+    const ids = new Set(String(req.query.ids || "").split(",").map((s) => s.trim()).filter(Boolean));
+    const urlOf = (p) => (typeof p === "string" ? p : p?.url || p?.dataUrl || "");
+    const rows = (doc.items || []).filter((it) => it.tcgplayerId && (ids.size ? ids.has(String(it.id)) : Date.parse(it.updatedAt || it.createdAt || 0) >= since));
+    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [["TCGplayer Id", "Product Name", "Number", "Set Name", "Front URL", "Back URL", "More URLs", "Item Id"].map(esc).join(",")];
+    for (const it of rows) {
+      const ps = (it.photos || []).map(urlOf).filter((u) => /^https:\/\//.test(u));
+      lines.push([it.tcgplayerId, it.productName || it.title, it.collectorNumber || "", it.setName || "", ps[0] || "", ps[1] || "", ps.slice(2).join(" "), it.id].map(esc).join(","));
+    }
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("X-Rows", String(rows.length));
+    res.send(lines.join("\r\n") + "\r\n");
   });
 
   return router;

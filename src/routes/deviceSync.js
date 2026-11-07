@@ -54,7 +54,7 @@ export function mergeDocs(base, incoming) {
   return doc;
 }
 
-async function readDoc() {
+export async function readDoc() {
   const t = token();
   if (!t) return null;
   try {
