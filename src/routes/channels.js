@@ -321,6 +321,19 @@ export function channelsRouter() {
       res.status(502).json({ ok: false, error: e.message, details: e.details, log });
     }
   });
+  /** Batch push to Misprint (A.R.I. / master inventory). POST upserts by product_id + variant,
+      so re-pushing a card updates its price/qty instead of duplicating. Auth: x-fob-key. */
+  router.post("/misprint/push", async (req, res) => {
+    const k = process.env.ARI_IDENTIFY_SECRET || "";
+    if (!k || req.get("x-fob-key") !== k) return res.status(401).json({ ok: false, error: "x-fob-key required" });
+    const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, 100) : [];
+    const dryRun = Boolean(req.body?.dryRun);
+    const results = [];
+    let i = 0;
+    const lane = async () => { while (i < items.length) { const it = items[i++]; try { const r = await publishMisprintListing(it, { confirmed: true, dryRun }); results.push({ ref: it.ref || it.sku || it.tcgplayerId, ok: true, listingId: r.listingId || null, body: dryRun ? r.body : undefined }); } catch (e) { results.push({ ref: it.ref || it.sku || it.tcgplayerId, ok: false, code: e.details?.code || e.code, error: e.message }); } } };
+    await Promise.all([lane(), lane(), lane(), lane()]);
+    res.json({ ok: true, pushed: results.filter((r) => r.ok).length, failed: results.filter((r) => !r.ok).length, results });
+  });
   /** In-app eBay policy pickers: current values + the account's real policies. */
   router.get("/ebay/settings", async (_req, res) => {
     let policies = { fulfillment: [], payment: [], returns: [] };
