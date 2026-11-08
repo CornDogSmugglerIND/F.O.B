@@ -1,0 +1,43 @@
+<div class="pg">
+  <section class="pn st">
+    <div class="st-main">
+      <span class="st-k">Search</span>
+      <h1 class="st-h">{% if search.performed %}{{ search.terms | escape }}{% else %}Find a card{% endif %}</h1>
+      {%- if search.performed -%}<span class="st-sub"><b>{{ search.results_count }}</b> {% if search.results_count == 1 %}result{% else %}results{% endif %}</span>{%- endif -%}
+    </div>
+  </section>
+  <div class="tools">
+    <form class="srch srch--big" action="{{ routes.search_url }}" method="get" role="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <input type="search" name="q" value="{{ search.terms | escape }}" placeholder="Card name, set, number or game" aria-label="Search the store" autofocus>
+      <input type="hidden" name="type" value="product">
+      <button class="fx-btn" type="submit">Search</button>
+    </form>
+  </div>
+  {%- paginate search.results by 48 -%}
+  <div class="lay">
+    <section class="pn grid-pn">
+      {%- if search.performed and search.results_count > 0 -%}
+        <div class="fgrid">
+          {%- for p in search.results -%}{%- if p.object_type == 'product' -%}{%- render 'fob-card', p: p -%}{%- endif -%}{%- endfor -%}
+        </div>
+        {%- if paginate.pages > 1 -%}
+          <nav class="pager" aria-label="Pages">
+            {%- if paginate.previous -%}<a class="pill" href="{{ paginate.previous.url }}">‹ Previous</a>{%- endif -%}
+            <span class="pill is-on">{{ paginate.current_page }} / {{ paginate.pages }}</span>
+            {%- if paginate.next -%}<a class="pill" href="{{ paginate.next.url }}">Next ›</a>{%- endif -%}
+          </nav>
+        {%- endif -%}
+      {%- elsif search.performed -%}
+        <p class="empty">No cards match "{{ search.terms | escape }}". Try the card name or set, or <a href="{{ routes.all_products_collection_url }}">browse everything</a>.</p>
+      {%- else -%}
+        <p class="empty">Type a card name, set or number above.</p>
+      {%- endif -%}
+    </section>
+    <aside class="pn insp" data-insp aria-live="polite"><div class="insp-empty">Point at a card to see it here. Click to open it.</div></aside>
+  </div>
+  {%- endpaginate -%}
+</div>
+{% schema %}
+{ "name": "F.O.B. search", "settings": [] }
+{% endschema %}

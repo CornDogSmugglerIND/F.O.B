@@ -1,0 +1,76 @@
+{%- liquid
+  assign total = collections.all.products_count
+  assign cart_n = cart.item_count
+-%}
+<div class="hb" data-hb>
+  <div class="hb-in">
+    <a class="hb-logo" href="{{ routes.root_url }}" aria-label="{{ shop.name }} home">
+      <img src="{{ 'fob-glyph.png' | asset_url }}" alt="" class="hb-glyph" width="160" height="103">
+      <img src="{{ 'fob-wm-text.png' | asset_url }}" alt="CornDogSmuggler Coalition." class="hb-wm" width="520" height="110">
+    </a>
+    <div class="hb-stats" aria-hidden="false">
+      <div class="hb-s"><b>{{ total }}</b><span>In stock</span></div>
+      <div class="hb-s hb-s--txt"><b>Veteran</b><span>owned and operated</span></div>
+      <div class="hb-s hb-s--txt"><b>Top Rated</b><span>Seller on eBay</span></div>
+    </div>
+    <form class="hb-search" action="{{ routes.search_url }}" method="get" role="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <input type="search" name="q" placeholder="Search card, set or number" aria-label="Search the store" value="{{ search.terms | escape }}">
+      <input type="hidden" name="type" value="product">
+    </form>
+    <div class="hb-acts">
+      <a class="hb-ic" href="{{ routes.account_url }}" aria-label="Account"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></a>
+      <a class="hb-ic hb-cart" href="{{ routes.cart_url }}" aria-label="Cart, {{ cart_n }} items"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>{%- if cart_n > 0 -%}<i data-cart-n>{{ cart_n }}</i>{%- endif -%}</a>
+    </div>
+  </div>
+  <div class="hb-rail" aria-hidden="true"></div>
+  <nav class="hb-nav" aria-label="Games">
+    <a href="{{ routes.all_products_collection_url }}" class="pill{% if collection.handle == 'all' %} is-on{% endif %}">All <em>{{ total }}</em></a>
+    {%- for link in linklists[section.settings.menu].links -%}
+      {%- assign lc = link.object -%}
+      {%- if link.type == 'collection_link' and lc.products_count > 0 -%}
+        <a href="{{ link.url }}" class="pill{% if link.active or link.child_active %} is-on{% endif %}">{{ link.title }} <em>{{ lc.products_count }}</em></a>
+      {%- endif -%}
+      {%- for sub in link.links -%}
+        {%- if link.type != 'collection_link' and sub.object.products_count > 0 -%}
+          <a href="{{ sub.url }}" class="pill{% if sub.active %} is-on{% endif %}">{{ sub.title }} <em>{{ sub.object.products_count }}</em></a>
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endfor -%}
+  </nav>
+</div>
+
+{%- comment -%} Phone dock, same as the app's bottom bar {%- endcomment -%}
+<nav class="dock" aria-label="Store">
+  <div class="dock-rail" aria-hidden="true"></div>
+  <a href="{{ routes.root_url }}" class="dk-i{% if template.name == 'index' %} is-on{% endif %}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span>Home</span></a>
+  <a href="{{ routes.all_products_collection_url }}" class="dk-i{% if template.name == 'collection' %} is-on{% endif %}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="11" height="15" rx="2"/><path d="M19 7v12a2 2 0 0 1-2 2H9"/></svg><span>Shop</span></a>
+  <a href="{{ routes.search_url }}" class="dk-c{% if template.name == 'search' %} is-on{% endif %}" aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="11.5" cy="11.5" r="3.5"/><path d="M14 14l2.5 2.5"/></svg><span>Search</span></a>
+  <button type="button" class="dk-i" data-games-open><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span>Games</span></button>
+  <a href="{{ routes.cart_url }}" class="dk-i{% if template.name == 'cart' %} is-on{% endif %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Cart{% if cart_n > 0 %} <b data-cart-n>{{ cart_n }}</b>{% endif %}</span></a>
+</nav>
+<div class="sheet" data-games hidden>
+  <div class="sheet-bg" data-games-close></div>
+  <div class="sheet-card" role="dialog" aria-label="Games">
+    <div class="sheet-h"><b>Shop by game</b><button type="button" class="sheet-x" data-games-close aria-label="Close">×</button></div>
+    <div class="sheet-list">
+      {%- for link in linklists[section.settings.menu].links -%}
+        {%- if link.type == 'collection_link' and link.object.products_count > 0 -%}
+          <a href="{{ link.url }}">{{ link.title }}<em>{{ link.object.products_count }}</em></a>
+        {%- endif -%}
+        {%- for sub in link.links -%}
+          {%- if sub.object.products_count > 0 -%}<a href="{{ sub.url }}">{% if link.type == 'collection_link' %}{{ link.title }} · {% endif %}{{ sub.title }}<em>{{ sub.object.products_count }}</em></a>{%- endif -%}
+        {%- endfor -%}
+      {%- endfor -%}
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "F.O.B. header",
+  "settings": [
+    { "type": "link_list", "id": "menu", "label": "Games menu", "default": "main-menu" }
+  ]
+}
+{% endschema %}

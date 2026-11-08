@@ -1,0 +1,73 @@
+{%- liquid
+  assign c = collection
+  assign sort = c.sort_by | default: c.default_sort_by
+-%}
+{%- paginate c.products by 48 -%}
+<div class="pg">
+  <section class="pn st">
+    <div class="st-main">
+      <span class="st-k">{% if c.handle == 'all' %}Everything in the case{% else %}Collection{% endif %}</span>
+      <h1 class="st-h">{% if c.handle == 'all' %}All cards{% else %}{{ c.title }}{% endif %}</h1>
+      <span class="st-sub"><b>{{ c.products_count }}</b> in stock</span>
+    </div>
+    <div class="st-tabs">
+      {%- assign tabs = section.settings.tabs | split: ',' -%}
+      {%- for t in tabs -%}
+        {%- assign kv = t | split: ':' -%}
+        {%- assign tc = collections[kv[0]] -%}
+        {%- if tc.products_count > 0 -%}
+          <a class="st-t{% if tc.handle == c.handle %} is-on{% endif %}" href="{{ tc.url }}"><b>{{ tc.products_count }}</b><span>{{ kv[1] }}</span></a>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+  </section>
+
+  <div class="tools">
+    <form class="srch" action="{{ routes.search_url }}" method="get" role="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <input type="search" name="q" placeholder="Search card, set or number" aria-label="Search the store">
+      <input type="hidden" name="type" value="product">
+    </form>
+    <div class="sorts" role="group" aria-label="Sort">
+      {%- assign opts = 'price-descending|Price: high,price-ascending|Price: low,created-descending|Newest,title-ascending|A to Z' | split: ',' -%}
+      {%- for o in opts -%}
+        {%- assign kv = o | split: '|' -%}
+        <a class="pill{% if sort == kv[0] %} is-on{% endif %}" href="{{ c.url }}?sort_by={{ kv[0] }}">{{ kv[1] }}</a>
+      {%- endfor -%}
+    </div>
+  </div>
+
+  <div class="lay">
+    <section class="pn grid-pn">
+      <div class="grid-h"><b>{{ paginate.items }}</b> cards{% if paginate.pages > 1 %} · page {{ paginate.current_page }} of {{ paginate.pages }}{% endif %}</div>
+      {%- if c.products.size > 0 -%}
+        <div class="fgrid">
+          {%- for p in c.products -%}{%- render 'fob-card', p: p -%}{%- endfor -%}
+        </div>
+      {%- else -%}
+        <p class="empty">Nothing here right now. <a href="{{ routes.all_products_collection_url }}">See everything in the case</a>.</p>
+      {%- endif -%}
+      {%- if paginate.pages > 1 -%}
+        <nav class="pager" aria-label="Pages">
+          {%- if paginate.previous -%}<a class="pill" href="{{ paginate.previous.url }}">‹ Previous</a>{%- endif -%}
+          {%- for part in paginate.parts -%}
+            {%- if part.is_link -%}<a class="pill" href="{{ part.url }}">{{ part.title }}</a>{%- elsif part.title == paginate.current_page -%}<span class="pill is-on">{{ part.title }}</span>{%- else -%}<span class="pill pill--gap">{{ part.title }}</span>{%- endif -%}
+          {%- endfor -%}
+          {%- if paginate.next -%}<a class="pill" href="{{ paginate.next.url }}">Next ›</a>{%- endif -%}
+        </nav>
+      {%- endif -%}
+    </section>
+    <aside class="pn insp" data-insp aria-live="polite">
+      <div class="insp-empty">Point at a card to see it here. Click to open it.</div>
+    </aside>
+  </div>
+</div>
+{%- endpaginate -%}
+{% schema %}
+{
+  "name": "F.O.B. collection",
+  "settings": [
+    { "type": "text", "id": "tabs", "label": "Stat tabs (collection handles)", "default": "pokemon-singles:Pokémon,one-piece-singles:One Piece,dragon-ball-super-singles:Dragon Ball,hockey:Hockey,graded-slabs:Graded,pokemon:Sealed" }
+  ]
+}
+{% endschema %}

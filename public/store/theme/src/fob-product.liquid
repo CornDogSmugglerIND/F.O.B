@@ -1,0 +1,105 @@
+{%- liquid
+  assign p = product
+  assign v = p.selected_or_first_available_variant
+  assign game = p.collections.first.title | default: p.type
+  assign multi = false
+  if p.variants.size > 1
+    assign multi = true
+  endif
+-%}
+<div class="pg">
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a href="{{ routes.root_url }}">Home</a><span>›</span>
+    {%- if p.collections.first -%}<a href="{{ p.collections.first.url }}">{{ p.collections.first.title }}</a><span>›</span>{%- endif -%}
+    <b>{{ p.title | truncate: 48 }}</b>
+  </nav>
+  <section class="pn pv" data-pv>
+    <div class="pv-media">
+      <div class="pv-stage" data-viewer>
+        <svg class="pv-arcs" viewBox="0 0 400 400" aria-hidden="true"><path d="M60 290 A170 170 0 0 1 120 60"/><path d="M340 110 A170 170 0 0 1 280 340"/><circle cx="200" cy="200" r="188" class="seg"/></svg>
+        <i class="pv-br tl"></i><i class="pv-br tr"></i><i class="pv-br bl"></i><i class="pv-br br"></i>
+        <div class="pv-card" data-spin>
+          <div class="pv-in">
+            <div class="pv-f">
+              {%- assign main = v.featured_image | default: p.featured_image -%}
+              {%- if main -%}{{ main | image_url: width: 1200 | image_tag: alt: p.title, data-main: '', loading: 'eager', fetchpriority: 'high', sizes: '(max-width: 760px) 80vw, 460px', widths: '600,900,1200' }}{%- endif -%}
+              <span class="pv-glare" aria-hidden="true"></span>
+            </div>
+            <div class="pv-b"><img src="{{ 'fob-glyph.png' | asset_url }}" alt="" width="160" height="103"></div>
+          </div>
+        </div>
+      </div>
+      <p class="pv-hint">Drag to spin it · tap to zoom</p>
+      {%- if p.images.size > 1 -%}
+        <div class="pv-thumbs" role="list">
+          {%- for im in p.images limit: 12 -%}
+            <button type="button" class="pv-th{% if im.id == main.id %} is-on{% endif %}" data-thumb="{{ im | image_url: width: 1200 }}" aria-label="Photo {{ forloop.index }}">{{ im | image_url: width: 160 | image_tag: loading: 'lazy', alt: '' }}</button>
+          {%- endfor -%}
+        </div>
+      {%- endif -%}
+    </div>
+
+    <div class="pv-info">
+      <span class="pv-k">{{ game }}</span>
+      <span class="badge-live{% unless p.available %} is-out{% endunless %}">{% if p.available %}In stock{% else %}Sold out{% endif %}</span>
+      <h1 class="pv-t">{{ p.title }}</h1>
+      <div class="pv-price"><b data-price>{{ v.price | money }}</b>{%- if v.compare_at_price > v.price -%}<s>{{ v.compare_at_price | money }}</s>{%- endif -%}</div>
+
+      {%- form 'product', p, class: 'pv-form', data-pv-form: '' -%}
+        {%- if multi -%}
+          <label class="pv-lbl" for="pvv">Pick your card <em>{{ p.variants.size }} available</em></label>
+          <div class="pv-vars" role="listbox" aria-label="Pick your card" data-vars>
+            {%- for vv in p.variants -%}
+              <button type="button" role="option" class="pv-var{% if vv.id == v.id %} is-on{% endif %}{% unless vv.available %} is-out{% endunless %}" aria-selected="{% if vv.id == v.id %}true{% else %}false{% endif %}" data-id="{{ vv.id }}" data-price="{{ vv.price | money }}" data-av="{{ vv.available }}" {% if vv.featured_image %}data-img="{{ vv.featured_image | image_url: width: 1200 }}"{% endif %}>
+                {%- if vv.featured_image -%}{{ vv.featured_image | image_url: width: 120 | image_tag: loading: 'lazy', alt: '' }}{%- endif -%}
+                <span>{{ vv.title }}</span><b>{{ vv.price | money }}</b>
+              </button>
+            {%- endfor -%}
+          </div>
+          <input type="hidden" name="id" id="pvv" value="{{ v.id }}" data-vid>
+        {%- else -%}
+          <input type="hidden" name="id" value="{{ v.id }}" data-vid>
+        {%- endif -%}
+        <div class="pv-buy">
+          {%- if v.inventory_quantity > 1 -%}
+            <label class="qty"><span>Qty</span><input type="number" name="quantity" value="1" min="1" max="{{ v.inventory_quantity }}" inputmode="numeric"></label>
+          {%- else -%}
+            <input type="hidden" name="quantity" value="1">
+          {%- endif -%}
+          <button type="submit" class="fx-btn pv-add" data-add {% unless v.available %}disabled{% endunless %}>{% if v.available %}Add to cart{% else %}Sold out{% endif %}</button>
+        </div>
+        <div class="pv-pay">{{ form | payment_button }}</div>
+      {%- endform -%}
+
+      <div class="seg-tabs" role="tablist">
+        <button type="button" role="tab" class="is-on" aria-selected="true" data-tab="ov">Overview</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="dt">Description</button>
+      </div>
+      <div class="pv-pane" data-pane="ov">
+        <div class="facts">
+          <div><em>Game</em><b>{{ game | default: 'Collectible' }}</b></div>
+          <div><em>Condition</em><b data-cond>{% if p.title contains 'PSA' or p.title contains 'CGC' or p.title contains 'BGS' %}Graded{% elsif p.title contains 'Sealed' or p.title contains 'Booster' or p.title contains 'Elite Trainer' %}Sealed{% elsif p.title contains 'NM' or p.title contains 'Near Mint' %}Near Mint{% else %}See photos{% endif %}</b></div>
+          <div><em>Available</em><b data-avail>{% if v.inventory_management %}{{ v.inventory_quantity | at_least: 0 }}{% else %}In stock{% endif %}</b></div>
+          <div><em>Ships</em><b>{% if game contains 'Singles' or multi %}Envelope, $1.50{% else %}Package, $8.50{% endif %}</b></div>
+        </div>
+        <p class="pv-note">Free envelope shipping on orders $25+. Free package shipping on orders $75+. All sales final.</p>
+      </div>
+      <div class="pv-pane rte" data-pane="dt" hidden>{{ p.description | default: '<p>The photos show the exact item you will receive.</p>' }}</div>
+    </div>
+  </section>
+
+  {%- if p.collections.first -%}
+    {%- assign rel = p.collections.first.products -%}
+    <section class="pn row-pn">
+      <div class="row-h"><h2>More {{ p.collections.first.title }}</h2><a href="{{ p.collections.first.url }}" class="more">See all {{ p.collections.first.products_count }}</a></div>
+      <div class="frow">
+        {%- assign n = 0 -%}
+        {%- for r in rel -%}{%- if r.id != p.id and r.available and n < 10 -%}{%- render 'fob-card', p: r -%}{%- assign n = n | plus: 1 -%}{%- endif -%}{%- endfor -%}
+      </div>
+    </section>
+  {%- endif -%}
+</div>
+<div class="zoom" data-zoom hidden><img alt=""><button type="button" class="sheet-x" data-zoom-x aria-label="Close zoom">×</button></div>
+{% schema %}
+{ "name": "F.O.B. product", "settings": [] }
+{% endschema %}

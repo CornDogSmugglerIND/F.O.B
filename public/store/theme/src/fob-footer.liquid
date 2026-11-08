@@ -1,0 +1,22 @@
+<footer class="ft">
+  <div class="ft-in">
+    <div class="ft-brand">
+      <img src="{{ 'fob-wm-text.png' | asset_url }}" alt="CornDogSmuggler Coalition." width="520" height="110" loading="lazy">
+      <p>Veteran-owned. Packed and shipped from Menomonie, Wisconsin.</p>
+    </div>
+    <div class="ft-cols">
+      <div><b>Shop</b><a href="{{ routes.all_products_collection_url }}">All cards</a><a href="{{ routes.search_url }}">Search</a><a href="{{ routes.cart_url }}">Cart</a></div>
+      <div><b>Help</b>
+        {%- if shop.shipping_policy -%}<a href="{{ shop.shipping_policy.url }}">Shipping</a>{%- endif -%}
+        {%- if shop.refund_policy -%}<a href="{{ shop.refund_policy.url }}">Returns</a>{%- endif -%}
+        {%- if shop.terms_of_service -%}<a href="{{ shop.terms_of_service.url }}">Terms</a>{%- endif -%}
+        {%- if shop.privacy_policy -%}<a href="{{ shop.privacy_policy.url }}">Privacy</a>{%- endif -%}
+        <a href="{{ routes.account_url }}">Account</a>
+      </div>
+    </div>
+  </div>
+  <p class="ft-c">© {{ 'now' | date: '%Y' }} {{ shop.name }}</p>
+</footer>
+{% schema %}
+{ "name": "F.O.B. footer", "settings": [] }
+{% endschema %}

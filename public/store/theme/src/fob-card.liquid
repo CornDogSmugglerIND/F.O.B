@@ -1,0 +1,19 @@
+{%- comment -%} App-style product tile. Pass product: p {%- endcomment -%}
+{%- liquid
+  assign img = p.featured_image
+  assign game = p.collections.first.title | default: p.type
+-%}
+<a class="cd" href="{{ p.url }}" data-tilt data-card data-t="{{ p.title | escape }}" data-p="{% if p.price_varies %}From {% endif %}{{ p.price_min | money }}" data-g="{{ game | escape }}" data-n="{{ p.variants.size }}" data-q="{{ p.variants.first.inventory_quantity }}" data-i="{% if img %}{{ img | image_url: width: 900 }}{% endif %}">
+  <span class="cd-frame">
+    {%- if img -%}
+      {{ img | image_url: width: 480 | image_tag: loading: 'lazy', alt: p.title, sizes: '(max-width: 760px) 45vw, 220px', widths: '240,360,480' }}
+    {%- else -%}
+      <span class="cd-none"></span>
+    {%- endif -%}
+    <span class="cd-glare" aria-hidden="true"></span>
+    {%- if p.variants.size > 1 -%}<span class="cd-tag">{{ p.variants.size }} cards</span>{%- endif -%}
+    {%- unless p.available -%}<span class="cd-tag cd-tag--out">Sold out</span>{%- endunless -%}
+  </span>
+  <span class="cd-price">{% if p.price_varies %}From {% endif %}{{ p.price_min | money }}</span>
+  <span class="cd-name">{{ p.title }}</span>
+</a>

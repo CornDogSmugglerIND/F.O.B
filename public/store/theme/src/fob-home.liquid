@@ -1,0 +1,93 @@
+{%- liquid
+  assign total = collections.all.products_count
+-%}
+{%- capture deck_json -%}
+[{%- paginate collections.all.products by 250 -%}
+  {%- assign chase = collections.all.products | sort: 'price' | reverse -%}
+  {%- assign k = 0 -%}
+  {%- for p in chase -%}
+    {%- assign hs = p.collections | map: 'handle' | join: ',' -%}
+    {%- assign skip = false -%}
+    {%- if hs contains 'electronics' or hs contains 'bow-hunting' or hs contains 'collectibles' -%}{%- assign skip = true -%}{%- endif -%}
+    {%- if p.available and p.featured_image and k < 12 and skip == false -%}
+      {%- if k > 0 -%},{%- endif -%}
+      {"t":{{ p.title | json }},"u":{{ p.url | json }},"i":{{ p.featured_image | image_url: width: 600 | json }},"p":{{ p.price | money | json }},"c":{{ p.collections.first.title | default: p.type | json }},"q":{{ p.variants.first.inventory_quantity | default: 1 }}}
+      {%- assign k = k | plus: 1 -%}
+    {%- endif -%}
+  {%- endfor -%}
+{%- endpaginate -%}]
+{%- endcapture -%}
+<div class="pg">
+  <section class="pn st st--home">
+    <div class="st-main">
+      <span class="st-k">CornDogSmuggler Coalition</span>
+      <h1 class="st-h"><b data-count="{{ total }}">{{ total }}</b> cards in the case</h1>
+      <span class="st-sub">Pokémon, One Piece, Dragon Ball Super, Magic and hockey. Singles, sealed and slabs.</span>
+    </div>
+    <div class="st-tabs">
+      {%- assign tabs = section.settings.tabs | split: ',' -%}
+      {%- for t in tabs -%}
+        {%- assign kv = t | split: ':' -%}
+        {%- assign tc = collections[kv[0]] -%}
+        {%- if tc.products_count > 0 -%}
+          <a class="st-t" href="{{ tc.url }}"><b>{{ tc.products_count }}</b><span>{{ kv[1] }}</span></a>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+  </section>
+
+  <section class="pn dk" data-deck>
+  <script type="application/json">{{ deck_json }}</script>
+  <div class="dk-head">
+    <h2 class="dk-h1">The case</h2>
+    <p class="dk-sub">The top of the inventory. Drag the ring to spin it, tap the locked card to open it.</p>
+  </div>
+  <div class="dk-stage" data-stage>
+    <svg class="dk-lock" viewBox="0 0 300 300" aria-hidden="true"><path class="a1" d="M38 196 A118 118 0 0 1 150 32"/><path class="a2" d="M262 104 A118 118 0 0 1 150 268"/><path class="hatch" d="M52 108 A106 106 0 0 1 96 58"/><circle class="seg" cx="150" cy="150" r="134"/><g class="lens"><circle cx="246" cy="228" r="13"/><circle cx="246" cy="228" r="4"/><path d="M246 210 V218 M246 238 V246 M228 228 H236 M256 228 H264"/></g><path class="rule" d="M20 92 V208"/><path class="rule" d="M280 92 V208"/></svg>
+    <div class="dk-3d"><div class="dk-ring" data-ring></div></div>
+    <div class="dk-ro l" data-rol></div>
+    <div class="dk-ro r" data-ror></div>
+  </div>
+  <div class="dk-bar">
+    <button type="button" class="dk-b" data-prev aria-label="Previous card"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="dk-name"><b data-name></b><span data-idx></span></div>
+    <button type="button" class="dk-b" data-next aria-label="Next card"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+  <div class="dk-acts">
+    <button type="button" class="fx-btn fx-btn--ghost" data-spin>Spin the case</button>
+    <a class="fx-btn" data-open href="#">Open this card</a>
+  </div>
+</section>
+
+  {%- for block in section.blocks -%}
+    {%- assign c = collections[block.settings.handle] -%}
+    {%- if c.products_count > 0 -%}
+      {%- assign picks = c.products | sort: 'price' | reverse -%}
+      <section class="pn row-pn" {{ block.shopify_attributes }}>
+        <div class="row-h"><h2>{{ c.title }}</h2><span class="row-m">{{ c.products_count }} · up to {{ picks.first.price | money_without_trailing_zeros }}</span><a href="{{ c.url }}" class="more">See all</a></div>
+        <div class="frow">
+          {%- assign n = 0 -%}
+          {%- for p in picks -%}{%- if p.available and n < 10 -%}{%- render 'fob-card', p: p -%}{%- assign n = n | plus: 1 -%}{%- endif -%}{%- endfor -%}
+        </div>
+      </section>
+    {%- endif -%}
+  {%- endfor -%}
+
+  <section class="trust">
+    <div class="pn"><b>Top Rated Seller on eBay</b><span>Same inventory, same standards</span></div>
+    <div class="pn"><b>Veteran-owned</b><span>Packed and shipped from Menomonie, Wisconsin</span></div>
+    <div class="pn"><b>Free shipping</b><span>Envelope orders $25+, package orders $75+</span></div>
+  </section>
+</div>
+{% schema %}
+{
+  "name": "F.O.B. home",
+  "settings": [
+    { "type": "text", "id": "tabs", "label": "Stat tabs", "default": "pokemon-singles:Pokémon,one-piece-singles:One Piece,dragon-ball-super-singles:Dragon Ball,hockey:Hockey,graded-slabs:Graded,pokemon:Sealed" }
+  ],
+  "blocks": [
+    { "type": "game", "name": "Game row", "settings": [ { "type": "text", "id": "handle", "label": "Collection handle" } ] }
+  ],
+  "presets": [{ "name": "F.O.B. home" }]
+}
+{% endschema %}
