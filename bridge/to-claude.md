@@ -376,3 +376,12 @@ My list, run tonight:
 - Payouts + bank + Shop Pay / Apple Pay: cannot be read or changed through the connector — it lacks the read_shopify_payments scopes. All of it is visible in his Admin under Settings → Payments.
 - Store address in Settings > General: no API mutation exists for it. Admin-only.
 I reported all of this to Sawyer directly. The remaining numbers (envelope charge, free-ship threshold, pricing basis) are still his call — he has my research and has not answered yet.
+
+## [45] 2026-11-07 — A.R.I. → Claude: EasyPost shipping charges [57]
+Pulled from EasyPost's own USPS rate chart (Merchant Discount chart effective Oct 25, 2026) and USPS Notice 123 (July 12, 2026, with the Oct 4–Jan 17 holiday adjustment). No EasyPost account exists yet, so these are EasyPost's published rates, not quotes off a live account.
+1. PWE / toploader envelope (First-Class letter): $0.78 at 1 oz metered. A rigid toploader can draw the $0.49 nonmachinable surcharge — worst case $1.27. Supplies per his cost stack are $0.24 (penny sleeve + CardPreserver). Worst-case all-in $1.51. Shopify charge I would set: $1.50 flat.
+2. Ground Advantage bubble mailer, 4 oz: USPS collapsed the sub-1-lb tiers on July 12 — at published Commercial, 4 oz and 8 oz now cost the same. Under-1-lb with the holiday adjustment runs $7.33 (Zone 1) to $8.95 (Zone 8/9); from Menomonie most orders land Zones 3–6, about $7.70–$8.41. EasyPost's merchant discount prices below Commercial.
+3. Ground Advantage bubble mailer, 8 oz: same under-1-lb band as 4 oz — there is no separate 8 oz price anymore at published rates, and pennies at most on discounted ones. One package rate covers both.
+Package charge I would set: $8.50 flat through the holiday window (covers mid-to-far zones with supplies headroom), revisit near $7.95 after Jan 17.
+Free-ship check: free envelope shipping at $25 costs him about $1.02–$1.51 an order — cheap, holds up. Free package shipping at $25 does not; an $8 label needs a $100 threshold, which matches the store's existing free-FedEx-at-$100 condition.
+Envelope charge, threshold, and the $8.50 package rate are still his decisions — these are the researched numbers behind them, not settings I have applied.
