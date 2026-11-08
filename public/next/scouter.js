@@ -1,8 +1,8 @@
-import { isArchived, loadSpaces, assign } from "./shared.js?v=194";
-import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=194";
-import { paintScanBar } from "./scanconnect.js?v=194";
-import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=194";
-import { phaseFromItem } from "/visor/phases.js?v=194";
+import { isArchived, loadSpaces, assign } from "./shared.js?v=195";
+import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=195";
+import { paintScanBar } from "./scanconnect.js?v=195";
+import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=195";
+import { phaseFromItem } from "/visor/phases.js?v=195";
 /* Scouter: one upload = one item. Photos preview instantly, get shrunk off the
  * hot path, nothing is saved until Save is pressed. */
 const MAX_PICK = 24; /* eBay allows 24 photos on a listing; the item cap matches it (was 5 — Sawyer, Oct 31 2026) */
@@ -237,8 +237,23 @@ function paintQuad(q, W, H, mode, prog) {
   if (br) br.innerHTML = P.map((c, i) => { const a = P[(i + 3) % 4], b = P[(i + 1) % 4], la = Math.hypot(a[0] - c[0], a[1] - c[1]), lb = Math.hypot(b[0] - c[0], b[1] - c[1]), n = Math.min(la, lb) * tight;
     const pa = [c[0] + (a[0] - c[0]) / la * n, c[1] + (a[1] - c[1]) / la * n], pb = [c[0] + (b[0] - c[0]) / lb * n, c[1] + (b[1] - c[1]) / lb * n];
     return `<path d="M${pa[0].toFixed(1)} ${pa[1].toFixed(1)}L${c[0].toFixed(1)} ${c[1].toFixed(1)}L${pb[0].toFixed(1)} ${pb[1].toFixed(1)}"/>`; }).join("");
-  const X = $("#sqX"); if (X) { const cx = P.reduce((a, p) => a + p[0], 0) / 4, cy = P.reduce((a, p) => a + p[1], 0) / 4, g2 = 6 + (1 - prog) * 26, l = 9;
-    X.innerHTML = `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(16 + (1 - prog) * 10).toFixed(1)}" class="sq-ring" stroke-dasharray="${(prog * 113).toFixed(1)} 200"/><path d="M${cx - g2 - l} ${cy}h${l}M${cx + g2} ${cy}h${l}M${cx} ${cy - g2 - l}v${l}M${cx} ${cy + g2}v${l}"/>`; }
+  const X = $("#sqX"); if (X) {
+    /* the target: rings + crosshair centered on the card, sized to it; the lock ring fills as it holds */
+    const cx = P.reduce((a, p) => a + p[0], 0) / 4, cy = P.reduce((a, p) => a + p[1], 0) / 4;
+    const side = Math.min(Math.hypot(P[1][0] - P[0][0], P[1][1] - P[0][1]), Math.hypot(P[3][0] - P[0][0], P[3][1] - P[0][1]));
+    const R = Math.max(34, side * (mode === "lock" ? .36 : .42)), r2 = R * .72, r3 = R * .3, C = 2 * Math.PI * R;
+    const f = (n) => n.toFixed(1), reach = side * .5, gap = r3 + 6;
+    X.innerHTML = `<g class="sq-tg" style="transform:translate(${f(cx)}px,${f(cy)}px)">
+      <circle r="${f(R + 10)}" class="sq-halo"/>
+      <circle r="${f(R)}" class="sq-o"/>
+      <circle r="${f(R)}" class="sq-fillring" stroke-dasharray="${f(C * prog)} ${f(C)}" transform="rotate(-90)"/>
+      <g class="sq-spin"><circle r="${f(R + 5)}" class="sq-seg" stroke-dasharray="${f(C * .07)} ${f(C * .055)}"/></g>
+      <g class="sq-spin2"><circle r="${f(r2)}" class="sq-in" stroke-dasharray="4 7"/></g>
+      <circle r="${f(r3)}" class="sq-core"/>
+      <path class="sq-ch" d="M${f(-reach)} 0H${f(-gap)}M${f(gap)} 0H${f(reach)}M0 ${f(-reach)}V${f(-gap)}M0 ${f(gap)}V${f(reach)}"/>
+      <path class="sq-tk" d="M${f(-R - 12)} 0h8M${f(R + 4)} 0h8M0 ${f(-R - 12)}v8M0 ${f(R + 4)}v8"/>
+      <circle r="2.6" class="sq-pip"/></g>`;
+  }
 }
 function track() {
   if (trk) return;
