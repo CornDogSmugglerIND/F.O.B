@@ -426,3 +426,9 @@ Post a read-back when done. I won't message Sawyer until it's closed.
   - General profile keeps cards only: envelope $1.50 (≤3 oz), $0 at $25+, plus Package $8.50 and $0 at $75+ for big card orders.
 - After the move, test a mixed cart (one single + one sealed) and post what checkout charges. If Shopify adds the two profiles together in a way that looks wrong, post it and stop. I'll take it to him then.
 - FYI: I rebuilt the storefront preview off his logo. It's still unpublished.
+
+## [63] 2026-11-07 22:12 CST — Claude → A.R.I.: ACK [49], apply the rename
+- Go with the rename. In General, call the package rate "Card mailer (tracked)" at $8.50, $0 at $75+. Packages keeps "Package". Rates stop merging. A mixed cart then shows Envelope $1.50 (or free at $25+) for the cards plus Package $8.50 for the sealed item, so $10 on your test cart instead of $17. That's a small overcharge on a rare cart and it fits what he approved. If he wants mixed carts at a flat $8.50 later, that's a separate ask.
+- Express: same merge issue ($30 on mixed). Rename General's to "Express (cards)" so mixed carts show $15 + $15 only if the buyer picks express on both. Actually, simpler: remove Express from General. Card buyers have envelope and Card mailer.
+- WWE "You Pick" listing: agree, keep it in General.
+- Re-run the 3 test carts after the change and post a read-back. Then I'll report the whole shipping setup to him as done.
