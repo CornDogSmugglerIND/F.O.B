@@ -1,9 +1,9 @@
-import { photoManager } from "./photos.js?v=191";
-import { hideIds, unhideIds } from "./orders.js?v=191";
-import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=191";
-import { openFocus } from "./focus.js?v=191";
-import { setOf, rarityOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=191";
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=191";
+import { photoManager } from "./photos.js?v=192";
+import { hideIds, unhideIds } from "./orders.js?v=192";
+import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=192";
+import { openFocus } from "./focus.js?v=192";
+import { setOf, rarityOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=192";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=192";
 
 let ctx = null;
 const S = { type: "all", game: "", set: "", rar: "", bset: "", bpg: 0, q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 48 };
@@ -170,43 +170,91 @@ function binderHtml(list, browsing) {
     <div class="bn"><div class="bn-spread${per === 9 ? " one" : ""}">${pg(at)}${per === 18 ? `<i class="bn-rings" aria-hidden="true"></i>${pg(at + 9)}` : ""}</div>
     <div class="bn-nav"><button type="button" class="bn-a" data-bflip="-1" aria-label="Previous page"${S.bpg ? "" : " disabled"}>‹</button><span>Page ${S.bpg + 1} of ${spreads}</span><button type="button" class="bn-a" data-bflip="1" aria-label="Next page"${S.bpg < spreads - 1 ? "" : " disabled"}>›</button></div></div></section>`;
 }
+/* ===== Collection rebuild (Build 192): tabs (Binder / Sealed / Graded / All), board tools, real binder, shelf, slab case ===== */
+const TABS = [["binder", "Binder"], ["sealed", "Sealed"], ["graded", "Graded"], ["all", "All cards"]];
+const SORTS = [["value", "Value: high"], ["low", "Value: low"], ["new", "Newest"], ["name", "Name A–Z"]];
+function gridTile(it, n) {
+  const src = photoOf(it), on = S.sel.has(String(it.id)), q = Number(it.quantity) || 1;
+  return `<article class="bd-t cx-card${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0" style="--i:${Math.min(n, 24)}" aria-label="${esc(cardName(it))} ${money(it.price)}">
+    <div class="bd-art">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<i class="bd-ini">${esc(cardName(it).charAt(0))}</i>`}<span class="bd-glare"></span><i class="bd-br tl"></i><i class="bd-br tr"></i><i class="bd-br bl"></i><i class="bd-br br"></i>${q > 1 ? `<span class="bd-var">×${q}</span>` : ""}${S.selecting ? `<span class="bd-pick" aria-hidden="true"></span>` : ""}</div>
+    <div class="bd-cap"><b>${money(it.price)}</b><span>${esc(cardName(it))}</span></div></article>`;
+}
+function pocket(it) {
+  const src = photoOf(it);
+  return `<button type="button" class="vb-pk" data-vid="${esc(it.id)}" aria-label="${esc(cardName(it))} ${money(it.price)}"><span class="vb-card">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(cardName(it).charAt(0))}</i>`}<span class="bd-glare"></span></span><span class="vb-sleeve" aria-hidden="true"></span><span class="vb-tag"><b>${money(it.price)}</b><em>${esc(cardName(it))}</em></span></button>`;
+}
+function binderView(list) {
+  if (!list.length) return `<div class="bd-empty"><b>No cards here.</b><span>Clear the filters, or scan cards in Scouter to fill the binder.</span></div>`;
+  const wide = innerWidth > 820, per = wide ? 18 : 9, spreads = Math.max(1, Math.ceil(list.length / per)); S.bpg = Math.min(Math.max(0, S.bpg || 0), spreads - 1);
+  const at = S.bpg * per, page = (from, side) => `<div class="vb-page ${side}"><div class="vb-grid">${list.slice(from, from + 9).map(pocket).join("")}${Array.from({ length: Math.max(0, 9 - list.slice(from, from + 9).length) }, () => `<span class="vb-pk empty" aria-hidden="true"><span class="vb-sleeve"></span></span>`).join("")}</div><span class="vb-pn">${(wide ? S.bpg * 2 + (side === "r" ? 2 : 1) : S.bpg + 1)}</span></div>`;
+  const dots = spreads <= 14 ? `<div class="vb-dots">${Array.from({ length: spreads }, (_, k) => `<button type="button" class="${k === S.bpg ? "on" : ""}" data-bgo="${k}" aria-label="Page ${k + 1}"></button>`).join("")}</div>` : `<span class="vb-of">Spread ${S.bpg + 1} of ${spreads}</span>`;
+  return `<section class="vb${wide ? "" : " one"}"><div class="vb-book"><div class="vb-spread">${page(at, "l")}${wide ? `<div class="vb-spine" aria-hidden="true"><i></i><i></i><i></i></div>${page(at + 9, "r")}` : ""}</div></div>
+    <nav class="vb-nav"><button type="button" class="vb-a" data-bflip="-1" aria-label="Previous page"${S.bpg ? "" : " disabled"}><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>${dots}<button type="button" class="vb-a" data-bflip="1" aria-label="Next page"${S.bpg < spreads - 1 ? "" : " disabled"}><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></nav></section>`;
+}
+function shelfView(list) {
+  if (!list.length) return `<div class="bd-empty"><b>No sealed product.</b><span>Booster boxes, ETBs, tins and packs show up here.</span></div>`;
+  const rows = []; for (let k = 0; k < list.length; k += 5) rows.push(list.slice(k, k + 5));
+  return `<section class="vs">${rows.map((r) => `<div class="vs-row"><div class="vs-items">${r.map((it) => { const src = photoOf(it); return `<button type="button" class="vs-box" data-vid="${esc(it.id)}"><span class="vs-art">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(cardName(it).charAt(0))}</i>`}<span class="bd-glare"></span></span><span class="vs-ref" aria-hidden="true">${src ? `<img src="${esc(src)}" alt="">` : ""}</span><span class="vb-tag"><b>${money(it.price)}</b><em>${esc(cardName(it))}</em></span></button>`; }).join("")}</div><i class="vs-glass" aria-hidden="true"></i></div>`).join("")}</section>`;
+}
+function caseView(list) {
+  if (!list.length) return `<div class="bd-empty"><b>No graded slabs yet.</b><span>PSA, CGC and BGS slabs show up here.</span></div>`;
+  return `<section class="vc">${list.map((it) => { const src = photoOf(it), g = (nameOf(it).match(/\b(PSA|CGC|BGS|SGC|TAG)\s*([0-9.]+)/i) || []); return `<button type="button" class="vc-slab" data-vid="${esc(it.id)}"><span class="vc-label"><b>${esc(g[1] ? g[1].toUpperCase() : "Graded")}</b><em>${esc(g[2] || "")}</em></span><span class="vc-art">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : ""}<span class="bd-glare"></span></span><span class="vb-tag"><b>${money(it.price)}</b><em>${esc(cardName(it))}</em></span></button>`; }).join("")}</section>`;
+}
+function filterSheet() {
+  const all = base(), sets = tally(filtered(all, "set"), setOf), rars = tally(filtered(all, "rar"), rarityOf);
+  const grp = (title, key, opts) => `<section class="bf-g"><h3>${title}</h3><div>${opts.map(([v, l, c]) => `<button type="button" class="bd-chip${S[key] === v ? " on" : ""}" data-sf="${key}" data-v="${esc(v)}">${esc(l)}${c != null ? `<b>${c}</b>` : ""}</button>`).join("")}</div></section>`;
+  const sh = ctx.openSheet(`<div class="bf"><header class="bf-h"><h2>Filters</h2></header>
+    ${grp("Sort", "sort", SORTS.map(([k, l]) => [k, l]))}
+    ${grp("Rarity", "rar", [["", "Any rarity"], ...rars.map(([r, c]) => [r, r, c])])}
+    ${grp("Set", "set", [["", "All sets"], ...sets.slice(0, 60).map(([x, c]) => [x, x, c])])}
+    <footer class="bf-f"><button type="button" class="bd-btn" data-bfclear>Clear filters</button><button type="button" class="bd-go" data-bfx>Show ${filtered(all).length} items</button></footer></div>`);
+  const root = sh || document;
+  root.querySelectorAll("[data-sf]").forEach((b) => b.addEventListener("click", () => { S[b.dataset.sf] = b.dataset.v; S.bpg = 0; S.more = 48; paint(); filterSheet(); }));
+  root.querySelector("[data-bfclear]")?.addEventListener("click", () => { S.set = S.rar = ""; S.sort = "value"; paint(); ctx.closeSheet(); });
+  root.querySelector("[data-bfx]")?.addEventListener("click", () => ctx.closeSheet());
+}
 function paint() {
   const host = ctx.host, typedFocus = document.activeElement && document.activeElement.id === "coQ";
-  const all = base(), shown = filtered(all).sort(sorter), total = all.reduce((a, i) => a + priceOf(i), 0);
+  if (!S.tab) S.tab = "binder";
+  const all = base(), total = all.reduce((a, i) => a + priceOf(i), 0);
   const paid = all.reduce((a, i) => a + (Number(i.purchasePrice) || 0) * (Number(i.quantity) || 1), 0), gain = total - paid;
-  const types = [["all", "All"], ["singles", "Singles"], ["sealed", "Sealed"], ["graded", "Graded"]], tc = (k) => k === "all" ? filtered(all, "type").length : filtered(all, "type").filter((i) => kindOf2(i) === k).length;
-  const games = tally(filtered(all, "game"), gameOf), sets = tally(filtered(all, "set"), setOf), rars = tally(filtered(all, "rar"), rarityOf);
-  const browsing = !S.q && !S.game && !S.set && !S.rar && S.type === "all" && !S.selecting;
-  const sealed = browsing ? all.filter((i) => kindOf2(i) === "sealed").sort(sorter) : [], graded = browsing ? all.filter((i) => kindOf2(i) === "graded").sort(sorter) : [];
-  const grid = browsing ? shown.filter((i) => kindOf2(i) === "singles") : shown, cut = grid.slice(0, S.more);
-  const sel = (id, label, cur, opts, allLabel) => `<label class="cv-sel"><span>${label}</span><select id="${id}"><option value="">${allLabel}</option>${opts.map(([k, n]) => `<option value="${esc(k)}"${cur === k ? " selected" : ""}>${esc(k)} (${n})</option>`).join("")}</select></label>`;
-  host.innerHTML = `<div class="co-wrap cv">
-    <header class="cv-top"><div class="cv-title"><h1>Collection</h1><p><b>${money(total)}</b><span>${all.length} items</span>${paid ? `<span class="${gain >= 0 ? "up" : "down"}">${gain >= 0 ? "+" : "−"}${money(Math.abs(gain))} over cost</span>` : ""}</p></div>
-      <div class="cv-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="coQ" type="search" placeholder="Search name, set or number" value="${esc(S.q)}" aria-label="Search the collection"></div>
-      <div class="cv-acts"><button type="button" class="cv-btn${S.selecting ? " on" : ""}" id="coSel">${S.selecting ? "Done" : "Select"}</button><button type="button" class="cv-btn" id="coMenuBtn" aria-label="Import or export">Import / Export</button></div></header>
-    <div class="cv-bar">
-      <div class="cv-seg" role="tablist" aria-label="Type">${types.map(([k, l]) => `<button type="button" role="tab" aria-selected="${S.type === k}" class="${S.type === k ? "on" : ""}" data-type="${k}">${l}<b>${tc(k)}</b></button>`).join("")}</div>
-      <div class="cv-games" role="tablist" aria-label="Game"><button type="button" class="${!S.game ? "on" : ""}" data-game="">All games</button>${games.map(([g, n]) => `<button type="button" class="${S.game === g ? "on" : ""}" data-game="${esc(g)}">${esc(g)}<b>${n}</b></button>`).join("")}</div>
-      <div class="cv-more">${sel("vxSet", "Set", S.set, sets.slice(0, 80), "All sets")}${sel("vxRar", "Rarity", S.rar, rars, "Any rarity")}<label class="cv-sel"><span>Sort</span><select id="vxSort">${[["value", "Value: high to low"], ["low", "Value: low to high"], ["new", "Newest first"], ["name", "Name A–Z"]].map(([k, l]) => `<option value="${k}"${S.sort === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>${S.game || S.set || S.rar || S.q || S.type !== "all" ? `<button type="button" class="cv-clear" id="vxClear">Clear filters</button>` : ""}</div>
+  const kindTab = { binder: "singles", sealed: "sealed", graded: "graded", all: "all" }[S.tab]; S.type = kindTab;
+  const pre = filtered(all, "type"), inTab = (t) => t === "all" ? pre : pre.filter((i) => kindOf2(i) === { binder: "singles", sealed: "sealed", graded: "graded" }[t]);
+  const shown = (S.tab === "all" ? pre : pre.filter((i) => kindOf2(i) === kindTab)).sort(sorter), cut = shown.slice(0, S.more);
+  const games = tally(filtered(all, "game"), gameOf), nf = [S.set, S.rar].filter(Boolean).length + (S.sort !== "value" ? 1 : 0);
+  const tabVal = (t) => inTab(t).reduce((a, i) => a + priceOf(i), 0);
+  let n = 0;
+  host.innerHTML = `<div class="co-wrap cv bd vlt">
+    <div class="vlt-head"><div class="vlt-val"><em>Collection value</em><b>${money(total)}</b><span>${all.length} items${paid ? ` · <i class="${gain >= 0 ? "up" : "down"}">${gain >= 0 ? "+" : "−"}${money(Math.abs(gain))} over cost</i>` : ""}</span></div></div>
+    <div class="bd-hud"><nav class="bd-tabs" role="tablist" aria-label="Collection">${TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${S.tab === k}" class="bd-tab${S.tab === k ? " on" : ""}" data-tab="${k}"><b>${inTab(k).length}</b><span>${l}</span><em>${money(tabVal(k))}</em></button>`).join("")}<i class="bd-scan" aria-hidden="true"></i></nav></div>
+    <div class="bd-tools">
+      <label class="bd-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="coQ" type="search" placeholder="Search name, set or number" value="${esc(S.q)}" aria-label="Search the collection"></label>
+      <button type="button" class="bd-btn${nf ? " on" : ""}" id="coFilt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters${nf ? `<b>${nf}</b>` : ""}</button>
+      <button type="button" class="bd-btn${S.selecting ? " on" : ""}" id="coSel"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>${S.selecting ? "Done" : "Select"}</button>
+      <button type="button" class="bd-btn" id="coMenuBtn" aria-label="Import or export"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
     </div>
-    ${S.menu ? `<div class="cv-menu"><button type="button" class="cv-btn" id="coIO">Import or export a CSV</button></div>` : ""}
-    ${shelfHtml(sealed, "Sealed shelf", `${sealed.length} · ${money(sealed.reduce((a, i) => a + priceOf(i), 0))}`, "sealed")}
-    ${shelfHtml(graded, "Graded case", `${graded.length} · ${money(graded.reduce((a, i) => a + priceOf(i), 0))}`, "graded")}
-    ${S.selecting ? `<section class="cv-cards"><header><h2>${shown.length} items</h2><span>Tap to select</span></header><div class="cv-grid cx-grid">${cut.map(tile).join("")}</div>${grid.length > cut.length ? `<button type="button" class="cv-btn cv-loadmore" id="coMore">Show ${Math.min(60, grid.length - cut.length)} more</button>` : ""}</section>` : binderHtml(grid, browsing)}
+    ${S.menu ? `<div class="cv-menu"><button type="button" class="bd-btn" id="coIO">Import or export a CSV</button></div>` : ""}
+    <div class="bd-chips" role="tablist" aria-label="Game"><button type="button" class="bd-chip${!S.game ? " on" : ""}" data-game="">All<b>${filtered(all, "game").filter((i) => S.tab === "all" || kindOf2(i) === kindTab).length}</b></button>${games.map(([g, c]) => `<button type="button" class="bd-chip${S.game === g ? " on" : ""}" data-game="${esc(g)}">${esc(g)}<b>${c}</b></button>`).join("")}</div>
+    <div class="bd-sum"><b>${shown.length}</b> ${S.tab === "sealed" ? "sealed" : S.tab === "graded" ? "slabs" : "cards"} · <b>${money(shown.reduce((a, i) => a + priceOf(i), 0))}</b>${S.q || S.game || nf ? ` <button type="button" class="bd-clear" id="vxClear">Clear all</button>` : ""}</div>
+    ${S.selecting || S.tab === "all" ? `<div class="bd-grid vlt-grid">${cut.map((it) => gridTile(it, n++)).join("")}</div>${shown.length > cut.length ? `<button type="button" class="bd-btn vlt-more" id="coMore">Show ${Math.min(60, shown.length - cut.length)} more</button>` : ""}` : S.tab === "binder" ? binderView(shown) : S.tab === "sealed" ? shelfView(shown) : caseView(shown)}
     ${S.selecting ? bar() : ""}</div>`;
   wire();
   const h = host;
-  h.querySelectorAll("[data-vid]").forEach((c) => c.addEventListener("click", () => openZoom(c.dataset.vid)));
-  h.querySelectorAll("[data-bflip]").forEach((b) => b.addEventListener("click", () => { const d = Number(b.dataset.bflip); S.bpg += d; paint(); const n = h.querySelector(".bn-spread"); if (n) n.animate([{ transform: `perspective(1400px) rotateY(${d > 0 ? 14 : -14}deg) translateX(${d > 0 ? 30 : -30}px)`, opacity: 0.3 }, { transform: "none", opacity: 1 }], { duration: 380, easing: "cubic-bezier(.2,.8,.2,1)" }); }));
-  { const sp = h.querySelector(".bn-spread"); if (sp) { let x0 = null; sp.addEventListener("pointerdown", (e) => { x0 = e.clientX; }); sp.addEventListener("pointerup", (e) => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 70) h.querySelector(`[data-bflip="${dx < 0 ? 1 : -1}"]:not([disabled])`)?.click(); }); } }
-  h.querySelectorAll(".cv-pk").forEach((c) => { c.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") return; const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height; c.style.setProperty("--rx", `${(0.5 - y) * 14}deg`); c.style.setProperty("--ry", `${(x - 0.5) * 16}deg`); c.style.setProperty("--gx", `${x * 100}%`); c.style.setProperty("--gy", `${y * 100}%`); }); c.addEventListener("pointerleave", () => { c.style.removeProperty("--rx"); c.style.removeProperty("--ry"); }); });
-  h.querySelectorAll("[data-type]").forEach((b) => b.addEventListener("click", () => { S.type = b.dataset.type; S.more = 48; S.bpg = 0; paint(); }));
+  h.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { S.tab = b.dataset.tab; S.bpg = 0; S.more = 48; paint(); }));
+  h.querySelector("#coFilt")?.addEventListener("click", filterSheet);
+  h.querySelectorAll("[data-vid]").forEach((c) => c.addEventListener("click", () => openZoom(c.dataset.vid, c)));
+  const flip = (d) => { const sp = h.querySelector(".vb-spread"); S.bpg += d; paint(); const n2 = h.querySelector(".vb-spread"); if (n2 && !matchMedia("(prefers-reduced-motion: reduce)").matches) { n2.animate([{ transform: `perspective(1600px) rotateY(${d > 0 ? 22 : -22}deg) translateX(${d > 0 ? 40 : -40}px)`, opacity: 0.2, filter: "brightness(1.6)" }, { transform: "none", opacity: 1, filter: "none" }], { duration: 460, easing: "cubic-bezier(.2,.8,.2,1)" }); } };
+  h.querySelectorAll("[data-bflip]").forEach((b) => b.addEventListener("click", () => flip(Number(b.dataset.bflip))));
+  h.querySelectorAll("[data-bgo]").forEach((b) => b.addEventListener("click", () => { const d = Number(b.dataset.bgo) - S.bpg; if (d) flip(d); }));
+  { const sp = h.querySelector(".vb-spread"); if (sp) { let x0 = null, y0 = 0; sp.addEventListener("pointerdown", (e) => { x0 = e.clientX; y0 = e.clientY; }); sp.addEventListener("pointerup", (e) => { if (x0 == null) return; const dx = e.clientX - x0, dy = e.clientY - y0; x0 = null; if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) h.querySelector(`[data-bflip="${dx < 0 ? 1 : -1}"]:not([disabled])`)?.click(); }); } }
+  const tilt = (c, art) => { c.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") return; const r = art.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height; c.style.setProperty("--rx", `${(0.5 - y) * 16}deg`); c.style.setProperty("--ry", `${(x - 0.5) * 18}deg`); c.style.setProperty("--gx", `${x * 100}%`); c.style.setProperty("--gy", `${y * 100}%`); }); c.addEventListener("pointerleave", () => { c.style.removeProperty("--rx"); c.style.removeProperty("--ry"); c.classList.remove("press"); }); c.addEventListener("pointerdown", () => c.classList.add("press")); c.addEventListener("pointerup", () => setTimeout(() => c.classList.remove("press"), 140)); c.addEventListener("pointercancel", () => c.classList.remove("press")); };
+  h.querySelectorAll(".vb-pk[data-vid]").forEach((c) => tilt(c, c.querySelector(".vb-card")));
+  h.querySelectorAll(".vs-box,.vc-slab").forEach((c) => tilt(c, c));
+  h.querySelectorAll(".bd-t").forEach((c) => tilt(c, c.querySelector(".bd-art")));
   h.querySelectorAll("[data-game]").forEach((b) => b.addEventListener("click", () => { S.game = b.dataset.game; S.set = ""; S.bpg = 0; S.more = 48; paint(); }));
-  h.querySelector("#vxSet")?.addEventListener("change", (e) => { S.set = e.target.value; S.bpg = 0; S.more = 48; paint(); });
-  h.querySelector("#vxRar")?.addEventListener("change", (e) => { S.rar = e.target.value; S.bpg = 0; S.more = 48; paint(); });
-  h.querySelector("#vxSort")?.addEventListener("change", (e) => { S.sort = e.target.value; paint(); });
-  h.querySelector("#vxClear")?.addEventListener("click", () => { S.game = S.set = S.rar = S.q = ""; S.type = "all"; paint(); });
-  if (typedFocus) { const q = h.querySelector("#coQ"); if (q) { q.focus(); const n = q.value.length; try { q.setSelectionRange(n, n); } catch { /* ignore */ } } }
+  h.querySelector("#vxClear")?.addEventListener("click", () => { S.game = S.set = S.rar = S.q = ""; S.sort = "value"; paint(); });
+  if (typedFocus) { const q = h.querySelector("#coQ"); if (q) { q.focus(); const len = q.value.length; try { q.setSelectionRange(len, len); } catch { /* ignore */ } } }
+  { const hud = h.querySelector(".bd-hud"); if (hud) h.querySelector(".bd")?.style.setProperty("--hudh", `${hud.offsetHeight - 6}px`); }
 }
 function bar() {
   const n = S.sel.size, spaces = loadSpaces();
@@ -231,7 +279,7 @@ function wire() {
   h.querySelectorAll("[data-cat]").forEach((b) => b.addEventListener("click", () => { S.cat = b.dataset.cat; S.more = 90; paint(); }));
   h.querySelectorAll(".cx-card").forEach((c) => {
     const id = c.dataset.id;
-    c.addEventListener("click", () => { if (S.selecting) { S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); c.classList.toggle("sel", S.sel.has(id)); const bh = h.querySelector(".cx-bh b"); if (bh) bh.textContent = S.sel.size ? `${S.sel.size} selected` : "Tap cards to select"; h.querySelectorAll(".cx-bar [data-bin],.cx-bar [data-bulk]").forEach((x) => { x.disabled = !S.sel.size; }); } else openZoom(id, c.querySelector(".cx-img")); });
+    c.addEventListener("click", () => { if (S.selecting) { S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); c.classList.toggle("sel", S.sel.has(id)); const bh = h.querySelector(".cx-bh b"); if (bh) bh.textContent = S.sel.size ? `${S.sel.size} selected` : "Tap cards to select"; h.querySelectorAll(".cx-bar [data-bin],.cx-bar [data-bulk]").forEach((x) => { x.disabled = !S.sel.size; }); } else openZoom(id, c); });
     c.addEventListener("keydown", (e) => { if (e.key === "Enter") c.click(); });
   });
   h.querySelectorAll("[data-bulk]").forEach((b) => b.addEventListener("click", () => bulk(b.dataset.bulk)));
@@ -254,23 +302,20 @@ function removeItems(ids, after) {
   after && after(); paint();
   ctx.toastUndo(removed.length === 1 ? `Deleted ${nameOf(removed[0])}` : `Deleted ${removed.length} items`, () => { unhideIds(ebay); saveItems(before); ctx.refresh(); paint(); ctx.toast("Restored"); });
 }
-function openZoom(id) {
-  let list = rows(); let i = list.findIndex((x) => String(x.id) === String(id));
+function openZoom(id, from) {
+  let list = filtered(base()).filter((i) => S.tab === "all" || S.selecting || kindOf2(i) === { binder: "singles", sealed: "sealed", graded: "graded" }[S.tab || "binder"]).sort(sorter); let i = list.findIndex((x) => String(x.id) === String(id));
   if (i < 0) { const it = peekItems().find((x) => String(x.id) === String(id)); if (!it) return; list = [it]; i = 0; }
-  const binOf = (it) => loadSpaces().find((s) => s.id === it.spaceId)?.name || "";
-  openFocus(list, i, {
-    photos: (it) => (it.photos || []).map((p) => p.url || p.dataUrl).filter(Boolean).map((u) => /ebayimg\.com/.test(u) ? u.replace(/s-l\d+(\.\w+)/, "s-l1600$1").replace(/\$_\d+\.(jpe?g|png|webp)/i, "$_57.$1") : u),
-    title: cardName,
-    facts: (it) => [["Game", gameOf(it)], ["Set", setOf(it)], ["Number", numOf(it)], ["Rarity", rarityOf(it)], ["Type", { singles: "Single", sealed: "Sealed", graded: "Graded" }[kindOf2(it)]]],
-    stats: (it) => { const paid = it.purchasePrice != null && it.purchasePrice !== "" && it.purchasePrice !== "None" ? Number(it.purchasePrice) : null, g = paid != null ? (Number(it.price) || 0) - paid : null;
-      return [["Market value", money(it.price), "big"], ["You paid", paid != null ? money(paid) : "—"], ["Profit", g == null ? "—" : `${g >= 0 ? "+" : "−"}${money(Math.abs(g))}`, g == null ? "" : g >= 0 ? "up" : "down"], ["Quantity", String(Number(it.quantity) || 1)], ["Bin", esc(binOf(it) || "Not put away"), binOf(it) ? "" : "warn"], ["Where", esc(where(it))]]; },
-    extra: (it) => `<p class="fc-listing">Listing title: ${esc(nameOf(it))}</p>`,
-    actions: (it) => [...(it.phase === "listed" && (it.channels?.ebay?.sku || it.sku) ? [["edit", "Edit listing", "go"]] : []), ["out", "Remove from Collection"], ["lane", kindOf2(it) === "sealed" ? "Mark as single" : "Mark as sealed"], ["del", "Delete", "warn"]],
-    onAction: (a, it, api) => {
-      if (a === "edit") { api.close(); setTimeout(() => dispatchEvent(new CustomEvent("fob:edit-live", { detail: it.id })), 220); }
-      else if (a === "out") { api.close(); moveOutOfCollection([it.id]); }
-      else if (a === "lane") { api.close(); setLane([it.id], kindOf2(it) === "sealed" ? "singles" : "sealed"); }
-      else if (a === "del") { const b = api.button; if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Tap again to delete"; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = "Delete"; } }, 4000); return; } api.close(); removeItems([it.id]); }
+  openCard(list, {
+    index: i, from: from || null, photo: photoOf, name: nameOf, backLabel: "Collection",
+    info: (it) => `<div class="vx-act"><div class="row"><span>Where</span><span>${esc(where(it))}</span></div>
+      <button class="btn" type="button" data-co="out">Remove from Collection (stays in the app)</button>
+      <button class="btn" type="button" data-co="lane">${kindOf2(it) === "sealed" ? "Mark as a single card" : "Mark as sealed product"}</button>
+      <button class="btn warn" type="button" data-co="del">Delete</button></div>`,
+    wire: (root, it, api) => {
+      const d = document.createElement("div"); (root.querySelector(".k-zinfo") || root).appendChild(d); photoManager(d, it.id, { toast: ctx.toast, refresh: ctx.refresh });
+      root.querySelector('[data-co="out"]')?.addEventListener("click", () => { api.close(); moveOutOfCollection([it.id]); });
+      root.querySelector('[data-co="lane"]')?.addEventListener("click", () => { api.close(); setLane([it.id], kindOf2(it) === "sealed" ? "singles" : "sealed"); });
+      root.querySelector('[data-co="del"]')?.addEventListener("click", (e) => { const b = e.currentTarget; if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Tap again to delete"; return; } api.close(); removeItems([it.id]); });
     },
   });
 }
