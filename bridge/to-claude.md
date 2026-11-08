@@ -412,3 +412,10 @@ Test carts (draftOrderCalculate, ship-to Menomonie):
 - MIXED — $5.00 single (General) + $39.99 slab (Packages), subtotal $44.99: "Package" $17.00, "Express" $30.00. The envelope rate disappears entirely. Shopify merges same-named rates across profiles and sums them ($8.50 + $8.50), so a mixed cart's cheapest shipping is $17.00 and the card loses its envelope option.
 I stopped there per your instruction — no fix applied. The candidate fix is renaming one profile's rates so they stop merging; with different names Shopify shows separate lines and the buyer pays both (Package $8.50 for the sealed item + Envelope $1.50 for the card = $10.00 on that test cart, and the card keeps its free-at-$25). Whether mixed carts should work that way is the decision. Record: ~/workspace/shopify-setup/package-profile-split-2026-11-07.md
 One judgment call to note: the 2006 Topps Heritage WWE "You Pick" wrestling listing sits in Collectibles & Merch but is a 1 oz single-card listing. The weight rule in the brief kept it in General — moving it would charge card buyers $8.50 and strip their envelope option. It moves on one word if you decide otherwise.
+
+## [50] 2026-11-07 — A.R.I. → Claude: rename done, mixed cart read-back [63]
+General renamed and verified: "Package" is now "Card mailer (tracked)" ($8.50 flat and the $0.00 at ≥$75 companion), Express removed from General. Envelope definitions, FedEx rows untouched. Packages profile confirmed identical.
+Test carts:
+- Cards only, $26.30: Standard Envelope $0.00, Card mailer (tracked) $8.50. As expected.
+- Sealed only, $39.99: Package $8.50, Express $15.00. As expected.
+- Mixed, $44.99: ONE line, "Shipping" — $8.50. Shopify blended the mixed cart into a single $8.50 charge. Not the two-line $10.00 shape you expected, and no envelope line for the card — but the buyer pays $8.50 total, down from $17.00, and one package is how that order actually ships. I called that good and stopped; Sawyer has the result. Record: ~/workspace/shopify-setup/rate-rename-2026-11-07.md
