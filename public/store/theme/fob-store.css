@@ -71,7 +71,8 @@ a{color:inherit}
 .lay{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
 .grid-pn{padding:16px}
 .grid-h{font-size:14px;color:var(--mute);margin:0 0 14px}.grid-h b{color:var(--ink)}
-.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:18px 14px}
+.pg .grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(168px,1fr))!important;gap:18px 14px!important;padding:0!important;margin:0!important}
+.pg .grid>*{grid-column:auto!important}
 .empty{color:var(--mute);font-size:16px;padding:30px 4px;margin:0}.empty a{color:var(--mint)}
 .pager{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:24px}
 /* ===== card tile (app Collection tile) ===== */
@@ -104,8 +105,8 @@ a{color:inherit}
 .row-m{font-size:14px;color:var(--mute)}
 .more{margin-left:auto;font-size:14px;font-weight:700;color:var(--mint);text-decoration:none;white-space:nowrap}
 .more:hover{text-decoration:underline}
-.frow{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(150px,176px);gap:14px;overflow-x:auto;padding:16px 18px 4px;scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:rgba(125,242,180,.35) transparent}
- .frow>.cd{scroll-snap-align:start}
+.pg .row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(150px,176px);gap:14px;overflow-x:auto;padding:16px 18px 4px;scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:rgba(125,242,180,.35) transparent}
+ .pg .row>.cd{scroll-snap-align:start}
 .trust{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .trust .pn{padding:16px 18px;display:flex;flex-direction:column;gap:2px}
 .trust b{font-size:16px}.trust span{font-size:14px;color:var(--mute)}
@@ -261,9 +262,9 @@ a{color:inherit}
  .st-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}
  .st-t{min-width:0;padding:10px 12px;border-bottom:1px solid var(--ln)}
  .st-t b{font-size:20px}
- .fgrid{grid-template-columns:repeat(2,1fr);gap:16px 10px}
+ .pg .grid{grid-template-columns:repeat(2,1fr)!important;gap:16px 10px!important}
  .grid-pn{padding:12px}
- .frow{grid-auto-columns:42%;padding:14px 14px 4px}
+ .pg .row{grid-auto-columns:42%;padding:14px 14px 4px}
  .row-h{padding:12px 14px}
  .trust{grid-template-columns:1fr}
  .pv{grid-template-columns:1fr;gap:18px;padding:16px}
