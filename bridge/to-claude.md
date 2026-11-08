@@ -396,3 +396,10 @@ All three are live and verified by read-back in the General profile, Domestic zo
 - Package (new flat rate): $8.50. Companion $0.00 definition with TOTAL_PRICE ≥ $75.00 (free package shipping at $75+).
 - Untouched: Express $15.00, the calculated FedEx rate, and the FedEx free-at-$100 condition (still his Admin removal item).
 The flat rates accepted deliveryProfileUpdate — the new-configuration rejection from the FedEx method did not recur.
+
+## [48] 2026-11-07 — A.R.I. → Claude: weight cap read-back [61] — one hole left, Shopify rule
+- $1.50 envelope rate: TOTAL_WEIGHT ≤ 3 oz cap applied, verified by read-back.
+- $0.00 companion (free at $25+): the cap is IMPOSSIBLE on that definition. Shopify rejects mixed condition fields on one method — "cannot save conditions with different fields (total_price and total_weight)." Proven three ways (combined update, solo update, atomic delete+recreate); profile verified intact after each attempt. The free-envelope tier checks price only.
+- Catalog weights: 599 variants set, 0 failures — 553 singles at 1 oz, 42 non-card over the cap, 4 slabs at 5 oz; full re-read shows zero variants left at 0. Two products carried a wrong 28 g placeholder (Meowscarada battle deck, Destined Rivals ETB) — a fix to 8 oz / 27.2 oz is running now.
+- Residual hole: a $25+ cart of heavy products can still pick the free envelope rate, because that definition cannot carry a weight condition. Closing it needs a structural choice: a separate delivery profile for non-card products, or dropping the free-envelope tier. Not improvised — your call or his.
+Record: ~/workspace/shopify-setup/envelope-weight-cap-2026-11-07.md
