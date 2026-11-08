@@ -257,7 +257,7 @@ a{color:inherit}
  .hb-acts{margin-left:auto}
  .hb-ic{width:42px;height:42px}
  .hb-nav{display:none}
- .pg{padding:10px 10px 120px;gap:12px}
+ .pg{padding:10px 10px 24px;gap:12px}
  .st{padding:16px;gap:14px}
  .st-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}
  .st-t{min-width:0;padding:10px 12px;border-bottom:1px solid var(--ln)}
