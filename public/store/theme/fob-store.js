@@ -126,7 +126,8 @@ function toast(msg,ok){let t=$('.toast');if(!t){t=document.createElement('div');
 /* cart: +/- and remove without a page jump */
 const cf=$('[data-cart]');
 if(cf)$$('[data-q]',cf).forEach(b=>b.addEventListener('click',async()=>{const line=+b.closest('[data-line]').dataset.line;cf.classList.add('is-busy');
-  try{await fetch('/cart/change.js',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({line,quantity:+b.dataset.q})})}catch(e){}
+  try{const r=await fetch('/cart/change.js',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({line,quantity:+b.dataset.q})});
+    if(!r.ok){const e=await r.json().catch(()=>({}));cf.classList.remove('is-busy');toast(e.description||'That is all we have in stock',false);return}}catch(e){}
   location.reload()}));
 
 /* count-up */
