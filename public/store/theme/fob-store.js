@@ -123,6 +123,12 @@ if(pv){
 function toast(msg,ok){let t=$('.toast');if(!t){t=document.createElement('div');t.className='toast';t.setAttribute('role','status');document.body.appendChild(t)}
   t.innerHTML=`<span>${esc(msg)}</span>${ok?'<a class="fx-btn" href="/cart">View cart</a>':''}`;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),3800)}
 
+/* cart: +/- and remove without a page jump */
+const cf=$('[data-cart]');
+if(cf)$$('[data-q]',cf).forEach(b=>b.addEventListener('click',async()=>{const line=+b.closest('[data-line]').dataset.line;cf.classList.add('is-busy');
+  try{await fetch('/cart/change.js',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({line,quantity:+b.dataset.q})})}catch(e){}
+  location.reload()}));
+
 /* count-up */
 $$('[data-count]').forEach(b=>{const n=+b.dataset.count;if(reduce||!n)return;let s=null;
   const st=ts=>{s??=ts;const k=Math.min(1,(ts-s)/1200);b.textContent=Math.round(n*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(st)};requestAnimationFrame(st)});
