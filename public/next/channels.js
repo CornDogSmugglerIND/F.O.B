@@ -1,8 +1,8 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=193";
-import { photoManager } from "./photos.js?v=193";
-import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=193";
-import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=193";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=193";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=194";
+import { photoManager } from "./photos.js?v=194";
+import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=194";
+import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=194";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=194";
 
 let ctx = null;
 const S = { f: { when: "", game: "", bin: "", price: "", type: "" }, groupBy: "set", shut: new Set(), stage: "listed", view: (() => { try { return localStorage.getItem("fob-ch-view2") || "rows"; } catch { return "rows"; } })(), group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
@@ -107,7 +107,7 @@ function instrumentHtml(all, total, counts) {
   const orders = ["sold", "shipped", "delivered"].includes(S.stage), wk = weekSales(), live = counts.listed || 0;
   const stale = orders ? 0 : all.filter((it) => (daysSince(it.channels?.ebay?.listedAt || it.createdAt) || 0) > 45).length;
   const g = orders ? ringGauge(all.length, all.length ? 1 : 0, S.stage === "sold" ? "to ship" : S.stage === "shipped" ? "moving" : "done", true) : ringGauge(live, live ? Math.min(1, (live - stale) / live) : 0, "live");
-  return `<div class="ix${orders ? " hot" : ""}">${g}<div class="ix-v"><em>${orders ? ({ sold: "Sold, needs shipping", shipped: "On the way", delivered: "Delivered" })[S.stage] : "Listed on eBay"}</em><b>${money(total)}</b><span>${orders ? `${all.length} order${all.length === 1 ? "" : "s"}` : stale ? `<i class="hot">${stale} sitting 45+ days</i>` : "all fresh"}</span></div>${orders && all.length ? `<button class="btn ix-arch" id="chArchAll" type="button">Archive all</button>` : wk.some((x) => x > 0) ? sparkBars(wk, "sales, 8 wks") : ""}</div>`;
+  return `<div class="ix${orders ? " hot" : ""}">${g}<div class="ix-v"><em>${orders ? ({ sold: "Sold, needs shipping", shipped: "In transit", delivered: "Delivered" })[S.stage] : "Listed on eBay"}</em><b>${money(total)}</b><span>${orders ? `${all.length} order${all.length === 1 ? "" : "s"}` : stale ? `<i class="hot">${stale} sitting 45+ days</i>` : "all fresh"}</span></div>${orders && all.length ? `<button class="btn ix-arch" id="chArchAll" type="button">Archive all</button>` : wk.some((x) => x > 0) ? sparkBars(wk, "sales, 8 wks") : ""}</div>`;
 }
 function stageRouteHtml(counts) {
   const pos = [8, 36, 64, 92];

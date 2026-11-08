@@ -4,8 +4,8 @@
    - fly(): shared-element move between two rects (the camera moves in Spaces)
    Nothing here knows about eBay or storage. Pages just add classes. */
 
-import { setOf, numOf, cardName, rarityOf, gameOf } from "./cardmeta.js?v=193";
-import { loadSpaces } from "./shared.js?v=193";
+import { setOf, numOf, cardName, rarityOf, gameOf } from "./cardmeta.js?v=194";
+import { loadSpaces } from "./shared.js?v=194";
 const reduce = () => false; // Reduce Motion is on for the owner, and the app animations are the point
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -257,7 +257,7 @@ function openItem(items, opts) {
     const phase = o ? it.phase : (it.phase || "intake"), st = STEP[phase] || [phase, ""], bin = loadSpaces().find((x) => x.id === it.spaceId)?.name || "";
     const nm = opts.name ? cardName({ ...it, title: opts.name(it) }) : cardName(it);
     const nextBtn = phase === "staged" ? `<button type="button" class="go" data-do="build">Build the eBay listing</button>` : phase === "listed" && (it.channels?.ebay?.sku || it.sku) ? `<button type="button" class="go" data-do="edit">Edit the live listing</button>` : phase === "intake" ? `<button type="button" class="go" data-do="scouter">Identify in Scouter</button>` : "";
-    v.innerHTML = `<div class="fc-bg" data-x></div>
+    v.innerHTML = `<div class="fc-bg" data-x></div><button type="button" class="it-x" data-x aria-label="Close">✕</button>
       <div class="fc-box">
         <div class="fc-stage it-stage"><div class="it-lock"><svg class="it-arcs" viewBox="0 0 400 400" aria-hidden="true"><circle class="a0" cx="200" cy="200" r="188"/><path class="a1" d="M60 300 A170 170 0 0 1 200 30"/><path class="a2" d="M340 100 A170 170 0 0 1 200 370"/><path class="a3" d="M70 140 A150 150 0 0 1 120 75"/></svg><i class="it-br tl"></i><i class="it-br tr"></i><i class="it-br bl"></i><i class="it-br br"></i>
             <div class="fc-zoom it-card">${src ? `<img src="${esc(src)}" alt="" draggable="false"><span class="it-glare" aria-hidden="true"></span>` : `<i class="fc-none">No photo yet</i>`}</div></div>

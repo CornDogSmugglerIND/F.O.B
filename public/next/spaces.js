@@ -1,6 +1,6 @@
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=193";
-import { fly, rectOf, sleep, openCard } from "./kit.js?v=193";
-import { setOf, numOf, cardName } from "./cardmeta.js?v=193";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=194";
+import { fly, rectOf, sleep, openCard } from "./kit.js?v=194";
+import { setOf, numOf, cardName } from "./cardmeta.js?v=194";
 
 /* Spaces = his real storage, as a camera you fly through:
    area -> shelf -> bin (closed, lid flips) -> bin (open, items inside). */
@@ -75,12 +75,13 @@ function hotspots(w, sh) {
     return `<button class="spx-hot" data-bin="${id}" style="left:${x}%;top:${y}%;width:${ww}%;height:${hh}%" type="button" aria-label="${esc(nm(w, id))}"><span class="spx-lab"><b>${esc(nm(w, id))}</b><em>${n} item${n === 1 ? "" : "s"}</em></span></button>`; }).join("");
 }
 function areaView(w) {
-  const stacks = SHELVES.map((sh) => {
+  /* one steel rack: every stack stands on its own plank, labelled above (Build 194) */
+  const bays = SHELVES.map((sh) => {
     const all = sh.bins.flatMap((id) => w.inBin(id));
-    return `<figure class="spx-stack"><div class="spx-photo"><img src="${IMG}${sh.photo}" alt="${esc(shelfName(sh))}" draggable="false">${hotspots(w, sh)}${brs}</div>
-      <figcaption><span><b>${esc(shelfName(sh))}</b><em>${esc(sh.kind || "")}${sh.kind ? " · " : ""}${sh.bins.length} bins · ${all.length} items · ${money(val(all))}</em></span><button class="spx-edit" data-rename-shelf="${sh.id}" type="button" aria-label="Rename ${esc(shelfName(sh))}">✎</button></figcaption></figure>`;
+    return `<figure class="spx-stack wh-bay"><figcaption class="wh-plac"><span><b>${esc(shelfName(sh))}</b><em>${esc(sh.kind || "")}</em></span><span class="wh-pm">${sh.bins.length} bins · ${all.length} items · ${money(val(all))}</span><button class="spx-edit" data-rename-shelf="${sh.id}" type="button" aria-label="Rename ${esc(shelfName(sh))}">✎</button></figcaption>
+      <div class="spx-photo"><img src="${IMG}${sh.photo}" alt="${esc(shelfName(sh))}" draggable="false">${hotspots(w, sh)}${brs}</div><span class="wh-plank" aria-hidden="true"></span></figure>`;
   }).join("");
-  return `<div class="spx-stage"><div class="spx-areaview">${stacks}</div><p class="spx-hint">Tap a bin to zoom in · drop items on a bin to put them away</p>${trayHtml(w, "")}</div>`;
+  return `<div class="spx-stage">${trayHtml(w, "")}<div class="wh-rack"><i class="wh-up l" aria-hidden="true"></i><div class="spx-areaview wh-bays">${bays}</div><i class="wh-up r" aria-hidden="true"></i></div><p class="spx-hint">Tap a bin to zoom in · drag cards from "To put away" onto a bin</p></div>`;
 }
 /* zoomed onto one bin on its shelf; swipe up/down to the next bin, tap it to open */
 function focusTf(id) { const [x, y, ww, hh] = PHYS[id].rect; const k = Math.min(2.6, Math.max(1.15, 88 / Math.max(ww, hh * 1.15))); const cx = x + ww / 2, cy = y + hh / 2; return `translate(-50%,-50%) translate(${(50 - cx) * k}%, ${(50 - cy) * k}%) scale(${k})`; }

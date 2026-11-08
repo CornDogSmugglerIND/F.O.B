@@ -1,16 +1,16 @@
-import "./viewer.js?v=193";
-import { startScanLink } from "./scanlink.js?v=193";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=193";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=193";
-import { phaseFromItem } from "/visor/phases.js?v=193";
-import { renderScouter } from "./scouter.js?v=193";
-import { renderCollection, openImport } from "./collection.js?v=193";
-import { photoManager } from "./photos.js?v=193";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=193";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=193";
-import { renderSettings } from "./settings.js?v=193";
-import { initSync } from "./sync.js?v=193";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=193";
+import "./viewer.js?v=194";
+import { startScanLink } from "./scanlink.js?v=194";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=194";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=194";
+import { phaseFromItem } from "/visor/phases.js?v=194";
+import { renderScouter } from "./scouter.js?v=194";
+import { renderCollection, openImport } from "./collection.js?v=194";
+import { photoManager } from "./photos.js?v=194";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=194";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=194";
+import { renderSettings } from "./settings.js?v=194";
+import { initSync } from "./sync.js?v=194";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=194";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -38,7 +38,7 @@ const STOPS = [
   { id: "staged", label: "Ready to list", note: "listing not built yet", phases: ["staged"], c: "#B3FBD5", pos: [23, 54], movable: true },
   { id: "stored", label: "Put away", note: "listed, needs its bin", phases: ["listed"], c: "#90FFEE", pos: [40, 80], movable: false },
   { id: "sold", label: "Sold", note: "needs shipping", phases: ["sold", "packed"], c: "#E8924A", pos: [57, 54], movable: true },
-  { id: "shipped", label: "Shipped", note: "on the way, tap to track", phases: ["shipped"], c: "#E8924A", pos: [74, 80], movable: true },
+  { id: "shipped", label: "Shipped", note: "in transit, tap to track", phases: ["shipped"], c: "#E8924A", pos: [74, 80], movable: true },
   { id: "delivered", label: "Delivered", note: "at the door", phases: ["delivered"], c: "#E8924A", pos: [91, 54], movable: true },
 ];
 /* a fresh map: things you bring in through the app until they're listed and in a bin, then your eBay orders. Old eBay listings live in Channels. */
@@ -266,15 +266,21 @@ function widgets(g) {
   /* count listings, not the cards inside variation listings, so this matches the header and Channels */
   const lst = new Map(); for (const i of live) { const k = i.channels.ebay.listingId; (lst.get(k) || lst.set(k, []).get(k)).push(i); }
   const nobin = [...lst.values()].filter((g) => g.every((i) => !i.spaceId)).length;
-  return `<div class="hudw holo sdesk" role="group" aria-label="Sales desk">
-    <div class="holo-read">
-      <button type="button" class="hr" data-goto="channels" data-pst="sold"><em>Sold this week</em><b>${money(wk)}</b></button>
-      <div class="hr sd-chart" aria-label="Sales per week, last 8 weeks"><em>Last 8 weeks</em><b>${money(sum8)}</b><span class="sd-bars">${wk8.map((v, i) => `<i style="height:${Math.max(8, Math.round(v / mx * 100))}%"${i === 7 ? ' class="now"' : ""} title="${money(v)}"></i>`).join("")}</span></div>
-      <button type="button" class="hr" data-goto="channels"><em>Live on eBay</em><b>${lst.size}</b><small>${money(liveV)}</small></button>
-      <button type="button" class="hr hot" data-stage="sold"><em>To ship</em><b>${g.sold.length}</b></button>
-      <button type="button" class="hr" data-stage="shipped"><em>On the way</em><b>${g.shipped.length}</b></button>
-      ${nobin ? `<button type="button" class="hr warn" data-goto="spaces"><em>No bin</em><b>${nobin}</b></button>` : ""}
-    </div></div>`;
+  const acts = [
+    ["Identify", g.intake.length + (window.__fobInboxN || 0), `data-goto="scouter"`],
+    ["Build", g.staged.length, `data-stage="staged"`],
+    ["Put away", g.stored.length + nobin, `data-putaway type="button"`],
+    ["Ship", g.sold.length, `data-goto="channels" data-pst="sold"`],
+  ];
+  return `<section class="hudc" role="group" aria-label="Heads-up display">
+    <div class="hudc-read">
+      <button type="button" class="hc" data-goto="channels" data-pst="sold"><em>Sold this week</em><b>${money(wk)}</b></button>
+      <div class="hc hc-ch" aria-label="Sales per week, last 8 weeks"><em>8 weeks</em><b>${money(sum8)}</b><span class="sd-bars">${wk8.map((v, i) => `<i style="height:${Math.max(10, Math.round(v / mx * 100))}%"${i === 7 ? ' class="now"' : ""} title="${money(v)}"></i>`).join("")}</span></div>
+      <button type="button" class="hc" data-goto="channels"><em>Live</em><b>${lst.size}</b><small>${money(liveV)}</small></button>
+      <button type="button" class="hc" data-stage="shipped"><em>In transit</em><b>${g.shipped.length}</b></button>
+    </div>
+    <div class="hudc-act" role="list" aria-label="Next actions">${acts.map(([l, n, attr]) => `<button class="ha${n ? " hot" : ""}" ${attr} role="listitem"><b>${n}</b><span>${l}</span><i aria-hidden="true"></i></button>`).join("")}</div>
+    <i class="hudc-br tl"></i><i class="hudc-br tr"></i><i class="hudc-br bl"></i><i class="hudc-br br"></i></section>`;
 }
 /* ---------- your route, your way: stops can be dragged anywhere, the line always runs in order ---------- */
 const ROUTE_KEY = "coalition-route-v3"; /* arranging retired (Nov 3): stops sit in the fixed route, nothing covers anything */
@@ -353,7 +359,7 @@ function renderCommand() {
       <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[5] - 17}%;top:${PY[5] + 8}px"><i></i>Done</div></div>`;
   } else {
     main.style.overflowY = "hidden"; main.style.overflowX = "";
-    const TOP = 128 /* the sales desk sits above the route; nothing overlaps it */, W = Math.max(600, main.clientWidth || 1000), H = Math.max(400, (main.clientHeight || 600) - TOP - 96);
+    const TOP = 150 /* the sales desk sits above the route; nothing overlaps it */, W = Math.max(600, main.clientWidth || 1000), H = Math.max(400, (main.clientHeight || 600) - TOP - 96);
     const sv = routeSaved("desk"), POS = STOPS.map((s) => sv[s.id] || s.pos);
     const pts = POS.map((p) => [p[0] / 100 * W, p[1] / 100 * H]);
     const path = routePath(pts, false);
