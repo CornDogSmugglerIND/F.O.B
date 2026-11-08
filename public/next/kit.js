@@ -4,8 +4,8 @@
    - fly(): shared-element move between two rects (the camera moves in Spaces)
    Nothing here knows about eBay or storage. Pages just add classes. */
 
-import { setOf, numOf, cardName, rarityOf, gameOf } from "./cardmeta.js?v=190";
-import { loadSpaces } from "./shared.js?v=190";
+import { setOf, numOf, cardName, rarityOf, gameOf } from "./cardmeta.js?v=191";
+import { loadSpaces } from "./shared.js?v=191";
 const reduce = () => false; // Reduce Motion is on for the owner, and the app animations are the point
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -294,5 +294,7 @@ function openItem(items, opts) {
   v._key = (e) => { if (e.key === "Escape") { e.stopPropagation(); api.close(); } else if (e.key === "ArrowRight" && items.length > 1) { i = (i + 1) % items.length; ph = 0; paint(); } else if (e.key === "ArrowLeft" && items.length > 1) { i = (i - 1 + items.length) % items.length; ph = 0; paint(); } };
   document.addEventListener("keydown", v._key, true);
   paint(); requestAnimationFrame(() => v.classList.add("on"));
+  /* zoom up from the card that was tapped into the item screen (shared-element move) */
+  if (opts.from) { const fromImg = opts.from.querySelector("img") || opts.from, r = rectOf(fromImg), card = v.querySelector(".it-card"); if (r && card && r.width) fly(card, r, { dur: 460, fade: false }); }
   return v;
 }

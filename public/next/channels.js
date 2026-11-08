@@ -1,8 +1,8 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=190";
-import { photoManager } from "./photos.js?v=190";
-import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=190";
-import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=190";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=190";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=191";
+import { photoManager } from "./photos.js?v=191";
+import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=191";
+import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=191";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=191";
 
 let ctx = null;
 const S = { f: { when: "", game: "", bin: "", price: "", type: "" }, groupBy: "set", shut: new Set(), stage: "listed", view: (() => { try { return localStorage.getItem("fob-ch-view2") || "rows"; } catch { return "rows"; } })(), group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
@@ -411,6 +411,95 @@ function wallInfo(it) {
 }
 function wireDeck(all) { wireHoloWall(ctx.host, all, { info: wallInfo, onOpen: (it, el) => zoom(all, el) }); }
 
+
+/* ===== Channels board (Build 191): HUD tabs, chip filters, dense card-art grid, press-zoom, desktop inspector ===== */
+const SORTS = [["value", "Price: high"], ["low", "Price: low"], ["new", "Newest"], ["old", "Oldest"], ["name", "Name A–Z"]];
+function boardTabs(counts) {
+  const sum = (k) => pool(k).reduce((a, i) => a + (i._order ? Number(i._order.total ?? i.price) || 0 : valOf(i)), 0);
+  const tab = (k, l, sub) => `<button type="button" role="tab" aria-selected="${S.stage === k}" class="bd-tab${S.stage === k ? " on" : ""}${k === "sold" && counts.sold ? " hot" : ""}" data-stage="${k}"><b>${counts[k] || 0}</b><span>${l}</span><em>${sub}</em></button>`;
+  return `<nav class="bd-tabs" role="tablist" aria-label="Channels">${tab("listed", "Live", money(sum("listed")))}${tab("sold", "To ship", counts.sold ? "Ship now" : "Clear")}${tab("shipped", "In transit", money(sum("shipped")))}${tab("delivered", "Delivered", money(sum("delivered")))}<i class="bd-scan" aria-hidden="true"></i></nav>`;
+}
+function boardTile(it, i) {
+  const src = photoOf(it), on = S.sel.has(String(it.id)), d = liveDays(it);
+  const name = it._n > 1 ? nameOf(it).replace(/\s*-\s*pick your card!?.*$/i, "") : cardName(it);
+  return `<article class="bd-t ch-tile${on ? " sel" : ""}${d > 45 ? " stale" : ""}" data-id="${esc(it.id)}" tabindex="0" style="--i:${Math.min(i, 24)}" aria-label="${esc(name)} ${ptxt(it)}">
+    <div class="bd-art">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<i class="bd-ini">${esc(name.charAt(0))}</i>`}<span class="bd-glare" aria-hidden="true"></span>
+      <i class="bd-br tl"></i><i class="bd-br tr"></i><i class="bd-br bl"></i><i class="bd-br br"></i>
+      ${it._n > 1 ? `<span class="bd-var">${it._n} cards</span>` : ""}${!it.spaceId ? `<span class="bd-flag" title="No bin">No bin</span>` : ""}
+      <button type="button" class="bd-pick" data-pick="${esc(it.id)}" aria-label="Select" aria-pressed="${on}"></button></div>
+    <div class="bd-cap"><b>${ptxt(it)}</b><span>${esc(name)}</span></div></article>`;
+}
+function boardFilterCount() { return ["when", "bin", "price", "type"].filter((k) => S.f[k]).length; }
+function boardBody(all) {
+  const tally = (list, f) => { const m = new Map(); for (const it of list) { const k = f(it); if (k) m.set(k, (m.get(k) || 0) + 1); } return [...m.entries()].sort((a, b) => b[1] - a[1]); };
+  const list = liveFilter(all).sort((a, b) => S.sort === "low" ? (Number(a.price) || 0) - (Number(b.price) || 0) : S.sort === "name" ? cardName(a).localeCompare(cardName(b)) : S.sort === "new" ? (liveDays(a) ?? 1e9) - (liveDays(b) ?? 1e9) : S.sort === "old" ? (liveDays(b) ?? -1) - (liveDays(a) ?? -1) : (Number(b.price) || 0) - (Number(a.price) || 0));
+  const games = tally(liveFilter(all, "game"), gameOf), nf = boardFilterCount();
+  const keyF = S.groupBy === "game" ? gameOf : S.groupBy === "bin" ? (i) => binName(i) || "No bin yet" : S.groupBy === "none" ? () => "" : (i) => setOf(i) || "Other";
+  const groups = new Map(); for (const it of list) { const k = keyF(it); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(it); }
+  const secs = [...groups.entries()].sort((a, b) => b[1].reduce((x, i) => x + valOf(i), 0) - a[1].reduce((x, i) => x + valOf(i), 0));
+  const nobin = all.filter((i) => !i.spaceId).length, stale = all.filter((i) => (liveDays(i) || 0) > 45).length;
+  let n = 0;
+  return `${nobin || stale ? `<div class="bd-alerts">${nobin ? `<button type="button" class="bd-al" data-f="bin" data-v="${S.f.bin === "_none" ? "" : "_none"}"><i></i><b>${nobin}</b> live without a bin<span>${S.f.bin === "_none" ? "Showing · clear" : "Show"}</span></button>` : ""}${stale ? `<button type="button" class="bd-al warn" data-f="when" data-v="${S.f.when === "45" ? "" : "45"}"><i></i><b>${stale}</b> sitting 45+ days<span>${S.f.when === "45" ? "Showing · clear" : "Show"}</span></button>` : ""}</div>` : ""}
+    <div class="bd-tools">
+      <label class="bd-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="chQ" type="search" placeholder="Search card, set or SKU" value="${esc(S.q)}" aria-label="Search"></label>
+      <button type="button" class="bd-btn${nf ? " on" : ""}" id="bdFilt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters${nf ? `<b>${nf}</b>` : ""}</button>
+      <label class="bd-btn bd-sort"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"/></svg><span>${esc((SORTS.find((x) => x[0] === S.sort) || SORTS[0])[1])}</span><select id="dkSort" aria-label="Sort">${SORTS.map(([k, l]) => `<option value="${k}"${S.sort === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+      <button type="button" class="bd-btn${S.drawer ? " on" : ""}" id="chCtl" aria-expanded="${S.drawer}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="m14 16.5 2 2 4-4"/></svg>Bulk</button>
+    </div>
+    <div class="bd-chips" role="tablist" aria-label="Game"><button type="button" class="bd-chip${!S.f.game ? " on" : ""}" data-f="game" data-v="">All<b>${liveFilter(all, "game").length}</b></button>${games.map(([g, c]) => `<button type="button" class="bd-chip${S.f.game === g ? " on" : ""}" data-f="game" data-v="${esc(g)}">${esc(g)}<b>${c}</b></button>`).join("")}</div>
+    <div class="bd-sum"><b>${list.length}</b> listing${list.length === 1 ? "" : "s"} · <b>${money(list.reduce((a, i) => a + valOf(i), 0))}</b> live${nf || S.f.game || S.q ? ` <button type="button" class="bd-clear" id="clClear">Clear all</button>` : ""}</div>
+    <div class="bd-main"><div class="bd-feed">${secs.length ? secs.map(([k, l]) => { const shut = S.shut.has(k); return `<section class="bd-sec${shut ? " shut" : ""}">${k ? `<header class="bd-sh"><button type="button" data-shut="${esc(k)}" aria-expanded="${!shut}"><i aria-hidden="true"></i><h2>${esc(k)}</h2></button><span>${l.length} · ${money(l.reduce((a, i) => a + valOf(i), 0))}</span></header>` : ""}${shut ? "" : `<div class="bd-grid">${l.map((it) => boardTile(it, n++)).join("")}</div>`}</section>`; }).join("") : `<div class="bd-empty"><b>Nothing matches.</b><span>Clear the filters to see every live listing.</span></div>`}</div>
+      <aside class="bd-insp" aria-live="polite"><div class="bd-insp-in"><p class="bd-insp-e">Point at a card to see it here. Click to open it.</p></div></aside></div>`;
+}
+function inspHtml(it) {
+  const src = photoOf(it), d = liveDays(it), bin = binName(it), name = it._n > 1 ? nameOf(it).replace(/\s*-\s*pick your card!?.*$/i, "") : cardName(it);
+  const keep = (Number(it.price) || 0) ? Math.max(0, it.price - (it.price * 0.1325 + 0.3)) : 0;
+  return `<div class="bd-insp-in"><div class="bd-insp-card">${src ? `<img src="${esc(src)}" alt="">` : ""}<span class="bd-glare"></span><i class="bd-br tl"></i><i class="bd-br tr"></i><i class="bd-br bl"></i><i class="bd-br br"></i></div>
+    <h3>${esc(name)}</h3><div class="bd-insp-p"><b>${ptxt(it)}</b><span>${it._n > 1 ? `${it._n} cards in one listing` : `you keep ${money(keep)}`}</span></div>
+    <dl class="bd-insp-g"><div><dt>Live</dt><dd class="${d > 45 ? "warn" : ""}">${d == null ? "—" : d === 0 ? "Today" : d + " days"}</dd></div><div><dt>Bin</dt><dd class="${bin ? "" : "warn"}">${esc(bin || "None")}</dd></div><div><dt>${it._n > 1 ? "Cards" : "Qty"}</dt><dd>${it._n > 1 ? it._n : Number(it.quantity) || 1}</dd></div><div><dt>Set</dt><dd>${esc([setOf(it), numOf(it)].filter(Boolean).join(" · ") || "—")}</dd></div></dl>
+    <button type="button" class="bd-go" data-insp-open="${esc(it.id)}">Open card</button></div>`;
+}
+function filterSheet(all) {
+  const cnt = (key, fn) => liveFilter(all, key).filter(fn).length;
+  const tally = (list, f) => { const m = new Map(); for (const it of list) { const k = f(it); if (k) m.set(k, (m.get(k) || 0) + 1); } return [...m.entries()].sort((a, b) => b[1] - a[1]); };
+  const grp = (title, key, opts) => `<section class="bf-g"><h3>${title}</h3><div>${opts.map(([v, l, c]) => `<button type="button" class="bd-chip${S.f[key] === v ? " on" : ""}" data-sf="${key}" data-v="${esc(v)}">${esc(l)}${c != null ? `<b>${c}</b>` : ""}</button>`).join("")}</div></section>`;
+  const s = ctx.openSheet(`<div class="bf"><header class="bf-h"><h2>Filters</h2></header>
+    ${grp("Type", "type", [["", "Everything"], ["singles", "Singles", cnt("type", (i) => typeOf(i) === "singles")], ["variation", "Pick-your-card", cnt("type", (i) => typeOf(i) === "variation")], ["sealed", "Sealed", cnt("type", (i) => typeOf(i) === "sealed")], ["graded", "Graded", cnt("type", (i) => typeOf(i) === "graded")]].filter((x) => x[2] !== 0))}
+    ${grp("Listed", "when", [["", "Any time"], ...WHEN.map(([v, l, a, b]) => [v, l, cnt("when", (it) => { const d = liveDays(it); return d != null && d >= a && (v === "45" || d <= b); })])])}
+    ${grp("Price", "price", [["", "Any price"], ...PRICE_BANDS.map(([v, l, a, b]) => [v, l, cnt("price", (i) => { const p = Number(i._n > 1 ? i._lo : i.price) || 0; return p >= a && p < b; })])])}
+    ${grp("Bin", "bin", [["", "Any bin"], ...tally(liveFilter(all, "bin"), binName).map(([b, c]) => [b, b, c]), ["_none", "No bin yet", cnt("bin", (i) => !i.spaceId)]].filter((x) => x[2] !== 0))}
+    <section class="bf-g"><h3>Group by</h3><div>${[["set", "Set"], ["game", "Game"], ["bin", "Bin"], ["none", "No groups"]].map(([k, l]) => `<button type="button" class="bd-chip${S.groupBy === k ? " on" : ""}" data-gb="${k}">${l}</button>`).join("")}</div></section>
+    <footer class="bf-f"><button type="button" class="bd-btn" data-bfclear>Clear filters</button><button type="button" class="bd-go" data-bfx>Show ${liveFilter(all).length} listings</button></footer></div>`);
+  const root = s || document;
+  root.querySelectorAll("[data-sf]").forEach((b) => b.addEventListener("click", () => { S.f[b.dataset.sf] = b.dataset.v; paint(); filterSheet(all); }));
+  root.querySelectorAll("[data-gb]").forEach((b) => b.addEventListener("click", () => { S.groupBy = b.dataset.gb; S.shut.clear(); paint(); filterSheet(all); }));
+  root.querySelector("[data-bfclear]")?.addEventListener("click", () => { S.f = { when: "", game: S.f.game, bin: "", price: "", type: "" }; ctx.closeSheet(); paint(); });
+  root.querySelectorAll("[data-bfx]").forEach((b) => b.addEventListener("click", () => ctx.closeSheet()));
+}
+function wireBoard(all) {
+  const h = ctx.host;
+  { const hud = h.querySelector(".bd-hud"); if (hud) h.querySelector(".bd")?.style.setProperty("--hudh", `${hud.offsetHeight - 6}px`); }
+  h.querySelector("#bdFilt")?.addEventListener("click", () => filterSheet(all));
+  const insp = h.querySelector(".bd-insp"), byId = new Map(all.map((i) => [String(i.id), i]));
+  let hot = null;
+  const show = (t) => { if (!insp || t === hot) return; hot = t; const it = byId.get(t.dataset.id); if (it) { insp.innerHTML = inspHtml(it); insp.querySelector("[data-insp-open]")?.addEventListener("click", () => zoom(live().filter((x) => byId.has(String(x.id))), t)); tiltInsp(insp); } };
+  h.querySelectorAll(".bd-t").forEach((t) => {
+    const art = t.querySelector(".bd-art");
+    t.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") show(t); });
+    t.addEventListener("focus", () => show(t));
+    t.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") return; const r = art.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height; t.style.setProperty("--rx", `${(0.5 - y) * 14}deg`); t.style.setProperty("--ry", `${(x - 0.5) * 16}deg`); t.style.setProperty("--gx", `${x * 100}%`); t.style.setProperty("--gy", `${y * 100}%`); });
+    t.addEventListener("pointerleave", () => { t.style.removeProperty("--rx"); t.style.removeProperty("--ry"); t.classList.remove("press"); });
+    t.addEventListener("pointerdown", () => t.classList.add("press"));
+    t.addEventListener("pointerup", () => setTimeout(() => t.classList.remove("press"), 140));
+    t.addEventListener("pointercancel", () => t.classList.remove("press"));
+  });
+}
+function tiltInsp(insp) {
+  const c = insp.querySelector(".bd-insp-card"); if (!c) return;
+  c.addEventListener("pointermove", (e) => { const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height; c.style.setProperty("--rx", `${(0.5 - y) * 18}deg`); c.style.setProperty("--ry", `${(x - 0.5) * 20}deg`); c.style.setProperty("--gx", `${x * 100}%`); c.style.setProperty("--gy", `${y * 100}%`); });
+  c.addEventListener("pointerleave", () => { c.style.removeProperty("--rx"); c.style.removeProperty("--ry"); });
+}
+
 function paint() {
   const all = rows(), h = ctx.host; const groups = new Map();
   const typedPct = h.querySelector("#chPct")?.value || "", typedQ = document.activeElement && document.activeElement.id === "chQ";
@@ -425,12 +514,14 @@ function paint() {
       ${closed ? "" : `<div class="${S.view === "list" ? "sp-list" : S.view === "rows" ? "chr-list" : "co-grid ch-grid " + S.view}">${shown.map(tile).join("")}</div>${list.length > shown.length ? `<button class="btn" data-more="${esc(k)}" type="button">Show ${Math.min(120, list.length - shown.length)} more of ${list.length - shown.length}</button>` : ""}`}</section>`;
   }).join("") : "";
   const n = S.sel.size;
-  h.innerHTML = `<div class="co-wrap ch-wrap dk cv chx">
-    ${deskTop(all, total, counts)}
+  const liveAll = S.stage === "listed" ? pool("listed").filter((it) => { const q = S.q.trim().toLowerCase(); return !q || nameOf(it).toLowerCase().includes(q) || String(it.sku || "").toLowerCase().includes(q) || cardName(it).toLowerCase().includes(q) || (setOf(it) || "").toLowerCase().includes(q); }) : null;
+  const scrollY = ctx.host.scrollTop || ctx.host.parentElement?.scrollTop || 0;
+  h.innerHTML = `<div class="co-wrap ch-wrap cv chx bd${S.stage === "listed" ? "" : " bd-orders"}">
+    <div class="bd-hud">${boardTabs(counts)}</div>
     ${drawerHtml()}
-    ${S.list ? (sections || "") : S.stage === "listed" ? liveBody(pool("listed").filter((it) => { const q = S.q.trim().toLowerCase(); return !q || nameOf(it).toLowerCase().includes(q) || String(it.sku || "").toLowerCase().includes(q) || cardName(it).toLowerCase().includes(q); })) : deskList(all)}
+    ${S.stage === "listed" ? boardBody(liveAll) : `<div class="bd-tools"><label class="bd-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="chQ" type="search" placeholder="Search card, buyer or tracking" value="${esc(S.q)}" aria-label="Search"></label><button class="bd-btn${S.drawer ? " on" : ""}" id="chCtl" type="button" aria-expanded="${S.drawer}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="m14 16.5 2 2 4-4"/></svg>Bulk</button></div>${deskList(all)}`}
     ${n ? bar(n) : ""}</div>`;
-  wire(all); wireDesk(all); h.querySelectorAll(".sv-c").forEach((c) => c.addEventListener("click", () => zoom(all, c))); h.querySelectorAll("[data-allgrp]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); S.list = true; paint(); })); ctx.host.querySelector("#chList")?.addEventListener("click", () => { S.list = !S.list; paint(); });
+  wire(all); wireDesk(all); if (S.stage === "listed") wireBoard(liveAll); h.querySelectorAll(".sv-c").forEach((c) => c.addEventListener("click", () => zoom(all, c))); h.querySelectorAll("[data-allgrp]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); S.list = true; paint(); })); ctx.host.querySelector("#chList")?.addEventListener("click", () => { S.list = !S.list; paint(); });
   { const pc = h.querySelector("#chPct"); if (pc && typedPct) pc.value = typedPct; if (typedQ) { const q = h.querySelector("#chQ"); if (q) { q.focus(); const n = q.value.length; try { q.setSelectionRange(n, n); } catch { /* ignore */ } } } }
 }
 function bar(n) {
