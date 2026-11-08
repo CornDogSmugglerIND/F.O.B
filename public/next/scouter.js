@@ -1,8 +1,8 @@
-import { isArchived, loadSpaces, assign } from "./shared.js?v=192";
-import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=192";
-import { paintScanBar } from "./scanconnect.js?v=192";
-import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=192";
-import { phaseFromItem } from "/visor/phases.js?v=192";
+import { isArchived, loadSpaces, assign } from "./shared.js?v=193";
+import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=193";
+import { paintScanBar } from "./scanconnect.js?v=193";
+import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=193";
+import { phaseFromItem } from "/visor/phases.js?v=193";
 /* Scouter: one upload = one item. Photos preview instantly, get shrunk off the
  * hot path, nothing is saved until Save is pressed. */
 const MAX_PICK = 24; /* eBay allows 24 photos on a listing; the item cap matches it (was 5 — Sawyer, Oct 31 2026) */
@@ -156,7 +156,7 @@ function attachCam() {
   const v = $("#scLive"), dz = $("#scDrop"); if (!v || !dz) return;
   if (stream) {
     if (v.srcObject !== stream) v.srcObject = stream;
-    v.hidden = false; v.play?.().catch(() => {}); dz.classList.add("live"); /* auto-tracking retired: it locked onto random things. A fixed card frame shows where to hold the card. */
+    v.hidden = false; v.play?.().catch(() => {}); dz.classList.add("live"); track(); /* lock-on rebuilt Build 193: corner-snapping quad, card-shape check, auto-capture */
     const t = stream.getVideoTracks()[0], cap = t && t.getCapabilities ? t.getCapabilities() : {};
     const tb = $("#scTorch"); if (tb) tb.hidden = !cap.torch;
   } else { v.hidden = true; dz.classList.remove("live"); }
@@ -185,18 +185,18 @@ function cardBlob(px, w, h) {
   const lab = new Int32Array(n), q = new Int32Array(n); let bestS = 0, out = null, id = 0;
   for (let s0 = 0; s0 < n; s0++) {
     if (!M2[s0] || lab[s0]) continue; id++; let qh = 0, qt = 0; q[qt++] = s0; lab[s0] = id;
-    let cnt = 0, sx = 0, sy = 0, x0 = w, x1 = 0, y0 = h, y1 = 0;
-    while (qh < qt) { const i = q[qh++], x = i % w, y = (i / w) | 0; cnt++; sx += x; sy += y; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    let cnt = 0, sx = 0, sy = 0, x0 = w, x1 = 0, y0 = h, y1 = 0, pA = -1e9, pB = -1e9, pC = -1e9, pD = -1e9, cA = null, cB = null, cC = null, cD = null;
+    while (qh < qt) { const i = q[qh++], x = i % w, y = (i / w) | 0; cnt++; sx += x; sy += y; { const a = -x - y, b2 = x - y, c2 = x + y, d2 = -x + y; if (a > pA) { pA = a; cA = [x, y]; } if (b2 > pB) { pB = b2; cB = [x, y]; } if (c2 > pC) { pC = c2; cC = [x, y]; } if (d2 > pD) { pD = d2; cD = [x, y]; } } if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
       if (x > 0 && M2[i - 1] && !lab[i - 1]) { lab[i - 1] = id; q[qt++] = i - 1; } if (x < w - 1 && M2[i + 1] && !lab[i + 1]) { lab[i + 1] = id; q[qt++] = i + 1; }
       if (y > 0 && M2[i - w] && !lab[i - w]) { lab[i - w] = id; q[qt++] = i - w; } if (y < h - 1 && M2[i + w] && !lab[i + w]) { lab[i + w] = id; q[qt++] = i + w; } }
     const bw = (x1 - x0 + 1) / w, bh = (y1 - y0 + 1) / h, area = cnt / n, fill = cnt / ((x1 - x0 + 1) * (y1 - y0 + 1));
     if (area < .035 || bw > .97 || bh > .97 || fill < .45) continue;
     const cx = sx / cnt / w - .5, cy = sy / cnt / h - .5, ar = (bw * w) / (bh * h), shape = Math.exp(-Math.abs(Math.log(ar / (63 / 88))) * 1.2);
     const score = area * fill * (0.6 + 0.4 * shape) * Math.exp(-(cx * cx + cy * cy) * 3);
-    if (score > bestS) { bestS = score; out = { x: x0 / w, y: y0 / h, w: bw, h: bh }; }
+    if (score > bestS) { bestS = score; out = { x: x0 / w, y: y0 / h, w: bw, h: bh, quad: [cA, cB, cC, cD].map(([qx, qy]) => [(qx + .5) / w, (qy + .5) / h]), fill }; }
   }
   if (!out) return null; const pad = .015;
-  return { x: Math.max(.01, out.x - pad), y: Math.max(.01, out.y - pad), w: Math.min(.98, out.w + pad * 2), h: Math.min(.98, out.h + pad * 2) };
+  return { quad: out.quad, fill: out.fill, x: Math.max(.01, out.x - pad), y: Math.max(.01, out.y - pad), w: Math.min(.98, out.w + pad * 2), h: Math.min(.98, out.h + pad * 2) };
 }
 function edgeBox(px, w, h) {
   const L = new Float32Array(w * h); for (let i = 0; i < w * h; i++) L[i] = px[i * 4] * .3 + px[i * 4 + 1] * .59 + px[i * 4 + 2] * .11;
@@ -210,48 +210,84 @@ function edgeBox(px, w, h) {
   if (bw > .14 && bh > .14 && bw < .97 && bh < .97) { const pad = .018; return { x: Math.max(.02, x0 - pad), y: Math.max(.02, y0 - pad), w: Math.min(.96, bw + pad * 2), h: Math.min(.96, bh + pad * 2) }; }
   return null;
 }
+/* ===== Lock-on (Build 193): finds the card's 4 corners, brackets snap onto them, locks when it holds still, then auto-captures ===== */
+const LOCK_FRAMES = 7, AUTO_MS = 650;
+let autoOn = (() => { try { return localStorage.getItem("fob-sc-auto") !== "0"; } catch { return true; } })();
+const lerpQ = (a, b, k) => a.map((p, i) => [p[0] + (b[i][0] - p[0]) * k, p[1] + (b[i][1] - p[1]) * k]);
+const qDist = (a, b) => a.reduce((s2, p, i) => s2 + Math.abs(p[0] - b[i][0]) + Math.abs(p[1] - b[i][1]), 0) / 4;
+function quadOk(q, W, H) {
+  /* convex, card-shaped (63:88 either way), not a sliver */
+  const P = q.map(([x, y]) => [x * W, y * H]); let sgn = 0;
+  for (let i = 0; i < 4; i++) { const a = P[i], b = P[(i + 1) % 4], c = P[(i + 2) % 4], cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]); if (Math.abs(cr) < 1) return false; const s2 = Math.sign(cr); if (sgn && s2 !== sgn) return false; sgn = s2; }
+  const L = (i) => Math.hypot(P[(i + 1) % 4][0] - P[i][0], P[(i + 1) % 4][1] - P[i][1]);
+  const e1 = (L(0) + L(2)) / 2, e2 = (L(1) + L(3)) / 2, ar = Math.min(e1, e2) / Math.max(e1, e2);
+  return ar > .55 && ar < .9 && Math.min(e1, e2) > Math.min(W, H) * .18;
+}
+function quadInfo(q, W, H) {
+  const P = q.map(([x, y]) => [x * W, y * H]);
+  const area = Math.abs(P.reduce((a, p, i) => { const n = P[(i + 1) % 4]; return a + p[0] * n[1] - n[0] * p[1]; }, 0)) / 2 / (W * H);
+  const top = Math.atan2(P[1][1] - P[0][1], P[1][0] - P[0][0]) * 180 / Math.PI; /* q[0]=top-left, q[1]=top-right */
+  const cx = P.reduce((a, p) => a + p[0], 0) / 4 / W, cy = P.reduce((a, p) => a + p[1], 0) / 4 / H;
+  return { area, tilt: Math.abs(((top + 90) % 180) - 90), cx, cy };
+}
+function paintQuad(q, W, H, mode, prog) {
+  const P = q.map(([x, y]) => [x * W, y * H]), pts = P.map((p) => p.map((n) => n.toFixed(1)).join(",")).join(" ");
+  $("#sqFill")?.setAttribute("points", pts); $("#sqEdge")?.setAttribute("points", pts);
+  const tight = mode === "lock" ? .2 : mode === "track" ? .26 : .3, br = $("#sqBr");
+  if (br) br.innerHTML = P.map((c, i) => { const a = P[(i + 3) % 4], b = P[(i + 1) % 4], la = Math.hypot(a[0] - c[0], a[1] - c[1]), lb = Math.hypot(b[0] - c[0], b[1] - c[1]), n = Math.min(la, lb) * tight;
+    const pa = [c[0] + (a[0] - c[0]) / la * n, c[1] + (a[1] - c[1]) / la * n], pb = [c[0] + (b[0] - c[0]) / lb * n, c[1] + (b[1] - c[1]) / lb * n];
+    return `<path d="M${pa[0].toFixed(1)} ${pa[1].toFixed(1)}L${c[0].toFixed(1)} ${c[1].toFixed(1)}L${pb[0].toFixed(1)} ${pb[1].toFixed(1)}"/>`; }).join("");
+  const X = $("#sqX"); if (X) { const cx = P.reduce((a, p) => a + p[0], 0) / 4, cy = P.reduce((a, p) => a + p[1], 0) / 4, g2 = 6 + (1 - prog) * 26, l = 9;
+    X.innerHTML = `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(16 + (1 - prog) * 10).toFixed(1)}" class="sq-ring" stroke-dasharray="${(prog * 113).toFixed(1)} 200"/><path d="M${cx - g2 - l} ${cy}h${l}M${cx + g2} ${cy}h${l}M${cx} ${cy - g2 - l}v${l}M${cx} ${cy + g2}v${l}"/>`; }
+}
 function track() {
   if (trk) return;
   const cv = document.createElement("canvas"), g = cv.getContext("2d", { willReadFrequently: true });
-  const st = { x: .23, y: .2, w: .54, h: .6, tx: .23, ty: .2, tw: .54, th: .6, last: 0, seen: 0, still: 0, mode: "seek" };
-  const def = { x: .23, y: .2, w: .54, h: .6 };
+  const DEF = [[.22, .16], [.78, .16], [.78, .84], [.22, .84]];
+  const st = { q: DEF.map((p) => p.slice()), tq: DEF.map((p) => p.slice()), last: 0, seen: 0, still: 0, mode: "seek", lockAt: 0, shot: false, tip: "" };
+  const setTxt = (id, t) => { const e = $(id); if (e && e.textContent !== t) e.textContent = t; };
   const step = (now) => {
-    const v = $("#scLive"), box = $("#scLock"), dz = $("#scDrop");
-    if (!stream || !v || !box || !dz) { trk = null; return; }
+    const v = $("#scLive"), dz = $("#scDrop"), svg = $("#scQuad");
+    if (!stream || !v || !dz || !svg) { trk = null; return; }
     trk = requestAnimationFrame(step);
     const W = dz.clientWidth, H = dz.clientHeight; if (!W || !H) return;
-    /* glide toward the target every frame; detect every ~70ms */
-    const k = matchMedia("(prefers-reduced-motion: reduce)").matches ? 1 : .4;
-    st.x += (st.tx - st.x) * k; st.y += (st.ty - st.y) * k; st.w += (st.tw - st.w) * k; st.h += (st.th - st.h) * k;
-    box.style.transform = `translate3d(${(st.x * W).toFixed(1)}px,${(st.y * H).toFixed(1)}px,0)`; box.style.width = (st.w * W).toFixed(1) + "px"; box.style.height = (st.h * H).toFixed(1) + "px";
-    if (now - st.last < 70 || !v.videoWidth) return; st.last = now;
+    if (svg.getAttribute("viewBox") !== `0 0 ${W} ${H}`) svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const k = matchMedia("(prefers-reduced-motion: reduce)").matches ? 1 : st.mode === "lock" ? .55 : .32;
+    st.q = lerpQ(st.q, st.tq, k);
+    const prog = st.mode === "lock" ? Math.min(1, (now - st.lockAt) / AUTO_MS) : Math.min(.9, st.still / LOCK_FRAMES);
+    paintQuad(st.q, W, H, st.mode, prog);
+    { const mt = $("#sqMt"); if (mt) mt.style.transform = `scaleX(${st.mode === "seek" ? 0 : Math.min(1, st.still / LOCK_FRAMES)})`; }
+    /* auto-capture: once per lock, after it has held for AUTO_MS */
+    if (st.mode === "lock" && autoOn && !st.shot && now - st.lockAt > AUTO_MS) { st.shot = true; dz.classList.add("sq-snap"); setTimeout(() => dz.classList.remove("sq-snap"), 420); snap(); }
+    if (now - st.last < 66 || !v.videoWidth) return; st.last = now;
     const sc = Math.max(W / v.videoWidth, H / v.videoHeight), cw = W / sc, chh = H / sc, sx = (v.videoWidth - cw) / 2, sy = (v.videoHeight - chh) / 2;
-    const w = 96, h = Math.max(24, Math.round(96 * H / W)); cv.width = w; cv.height = h;
+    const w = 128, h = Math.max(32, Math.round(128 * H / W)); cv.width = w; cv.height = h;
     g.drawImage(v, sx, sy, cw, chh, 0, 0, w, h);
-    const px = g.getImageData(0, 0, w, h).data;
-    /* 1) the card stands out from the table: segment against the frame border's colour, take the best central blob */
-    let tg = cardBlob(px, w, h);
-    /* 2) fallback: where the sharp edges cluster */
-    if (!tg) tg = edgeBox(px, w, h);
-    if (tg) st.seen = now; const t = tg || (now - st.seen > 700 ? def : null);
-    if (t) {
-      const mv = Math.abs(t.x - st.tx) + Math.abs(t.y - st.ty) + Math.abs(t.w - st.tw) + Math.abs(t.h - st.th);
-      /* small jitter is ignored so a held card sits dead still */
-      /* ease toward the new box (no snapping), and pull its shape toward a trading card (63:88) so the lock reads as "card" */
-      if (mv > .012) {
-        let { x, y, w: bw2, h: bh2 } = t; if (tg) { const ar = (W * bw2) / (H * bh2), want = 63 / 88, k2 = .5; const tw2 = ar > want ? bw2 * (1 - k2 + k2 * want / ar) : bw2, th2 = ar < want ? bh2 * (1 - k2 + k2 * ar / want) : bh2; x += (bw2 - tw2) / 2; y += (bh2 - th2) / 2; bw2 = tw2; bh2 = th2; }
-        const e = tg ? .45 : .25; st.tx += (x - st.tx) * e; st.ty += (y - st.ty) * e; st.tw += (bw2 - st.tw) * e; st.th += (bh2 - st.th) * e;
-      }
-      st.still = tg && mv < .05 ? st.still + 1 : 0;
+    const tg = cardBlob(g.getImageData(0, 0, w, h).data, w, h);
+    const ok = tg && tg.quad && tg.fill > .7 && quadOk(tg.quad, W, H);
+    if (ok) {
+      st.seen = now;
+      const mv = qDist(tg.quad, st.tq);
+      if (mv > .006) st.tq = lerpQ(st.tq, tg.quad, mv > .08 ? .8 : .55);
+      st.still = mv < .02 ? st.still + 1 : Math.max(0, st.still - 2);
+    } else if (now - st.seen > 600) { st.tq = DEF.map((p) => p.slice()); st.still = 0; }
+    const info = quadInfo(st.tq, W, H);
+    let mode = !ok && now - st.seen > 300 ? "seek" : st.still >= LOCK_FRAMES ? "lock" : ok ? "track" : st.mode;
+    const tip = mode === "seek" ? "Point at a card" : info.area < .14 ? "Move closer" : info.area > .78 ? "Back up a little" : info.tilt > 12 ? "Straighten the card" : Math.abs(info.cx - .5) > .2 || Math.abs(info.cy - .5) > .2 ? "Center the card" : mode === "lock" ? (autoOn ? (st.shot ? "Captured. Next card" : "Hold. Capturing…") : "Locked. Tap to capture") : "Hold steady";
+    if (mode === "lock" && (info.area < .1)) mode = "track";
+    if (mode !== st.mode) {
+      if (mode === "lock") { st.lockAt = now; ctx?.haptic?.(); try { navigator.vibrate?.(18); } catch { /* ignore */ } dz.classList.remove("sq-locked"); void dz.offsetWidth; dz.classList.add("sq-locked"); }
+      if (mode === "seek") st.shot = false;
+      st.mode = mode;
     }
-    const mode = !tg ? "seek" : st.still >= 8 ? "lock" : "track";
-    /* Face ID style ring: fills white -> green as the lock holds steady */
-    const want = !tg ? 0 : mode === "lock" ? 1 : Math.min(.92, .12 + st.still / 6 * .8);
-    st.ring = (st.ring || 0) + (want - (st.ring || 0)) * .35;
-    const fg = $("#scRingFg"); if (fg) { const r = st.ring; fg.style.strokeDashoffset = String(100 - r * 100); const g = Math.round(255 - r * (255 - 124)), b2 = Math.round(255 - r * (255 - 181)); fg.style.stroke = `rgb(${g},${Math.round(255 - r * 15)},${b2})`; }
-    if (mode !== st.mode) { st.mode = mode; box.dataset.mode = mode; const lk = $("#scLk"); if (lk) lk.textContent = mode === "lock" ? "Locked" : mode === "track" ? "Tracking" : "Seeking"; if (mode === "lock") ctx?.haptic?.(); }
+    /* re-applied every pass: the tray repaint can swap the HUD element out from under us */
+    { const hudEl = $("#sqHud"); if (hudEl && hudEl.dataset.mode !== st.mode) hudEl.dataset.mode = st.mode; if (svg.dataset.mode !== st.mode) svg.dataset.mode = st.mode; setTxt("#sqSt", st.mode === "lock" ? "Locked" : st.mode === "track" ? "Tracking" : st.shot ? "Captured" : "Searching"); }
+    /* a different card after a capture re-arms auto-capture */
+    if (st.shot && st.mode !== "lock" && st.still === 0) st.shot = false;
+    st.tip = tip; setTxt("#sqTip", tip);
   };
   trk = requestAnimationFrame(step);
+  const ab = $("#sqAuto"); if (ab) { ab.setAttribute("aria-pressed", String(autoOn)); ab.onclick = (e) => { e.stopPropagation(); autoOn = !autoOn; try { localStorage.setItem("fob-sc-auto", autoOn ? "1" : "0"); } catch { /* ignore */ } ab.setAttribute("aria-pressed", String(autoOn)); }; }
 }
 function stopCam() { if (trk) { cancelAnimationFrame(trk); trk = null; } if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; } const v = $("#scLive"); if (v) { v.srcObject = null; v.hidden = true; } $("#scDrop")?.classList.remove("live"); }
 async function snap() {
@@ -358,7 +394,7 @@ function shell() {
   return `<div class="sc-wrap hh"><div class="pg-title"><h2>Scouter</h2><span>Photograph one item, identify it, save it. Batches go through the Photo inbox.</span></div>${hud()}
     <section class="sc-left">
       <div class="sc-drop sc-vf" id="scDrop" aria-label="Camera">
-        <video id="scLive" playsinline muted autoplay hidden></video><img id="scVfImg" alt="" hidden draggable="false"><div class="sc-lock" id="scLock" data-mode="seek" aria-hidden="true"><i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i><svg class="sc-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="bg" cx="50" cy="50" r="44"/><circle class="fg" id="scRingFg" cx="50" cy="50" r="44" pathLength="100"/></svg><svg class="sc-core" viewBox="0 0 40 40"><circle cx="20" cy="20" r="13" class="ring"/><path d="M20 3v7M20 30v7M3 20h7M30 20h7" class="tk"/><circle cx="20" cy="20" r="1.6" class="dot"/></svg><span class="sc-lk" id="scLk">Seeking</span></div><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
+        <video id="scLive" playsinline muted autoplay hidden></video><img id="scVfImg" alt="" hidden draggable="false"><svg class="sq" id="scQuad" aria-hidden="true"><defs><filter id="sqGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><polygon class="sq-fill" id="sqFill" points=""/><polygon class="sq-edge" id="sqEdge" points=""/><g id="sqBr" filter="url(#sqGlow)"></g><g class="sq-x" id="sqX"></g></svg><div class="sq-hud" id="sqHud" data-mode="seek"><span class="sq-st" id="sqSt">Searching</span><span class="sq-tip" id="sqTip">Point at a card</span><span class="sq-mt"><i id="sqMt"></i></span></div><button type="button" class="sq-auto" id="sqAuto" aria-pressed="true">Auto</button><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
         <div class="sc-ret" aria-hidden="true"><svg viewBox="0 0 300 300"><g class="r-out"><path d="M60 52 A132 132 0 0 1 240 52"/><path d="M240 248 A132 132 0 0 1 60 248"/></g><g class="r-seg"><circle cx="150" cy="150" r="112"/></g><g class="r-tk"><path d="M22 96 V204 M278 96 V204"/></g><rect class="r-card" x="104" y="86" width="92" height="128" rx="6"/><path class="r-x" d="M150 140 V160 M140 150 H160"/></svg></div><div class="sc-aim"><b>Hold the card inside the frame</b><span>On a computer: drop, paste or upload photos here.</span></div><div class="sc-scanmsg">Identifying…</div>
         <div class="sc-tools"><button class="sc-tool" id="scType" type="button">Type it in</button><button class="sc-tool" id="scTorch" type="button" hidden aria-pressed="false">Light</button></div>
         <div class="sc-deck"><button class="sc-side" id="scPick" type="button" aria-label="Choose photos from your library"><i class="ic-lib"></i><span>Photos</span></button>

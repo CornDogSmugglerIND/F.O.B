@@ -685,3 +685,43 @@ html.fx #main .vlt .vb-a,html.fx #main .vlt .vb-dots button{min-height:0!importa
 .vb-pk[data-vid] .vb-sleeve{display:none}
 .vb-card::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:6px;background:linear-gradient(155deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,.04) 28%,rgba(255,255,255,0) 50%,rgba(255,255,255,.07) 78%,rgba(255,255,255,.14) 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);transition:opacity .25s}
 .vb-pk:hover .vb-card::after,.vb-pk.press .vb-card::after{opacity:.3}
+
+/* ===================== Scouter lock-on (Build 193) ===================== */
+.sc-vf .sq{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none;opacity:0;transition:opacity .3s;overflow:visible;--c:#D6FFEA;--l:#7DF2B4}
+.sc-vf.live .sq{opacity:1}
+.sq-fill{fill:rgba(125,242,180,0);transition:fill .25s}
+.sq-edge{fill:none;stroke:rgba(214,255,234,.25);stroke-width:1;stroke-dasharray:3 5;transition:stroke .25s}
+#sqBr path{fill:none;stroke:var(--c);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
+.sq-x path{stroke:rgba(214,255,234,.8);stroke-width:1.6;stroke-linecap:round;fill:none}
+.sq-x .sq-ring{fill:none;stroke:var(--l);stroke-width:2;transform-box:fill-box;transform-origin:center;transform:rotate(-90deg)}
+.sq[data-mode="seek"] #sqBr path{stroke:rgba(214,255,234,.55);animation:sqPulse 1.6s ease-in-out infinite}
+.sq[data-mode="seek"] .sq-edge{stroke:rgba(214,255,234,.12)}
+.sq[data-mode="track"] #sqBr path{stroke:#E9FFF4}
+.sq[data-mode="track"] .sq-edge{stroke:rgba(214,255,234,.45)}
+.sq[data-mode="lock"] #sqBr path{stroke:var(--l);stroke-width:4}
+.sq[data-mode="lock"] .sq-edge{stroke:var(--l);stroke-dasharray:none;stroke-width:1.5}
+.sq[data-mode="lock"] .sq-fill{fill:rgba(125,242,180,.1)}
+.sq[data-mode="lock"] .sq-x path{stroke:var(--l)}
+@keyframes sqPulse{50%{opacity:.35}}
+/* readout */
+.sq-hud{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:4;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 14px 9px;border-radius:14px;background:rgba(3,9,7,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(214,255,234,.18);min-width:180px;opacity:0;transition:opacity .3s,border-color .25s;pointer-events:none;font-family:"Inter",system-ui,sans-serif}
+.sc-vf.live .sq-hud{opacity:1}
+.sq-st{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(214,255,234,.7)}
+.sq-tip{font-size:15px;font-weight:600;color:#fff}
+.sq-mt{display:block;width:100%;height:3px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:3px}
+.sq-mt i{display:block;height:100%;background:#7DF2B4;transform-origin:left;transform:scaleX(0);transition:transform .12s linear;box-shadow:0 0 8px #7DF2B4}
+.sq-hud[data-mode="lock"]{border-color:rgba(125,242,180,.7);box-shadow:0 0 24px rgba(125,242,180,.35)}
+.sq-hud[data-mode="lock"] .sq-st{color:#7DF2B4}
+html.fx #main .sq-auto{all:unset;position:absolute;right:12px;top:12px;z-index:5;padding:6px 11px;border-radius:12px;font:700 12px "Inter",system-ui,sans-serif;color:rgba(214,255,234,.8);background:rgba(3,9,7,.65);border:1px solid rgba(214,255,234,.25);cursor:pointer;display:none}
+html.fx #main .sc-vf.live .sq-auto{display:block}
+html.fx #main .sq-auto[aria-pressed="true"]{color:#04130C;background:#7DF2B4;border-color:#7DF2B4}
+html.fx #main .sq-auto::before{content:"Auto-capture ";font-weight:600}
+/* lock flash + capture flash */
+.sc-vf.sq-locked::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;box-shadow:inset 0 0 0 3px #7DF2B4,inset 0 0 60px rgba(125,242,180,.35);animation:sqLock .5s ease-out forwards}
+@keyframes sqLock{from{opacity:1}to{opacity:0}}
+.sc-vf.sq-snap{animation:sqSnap .42s ease-out}
+@keyframes sqSnap{0%{filter:brightness(2.2)}100%{filter:none}}
+/* the old fixed frame and box are replaced by the lock-on */
+.sc-vf.live .k-br,.sc-vf.live .sc-beam{display:none}
+@media (prefers-reduced-motion:reduce){.sq[data-mode="seek"] #sqBr path{animation:none}}
+.sq-hud{bottom:auto;top:64px}
