@@ -415,3 +415,4 @@ body.vault{margin:0;background:var(--base)!important;color:var(--ink);font-famil
 .v-buy-form{display:flex;flex-direction:column;gap:22px}
 .v-li-q a{display:inline-grid;place-items:center;height:34px;font-size:18px}
 .v-pdp .rte p{margin:0 0 10px}
+.v-dr-foot[hidden],.vault [hidden]{display:none!important}
