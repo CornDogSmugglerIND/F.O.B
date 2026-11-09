@@ -5,22 +5,23 @@
   if p.variants.size > 1
     assign multi = true
   endif
-  assign home = p.collections | where: 'handle', 'pokemon-singles' | first
+  assign home = nil
   for c in p.collections
     unless c.handle == 'all' or c.handle == 'frontpage'
       assign home = c
       break
     endunless
   endfor
+  assign main_img = cur.featured_image | default: p.featured_image
 -%}
 <div class="v-pdp"><div class="v-wrap">
 <nav class="v-crumbs" aria-label="Breadcrumb"><a href="{{ routes.root_url }}">Home</a>/{%- if home -%}<a href="{{ home.url }}">{{ home.title }}</a>{%- endif -%}</nav>
 <div class="v-pdp-grid">
 <div class="v-gal{% if p.images.size < 2 %} single{% endif %}">
 {%- if p.images.size > 1 -%}<div class="v-thumbs">{%- for im in p.images -%}<button class="{% if forloop.first %}on{% endif %}" data-src="{{ im | image_url: width: 1400 }}" aria-label="Photo {{ forloop.index }}"><img src="{{ im | image_url: width: 160 }}" alt="" loading="lazy"></button>{%- endfor -%}</div>{%- endif -%}
-<div class="v-main"><div class="v-main-in"><img src="{{ cur.featured_image | default: p.featured_image | image_url: width: 1400 }}" alt="{{ p.title | escape }}"><span class="v-card-shine"></span></div></div></div>
+<div class="v-main"><div class="v-main-in"><img src="{{ main_img | image_url: width: 1400 }}" alt="{{ p.title | escape }}"><span class="v-card-shine"></span></div></div></div>
 <div class="v-buy">
-<div class="v-buy-k">{{ home.title | default: p.type }}{%- unless p.available -%} <span class="out">· Sold out</span>{%- endunless -%}</div>
+<div class="v-buy-k">{% if home %}{{ home.title }}{% else %}{{ p.type }}{% endif %}{%- unless p.available -%} <span class="out">· Sold out</span>{%- endunless -%}</div>
 <h1>{{ p.title | escape }}</h1>
 <div class="v-price" id="vPrice">{{ cur.price | money }}</div>
 {%- form 'product', p, class: 'v-buy-form', novalidate: 'novalidate' -%}
