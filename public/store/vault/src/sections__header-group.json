@@ -1,1 +1,1 @@
-{"type": "header", "name": "Header", "sections": {"vh": {"type": "vault-header", "settings": {}}}, "order": ["vh"]}
+{"type": "header", "name": "Header", "sections": {"vh": {"type": "vault-header", "settings": {"nav": "pokemon-singles:Pokémon,one-piece-singles:One Piece,dragon-ball-super-singles:Dragon Ball,hockey:Hockey,graded-slabs:Graded,bow-hunting:Bow Hunting,electronics:Electronics,collectibles-merch:Collectibles", "nav_more": "magic-the-gathering:Magic,pokemon:Pokémon Sealed,pick-your-card-mixed-lots:Pick Your Card"}}}, "order": ["vh"]}

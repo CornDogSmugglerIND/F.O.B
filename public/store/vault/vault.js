@@ -1,7 +1,7 @@
 /* Coalition Vault — storefront behaviour */
 (()=>{
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
-const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const RM=false; // effects stay on (Sawyer runs Reduce Motion)
 const fine=matchMedia('(hover:hover) and (pointer:fine)').matches;
 const money=c=>'$'+(c/100).toFixed(2);
 
@@ -128,9 +128,14 @@ const Cart={
   list.innerHTML=c.items.map(it=>`<div class="v-li"><a href="${it.url}"><img src="${it.image||''}" alt=""></a><div><a class="v-li-t" href="${it.url}">${it.product_title}</a>${it.variant_title?`<div class="v-li-v">${it.variant_title}</div>`:''}<div class="v-li-q"><button data-q="${it.key}|${it.quantity-1}" aria-label="One less">−</button><span>${it.quantity}</span><button data-q="${it.key}|${it.quantity+1}" aria-label="One more">+</button></div></div><div><div class="v-li-p">${money(it.price*it.quantity)}</div><button class="v-li-x" data-q="${it.key}|0">Remove</button></div></div>`).join('');
   $$('[data-q]',list).forEach(b=>b.addEventListener('click',async()=>{const[k,q]=b.dataset.q.split('|');try{await api.change(k,+q)}catch(e){toast(e.message)}Cart.render()}));
  },
- async add(id,q,btn){btn&&(btn.disabled=true);try{await api.add(+id,q||1);await Cart.render();toggle($('#vDrawer'),true);toggle($('#vScrim'),true)}catch(e){toast(e.message)}btn&&(btn.disabled=false)}
+ async add(id,q,btn){btn&&(btn.disabled=true);try{await api.add(+id,q||1);await Cart.render();
+  const from=btn&&(btn.closest('.v-card-m')?btn.closest('.v-card-m').querySelector('.v-card-media'):(btn.closest('.v-pdp')?document.querySelector('.v-main img'):null));
+  document.dispatchEvent(new CustomEvent('vault:added',{detail:{from}}));
+  setTimeout(()=>{toggle($('#vDrawer'),true);toggle($('#vScrim'),true)},from?900:0)}catch(e){toast(e.message)}btn&&(btn.disabled=false)}
 };
-window.vCart=Cart;Cart.render();
+window.vCart=Cart;
+/* effects layer */
+(()=>{const me=document.currentScript&&document.currentScript.src;const f=document.createElement('script');f.src=(window.VAULT_MOCK?'fx.js':(me||'https://f-o-b.vercel.app/store/vault/vault.js').replace('vault.js','fx.js'));document.head.appendChild(f)})();Cart.render();
 document.addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;e.preventDefault();Cart.add(b.dataset.add,1,b)});
 
 /* ---------- product page ---------- */

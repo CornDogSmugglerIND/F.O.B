@@ -38,7 +38,7 @@
 {%- assign ticks = section.settings.ticker | split: '|' -%}
 <div class="v-tick" aria-hidden="true"><div class="v-tick-in">{%- for t in ticks -%}<span>{{ t }}</span>{%- endfor -%}{%- for t in ticks -%}<span>{{ t }}</span>{%- endfor -%}</div></div>
 
-<section class="v-sec"><div class="v-wrap"><div class="v-sec-h rv"><div><h2 class="v-h2">Shop by game</h2><p>Every singles binder, sealed box and slab in the store, sorted the way you collect.</p></div></div>
+<section class="v-sec"><div class="v-wrap"><div class="v-sec-h rv"><div><h2 class="v-h2">Shop the store</h2><p>Trading cards, bow hunting gear, electronics and collectibles. Pick a door.</p></div></div>
 <div class="v-doors">
 {%- for b in section.blocks -%}{%- if b.type == 'door' -%}
   {%- assign c = collections[b.settings.handle] -%}
@@ -49,16 +49,24 @@
 </div></div></section>
 
 {%- liquid
+  assign gear = collections['bow-hunting'].products | where: 'available'
+  assign g2 = collections['electronics'].products | where: 'available'
+  assign g3 = collections['collectibles-merch'].products | where: 'available'
+  assign gear = gear | concat: g2 | concat: g3
+-%}
+{%- liquid
   assign pool = collections['pokemon-singles'].products | where: 'available'
   assign hs = 'one-piece-singles,dragon-ball-super-singles,hockey,magic-the-gathering,graded-slabs' | split: ','
   for hx in hs
     assign more = collections[hx].products | where: 'available'
     assign pool = pool | concat: more
   endfor
-  assign landed = pool | sort: 'created_at' | reverse
+  assign pool_all = pool | concat: gear
+  assign landed = pool_all | sort: 'created_at' | reverse
   assign top = pool | sort: 'price' | reverse
   assign cheap = pool | sort: 'price'
 -%}
+{%- render 'vault-rail', title: 'Gear and collectibles', sub: 'Not just cards. Bow hunting gear, electronics, figures and more.', items: gear, link: '/collections/bow-hunting' -%}
 {%- render 'vault-rail', title: 'Just landed', sub: 'Fresh from the scanner this week.', items: landed, link: '/collections/all?sort_by=created-descending' -%}
 
 {%- assign slabs = collections['graded-slabs'].products | where: 'available' -%}

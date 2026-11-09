@@ -366,7 +366,7 @@ body.vault{margin:0;background:var(--base)!important;color:var(--ink);font-famil
  .v-ft-c{flex-direction:column}
  .v-perks{grid-template-columns:1fr}
 }
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition-duration:.01ms!important}.rv{opacity:1;transform:none}}
+
 /* ---- pass 2 ---- */
 .v-link svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .v-logo img{mix-blend-mode:screen}
@@ -419,3 +419,65 @@ body.vault{margin:0;background:var(--base)!important;color:var(--ink);font-famil
 .vault .v-btn{font-weight:700;font-size:16px}
 @media (max-width:720px){.v-door-t b{font-size:19px;line-height:1.05}.v-door.big .v-door-t b{font-size:32px}.v-door-cards img{--w:40%}}
 .v-sort{position:sticky;right:0;z-index:2;padding-left:12px;background:linear-gradient(90deg,transparent,#060908 14px)}
+/* ===== FX layer (from the F.O.B. app) ===== */
+#vfxbg{position:fixed;inset:0;z-index:0;pointer-events:none}
+.vault>*:not(#vfxbg):not(.v-hd):not(.v-sheet):not(.v-search):not(.v-drawer):not(.v-scrim):not(.v-zoom):not(.v-toast):not(#vfxsplash):not(.vfx-lock):not(.vfx-ping):not(.vfx-fly):not(#vfxprog){position:relative;z-index:1}
+.v-hero::before{background:radial-gradient(60% 55% at 50% 58%,rgba(70,220,150,.18),transparent 70%),linear-gradient(180deg,rgba(6,9,8,.15),rgba(6,9,8,0) 30%,rgba(6,9,8,.3) 80%,rgba(6,9,8,.85))}
+.v-hero .v-scan{position:absolute;inset:0;z-index:-1;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(110,240,170,.03) 0 1px,transparent 1px 3px)}
+.v-hero .v-band{position:absolute;left:0;right:0;height:24vh;top:-25vh;z-index:-1;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(110,240,170,.05) 45%,rgba(110,240,170,.1) 50%,rgba(110,240,170,.05) 55%,transparent);animation:vBand 7s linear infinite}
+@keyframes vBand{to{transform:translateY(160vh)}}
+.v-tick,.v-ft{background:rgba(8,12,10,.72)}
+/* front ring card: spinning holo border */
+.v-rc.front .v-rc-f::before{content:"";position:absolute;inset:-5px;border-radius:18px;z-index:-1;background:conic-gradient(from var(--ang,0deg),#7DF2B4,#F0A060,#6FB7F0,#F07AC0,#7DF2B4);animation:vSpin 3s linear infinite;filter:blur(.5px)}
+.v-rc-f{overflow:visible!important}.v-rc-f img{border-radius:14px}
+.v-rc.front .v-rc-f{box-shadow:0 0 0 2px transparent,0 0 70px rgba(70,220,150,.45),0 40px 70px rgba(0,0,0,.6)!important}
+@property --ang{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes vSpin{to{--ang:360deg}}
+.v-rc.front .v-rc-f::after{animation:vSweep 2.6s ease-in-out infinite}
+@keyframes vSweep{0%{background-position:140% 0}60%,100%{background-position:-60% 0}}
+/* splash */
+#vfxsplash{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,rgba(10,30,22,.97),rgba(2,6,5,.995) 70%);animation:spOut .5s ease-in 1.2s both}
+#vfxsplash img{width:min(72vw,440px);mix-blend-mode:screen;filter:drop-shadow(0 0 22px rgba(80,230,150,.6));animation:spIn .9s cubic-bezier(.2,.8,.2,1) both}
+#vfxsplash i{width:min(60vw,340px);height:2px;background:linear-gradient(90deg,transparent,#7DF2B4,transparent);box-shadow:0 0 14px #7DF2B4;animation:spBar 1.1s ease-out both}
+@keyframes spIn{0%{opacity:0;clip-path:inset(0 100% 0 0);filter:brightness(3)}60%{opacity:1;clip-path:inset(0)}70%{opacity:.5}80%{opacity:1}}
+@keyframes spBar{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+@keyframes spOut{to{opacity:0;visibility:hidden}}
+html.vfx-on main{animation:vOn 1s cubic-bezier(.2,.8,.2,1) both}
+@keyframes vOn{0%{opacity:0;filter:brightness(2.4) saturate(0)}35%{opacity:1}45%{opacity:.5}55%{opacity:1}100%{filter:none}}
+/* lock-on */
+.vfx-lock{position:fixed;z-index:120;pointer-events:none}
+.vfx-lock b{position:absolute;width:16px;height:16px;border:0 solid #7DF2B4;filter:drop-shadow(0 0 6px #7DF2B4);animation:vLock .7s cubic-bezier(.2,.9,.2,1) both}
+.vfx-lock .tl{left:0;top:0;border-left-width:2px;border-top-width:2px;--fx:-14px;--fy:-14px}
+.vfx-lock .tr{right:0;top:0;border-right-width:2px;border-top-width:2px;--fx:14px;--fy:-14px}
+.vfx-lock .bl{left:0;bottom:0;border-left-width:2px;border-bottom-width:2px;--fx:-14px;--fy:14px}
+.vfx-lock .br{right:0;bottom:0;border-right-width:2px;border-bottom-width:2px;--fx:14px;--fy:14px}
+@keyframes vLock{0%{opacity:0;transform:translate(var(--fx),var(--fy))}30%{opacity:1}55%{transform:none}70%{opacity:1}100%{opacity:0;transform:none}}
+.vfx-ping{position:fixed;z-index:121;width:120px;height:120px;margin:-60px 0 0 -60px;pointer-events:none}
+.vfx-ping svg{width:100%;height:100%;fill:none;stroke:#7DF2B4;stroke-width:1.5;filter:drop-shadow(0 0 6px #7DF2B4);animation:vPing .6s ease-out both}
+.vfx-ping .s{stroke-dasharray:8 10;stroke-width:1}
+@keyframes vPing{0%{transform:scale(.2) rotate(-60deg);opacity:1}100%{transform:scale(1) rotate(30deg);opacity:0}}
+/* rails: dealt in + coverflow bend */
+.v-rail-track{perspective:1100px}
+.v-rail-track>.v-card{transform:rotateY(var(--ry,0deg)) scale(var(--sc,1));transition:transform .25s ease-out}
+.v-rail-track>.v-card .v-card-media::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.16) 48%,rgba(125,242,180,.12) 54%,transparent 66%);background-size:250% 100%;background-position:var(--sh,50%) 0;mix-blend-mode:screen}
+html.vfx .v-rail-track:not(.dealt)>.v-card{opacity:0;transform:translateX(120px) rotate(8deg) scale(.9)}
+html.vfx .v-rail-track.dealt>.v-card{animation:vDeal .7s cubic-bezier(.2,.9,.25,1.1) calc(var(--di)*70ms) both}
+@keyframes vDeal{0%{opacity:0;transform:translateX(140px) translateY(-30px) rotate(12deg) scale(.85)}60%{opacity:1}100%{opacity:1;transform:rotateY(var(--ry,0deg)) scale(var(--sc,1))}}
+/* phone glint as cards pass mid-screen */
+.v-card-media.glint .v-card-shine,.v-door.glint::before{opacity:1}
+.v-card-media.glint .v-card-shine{animation:vGlint 1.2s ease-out both;background-size:100% 100%,240% 100%}
+@keyframes vGlint{0%{background-position:0 0,140% 0}100%{background-position:0 0,-40% 0}}
+.v-door::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity .4s;background:linear-gradient(115deg,transparent 30%,rgba(255,110,200,.12) 42%,rgba(110,220,255,.12) 50%,rgba(125,242,180,.14) 58%,transparent 70%);background-size:250% 100%;animation:vSweep 3.2s ease-in-out infinite;mix-blend-mode:screen}
+.v-door:hover::before{opacity:1}
+.v-door{transform-style:preserve-3d}
+/* add to cart flight */
+.vfx-fly{position:fixed;z-index:130;object-fit:cover;border-radius:10px;pointer-events:none;transition:transform .6s cubic-bezier(.5,0,.75,0),opacity .6s;box-shadow:0 0 30px rgba(125,242,180,.6)}
+.v-ic.kick{animation:vKick .5s cubic-bezier(.2,.9,.25,1.4)}
+@keyframes vKick{0%{transform:scale(1)}30%{transform:scale(1.35) rotate(-10deg);color:#7DF2B4}100%{transform:none}}
+/* scroll progress */
+#vfxprog{position:fixed;left:0;right:0;top:0;height:2px;z-index:60;background:linear-gradient(90deg,#3FBF83,#7DF2B4,#F0A060);transform-origin:left;transform:scaleX(0);box-shadow:0 0 10px #7DF2B4;pointer-events:none}
+/* door cards float a little */
+.v-door-cards img:nth-child(1){animation:vFloat 6s ease-in-out infinite}
+.v-door-cards img:nth-child(2){animation:vFloat 7s ease-in-out -2s infinite}
+@keyframes vFloat{50%{translate:0 -8px}}
+

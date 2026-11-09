@@ -12,6 +12,12 @@
       break
     endunless
   endfor
+  assign is_card = true
+  for c in p.collections
+    if c.handle == 'bow-hunting' or c.handle == 'electronics' or c.handle == 'collectibles-merch'
+      assign is_card = false
+    endif
+  endfor
   assign main_img = cur.featured_image | default: p.featured_image
 -%}
 <div class="v-pdp"><div class="v-wrap">
@@ -26,7 +32,7 @@
 <div class="v-price" id="vPrice">{{ cur.price | money }}</div>
 {%- form 'product', p, class: 'v-buy-form', novalidate: 'novalidate' -%}
 {%- if multi -%}
-<div class="v-pick"><div class="v-pick-h">Pick your card<span>{{ p.variants.size }} options</span></div>
+<div class="v-pick"><div class="v-pick-h">{% if is_card %}Pick your card{% else %}Choose one{% endif %}<span>{{ p.variants.size }} options</span></div>
 {%- if p.variants.size > 8 -%}<label class="v-pick-s"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="vPickS" placeholder="Filter by name or number" aria-label="Filter options"></label>{%- endif -%}
 <div class="v-opts" role="listbox">{%- for v in p.variants -%}<button type="button" class="v-opt{% if v.id == cur.id %} on{% endif %}{% unless v.available %} out{% endunless %}" data-id="{{ v.id }}" data-p="{{ v.price | money }}" data-t="{{ v.title | escape }}"{% if v.featured_image %} data-img="{{ v.featured_image | image_url: width: 1400 }}"{% endif %} role="option"><span>{{ v.title | escape }}</span><b>{{ v.price | money }}</b></button>{%- endfor -%}</div></div>
 {%- endif -%}
@@ -35,12 +41,12 @@
 <button class="v-btn" id="vAdd" type="submit"{% unless p.available %} disabled{% endunless %}>{% if p.available %}Add to cart{% else %}Sold out{% endif %}</button></div>
 {%- if p.available -%}<div class="v-pay">{{ form | payment_button }}</div>{%- endif -%}
 {%- endform -%}
-<div class="v-perks"><div><b>Ships next business day</b>Sleeved, top-loaded, stiff mailer.</div><div><b>Free shipping over $25</b>Envelope $1.50 on smaller orders.</div></div>
+{%- if is_card -%}<div class="v-perks"><div><b>Ships next business day</b>Sleeved, top-loaded, stiff mailer.</div><div><b>Free shipping over $25</b>Envelope $1.50 on smaller orders.</div></div>{%- else -%}<div class="v-perks"><div><b>Ships next business day</b>Boxed and padded, tracked.</div><div><b>Free shipping over $75</b>$8.50 tracked on smaller orders.</div></div>{%- endif -%}
 <div class="v-acc">
-<details open><summary>Details</summary><div class="rte">{%- if p.description != blank -%}{{ p.description }}{%- else -%}Photographed in hand. Condition is near mint unless the title says otherwise. The card in the photos is the card you get.{%- endif -%}</div></details>
-<details><summary>Shipping</summary><div class="rte">Singles ship in a plain white envelope for $1.50, free on orders over $25. Slabs and sealed product ship tracked in a box for $8.50, free over $75.</div></details>
-<details><summary>All sales final</summary><div class="rte">Every card is described and photographed before it lists, so we don't take returns. If something arrives damaged in transit, message us and we'll make it right.</div></details>
+<details open><summary>Details</summary><div class="rte">{%- if p.description != blank -%}{{ p.description }}{%- else -%}Photographed in hand. Condition is described in the title. What's in the photos is exactly what you get.{%- endif -%}</div></details>
+<details><summary>Shipping</summary><div class="rte">{%- if is_card -%}Singles ship in a plain white envelope for $1.50, free on orders over $25. Slabs and sealed product ship tracked in a box for $8.50, free over $75.{%- else -%}Ships tracked in a padded box for $8.50, free on orders over $75.{%- endif -%}</div></details>
+<details><summary>All sales final</summary><div class="rte">Everything is described and photographed before it lists, so we don't take returns. If something arrives damaged in transit, message us and we'll make it right.</div></details>
 </div></div></div></div>
-{%- if home -%}{%- assign rel = home.products | where: 'available' -%}{%- render 'vault-rail', title: 'More from the binder', sub: home.title, items: rel, link: home.url -%}{%- endif -%}
+{%- if home -%}{%- assign rel = home.products | where: 'available' -%}{%- render 'vault-rail', title: 'More like this', sub: home.title, items: rel, link: home.url -%}{%- endif -%}
 </div>
 {% schema %}{"name":"Vault product","settings":[]}{% endschema %}
