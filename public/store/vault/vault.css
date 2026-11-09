@@ -481,3 +481,4 @@ html.vfx .v-rail-track.dealt>.v-card{animation:vDeal .7s cubic-bezier(.2,.9,.25,
 .v-door-cards img:nth-child(2){animation:vFloat 7s ease-in-out -2s infinite}
 @keyframes vFloat{50%{translate:0 -8px}}
 
+.vault>[class*="header-group"]{position:relative;z-index:50!important}
