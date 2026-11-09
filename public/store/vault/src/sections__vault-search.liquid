@@ -1,0 +1,8 @@
+<section class="v-col-hero"><div class="v-wrap"><h1 class="v-h1">{% if search.performed %}“{{ search.terms | escape }}”{% else %}Search{% endif %}</h1><p>{% if search.performed %}{{ search.results_count }} results{% else %}Card name, set or number.{% endif %}</p>
+<form action="{{ routes.search_url }}" method="get" class="v-pick-s" style="margin-top:22px;max-width:560px" role="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input name="q" value="{{ search.terms | escape }}" placeholder="Search the vault" aria-label="Search"><input type="hidden" name="type" value="product"></form></div></section>
+{%- paginate search.results by 48 -%}
+<div class="v-wrap"><div class="v-grid">{%- for r in search.results -%}{%- if r.object_type == 'product' -%}{%- render 'vault-card', p: r -%}{%- endif -%}{%- endfor -%}</div>
+{%- if search.performed and search.results_count == 0 -%}<div class="v-empty"><p>Nothing matches that. Try just the card name or the set number.</p></div>{%- endif -%}
+{%- if paginate.next -%}<div class="v-more"><button class="v-btn v-btn--ghost" id="vMore" data-next="{{ paginate.next.url }}">Show more</button></div>{%- endif -%}</div>
+{%- endpaginate -%}
+{% schema %}{"name":"Vault search","settings":[]}{% endschema %}

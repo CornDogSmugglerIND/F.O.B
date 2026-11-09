@@ -418,3 +418,4 @@ body.vault{margin:0;background:var(--base)!important;color:var(--ink);font-famil
 .v-dr-foot[hidden],.vault [hidden]{display:none!important}
 .vault .v-btn{font-weight:700;font-size:16px}
 @media (max-width:720px){.v-door-t b{font-size:19px;line-height:1.05}.v-door.big .v-door-t b{font-size:32px}.v-door-cards img{--w:40%}}
+.v-sort{position:sticky;right:0;z-index:2;padding-left:12px;background:linear-gradient(90deg,transparent,#060908 14px)}

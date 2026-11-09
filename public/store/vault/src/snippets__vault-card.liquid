@@ -1,0 +1,22 @@
+{%- liquid
+  assign v1 = p.selected_or_first_available_variant
+  assign multi = false
+  if p.variants.size > 1
+    assign multi = true
+  endif
+  assign tl = p.title | downcase
+  assign graded = false
+  if tl contains ' psa' or tl contains 'psa ' or tl contains ' bgs' or tl contains ' cgc' or tl contains ' sgc' or tl contains 'beckett'
+    assign graded = true
+  endif
+-%}
+<article class="v-card"><div class="v-card-m">
+<a class="v-card-media" href="{{ p.url }}">
+{%- if p.featured_image -%}<img src="{{ p.featured_image | image_url: width: 600 }}" alt="{{ p.featured_image.alt | default: p.title | escape }}" loading="lazy" width="600" height="840">{%- endif -%}
+{%- if p.images.size > 1 -%}<img class="alt" src="{{ p.images[1] | image_url: width: 600 }}" alt="" loading="lazy">{%- endif -%}
+<span class="v-card-shine"></span>
+{%- unless p.available -%}<span class="v-badge out">Sold out</span>{%- else -%}{%- if graded -%}<span class="v-badge">Graded</span>{%- endif -%}{%- endunless -%}
+</a>
+{%- if p.available -%}{%- if multi -%}<a class="v-quick" href="{{ p.url }}" aria-label="Choose a card"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></a>{%- else -%}<button class="v-quick" data-add="{{ v1.id }}" aria-label="Add {{ p.title | escape }} to cart"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>{%- endif -%}{%- endif -%}
+</div>
+<div class="v-card-info"><span class="v-card-p">{% if multi and p.price_varies %}<small>from</small>{% endif %}{{ p.price_min | money }}</span><a class="v-card-t" href="{{ p.url }}">{{ p.title | escape }}</a></div></article>

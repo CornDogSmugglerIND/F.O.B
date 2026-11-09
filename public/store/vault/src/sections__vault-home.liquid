@@ -1,0 +1,89 @@
+{%- liquid
+  assign ring_h = section.settings.ring | split: ','
+  assign seen = ','
+  assign deck_n = 0
+-%}
+<section class="v-hero">
+<div class="v-smoke"><i class="l"></i><i class="r"></i></div>
+<div class="v-hero-copy"><h1 class="v-h1">{{ section.settings.headline | newline_to_br }}</h1><p>{{ section.settings.sub }}</p></div>
+<div class="v-ring-stage" aria-label="Featured cards. Swipe or use the arrows to turn."><div class="v-ring-pivot"><div class="v-ring">
+{%- for round in (0..3) -%}
+  {%- for hh in ring_h -%}
+    {%- if deck_n >= 14 -%}{%- break -%}{%- endif -%}
+    {%- assign h = hh | strip -%}
+    {%- assign game = h | split: ':' -%}
+    {%- assign c = collections[game[0]] -%}
+    {%- assign sorted = c.products | where: 'available' | sort: 'price' | reverse -%}
+    {%- assign picked = nil -%}{%- assign skip = round -%}
+    {%- for p in sorted -%}
+      {%- assign key = ',' | append: p.handle | append: ',' -%}
+      {%- if seen contains key or p.featured_image == blank -%}{%- continue -%}{%- endif -%}
+      {%- assign picked = p -%}{%- break -%}
+    {%- endfor -%}
+    {%- if picked -%}
+      {%- assign seen = seen | append: picked.handle | append: ',' -%}
+      {%- assign deck_n = deck_n | plus: 1 -%}
+      {%- assign u = picked.featured_image | image_url: width: 500 -%}
+      <a class="v-rc" href="{{ picked.url }}" data-u="{{ picked.url }}" data-t="{{ picked.title | truncate: 58 | escape }}" data-p="{{ picked.price | money }}" data-k="{{ game[1] | default: c.title }}" aria-label="{{ picked.title | escape }}"><span class="v-rc-f"><img src="{{ u }}" alt="" width="500" height="700"></span><span class="v-rc-b"></span><span class="refl"><img src="{{ u }}" alt=""></span></a>
+    {%- endif -%}
+  {%- endfor -%}
+{%- endfor -%}
+</div></div>
+<div class="v-hint"><svg viewBox="0 0 24 24"><path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>Swipe to spin</div></div>
+<div class="v-hero-bar"><div class="v-now" aria-live="polite"><small id="vNowK"></small><b id="vNowT"></b><span id="vNowP"></span></div>
+<div class="v-ctrl"><button class="v-rbtn" id="vPrev" aria-label="Previous card"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button><span class="v-dots"></span><button class="v-rbtn" id="vNext" aria-label="Next card"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div>
+<div class="v-hero-cta"><a class="v-btn" id="vNowGo" href="#">View card</a></div></div>
+</section>
+
+{%- assign ticks = section.settings.ticker | split: '|' -%}
+<div class="v-tick" aria-hidden="true"><div class="v-tick-in">{%- for t in ticks -%}<span>{{ t }}</span>{%- endfor -%}{%- for t in ticks -%}<span>{{ t }}</span>{%- endfor -%}</div></div>
+
+<section class="v-sec"><div class="v-wrap"><div class="v-sec-h rv"><div><h2 class="v-h2">Shop by game</h2><p>Every singles binder, sealed box and slab in the store, sorted the way you collect.</p></div></div>
+<div class="v-doors">
+{%- for b in section.blocks -%}{%- if b.type == 'door' -%}
+  {%- assign c = collections[b.settings.handle] -%}
+  {%- assign top3 = c.products | sort: 'price' | reverse -%}
+  <a class="v-door {{ b.settings.size }} rv" href="{{ c.url }}" style="--tint:{{ b.settings.tint }}" {{ b.shopify_attributes }}><span class="v-door-cards">{%- assign n = 0 -%}{%- for p in top3 -%}{%- if p.featured_image and n < 3 -%}<img src="{{ p.featured_image | image_url: width: 400 }}" alt="" loading="lazy">{%- assign n = n | plus: 1 -%}{%- endif -%}{%- endfor -%}</span>
+  <span class="v-door-t"><span><b>{{ b.settings.title | default: c.title }}</b><small>{{ c.products_count }} listed</small></span><span class="v-door-go"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></span></a>
+{%- endif -%}{%- endfor -%}
+</div></div></section>
+
+{%- liquid
+  assign pool = collections['pokemon-singles'].products | where: 'available'
+  assign hs = 'one-piece-singles,dragon-ball-super-singles,hockey,magic-the-gathering,graded-slabs' | split: ','
+  for hx in hs
+    assign more = collections[hx].products | where: 'available'
+    assign pool = pool | concat: more
+  endfor
+  assign landed = pool | sort: 'created_at' | reverse
+  assign top = pool | sort: 'price' | reverse
+  assign cheap = pool | sort: 'price'
+-%}
+{%- render 'vault-rail', title: 'Just landed', sub: 'Fresh from the scanner this week.', items: landed, link: '/collections/all?sort_by=created-descending' -%}
+
+{%- assign slabs = collections['graded-slabs'].products | where: 'available' -%}
+{%- if slabs.size > 0 -%}
+<section class="v-sec" style="padding-top:0"><div class="v-wrap"><div class="v-spot">
+<div class="v-spot-stage rv"><div class="v-slab"><img src="{{ slabs.first.featured_image | image_url: width: 800 }}" alt=""></div></div>
+<div class="rv"><h2 class="v-h2">Graded and slabbed</h2><p class="v-lead" style="margin-top:16px">PSA, BGS and CGC slabs, photographed front and back. What you see is the exact copy you get.</p>
+<div class="v-spot-list">{%- for p in slabs limit: 4 -%}<a href="{{ p.url }}" data-img="{{ p.featured_image | image_url: width: 800 }}"><img src="{{ p.featured_image | image_url: width: 200 }}" alt=""><b>{{ p.title | truncate: 58 | escape }}</b><span>{{ p.price | money }}</span></a>{%- endfor -%}</div>
+<a class="v-link" style="margin-top:22px" href="{{ collections['graded-slabs'].url }}">All graded cards<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div></div></div></section>
+{%- endif -%}
+
+{%- render 'vault-rail', title: 'Top shelf', sub: 'The biggest hits in the vault right now.', items: top, link: '/collections/all?sort_by=price-descending' -%}
+{%- render 'vault-rail', title: 'Binder fillers', sub: 'Singles under a few bucks. Grab a stack and ship it in one envelope.', items: cheap, link: '/collections/all?sort_by=price-ascending' -%}
+
+<section class="v-sec" style="padding-top:0"><div class="v-wrap"><div class="v-trust rv">
+<div><b>Top Rated on eBay</b><p>Thousands of cards shipped with a Top Rated Seller record. Same seller, same care, lower prices here.</p></div>
+<div><b>Priced off the market</b><p>Singles track TCGplayer Market so you pay a fair number, not a guess.</p></div>
+<div><b>Packed like it matters</b><p>Penny sleeve, top loader and a stiff envelope on every single. Slabs ship tracked in a box.</p></div>
+</div></div></section>
+{% schema %}
+{"name":"Vault home","settings":[
+{"type":"textarea","id":"headline","label":"Headline","default":"Cards worth\nthe pull"},
+{"type":"text","id":"sub","label":"Sub line","default":"Pokémon, One Piece, Dragon Ball Super, Magic and hockey singles. Swipe the vault, tap a card to open it."},
+{"type":"text","id":"ring","label":"Ring collections (handle:Label)","default":"pokemon-singles:Pokémon,one-piece-singles:One Piece,dragon-ball-super-singles:Dragon Ball Super,hockey:Hockey,graded-slabs:Graded,magic-the-gathering:Magic,pokemon:Sealed"},
+{"type":"text","id":"ticker","label":"Ticker (| separated)","default":"Top Rated Seller on eBay|Veteran owned|Ships from Wisconsin|Envelope shipping $1.50, free over $25|Tracked package free over $75|Every card sleeved and top-loaded"}],
+"blocks":[{"type":"door","name":"Category door","settings":[{"type":"text","id":"handle","label":"Collection handle"},{"type":"text","id":"title","label":"Title"},{"type":"select","id":"size","label":"Size","options":[{"value":"","label":"Normal"},{"value":"big","label":"Big"},{"value":"wide","label":"Wide"},{"value":"full","label":"Full width"}],"default":""},{"type":"text","id":"tint","label":"Glow color","default":"rgba(125,242,180,.26)"}]}],
+"presets":[{"name":"Vault home"}]}
+{% endschema %}

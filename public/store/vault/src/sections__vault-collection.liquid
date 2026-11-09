@@ -1,0 +1,18 @@
+{%- paginate collection.products by 48 -%}
+{%- assign top3 = collection.products | sort: 'price' | reverse -%}
+<section class="v-col-hero"><div class="v-wrap"><h1 class="v-h1">{{ collection.title | escape }}</h1><p>{{ collection.products_count }} listed · ships in 1 business day</p></div>
+<div class="v-col-fan">{%- assign n = 0 -%}{%- for p in top3 -%}{%- if p.featured_image and n < 3 -%}<img src="{{ p.featured_image | image_url: width: 400 }}" alt="">{%- assign n = n | plus: 1 -%}{%- endif -%}{%- endfor -%}</div></section>
+<div class="v-bar"><div class="v-wrap"><div class="v-bar-in">
+{%- assign chips = section.settings.chips | split: ',' -%}
+{%- for ch in chips -%}{%- assign kv = ch | split: ':' -%}{%- assign h = kv[0] | strip -%}<a class="v-chip{% if collection.handle == h %} on{% endif %}" href="{{ routes.collections_url }}/{{ h }}">{{ kv[1] | strip }}<em>{{ collections[h].products_count }}</em></a>{%- endfor -%}
+<label class="v-sort"><span hidden>Sort</span><select id="vSort" aria-label="Sort">{%- assign sb = collection.sort_by | default: collection.default_sort_by -%}{%- for o in collection.sort_options -%}{%- if o.value == 'manual' or o.value == 'price-ascending' or o.value == 'price-descending' or o.value == 'created-descending' or o.value == 'best-selling' -%}<option value="{{ o.value }}"{% if o.value == sb %} selected{% endif %}>{{ o.name }}</option>{%- endif -%}{%- endfor -%}</select></label>
+</div></div></div>
+<div class="v-wrap">
+{%- if collection.products.size == 0 -%}<div class="v-empty"><p>Nothing in this binder right now. New cards land every week.</p><a class="v-btn" href="{{ routes.all_products_collection_url }}">Browse everything</a></div>{%- endif -%}
+<div class="v-grid">{%- for p in collection.products -%}{%- render 'vault-card', p: p -%}{%- endfor -%}</div>
+{%- if paginate.next -%}<div class="v-more"><button class="v-btn v-btn--ghost" id="vMore" data-next="{{ paginate.next.url }}">Show more</button></div>{%- endif -%}
+</div>
+{%- endpaginate -%}
+{% schema %}
+{"name":"Vault collection","settings":[{"type":"text","id":"chips","label":"Chips (handle:Label)","default":"pokemon-singles:Pokémon,one-piece-singles:One Piece,dragon-ball-super-singles:Dragon Ball,hockey:Hockey,magic-the-gathering:Magic,graded-slabs:Graded,pokemon:Sealed,dragon-ball-super:DBS Sealed,pick-your-card-mixed-lots:Pick Your Card,collectibles-merch:Collectibles"}]}
+{% endschema %}

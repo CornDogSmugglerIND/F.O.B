@@ -1,0 +1,11 @@
+<div class="v-pdp"><div class="v-wrap" style="max-width:860px">
+<h1 class="v-h2" style="margin-bottom:24px">Your cart</h1>
+{%- if cart.item_count == 0 -%}<div class="v-empty"><p>Your cart is empty.</p><a class="v-btn" href="{{ routes.all_products_collection_url }}">Browse cards</a></div>{%- else -%}
+<form action="{{ routes.cart_url }}" method="post">
+{%- for it in cart.items -%}<div class="v-li"><a href="{{ it.url }}"><img src="{{ it.image | image_url: width: 200 }}" alt=""></a><div><a class="v-li-t" href="{{ it.url }}">{{ it.product.title | escape }}</a>{%- unless it.product.has_only_default_variant -%}<div class="v-li-v">{{ it.variant.title | escape }}</div>{%- endunless -%}
+<div class="v-li-q"><a href="{{ routes.cart_change_url }}?line={{ forloop.index }}&quantity={{ it.quantity | minus: 1 }}" aria-label="One less" style="width:34px;text-align:center">−</a><span>{{ it.quantity }}</span><a href="{{ routes.cart_change_url }}?line={{ forloop.index }}&quantity={{ it.quantity | plus: 1 }}" aria-label="One more" style="width:34px;text-align:center">+</a></div></div>
+<div><div class="v-li-p">{{ it.final_line_price | money }}</div><a class="v-li-x" href="{{ it.url_to_remove }}">Remove</a></div></div>{%- endfor -%}
+<div class="v-dr-foot" style="border:0;padding:24px 0"><div class="v-dr-tot"><span>Subtotal</span><b>{{ cart.total_price | money }}</b></div><small>Shipping and tax at checkout.</small><button class="v-btn" type="submit" name="checkout">Check out</button></div>
+</form>{%- endif -%}
+</div></div>
+{% schema %}{"name":"Vault cart","settings":[]}{% endschema %}

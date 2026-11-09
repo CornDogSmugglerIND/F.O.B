@@ -1,0 +1,45 @@
+{%- liquid
+  assign p = product
+  assign cur = p.selected_or_first_available_variant
+  assign multi = false
+  if p.variants.size > 1
+    assign multi = true
+  endif
+  assign home = p.collections | where: 'handle', 'pokemon-singles' | first
+  for c in p.collections
+    unless c.handle == 'all' or c.handle == 'frontpage'
+      assign home = c
+      break
+    endunless
+  endfor
+-%}
+<div class="v-pdp"><div class="v-wrap">
+<nav class="v-crumbs" aria-label="Breadcrumb"><a href="{{ routes.root_url }}">Home</a>/{%- if home -%}<a href="{{ home.url }}">{{ home.title }}</a>{%- endif -%}</nav>
+<div class="v-pdp-grid">
+<div class="v-gal{% if p.images.size < 2 %} single{% endif %}">
+{%- if p.images.size > 1 -%}<div class="v-thumbs">{%- for im in p.images -%}<button class="{% if forloop.first %}on{% endif %}" data-src="{{ im | image_url: width: 1400 }}" aria-label="Photo {{ forloop.index }}"><img src="{{ im | image_url: width: 160 }}" alt="" loading="lazy"></button>{%- endfor -%}</div>{%- endif -%}
+<div class="v-main"><div class="v-main-in"><img src="{{ cur.featured_image | default: p.featured_image | image_url: width: 1400 }}" alt="{{ p.title | escape }}"><span class="v-card-shine"></span></div></div></div>
+<div class="v-buy">
+<div class="v-buy-k">{{ home.title | default: p.type }}{%- unless p.available -%} <span class="out">· Sold out</span>{%- endunless -%}</div>
+<h1>{{ p.title | escape }}</h1>
+<div class="v-price" id="vPrice">{{ cur.price | money }}</div>
+{%- form 'product', p, class: 'v-buy-form', novalidate: 'novalidate' -%}
+{%- if multi -%}
+<div class="v-pick"><div class="v-pick-h">Pick your card<span>{{ p.variants.size }} options</span></div>
+{%- if p.variants.size > 8 -%}<label class="v-pick-s"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="vPickS" placeholder="Filter by name or number" aria-label="Filter options"></label>{%- endif -%}
+<div class="v-opts" role="listbox">{%- for v in p.variants -%}<button type="button" class="v-opt{% if v.id == cur.id %} on{% endif %}{% unless v.available %} out{% endunless %}" data-id="{{ v.id }}" data-p="{{ v.price | money }}" data-t="{{ v.title | escape }}"{% if v.featured_image %} data-img="{{ v.featured_image | image_url: width: 1400 }}"{% endif %} role="option"><span>{{ v.title | escape }}</span><b>{{ v.price | money }}</b></button>{%- endfor -%}</div></div>
+{%- endif -%}
+<input type="hidden" name="id" id="vVarId" value="{{ cur.id }}">
+<div class="v-buy-row"><div class="v-qty"><button type="button" data-qty="-1" aria-label="One less">−</button><input id="vQty" name="quantity" type="number" value="1" min="1" aria-label="Quantity"><button type="button" data-qty="1" aria-label="One more">+</button></div>
+<button class="v-btn" id="vAdd" type="submit"{% unless p.available %} disabled{% endunless %}>{% if p.available %}Add to cart{% else %}Sold out{% endif %}</button></div>
+{%- if p.available -%}<div class="v-pay">{{ form | payment_button }}</div>{%- endif -%}
+{%- endform -%}
+<div class="v-perks"><div><b>Ships next business day</b>Sleeved, top-loaded, stiff mailer.</div><div><b>Free shipping over $25</b>Envelope $1.50 on smaller orders.</div></div>
+<div class="v-acc">
+<details open><summary>Details</summary><div class="rte">{%- if p.description != blank -%}{{ p.description }}{%- else -%}Photographed in hand. Condition is near mint unless the title says otherwise. The card in the photos is the card you get.{%- endif -%}</div></details>
+<details><summary>Shipping</summary><div class="rte">Singles ship in a plain white envelope for $1.50, free on orders over $25. Slabs and sealed product ship tracked in a box for $8.50, free over $75.</div></details>
+<details><summary>All sales final</summary><div class="rte">Every card is described and photographed before it lists, so we don't take returns. If something arrives damaged in transit, message us and we'll make it right.</div></details>
+</div></div></div></div>
+{%- if home -%}{%- assign rel = home.products | where: 'available' -%}{%- render 'vault-rail', title: 'More from the binder', sub: home.title, items: rel, link: home.url -%}{%- endif -%}
+</div>
+{% schema %}{"name":"Vault product","settings":[]}{% endschema %}

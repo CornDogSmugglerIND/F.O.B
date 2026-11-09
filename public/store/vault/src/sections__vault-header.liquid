@@ -1,0 +1,19 @@
+{%- assign navs = section.settings.nav | split: ',' -%}
+<header class="v-hd"><div class="v-hd-in">
+<a class="v-logo" href="{{ routes.root_url }}" aria-label="{{ shop.name }} home"><img class="w" src="{{ 'fob-wm-text.png' | asset_url }}" alt="CornDogSmuggler Coalition" width="520" height="110"></a>
+<nav class="v-nav">{%- for n in navs -%}{%- assign kv = n | split: ':' -%}{%- assign h = kv[0] | strip -%}<a href="{{ routes.collections_url }}/{{ h }}"{% if collection.handle == h %} class="on" aria-current="page"{% endif %}>{{ kv[1] | strip }}</a>{%- endfor -%}</nav>
+<div class="v-acts">
+<button class="v-ic" data-open="#vSearch" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+<button class="v-ic" data-open="#vDrawer" aria-label="Cart"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><i data-cart-count{% if cart.item_count == 0 %} hidden{% endif %}>{{ cart.item_count }}</i></button>
+<button class="v-ic v-menu-btn" data-open="#vSheet" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 8h16M4 16h16"/></svg></button>
+</div></div></header>
+<div class="v-sheet" id="vSheet"><div class="v-sheet-top"><a class="v-logo" href="{{ routes.root_url }}"><img class="w" src="{{ 'fob-wm-text.png' | asset_url }}" alt="CornDogSmuggler Coalition"></a><button class="v-ic" data-close aria-label="Close menu"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<nav>{%- assign all = section.settings.nav | append: ',' | append: section.settings.nav_more | split: ',' -%}{%- for n in all -%}{%- assign kv = n | split: ':' -%}{%- assign h = kv[0] | strip -%}{%- if h != blank -%}<a href="{{ routes.collections_url }}/{{ h }}">{{ kv[1] | strip }}<em>{{ collections[h].products_count }}</em></a>{%- endif -%}{%- endfor -%}</nav></div>
+<div class="v-search" id="vSearch"><button class="v-ic v-search-x" data-close aria-label="Close search"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+<form action="{{ routes.search_url }}" method="get" role="search"><svg width="34" height="34" viewBox="0 0 24 24" style="fill:none;stroke:#8C9A93;stroke-width:1.8;flex:none"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input name="q" placeholder="Search cards, sets, numbers" autocomplete="off" aria-label="Search the store"><input type="hidden" name="type" value="product"></form>
+<div class="v-search-res" id="vSearchRes"></div></div>
+{% schema %}
+{"name":"Vault header","settings":[
+{"type":"text","id":"nav","label":"Top links (handle:Label, comma separated)","default":"pokemon-singles:Pokémon,one-piece-singles:One Piece,dragon-ball-super-singles:Dragon Ball,hockey:Hockey,magic-the-gathering:Magic,graded-slabs:Graded,pokemon:Sealed"},
+{"type":"text","id":"nav_more","label":"Extra menu links","default":"pick-your-card-mixed-lots:Pick Your Card,collectibles-merch:Collectibles"}]}
+{% endschema %}

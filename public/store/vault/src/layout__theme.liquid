@@ -1,0 +1,46 @@
+<!doctype html>
+{%- liquid
+  assign vt = template.name
+  assign vault_page = false
+  if vt == 'index' or vt == 'collection' or vt == 'product' or vt == 'search' or vt == 'cart' or vt == 'list-collections'
+    assign vault_page = true
+  endif
+  assign vv = '1'
+-%}
+<html lang="{{ request.locale.iso_code }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#060908">
+  {%- if settings.favicon != blank -%}<link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 32, height: 32 }}">{%- endif -%}
+  {%- render 'meta-tags' -%}
+  {%- unless vault_page -%}
+    {%- render 'stylesheets' -%}{%- render 'fonts' -%}{%- render 'scripts' -%}{%- render 'theme-styles-variables' -%}{%- render 'color-palette' -%}
+  {%- endunless -%}
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <link rel="stylesheet" href="https://f-o-b.vercel.app/store/vault/vault.css?v={{ vv }}">
+  <style>:root{--smoke-l:url({{ 'fob-smoke-l.jpg' | asset_url }});--smoke-r:url({{ 'fob-smoke-r.jpg' | asset_url }});--glyph:url({{ 'fob-glyph.png' | asset_url }})}
+  {%- unless vault_page -%}.vault #MainContent{padding-top:96px;min-height:60vh;color:var(--ink)}.vault #MainContent :is(h1,h2,h3,p,li,a,label,span){color:inherit}{%- endunless -%}</style>
+  <script src="https://f-o-b.vercel.app/store/vault/vault.js?v={{ vv }}" defer></script>
+  {{ content_for_header }}
+</head>
+<body class="vault{% if vt == 'index' %} has-hero{% endif %} t-{{ vt }}">
+  <a class="v-skip" href="#MainContent">Skip to content</a>
+  {% sections 'header-group' %}
+  <main id="MainContent" role="main">{{ content_for_layout }}</main>
+  {% sections 'footer-group' %}
+  <div class="v-scrim" id="vScrim"></div>
+  <aside class="v-drawer" id="vDrawer" aria-label="Cart">
+    <div class="v-dr-h"><b>Your cart</b><button class="v-ic" data-close aria-label="Close cart"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="v-dr-ship" id="vDrShip"></div>
+    <div class="v-dr-list" id="vDrList"></div>
+    <form class="v-dr-foot" id="vDrFoot" action="{{ routes.cart_url }}" method="post" hidden>
+      <div class="v-dr-tot"><span>Subtotal</span><b id="vDrTot">{{ cart.total_price | money }}</b></div>
+      <small>Shipping and tax at checkout.</small>
+      <button class="v-btn" type="submit" name="checkout">Check out</button>
+    </form>
+  </aside>
+  <div class="v-zoom" aria-hidden="true"><img alt=""></div>
+</body>
+</html>
