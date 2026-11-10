@@ -12,12 +12,10 @@
       break
     endunless
   endfor
-  assign is_card = true
-  for c in p.collections
-    if c.handle == 'bow-hunting' or c.handle == 'electronics' or c.handle == 'collectibles-merch'
-      assign is_card = false
-    endif
-  endfor
+  assign is_card = false
+  if p.type contains 'Single Card' or p.type contains 'Mixed Lot'
+    assign is_card = true
+  endif
   assign main_img = cur.featured_image | default: p.featured_image
 -%}
 <div class="v-pdp"><div class="v-wrap">
@@ -41,10 +39,10 @@
 <button class="v-btn" id="vAdd" type="submit"{% unless p.available %} disabled{% endunless %}>{% if p.available %}Add to cart{% else %}Sold out{% endif %}</button></div>
 {%- if p.available -%}<div class="v-pay">{{ form | payment_button }}</div>{%- endif -%}
 {%- endform -%}
-{%- if is_card -%}<div class="v-perks"><div><b>Ships next business day</b>Sleeved, top-loaded, stiff mailer.</div><div><b>Free shipping over $25</b>Envelope $1.50 on smaller orders.</div></div>{%- else -%}<div class="v-perks"><div><b>Ships next business day</b>Boxed and padded, tracked.</div><div><b>Free shipping over $75</b>$8.50 tracked on smaller orders.</div></div>{%- endif -%}
+{%- if is_card -%}<div class="v-perks"><div><b>Ships next business day</b>Sleeved, top-loaded, stiff mailer.</div><div><b>Free shipping over $25</b>Envelope $1.50 on smaller orders.</div></div>{%- else -%}<div class="v-perks"><div><b>Ships next business day</b>Boxed, padded and tracked.</div><div><b>Free shipping over $75</b>$8.50 tracked on smaller orders.</div></div>{%- endif -%}
 <div class="v-acc">
 <details open><summary>Details</summary><div class="rte">{%- if p.description != blank -%}{{ p.description }}{%- else -%}Photographed in hand. Condition is described in the title. What's in the photos is exactly what you get.{%- endif -%}</div></details>
-<details><summary>Shipping</summary><div class="rte">{%- if is_card -%}Singles ship in a plain white envelope for $1.50, free on orders over $25. Slabs and sealed product ship tracked in a box for $8.50, free over $75.{%- else -%}Ships tracked in a padded box for $8.50, free on orders over $75.{%- endif -%}</div></details>
+<details><summary>Shipping</summary><div class="rte">{%- if is_card -%}Singles ship in a plain white envelope for $1.50, free on orders over $25.{%- else -%}Ships tracked in a padded box for $8.50, free on orders over $75.{%- endif -%}</div></details>
 <details><summary>All sales final</summary><div class="rte">Everything is described and photographed before it lists, so we don't take returns. If something arrives damaged in transit, message us and we'll make it right.</div></details>
 </div></div></div></div>
 {%- if home -%}{%- assign rel = home.products | where: 'available' -%}{%- render 'vault-rail', title: 'More like this', sub: home.title, items: rel, link: home.url -%}{%- endif -%}
