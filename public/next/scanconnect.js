@@ -56,7 +56,7 @@ function watch() {
 }
 
 function wire(el) {
-  el.querySelectorAll("[data-ssd]").forEach((b) => b.addEventListener("click", () => { try { localStorage.setItem(DUPLEX_KEY, b.dataset.ssd); localStorage.setItem("fob-batch-per", b.dataset.ssd === "1" ? "2" : "1"); } catch { /* ignore */ } repaint(); }));
+  el.querySelectorAll("[data-ssd]").forEach((b) => b.addEventListener("click", () => { try { localStorage.setItem(DUPLEX_KEY, b.dataset.ssd); localStorage.setItem("fob-batch-per", b.dataset.ssd === "1" ? "2" : "1"); localStorage.setItem("fob-batch-per-set", "1"); } catch { /* ignore */ } repaint(); }));
   el.querySelector('[data-ss="connect"]')?.addEventListener("click", connectSheet);
   el.querySelector('[data-ss="manage"]')?.addEventListener("click", manageSheet);
   el.querySelector('[data-ss="scan"]')?.addEventListener("click", async (e) => {

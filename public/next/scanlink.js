@@ -1,6 +1,8 @@
 /* Scanner link: finished scan batches from the Mac (collage.py -> fob_push.py -> /api/identify/queue)
    land in this device's Photo inbox automatically. A scan leaves the queue once it's identified or deleted on any device. */
 import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=195";
+import { trimScan } from "./scantrim.js?v=195";
+const toData = (b) => new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.onerror = () => r(null); f.readAsDataURL(b); });
 
 let busy = false;
 export async function pullScans({ toast } = {}) {
@@ -17,7 +19,9 @@ export async function pullScans({ toast } = {}) {
     const files = [];
     for (const e of fresh) {
       try {
-        const b = await (await fetch(`/api/identify/queue/photo?path=${encodeURIComponent(e.path)}`)).blob(); if (!b.size) continue;
+        let b = await (await fetch(`/api/identify/queue/photo?path=${encodeURIComponent(e.path)}`)).blob(); if (!b.size) continue;
+        /* the scanner sometimes sends the whole feeder page: cut the card out of it */
+        try { const u = await toData(b); const t = u && await trimScan(u); if (t && t !== u) b = await (await fetch(t)).blob(); } catch { /* keep the page as sent */ }
         const f = new File([b], `${e.batch}_${String(e.seq).padStart(5, "0")}.jpg`, { type: b.type || "image/jpeg" }); f._remote = e.path; f._batch = e.batch; files.push(f);
       } catch { /* try again next pull */ }
     }

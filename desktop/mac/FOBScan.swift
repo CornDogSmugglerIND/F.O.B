@@ -9,7 +9,8 @@ import ImageIO
 import AppKit
 
 let SERVER = "https://fob-store.corndogsmugglerinc.workers.dev"
-let VERSION = "1.1" /* 1.1: crop only warps to a quad that is plausibly the whole card, with margin; doubtful pages upload raw */
+let VERSION = "1.2" /* 1.2: the feeder page is A6, so a card is only ~35% of it: accept card-shaped quads down to 10% of the page, closest to real card shape first */
+let _v11 = "1.1" /* 1.1: crop only warps to a quad that is plausibly the whole card, with margin; doubtful pages upload raw */
 
 // MARK: - saved pairing
 struct Config: Codable { var token: String; var account: String; var name: String }
@@ -39,6 +40,13 @@ func call(_ path: String, method: String = "POST", token: String? = nil, json: A
 // the card. Now a detection is used only when it is plausibly the whole card
 // (covers most of the page, card-shaped in either orientation); the quad is
 // expanded ~4% so the border survives; anything doubtful uploads the raw page.
+/* how far a detection is from a real card shape (63x88 mm portrait or landscape); smaller is better */
+func cardness(_ q: VNRectangleObservation, _ W: CGFloat, _ H: CGFloat) -> CGFloat {
+  let w = q.boundingBox.width * W, h = q.boundingBox.height * H
+  guard w > 0, h > 0 else { return 99 }
+  let r = w / h
+  return min(abs(r - 0.716), abs(r - 1.397))
+}
 func cropCard(_ url: URL) -> Data? {
   let raw = try? Data(contentsOf: url)
   guard let src = CIImage(contentsOf: url) else { return raw }
@@ -46,17 +54,17 @@ func cropCard(_ url: URL) -> Data? {
   var exif = 1
   if let s = CGImageSourceCreateWithURL(url as CFURL, nil), let p = CGImageSourceCopyPropertiesAtIndex(s, 0, nil) as? [String: Any], let o = p[kCGImagePropertyOrientation as String] as? Int { exif = o }
   let ci = exif == 1 ? src : src.oriented(forExifOrientation: Int32(exif))
-  let req = VNDetectRectanglesRequest(); req.minimumAspectRatio = 0.5; req.maximumAspectRatio = 0.9; req.minimumSize = 0.2; req.maximumObservations = 4; req.minimumConfidence = 0.6; req.quadratureTolerance = 20
+  let req = VNDetectRectanglesRequest(); req.minimumAspectRatio = 0.5; req.maximumAspectRatio = 0.9; req.minimumSize = 0.15; req.maximumObservations = 8; req.minimumConfidence = 0.6; req.quadratureTolerance = 20
   try? VNImageRequestHandler(ciImage: ci).perform([req])
   var out = ci
   let W = ci.extent.width, H = ci.extent.height
-  if W > 0, H > 0, let r = (req.results ?? []).first(where: { quad in
+  if W > 0, H > 0, let r = (req.results ?? []).sorted(by: { cardness($0, W, H) < cardness($1, W, H) }).first(where: { quad in
     /* plausibility: the quad must cover most of the page and be card-shaped.
        Points are normalized; convert to page pixels before measuring. */
     let cs = [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft].map { CGPoint(x: $0.x * W, y: $0.y * H) }
     let area2 = abs(cs.indices.reduce(0.0) { acc, i in let a = cs[i], b = cs[(i + 1) % 4]; return acc + (a.x * b.y - b.x * a.y) })
     let area = area2 / 2
-    guard area >= 0.45 * W * H else { return false }
+    guard area >= 0.10 * W * H, area <= 0.95 * W * H else { return false }
     let wTop = hypot(cs[1].x - cs[0].x, cs[1].y - cs[0].y), wBot = hypot(cs[2].x - cs[3].x, cs[2].y - cs[3].y)
     let hL = hypot(cs[3].x - cs[0].x, cs[3].y - cs[0].y), hR = hypot(cs[2].x - cs[1].x, cs[2].y - cs[1].y)
     let qw = (wTop + wBot) / 2, qh = (hL + hR) / 2

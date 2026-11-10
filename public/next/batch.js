@@ -95,7 +95,7 @@ export async function openBatch(api) {
     s.querySelector("#btNote").textContent = `${p.length} card${p.length === 1 ? "" : "s"}. ${odd ? "Odd number of photos: the last card only has a front. " : ""}Check the first few pairs look right, then Identify all.`;
     s.querySelector("#btGo").textContent = `Identify all ${p.length}`; };
   draw();
-  s.querySelectorAll("[data-per]").forEach((b) => b.addEventListener("click", () => { per = Number(b.dataset.per); try { localStorage.setItem(PER_KEY, String(per)); } catch { /* ignore */ } s.querySelectorAll("[data-per]").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-checked", String(x === b)); }); draw(); }));
+  s.querySelectorAll("[data-per]").forEach((b) => b.addEventListener("click", () => { per = Number(b.dataset.per); try { localStorage.setItem(PER_KEY, String(per)); localStorage.setItem("fob-batch-per-set", "1"); } catch { /* ignore */ } s.querySelectorAll("[data-per]").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-checked", String(x === b)); }); draw(); }));
   s.querySelector("[data-close]").addEventListener("click", () => f.closeSheet());
   s.querySelector("#btGo").addEventListener("click", () => {
     run = { id: `b${Date.now().toString(36)}`, live: true, at: Date.now(), cards: pairs().map((g) => ({ ids: g.map((x) => x.id), thumbs: g.map((x) => x.thumb), full: g.map((x) => x.full), state: "wait", msg: "Waiting…" })) };
