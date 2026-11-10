@@ -135,7 +135,7 @@ const Cart={
 };
 window.vCart=Cart;
 /* effects layer */
-(()=>{const me=(document.currentScript&&document.currentScript.src)||'https://f-o-b.vercel.app/store/vault/vault.js';['fx.js','fx2.js','fx3.js'].forEach(n=>{const f=document.createElement('script');f.src=window.VAULT_MOCK?n:me.replace('vault.js',n);f.async=false;document.head.appendChild(f)})})();Cart.render();
+(()=>{const me=(document.currentScript&&document.currentScript.src)||'https://f-o-b.vercel.app/store/vault/vault.js';['fx.js','fx2.js','fx3.js','fx4.js'].forEach(n=>{const f=document.createElement('script');f.src=window.VAULT_MOCK?n:me.replace('vault.js',n);f.async=false;document.head.appendChild(f)})})();Cart.render();
 document.addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;e.preventDefault();Cart.add(b.dataset.add,1,b)});
 
 /* ---------- product page ---------- */
