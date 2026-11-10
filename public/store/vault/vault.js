@@ -119,7 +119,7 @@ const api={
   const r=await fetch('/cart/change.js',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({id:key,quantity:q})});if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.description||'That’s all we have in stock.')}}
 };
 const Cart={
- async render(){const c=await api.get();$$('[data-cart-count]').forEach(e=>{e.textContent=c.item_count;e.hidden=!c.item_count});
+ async render(){const c=await api.get();document.dispatchEvent(new CustomEvent('vault:cart',{detail:c}));$$('[data-cart-count]').forEach(e=>{e.textContent=c.item_count;e.hidden=!c.item_count});
   const list=$('#vDrList');if(!list)return;const tot=c.total_price;
   const env=Math.min(1,tot/FREE_ENV),pkg=Math.min(1,tot/FREE_PKG);
   $('#vDrShip').innerHTML=`<div class="v-meter"><span>${tot>=FREE_ENV?'<b>Free envelope shipping unlocked.</b>':`Add <b>${money(FREE_ENV-tot)}</b> for free envelope shipping`}</span><div class="v-meter-bar"><i style="width:${env*100}%"></i></div></div><div class="v-meter"><span>${tot>=FREE_PKG?'<b>Free tracked package unlocked.</b>':`Add <b>${money(FREE_PKG-tot)}</b> for a free tracked package`}</span><div class="v-meter-bar"><i style="width:${pkg*100}%"></i></div></div>`;
@@ -128,14 +128,14 @@ const Cart={
   list.innerHTML=c.items.map(it=>`<div class="v-li"><a href="${it.url}"><img src="${it.image||''}" alt=""></a><div><a class="v-li-t" href="${it.url}">${it.product_title}</a>${it.variant_title?`<div class="v-li-v">${it.variant_title}</div>`:''}<div class="v-li-q"><button data-q="${it.key}|${it.quantity-1}" aria-label="One less">−</button><span>${it.quantity}</span><button data-q="${it.key}|${it.quantity+1}" aria-label="One more">+</button></div></div><div><div class="v-li-p">${money(it.price*it.quantity)}</div><button class="v-li-x" data-q="${it.key}|0">Remove</button></div></div>`).join('');
   $$('[data-q]',list).forEach(b=>b.addEventListener('click',async()=>{const[k,q]=b.dataset.q.split('|');try{await api.change(k,+q)}catch(e){toast(e.message)}Cart.render()}));
  },
- async add(id,q,btn){btn&&(btn.disabled=true);try{await api.add(+id,q||1);await Cart.render();
-  const from=btn&&(btn.closest('.v-card-m')?btn.closest('.v-card-m').querySelector('.v-card-media'):(btn.closest('.v-pdp')?document.querySelector('.v-main img'):null));
+ async add(id,q,btn,fromEl){btn&&(btn.disabled=true);try{await api.add(+id,q||1);await Cart.render();try{navigator.vibrate&&navigator.vibrate(18)}catch(e){}
+  const from=fromEl||btn&&(btn.closest('.v-card-m')?btn.closest('.v-card-m').querySelector('.v-card-media'):(btn.closest('.v-pdp')?document.querySelector('.v-main img'):null));
   document.dispatchEvent(new CustomEvent('vault:added',{detail:{from}}));
   setTimeout(()=>{toggle($('#vDrawer'),true);toggle($('#vScrim'),true)},from?900:0)}catch(e){toast(e.message)}btn&&(btn.disabled=false)}
 };
 window.vCart=Cart;
 /* effects layer */
-(()=>{const me=document.currentScript&&document.currentScript.src;const f=document.createElement('script');f.src=(window.VAULT_MOCK?'fx.js':(me||'https://f-o-b.vercel.app/store/vault/vault.js').replace('vault.js','fx.js'));document.head.appendChild(f)})();Cart.render();
+(()=>{const me=(document.currentScript&&document.currentScript.src)||'https://f-o-b.vercel.app/store/vault/vault.js';['fx.js','fx2.js'].forEach(n=>{const f=document.createElement('script');f.src=window.VAULT_MOCK?n:me.replace('vault.js',n);f.async=false;document.head.appendChild(f)})})();Cart.render();
 document.addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;e.preventDefault();Cart.add(b.dataset.add,1,b)});
 
 /* ---------- product page ---------- */
