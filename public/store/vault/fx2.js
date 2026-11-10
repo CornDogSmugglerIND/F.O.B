@@ -88,7 +88,7 @@ function cursor(){if(!fine)return;const g=document.createElement('i');g.id='vfxc
 function priceTick(){const el=$('#vNowP');if(!el)return;let last=0,lock=false;new MutationObserver(()=>{if(lock)return;const txt=el.textContent,to=Math.round(parseFloat(txt.replace(/[^0-9.]/g,''))*100)||0;if(!last){last=to;return}const from=last;last=to;const t0=performance.now();lock=true;
  (function s(n){const k=Math.min(1,(n-t0)/380),v=from+(to-from)*(1-Math.pow(1-k,3));el.textContent=money(Math.round(v));if(k<1)requestAnimationFrame(s);else{el.textContent=money(to);lock=false}})(t0)}).observe(el,{childList:true})}
 
-async function start(){shipBar();packSection();cursor();priceTick();window.vCart&&vCart.render();
+async function start(){shipBar();cursor();priceTick();window.vCart&&vCart.render();
  await catalog();tagCards();tagPdp();wall();
  let tq=0;new MutationObserver(()=>{if(!tq)tq=requestAnimationFrame(()=>{tq=0;tagCards()})}).observe(document.body,{childList:true,subtree:true})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
