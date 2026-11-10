@@ -34,7 +34,7 @@ let st;sIn?.addEventListener('input',()=>{clearTimeout(st);st=setTimeout(async()
 if('IntersectionObserver' in window&&!RM){const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{rootMargin:'0px 0px -8% 0px'});$$('.rv').forEach(el=>io.observe(el))}else $$('.rv').forEach(el=>el.classList.add('in'));
 
 /* ---------- card shine / tilt (mouse only) ---------- */
-if(fine)$$('.v-card-media,.v-main').forEach(m=>{
+if(fine)$$('.v-card-media').forEach(m=>{
  m.addEventListener('pointermove',e=>{const r=m.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;m.style.setProperty('--mx',x*100+'%');m.style.setProperty('--my',y*100+'%');m.style.setProperty('--sx',(100-x*100)+'%');
   const tgt=m.classList.contains('v-main')?$('.v-main-in',m):m;tgt.style.transform=`perspective(900px) rotateY(${(x-.5)*14}deg) rotateX(${(.5-y)*14}deg)`});
  m.addEventListener('pointerleave',()=>{const tgt=m.classList.contains('v-main')?$('.v-main-in',m):m;tgt.style.transform=''});
@@ -135,17 +135,15 @@ const Cart={
 };
 window.vCart=Cart;
 /* effects layer */
-(()=>{const me=(document.currentScript&&document.currentScript.src)||'https://f-o-b.vercel.app/store/vault/vault.js';['fx.js','fx2.js'].forEach(n=>{const f=document.createElement('script');f.src=window.VAULT_MOCK?n:me.replace('vault.js',n);f.async=false;document.head.appendChild(f)})})();Cart.render();
+(()=>{const me=(document.currentScript&&document.currentScript.src)||'https://f-o-b.vercel.app/store/vault/vault.js';['fx.js','fx2.js','fx3.js'].forEach(n=>{const f=document.createElement('script');f.src=window.VAULT_MOCK?n:me.replace('vault.js',n);f.async=false;document.head.appendChild(f)})})();Cart.render();
 document.addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;e.preventDefault();Cart.add(b.dataset.add,1,b)});
 
 /* ---------- product page ---------- */
 const pdp=$('.v-pdp');if(pdp&&$('#vAdd')){
  const main=$('.v-main img',pdp),thumbs=$$('.v-thumbs button',pdp),opts=$$('.v-opt',pdp),price=$('#vPrice'),addB=$('#vAdd'),idIn=$('#vVarId'),qty=$('#vQty'),selT=$('#vSel');
- const setImg=src=>{main.style.opacity=.2;setTimeout(()=>{main.src=src;main.style.opacity=1},140)};main.style.transition='opacity .2s';
+ const setImg=src=>{main.style.opacity=.2;document.dispatchEvent(new CustomEvent('vault:img',{detail:src}));setTimeout(()=>{main.src=src;main.style.opacity=1},140)};main.style.transition='opacity .2s';
  thumbs.forEach(t=>t.addEventListener('click',()=>{thumbs.forEach(x=>x.classList.toggle('on',x===t));setImg(t.dataset.src)}));
- // swipe main image on touch
- if(thumbs.length>1){let sx=null;const m=$('.v-main',pdp);m.addEventListener('touchstart',e=>{sx=e.touches[0].clientX},{passive:true});m.addEventListener('touchend',e=>{if(sx===null)return;const dx=e.changedTouches[0].clientX-sx;sx=null;if(Math.abs(dx)<40)return;const cur=thumbs.findIndex(x=>x.classList.contains('on'));const n=(cur+(dx<0?1:-1)+thumbs.length)%thumbs.length;thumbs[n].click()})}
- $('.v-main',pdp).addEventListener('click',()=>{const z=$('.v-zoom');$('img',z).src=main.src;toggle(z,true)});$('.v-zoom')?.addEventListener('click',e=>toggle(e.currentTarget,false));
+ $('.v-main',pdp).addEventListener('click',()=>{if(window.__vNoZoom){window.__vNoZoom=0;return}const z=$('.v-zoom');$('img',z).src=main.src;toggle(z,true)});$('.v-zoom')?.addEventListener('click',e=>toggle(e.currentTarget,false));
  opts.forEach(o=>o.addEventListener('click',()=>{if(o.classList.contains('out'))return;opts.forEach(x=>x.classList.toggle('on',x===o));idIn.value=o.dataset.id;price.textContent=o.dataset.p;selT&&(selT.textContent=o.dataset.t);if(o.dataset.img)setImg(o.dataset.img);
   if(!window.VAULT_MOCK){const u=new URL(location.href);u.searchParams.set('variant',o.dataset.id);history.replaceState(null,'',u)}}));
  const ps=$('#vPickS');ps?.addEventListener('input',()=>{const q=ps.value.toLowerCase();opts.forEach(o=>o.hidden=!o.dataset.t.toLowerCase().includes(q))});
