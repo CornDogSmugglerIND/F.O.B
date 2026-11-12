@@ -1,5 +1,5 @@
 /* Real eBay orders (last 90 days), kept apart from inventory so Sold and Shipped are always current. */
-import { peekItems, esc, isArchived } from "./shared.js?v=195";
+import { peekItems, esc, isArchived } from "./shared.js?v=196";
 const LS = "coalition-orders-v1";
 export const saveOrders = (list) => { try { localStorage.setItem(LS, JSON.stringify(list)); return true; } catch { return false; } };
 export const loadOrders = () => { try { const v = JSON.parse(localStorage.getItem(LS) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
@@ -15,7 +15,12 @@ export function orderItems(days = 90) {
   const cut = Date.now() - days * 864e5;
   return loadOrders().filter((o) => Date.parse(o.createdAt || 0) >= cut && !isArchived("ord-" + o.orderId) && o.status !== "cancelled").map((o) => {
     const li = o.items || [], first = li[0] || {}, hit = bySku.get(first.sku) || byTitle.get(norm(first.title)), shipped = o.status !== "label_created";
-    const when = shipped ? o.shippedAt || o.createdAt : o.createdAt, ph = !shipped ? "sold" : track(o).step === 4 ? "delivered" : "shipped";
+    const when = shipped ? o.shippedAt || o.createdAt : o.createdAt, ov = rd(OV)[o.orderId];
+    /* Sold → Packed (you mark it) → In transit (tracking on eBay) → Arriving (eBay's delivery date is here) → Delivered (real scan) */
+    let ph;
+    if (!shipped) ph = ov === "packed" ? "packed" : "sold";
+    else if (track(o).step === 4) ph = "delivered";
+    else { const est = Date.parse(o.estDeliveryAt || ""); ph = est && Date.now() >= est - 18 * 36e5 ? "arriving" : "shipped"; }
     return { id: "ord-" + o.orderId, source: "order", _order: o, title: (first.title || "eBay order") + (li.length > 1 ? ` + ${li.length - 1} more` : ""), photos: first.image ? [{ url: first.image }] : hit ? hit.photos.slice(0, 1) : [], price: o.total || 0, quantity: li.reduce((a, x) => a + (x.qty || 1), 0) || 1, phase: ph, when };
   }).sort((a, b) => String(b.when).localeCompare(String(a.when)));
 }

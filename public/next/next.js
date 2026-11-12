@@ -1,16 +1,16 @@
-import "./viewer.js?v=195";
-import { startScanLink } from "./scanlink.js?v=195";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=195";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=195";
-import { phaseFromItem } from "/visor/phases.js?v=195";
-import { renderScouter } from "./scouter.js?v=195";
-import { renderCollection, openImport } from "./collection.js?v=195";
-import { photoManager } from "./photos.js?v=195";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=195";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=195";
-import { renderSettings } from "./settings.js?v=195";
-import { initSync } from "./sync.js?v=195";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=195";
+import "./viewer.js?v=196";
+import { startScanLink } from "./scanlink.js?v=196";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=196";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=196";
+import { phaseFromItem } from "/visor/phases.js?v=196";
+import { renderScouter } from "./scouter.js?v=196";
+import { renderCollection, openImport } from "./collection.js?v=196";
+import { photoManager } from "./photos.js?v=196";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=196";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=196";
+import { renderSettings } from "./settings.js?v=196";
+import { initSync } from "./sync.js?v=196";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=196";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -34,16 +34,18 @@ purgeDemo();
 let items = loadItems(); let lastRaw = null; document.body.dataset.view = "command";
 
 const STOPS = [
-  { id: "intake", label: "Intake", note: "not identified yet", phases: ["intake"], c: "#B3FBD5", pos: [6, 80], movable: true },
-  { id: "staged", label: "Ready to list", note: "listing not built yet", phases: ["staged"], c: "#B3FBD5", pos: [23, 54], movable: true },
-  { id: "stored", label: "Put away", note: "listed, needs its bin", phases: ["listed"], c: "#90FFEE", pos: [40, 80], movable: false },
-  { id: "sold", label: "Sold", note: "needs shipping", phases: ["sold", "packed"], c: "#E8924A", pos: [57, 54], movable: true },
-  { id: "shipped", label: "Shipped", note: "in transit, tap to track", phases: ["shipped"], c: "#E8924A", pos: [74, 80], movable: true },
-  { id: "delivered", label: "Delivered", note: "at the door", phases: ["delivered"], c: "#E8924A", pos: [91, 54], movable: true },
+  { id: "intake", label: "Intake", note: "not identified yet", go: "Identify", phases: ["intake"], c: "#B3FBD5", pos: [6, 72], movable: true },
+  { id: "staged", label: "Ready to list", note: "listing not built yet", go: "Build", phases: ["staged"], c: "#B3FBD5", pos: [18.5, 44], movable: true },
+  { id: "stored", label: "Put away", note: "listed, needs its bin", go: "Put away", phases: ["listed"], c: "#90FFEE", pos: [31, 72], movable: false },
+  { id: "sold", label: "Sold", note: "pack it up", go: "Pack", phases: ["sold"], c: "#E8924A", pos: [43.5, 44], movable: true },
+  { id: "packed", label: "Packed", note: "label on, drop it off", go: "Drop off", phases: ["packed"], c: "#E8924A", pos: [56, 72], movable: true },
+  { id: "shipped", label: "In transit", note: "on its way", go: "Track", phases: ["shipped"], c: "#E8924A", pos: [68.5, 44], movable: true },
+  { id: "arriving", label: "Arriving", note: "due at the door today", go: "Track", phases: ["arriving"], c: "#E8924A", pos: [81, 72], movable: true },
+  { id: "delivered", label: "Delivered", note: "at the door", go: "", phases: ["delivered"], c: "#E8924A", pos: [93.5, 44], movable: true },
 ];
 /* a fresh map: things you bring in through the app until they're listed and in a bin, then your eBay orders. Old eBay listings live in Channels. */
 const stopFor = (it) => { const ph = phaseFromItem(it); if (ph === "listed") return it.spaceId ? null : STOPS.find((x) => x.id === "stored"); return STOPS.find((x) => x.phases.includes(ph)); };
-const MOVE_TO = { intake: "intake", staged: "staged", sold: "sold", shipped: "shipped", delivered: "delivered" };
+const MOVE_TO = { intake: "intake", staged: "staged", sold: "sold", packed: "packed", shipped: "shipped", delivered: "delivered" };
 
 /* The roadmap tracks what you bring in through the app (Scouter). Your eBay inventory lives in Collection, Channels and Spaces. */
 const app = (i) => i.source === "scouter" || i.source === "app";
@@ -59,7 +61,7 @@ function groups() {
   }
   /* delivered drops off the map after a week so it stays a fresh to-do map; Channels keeps the full history */
   const wk = Date.now() - 7 * 864e5;
-  for (const o of orderItems(90)) { if (o.phase === "delivered" && Date.parse(o._order?.deliveredAt || o._order?.shippedAt || o.when || 0) < wk) continue; g[o.phase].push(o); }
+  for (const o of orderItems(90)) { if (o.phase === "delivered" && Date.parse(o._order?.deliveredAt || o._order?.shippedAt || o.when || 0) < wk) continue; (g[o.phase] || g.shipped).push(o); }
   return g;
 }
 
@@ -171,13 +173,13 @@ function archiveOne(it) {
 
 function orderSheet(it) {
   const o = it._order, u = trackUrl(o), src = photoOf(it);
-  const s = openSheet(`${navBar(it.id)}${lockFrame(it, src)}<h2>${esc(nameOf(it))}</h2><div class="sub">${it.phase === "sold" ? "Sold, needs shipping" : it.phase === "delivered" ? "Delivered" : "Shipped"}</div>
-    ${it.phase === "sold" ? "" : trackerHtml(o)}
+  const s = openSheet(`${navBar(it.id)}${lockFrame(it, src)}<h2>${esc(nameOf(it))}</h2><div class="sub">${({ sold: "Sold, pack it up", packed: "Packed, drop it off", arriving: "Arriving today", delivered: "Delivered" })[it.phase] || "In transit"}</div>
+    ${it.phase === "sold" ? `<button class="btn go" data-ov="packed" type="button" style="margin-top:12px">Mark packed</button>` : it.phase === "packed" ? `<p class="sub" style="margin-top:12px">Moves to In transit by itself once the tracking is on eBay.</p><button class="btn" data-ov="" type="button">Not packed yet</button>` : trackerHtml(o)}
     <div class="row"><span>Total</span><span>${money(o.total)}</span></div><div class="row"><span>Buyer</span><span>${esc(o.buyer || "—")}</span></div><div class="row"><span>Sold</span><span>${dayText(o.createdAt) || "—"}</span></div><div class="row"><span>Carrier</span><span>${esc(o.carrier || "—")}</span></div><div class="row"><span>Tracking</span><span>${o.trackingNumber ? esc(o.trackingNumber) : "No label yet"}</span></div>
     ${u ? `<a class="btn go" href="${esc(u)}" target="_blank" rel="noopener" style="margin-top:12px">Open carrier tracking</a>` : `<a class="btn go" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener" style="margin-top:12px">Open eBay orders</a>`}
     <button class="btn iv-arch" data-arch type="button">Archive this order</button>`);
   wireNav(s, it.id); s.querySelector("[data-arch]").addEventListener("click", () => archiveOne(it));
-  s.querySelector("[data-ov]")?.addEventListener("click", (e) => { setOv(o.orderId, e.currentTarget.dataset.ov); closeSheet(); render(); toast(e.currentTarget.dataset.ov === "delivered" ? "Moved to Delivered" : "Moved back to Shipped"); });
+  s.querySelector("[data-ov]")?.addEventListener("click", (e) => { setOv(o.orderId, e.currentTarget.dataset.ov); closeSheet(); render(); toast(({ delivered: "Moved to Delivered", transit: "Moved back to In transit", packed: "Moved to Packed" })[e.currentTarget.dataset.ov] || "Moved back to Sold"); });
 }
 function itemSheet(id) {
   if (String(id).startsWith("ord-")) { const o = orderItems(90).find((x) => x.id === String(id)); if (o) orderSheet(o); return; }
@@ -205,12 +207,12 @@ function itemSheet(id) {
   s.querySelector("[data-act]")?.addEventListener("click", (e) => { const a = e.currentTarget.dataset.act; if (a === "scouter") go("scouter"); else if (a === "spaces") { closeSheet(); go("spaces"); } else if (a === "channels") { window.__chStage = e.currentTarget.dataset.st || "listed"; if (e.currentTarget.dataset.st === "staged") { closeSheet(); buildListing(id, chApi()); } else go("channels"); } });
 }
 function chApi() { return { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); window.__fobScRepaint?.(); }, rerender: () => render() }; }
-const EMPTY_HINT = { intake: "No cards waiting. Snap or drop photos in Scouter to start.", staged: "Nothing ready to list. Identify cards in Scouter first.", listed: "Nothing live on eBay right now.", stored: "Nothing waiting. Items you list show up here until you pick their bin.", sold: "No sales waiting to ship.", shipped: "Nothing in transit.", delivered: "Nothing delivered this week. Channels has the full history." };
+const EMPTY_HINT = { intake: "No cards waiting. Snap or drop photos in Scouter to start.", staged: "Nothing ready to list. Identify cards in Scouter first.", listed: "Nothing live on eBay right now.", stored: "Nothing waiting. Items you list show up here until you pick their bin.", sold: "No sales waiting to be packed.", packed: "Nothing packed and waiting to drop off.", shipped: "Nothing in transit.", arriving: "Nothing due at a door today.", delivered: "Nothing delivered this week. Channels has the full history." };
 function stageSheet(sid) {
   if (!STOPS.some((x) => x.id === sid)) return;
   if (sid === "intake" && !groups().intake.length) { go("scouter"); return; }
   const stop = STOPS.find((x) => x.id === sid); const list = groups()[sid]; navFor(sid);
-  const cap = 60, canArch = ["sold", "shipped", "delivered"].includes(sid) && list.length;
+  const cap = 60, canArch = ["sold", "packed", "shipped", "arriving", "delivered"].includes(sid) && list.length;
   const s = openSheet(`
     <div class="iv-bar"><button type="button" class="iv-back" data-close>‹ Back to Command</button></div>
     <h2>${esc(stop.label)}</h2><div class="sub">${list.length} ${list.length === 1 ? "item" : "items"} · ${esc(stop.note)}</div>
@@ -219,7 +221,7 @@ function stageSheet(sid) {
   s.querySelectorAll("[data-item]").forEach((b) => b.addEventListener("click", () => itemSheet(b.dataset.item)));
   s.querySelector("#varAll")?.addEventListener("click", () => { closeSheet(); variationListing(chApi()); });
   s.querySelector("#toSc")?.addEventListener("click", () => { closeSheet(); go("scouter"); });
-  s.querySelector("#seeAll")?.addEventListener("click", () => { window.__chStage = ({ intake: "intake", staged: "staged", listed: "listed", sold: "sold", shipped: "shipped", delivered: "delivered" })[sid] || "all"; go("channels"); });
+  s.querySelector("#seeAll")?.addEventListener("click", () => { window.__chStage = ({ intake: "intake", staged: "staged", listed: "listed", sold: "sold", packed: "sold", shipped: "shipped", arriving: "shipped", delivered: "delivered" })[sid] || "all"; go("channels"); });
 }
 
 /* ---------- header ---------- */
@@ -270,20 +272,20 @@ function widgets(g) {
     ["Identify", g.intake.length + (window.__fobInboxN || 0), `data-goto="scouter"`],
     ["Build", g.staged.length, `data-stage="staged"`],
     ["Put away", g.stored.length + nobin, `data-putaway type="button"`],
-    ["Ship", g.sold.length, `data-goto="channels" data-pst="sold"`],
+    ["Ship", g.sold.length + g.packed.length, `data-stage="${g.sold.length ? "sold" : "packed"}"`],
   ];
   return `<section class="hudc" role="group" aria-label="Heads-up display">
     <div class="hudc-read">
       <button type="button" class="hc" data-goto="channels" data-pst="sold"><em>Sold this week</em><b>${money(wk)}</b></button>
       <div class="hc hc-ch" aria-label="Sales per week, last 8 weeks"><em>8 weeks</em><b>${money(sum8)}</b><span class="sd-bars">${wk8.map((v, i) => `<i style="height:${Math.max(10, Math.round(v / mx * 100))}%"${i === 7 ? ' class="now"' : ""} title="${money(v)}"></i>`).join("")}</span></div>
       <button type="button" class="hc" data-goto="channels"><em>Live</em><b>${lst.size}</b><small>${money(liveV)}</small></button>
-      <button type="button" class="hc" data-stage="shipped"><em>In transit</em><b>${g.shipped.length}</b></button>
+      <button type="button" class="hc" data-stage="shipped"><em>In transit</em><b>${g.shipped.length + g.arriving.length}</b></button>
     </div>
     <div class="hudc-act" role="list" aria-label="Next actions">${acts.map(([l, n, attr]) => `<button class="ha${n ? " hot" : ""}" ${attr} role="listitem"><b>${n}</b><span>${l}</span><i aria-hidden="true"></i></button>`).join("")}</div>
     <i class="hudc-br tl"></i><i class="hudc-br tr"></i><i class="hudc-br bl"></i><i class="hudc-br br"></i></section>`;
 }
 /* ---------- your route, your way: stops can be dragged anywhere, the line always runs in order ---------- */
-const ROUTE_KEY = "coalition-route-v3"; /* arranging retired (Nov 3): stops sit in the fixed route, nothing covers anything */
+const ROUTE_KEY = "coalition-route-v4"; /* 8 stops (Nov 11): arranging is back, with its own button on the map */
 try { localStorage.removeItem("coalition-route-v2"); } catch { /* ignore */ }
 let arranging = false;
 function routeSaved(kind) { try { return (JSON.parse(localStorage.getItem(ROUTE_KEY) || "{}") || {})[kind] || {}; } catch { return {}; } }
@@ -336,27 +338,31 @@ function wireArrange(main, kind, W, H) {
   });
 }
 addEventListener("fob:inbox", () => { if (view === "command" && !arranging && !document.querySelector("ion-modal")) renderCommand(); });
+const PH_H = 300 + 290 * 7 + 240;
+/* the one thing to do at each stop, right on it: no legend needed */
+const goChip = (s, g) => (s.go && g[s.id].length ? `<i class="tag-go">${s.go} ${g[s.id].length} ›</i>` : "");
+const arrUi = () => `<div class="arr">${arranging ? `<button type="button" class="arr-b on" id="arrBtn">Done arranging</button><button type="button" class="arr-b" id="arrReset">Reset map</button>` : `<button type="button" class="arr-b" id="arrBtn" aria-label="Arrange the map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>Arrange map</button>`}</div>`;
 function renderCommand() {
   const g = groups(); const main = $("#main");
   const pills = [
     [g.intake.length + (window.__fobInboxN || 0), "Identify new photos", "scouter"],
     [g.staged.length, "Build and publish", "@staged"],
     [g.stored.length, "Put away", "!putaway"],
-    [g.sold.length, "Pack and ship", "channels", "sold"],
+    [g.sold.length + g.packed.length, "Pack and ship", "@sold"],
   ].map(([n, t, v, st]) => `<button class="pill${n ? " hot" : ""}" ${v[0] === "!" ? `data-putaway type="button"` : v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto"; main.style.overflowX = "hidden";
-    const H = 1980, W = 390, sv = routeSaved("phone"), PX = [27, 73, 27, 73, 27, 73].map((x, i) => (sv[STOPS[i].id] || [])[0] ?? x), PY = [300, 590, 880, 1170, 1460, 1750].map((y, i) => (sv[STOPS[i].id] || [])[1] ?? y);
+    const H = PH_H, W = 390, sv = routeSaved("phone"), PX = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[0] ?? (i % 2 ? 73 : 27)), PY = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[1] ?? 300 + i * 290);
     const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
     const path = routePath(pts, true);
-    main.innerHTML = `${widgets(g)}<div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
+    main.innerHTML = `${widgets(g)}<div class="arr-ph">${arrUi()}</div><div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
       <defs><linearGradient id="rgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
       <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".12" stroke-width="14" stroke-linecap="round"/><path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".18" stroke-width="7" stroke-linecap="round"/>
       <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/></svg>
       ${STOPS.map((s, i) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${PX[i]}%;top:${PY[i]}px;--c:${s.c}">
         ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
-        <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div></div>`).join("")}
-      <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[5] - 17}%;top:${PY[5] + 8}px"><i></i>Done</div></div>`;
+        <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong>${goChip(s, g)}</div></div>`).join("")}
+      <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[7] - 17}%;top:${PY[7] + 8}px"><i></i>Done</div></div>`;
   } else {
     main.style.overflowY = "hidden"; main.style.overflowX = "";
     const TOP = 150 /* the sales desk sits above the route; nothing overlaps it */, W = Math.max(600, main.clientWidth || 1000), H = Math.max(400, (main.clientHeight || 600) - TOP - 96);
@@ -371,8 +377,8 @@ function renderCommand() {
       ${[0, 1, 2, 3].map((k) => `<circle r="7" opacity="0" fill="#B3FBD5" style="filter:drop-shadow(0 0 9px #90FFCC)"><set attributeName="opacity" to="1" begin="${k * 3.5}s"/><animateMotion dur="14s" begin="${k * 3.5}s" repeatCount="indefinite" path="${path}"/></circle>`).join("")}</svg>
       ${STOPS.map((s, i) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${POS[i][0]}%;top:${POS[i][1]}%;--c:${s.c}">
         ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
-        <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div></div>`).join("")}
-      <div class="flag start" style="left:${POS[0][0] - 6}%;top:${POS[0][1] - 1}%"><i></i>Start</div><div class="flag end" style="left:${POS[5][0] - 2}%;top:${POS[5][1] + 12}%"><i></i>Done</div>
+        <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${STOPS.indexOf(s) + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong>${goChip(s, g)}</div></div>`).join("")}
+      <div class="flag start" style="left:${POS[0][0] - 5}%;top:${POS[0][1] - 1}%"><i></i>Start</div>${arrUi()}
       <div class="dock">${pills}</div><div class="hint">Tap a stop to open it · drag a card onto a stop to move it</div></div>`;
   }
   // wire up
@@ -383,7 +389,7 @@ function renderCommand() {
   main.querySelectorAll(".stop .tag").forEach((d) => d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); stageSheet(d.dataset.stage); } }));
   main.querySelectorAll(".pc[data-item]").forEach(bindDrag);
   main.querySelectorAll("[data-putaway]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); if (!unbinnedCount()) { toast("Everything is already in a bin."); return; } openPutAway({ toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); if (view === "command") renderCommand(); } }); }));
-  if (phone()) wireArrange(main, "phone", 390, 1980); else wireArrange(main, "desk", Math.max(600, main.clientWidth || 1000), Math.max(420, main.clientHeight || 600));
+  if (phone()) wireArrange(main, "phone", 390, PH_H); else wireArrange(main, "desk", Math.max(600, main.clientWidth || 1000), Math.max(420, main.clientHeight || 600));
 }
 function bindDrag(el) {
   let ghost = null, sx = 0, sy = 0, moved = false, over = null, down = false;

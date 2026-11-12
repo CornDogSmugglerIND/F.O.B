@@ -16,3 +16,14 @@
 .flag.start{color:var(--sea)}.flag.start i{background:var(--sea);box-shadow:0 0 10px var(--sea)}
 .flag.end{color:#E8924A}.flag.end i{background:#E8924A;box-shadow:0 0 10px #E8924A}
 @media (max-width:820px){.road.pv .dock{position:absolute;left:0;top:0;right:0;bottom:auto;height:auto;z-index:6;margin:0;transform:none;padding:2px 0 10px}.road.pv .tag{min-width:170px}.road.pv .stop .pile{z-index:2}}
+/* Nov 11: arrange button on the map, next-step chip on each stop */
+.road .arr{position:absolute;right:14px;top:10px;z-index:30;display:flex;gap:8px}
+.road.pv .arr{position:absolute;top:12px;right:12px}
+.arr-b{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:999px;border:1px solid rgba(179,251,213,.35);background:rgba(10,14,13,.78);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#E6EFEA;font:600 14px var(--body,inherit);cursor:pointer;transition:border-color .2s,background .2s}
+.arr-b:hover{border-color:#B3FBD5}
+.arr-b.on{background:#B3FBD5;color:#06110C;border-color:#B3FBD5}
+.arr-b svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.road.arranging .stop{cursor:grab;outline:1.5px dashed color-mix(in srgb,var(--c) 60%,transparent);outline-offset:8px;border-radius:14px}
+.tag .tag-go{display:inline-flex;margin-top:8px;padding:5px 12px;border-radius:999px;font-style:normal;font-size:13px;font-weight:700;color:#06110C;background:var(--c);box-shadow:0 0 14px color-mix(in srgb,var(--c) 50%,transparent)}
+.arr-ph{display:flex;justify-content:flex-end;padding:0 12px 4px;position:relative;z-index:7}
+.arr-ph .arr{display:flex;gap:8px}

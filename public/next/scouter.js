@@ -1,8 +1,8 @@
-import { isArchived, loadSpaces, assign } from "./shared.js?v=195";
-import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=195";
-import { paintScanBar } from "./scanconnect.js?v=195";
-import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=195";
-import { phaseFromItem } from "/visor/phases.js?v=195";
+import { isArchived, loadSpaces, assign } from "./shared.js?v=196";
+import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=196";
+import { paintScanBar } from "./scanconnect.js?v=196";
+import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=196";
+import { phaseFromItem } from "/visor/phases.js?v=196";
 /* Scouter: one upload = one item. Photos preview instantly, get shrunk off the
  * hot path, nothing is saved until Save is pressed. */
 const MAX_PICK = 24; /* eBay allows 24 photos on a listing; the item cap matches it (was 5 — Sawyer, Oct 31 2026) */

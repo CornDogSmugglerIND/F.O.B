@@ -1,9 +1,9 @@
-import { photoManager } from "./photos.js?v=195";
-import { hideIds, unhideIds } from "./orders.js?v=195";
-import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=195";
-import { openFocus } from "./focus.js?v=195";
-import { setOf, rarityOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=195";
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=195";
+import { photoManager } from "./photos.js?v=196";
+import { hideIds, unhideIds } from "./orders.js?v=196";
+import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=196";
+import { openFocus } from "./focus.js?v=196";
+import { setOf, rarityOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=196";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=196";
 
 let ctx = null;
 const S = { type: "all", game: "", set: "", rar: "", bset: "", bpg: 0, q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 48 };
