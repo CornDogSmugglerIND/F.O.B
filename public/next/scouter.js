@@ -1,8 +1,8 @@
-import { isArchived, loadSpaces, assign } from "./shared.js?v=196";
-import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=196";
-import { paintScanBar } from "./scanconnect.js?v=196";
-import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=196";
-import { phaseFromItem } from "/visor/phases.js?v=196";
+import { isArchived, loadSpaces, assign } from "./shared.js?v=197";
+import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=197";
+import { paintScanBar } from "./scanconnect.js?v=197";
+import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=197";
+import { phaseFromItem } from "/visor/phases.js?v=197";
 /* Scouter: one upload = one item. Photos preview instantly, get shrunk off the
  * hot path, nothing is saved until Save is pressed. */
 const MAX_PICK = 24; /* eBay allows 24 photos on a listing; the item cap matches it (was 5 — Sawyer, Oct 31 2026) */
@@ -317,7 +317,7 @@ async function snap() {
 addEventListener("fob:view", (e) => { if (e.detail !== "scouter") stopCam(); else setTimeout(startCam, 50); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopCam(); else if (document.body.dataset.view === "scouter" && ctx?.host.isConnected) startCam(); });
 
-function paintAll() { if (!ctx) return; if (d.saved || focus) stopCam(); ctx.host.innerHTML = shell(); wire(); paintTray(); paintFlow(); paintSaved(); wireCard(); }
+function paintAll() { if (!ctx) return; if (d.saved || focus) stopCam(); ctx.host.innerHTML = shell(); wire(); wireSteps(); paintTray(); paintFlow(); paintSaved(); wireCard(); }
 const online = () => { const l = document.getElementById("link"); return !!(l && l.classList.contains("on")); };
 function hud() {
   const n = session.reduce((a, x) => a + (Number(x.qty) || 1), 0), v = session.reduce((a, x) => a + (Number(x.price) || 0) * (Number(x.qty) || 1), 0);
@@ -329,13 +329,53 @@ function pkgs() {
   if (!list.length) return "";
   return `<div class="sc-pkgs"><h3>Scanned today</h3><div class="sc-pk">${list.map((x) => { const it = x.id && byId.get(String(x.id)); const st = it ? (it.listingStatus === "listed" ? "Live" : it.phase === "staged" ? "Ready to list" : "Intake") : x.staged ? "Ready to list" : "Intake"; return `<button type="button" class="sc-pkg k-tilt"${x.id ? ` data-open="${esc(x.id)}"` : ""}>${x.photo ? `<img src="${esc(x.photo)}" alt="" draggable="false">` : "<i></i>"}<span>${esc(it ? it.title : x.title)}</span><em>${money(it ? it.price : x.price)}</em>${x.qty > 1 ? `<u>x${x.qty}</u>` : ""}<s class="${st !== "Intake" ? "ok" : ""}">${st}</s></button>`; }).join("")}</div></div>`;
 }
+
+/* ---------- v2 (Nov 12): one clear path. Pick how you're adding, then follow the three counters left to right ---------- */
+function scStored() { try { return localStorage.getItem("fob-sc-mode") === "stack" ? "stack" : "one"; } catch { return "one"; } }
+function scMode() { return (d.photos.length || d.manual || d.reid) ? "one" : scStored(); }
+function scCounts() {
+  const all = ctx.getItems().filter((i) => (i.source === "scouter" || i.source === "app") && !i.ended && !isArchived(i.id));
+  return { wait: all.filter((i) => phaseFromItem(i) === "intake"), ready: all.filter((i) => phaseFromItem(i) === "staged") };
+}
+let ibCount = 0;
+function steps() {
+  const { wait, ready } = scCounts(), m = scMode();
+  const nx = ibCount ? "in" : wait.length ? "wait" : ready.length ? "ready" : "";
+  const st = (k, n, label, hint, icon) => `<button type="button" class="st${n ? " has" : ""}${nx === k ? " next" : ""}" data-st="${k}"><i>${icon}</i><b>${n}</b><span>${label}</span><small>${n ? hint : "Nothing here"}</small></button>`;
+  return `<nav class="sc-steps" id="scSteps" aria-label="Scouter steps">
+    <div class="st-mode" role="radiogroup" aria-label="How are you adding items?">
+      <button type="button" role="radio" aria-checked="${m === "one"}" class="${m === "one" ? "on" : ""}" data-scmode="one"><b>One item</b><small>Use the camera</small></button>
+      <button type="button" role="radio" aria-checked="${m === "stack"}" class="${m === "stack" ? "on" : ""}" data-scmode="stack"><b>A stack of cards</b><small>Scanner or uploads</small></button>
+    </div>
+    <div class="st-flow">
+      ${st("in", ibCount, "Photos waiting", "Tap to name them", '<svg viewBox="0 0 24 24"><rect x="4" y="6" width="13" height="13" rx="2"/><path d="M8 3h10a2 2 0 0 1 2 2v10"/></svg>')}<s></s>
+      ${st("wait", wait.length, "Need a name", "Tap to finish them", '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>')}<s></s>
+      ${st("ready", ready.length, "Ready to list", "Tap to list them", '<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg>')}
+    </div></nav>`;
+}
+function wireSteps() {
+  const el = ctx.host.querySelector("#scSteps"); if (!el) return;
+  el.querySelectorAll("[data-scmode]").forEach((b) => b.addEventListener("click", () => {
+    try { localStorage.setItem("fob-sc-mode", b.dataset.scmode); } catch { /* ignore */ }
+    if (d.photos.length || d.manual || d.reid) { d.photos.forEach((p) => p.preview && p.preview.startsWith("blob:") && URL.revokeObjectURL(p.preview)); d = blank(); }
+    paintAll();
+  }));
+  const to = (sel) => { const t = ctx.host.querySelector(sel); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); return !!t; };
+  el.querySelectorAll("[data-st]").forEach((b) => b.addEventListener("click", () => {
+    const k = b.dataset.st, { ready } = scCounts();
+    if (k === "in") { if (scMode() !== "stack") { try { localStorage.setItem("fob-sc-mode", "stack"); } catch { /* ignore */ } if (!(d.photos.length || d.manual || d.reid)) paintAll(); } setTimeout(() => to("#scInbox"), 60); if (!ibCount) ctx.toast("No photos waiting. Scan a stack or upload photos."); return; }
+    if (k === "wait") { if (!to('[data-row="wait"]')) ctx.toast("Nothing needs a name."); return; }
+    if (ready.length) openFocus(ready[0].id, ready.map((i) => i.id)); else ctx.toast("Nothing is ready to list yet.");
+  }));
+}
+function repaintSteps() { const el = ctx && ctx.host.querySelector("#scSteps"); if (!el) return; const t = document.createElement("div"); t.innerHTML = steps(); el.replaceWith(t.firstElementChild); wireSteps(); }
 function queue_(noInbox) {
   /* exactly what Command shows at Intake and Ready to list, so the two never disagree */
   const all = ctx.getItems().filter((i) => (i.source === "scouter" || i.source === "app") && !i.ended && !isArchived(i.id));
   const wait = all.filter((i) => phaseFromItem(i) === "intake"), ready = all.filter((i) => phaseFromItem(i) === "staged");
   const tile = (i, k) => `<button class="sc-q k-tilt" data-q="${esc(i.id)}" data-k="${k}" type="button">${i.photos?.[0] ? `<img src="${esc(i.photos[0].dataUrl || i.photos[0].url || "")}" alt="" loading="lazy" draggable="false">` : "<i></i>"}<span>${esc(i.title || "Untitled item")}</span>${i.price ? `<em>${money(i.price)}</em>` : ""}<u class="sc-qx" data-qdel="${esc(i.id)}" role="button" aria-label="Delete this item">×</u></button>`;
-  const row = (t, sub, l, k, acts = "") => l.length ? `<div class="sc-qh"><h3>${t}</h3><em>${l.length}</em><small>${sub}</small>${acts}</div><div class="sc-qs">${l.slice(0, 30).map((i) => tile(i, k)).join("")}</div>` : "";
-  const out = row("Waiting to identify", "Tap one to identify it", wait, "wait") + row("Ready to list", "Identified. Tap one to build its eBay listing", ready, "ready", ready.length > 1 ? `<button type="button" class="sc-qa" id="scVar">Make a variation listing</button>` : "");
+  const row = (t, sub, l, k, acts = "") => l.length ? `<div class="sc-qh" data-row="${k}"><h3>${t}</h3><em>${l.length}</em><small>${sub}</small>${acts}</div><div class="sc-qs">${l.slice(0, 30).map((i) => tile(i, k)).join("")}</div>` : "";
+  const out = row("Need a name", "Tap one to identify it", wait, "wait") + row("Ready to list", "Identified. Tap one to build its eBay listing", ready, "ready", ready.length > 1 ? `<button type="button" class="sc-qa" id="scVar">Make a variation listing</button>` : "");
   const tools = `<div class="sc-qtools"><button type="button" class="sc-qa" id="scCsv">Import a CSV</button></div>`;
   return `<section class="sc-queue">${noInbox ? "" : `<section class="sc-inbox" id="scInbox"></section>`}${out}${tools}</section>`;
 }
@@ -347,7 +387,7 @@ function repaintLists() {
   if (p) { if (np) p.replaceWith(np); else p.remove(); } else if (np && q) q.before(np);
   if (q && nq) q.replaceWith(nq);
   const h = ctx.host.querySelector("#scHud"); if (h) { tmp.innerHTML = hud(); h.replaceWith(tmp.firstElementChild); }
-  wireQueue();
+  wireQueue(); repaintSteps();
 }
 window.__fobScRepaint = () => { if (focus && !ctx.getItems().some((i) => String(i.id) === focus.id && phaseFromItem(i) === "staged")) { nextFocus(); return; } if (focus) { const c = ctx.host.querySelector("#scCard"); if (c) { c.innerHTML = focusPanel(); wireCard(); } } repaintLists(); };
 /* ---------- a staged card open on the scanner: list it, bin it, fix it, flip to the next ---------- */
@@ -406,7 +446,7 @@ function loadForId(id) {
 function shell() {
   if (focus) return `<div class="sc-wrap hh">${hud()}<div class="sc-card" id="scCard">${focusPanel()}</div>${pkgs()}${queue_()}</div>`;
   if (d.saved) return `<div class="sc-wrap hh">${hud()}<div class="sc-saved" id="scSaved"></div>${pkgs()}${queue_()}</div>`;
-  return `<div class="sc-wrap hh"><div class="pg-title"><h2>Scouter</h2><span>Photograph one item, identify it, save it. Batches go through the Photo inbox.</span></div>${hud()}
+  return `<div class="sc-wrap hh v2 m-${scMode()}"><div class="pg-title"><h2>Scouter</h2><span>Add items, name them, list them.</span></div>${hud()}${steps()}
     <section class="sc-left">
       <div class="sc-drop sc-vf" id="scDrop" aria-label="Camera">
         <video id="scLive" playsinline muted autoplay hidden></video><img id="scVfImg" alt="" hidden draggable="false"><svg class="sq" id="scQuad" aria-hidden="true"><defs><filter id="sqGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><polygon class="sq-fill" id="sqFill" points=""/><polygon class="sq-edge" id="sqEdge" points=""/><g id="sqBr" filter="url(#sqGlow)"></g><g class="sq-x" id="sqX"></g></svg><div class="sq-hud" id="sqHud" data-mode="seek"><span class="sq-st" id="sqSt">Searching</span><span class="sq-tip" id="sqTip">Point at a card</span><span class="sq-mt"><i id="sqMt"></i></span></div><button type="button" class="sq-auto" id="sqAuto" aria-pressed="true">Auto</button><i class="k-br tl"></i><i class="k-br tr"></i><i class="k-br bl"></i><i class="k-br br"></i><div class="sc-beam"></div>
@@ -510,6 +550,7 @@ async function paintInbox() {
   const box = ctx && ctx.host.querySelector("#scInbox"); if (!box) return;
   const list = await inboxList(); if (!box.isConnected) return;
   for (const id of [...ibSel]) if (!list.some((x) => x.id === id)) ibSel.delete(id);
+  if (ibCount !== list.length) { ibCount = list.length; repaintSteps(); }
   const n = ibSel.size;
   box.innerHTML = `<div id="scScan"></div><div class="sc-qh"><h3>Photo inbox</h3><em>${list.length}</em><small>${list.length ? "Identify them all at once, or pick the photos of one item" : "Scans and uploads wait here until you identify them"}</small>${(() => { let pv = "1"; try { pv = localStorage.getItem("fob-batch-per") || "1"; } catch { /* default */ } return `<span class="ib-per" role="radiogroup" aria-label="Photos per card">${[["1", "Fronts only"], ["2", "Front + back"]].map(([v, l]) => `<button type="button" role="radio" class="${pv === v ? "on" : ""}" aria-checked="${pv === v}" data-iper="${v}">${l}</button>`).join("")}</span>`; })()}
       <label class="sc-qa ib-add">Upload photos<input type="file" id="ibFile" accept="image/*" multiple hidden></label>${!batchRunning() && lastBatchCount(ctx.getItems) ? `<button type="button" class="sc-qa" id="ibReview">Check last batch (${lastBatchCount(ctx.getItems)})</button>` : ""}${list.length > 1 || batchRunning() ? `<button type="button" class="sc-qa go" id="ibBatch">${batchRunning() ? "Batch running…" : `Identify all ${list.length}`}</button>` : ""}</div>
@@ -571,7 +612,7 @@ function wire() {
   $("#scPick").addEventListener("click", choose); $("#scCam").addEventListener("click", async () => { if (stream && await snap()) return; cam.click(); });
   $("#scType")?.addEventListener("click", () => { d.manual = true; paintFlow(); $("#scFlow")?.scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => $("#scMF [name=n]")?.focus(), 350); });
   $("#scTorch")?.addEventListener("click", async (e) => { const t = stream && stream.getVideoTracks()[0]; if (!t) return; const on = e.currentTarget.getAttribute("aria-pressed") !== "true"; try { await t.applyConstraints({ advanced: [{ torch: on }] }); e.currentTarget.setAttribute("aria-pressed", String(on)); } catch { ctx.toast("This camera has no light."); } });
-  startCam();
+  if (scMode() === "one") startCam(); else stopCam();
   file.addEventListener("change", () => { addFiles(file.files); file.value = ""; }); cam.addEventListener("change", () => { addFiles(cam.files); cam.value = ""; });
   ["dragenter", "dragover"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("over"); }));
   ["dragleave", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("over"); }));

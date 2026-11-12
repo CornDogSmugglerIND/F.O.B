@@ -1,16 +1,16 @@
-import "./viewer.js?v=196";
-import { startScanLink } from "./scanlink.js?v=196";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=196";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=196";
-import { phaseFromItem } from "/visor/phases.js?v=196";
-import { renderScouter } from "./scouter.js?v=196";
-import { renderCollection, openImport } from "./collection.js?v=196";
-import { photoManager } from "./photos.js?v=196";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=196";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=196";
-import { renderSettings } from "./settings.js?v=196";
-import { initSync } from "./sync.js?v=196";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=196";
+import "./viewer.js?v=197";
+import { startScanLink } from "./scanlink.js?v=197";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=197";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=197";
+import { phaseFromItem } from "/visor/phases.js?v=197";
+import { renderScouter } from "./scouter.js?v=197";
+import { renderCollection, openImport } from "./collection.js?v=197";
+import { photoManager } from "./photos.js?v=197";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=197";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=197";
+import { renderSettings } from "./settings.js?v=197";
+import { initSync } from "./sync.js?v=197";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=197";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -37,9 +37,9 @@ const STOPS = [
   { id: "intake", label: "Intake", note: "not identified yet", go: "Identify", phases: ["intake"], c: "#B3FBD5", pos: [6, 72], movable: true },
   { id: "staged", label: "Ready to list", note: "listing not built yet", go: "Build", phases: ["staged"], c: "#B3FBD5", pos: [18.5, 44], movable: true },
   { id: "stored", label: "Put away", note: "listed, needs its bin", go: "Put away", phases: ["listed"], c: "#90FFEE", pos: [31, 72], movable: false },
-  { id: "sold", label: "Sold", note: "pack it up", go: "Pack", phases: ["sold"], c: "#E8924A", pos: [43.5, 44], movable: true },
+  { id: "sold", label: "Pull", note: "sold, pull it from its bin", go: "Pull and pack", phases: ["sold"], c: "#E8924A", pos: [43.5, 44], movable: true },
   { id: "packed", label: "Packed", note: "label on, drop it off", go: "Drop off", phases: ["packed"], c: "#E8924A", pos: [56, 72], movable: true },
-  { id: "shipped", label: "In transit", note: "on its way", go: "Track", phases: ["shipped"], c: "#E8924A", pos: [68.5, 44], movable: true },
+  { id: "shipped", label: "Shipped", note: "on its way", go: "Track", phases: ["shipped"], c: "#E8924A", pos: [68.5, 44], movable: true },
   { id: "arriving", label: "Arriving", note: "due at the door today", go: "Track", phases: ["arriving"], c: "#E8924A", pos: [81, 72], movable: true },
   { id: "delivered", label: "Delivered", note: "at the door", go: "", phases: ["delivered"], c: "#E8924A", pos: [93.5, 44], movable: true },
 ];
@@ -173,13 +173,13 @@ function archiveOne(it) {
 
 function orderSheet(it) {
   const o = it._order, u = trackUrl(o), src = photoOf(it);
-  const s = openSheet(`${navBar(it.id)}${lockFrame(it, src)}<h2>${esc(nameOf(it))}</h2><div class="sub">${({ sold: "Sold, pack it up", packed: "Packed, drop it off", arriving: "Arriving today", delivered: "Delivered" })[it.phase] || "In transit"}</div>
-    ${it.phase === "sold" ? `<button class="btn go" data-ov="packed" type="button" style="margin-top:12px">Mark packed</button>` : it.phase === "packed" ? `<p class="sub" style="margin-top:12px">Moves to In transit by itself once the tracking is on eBay.</p><button class="btn" data-ov="" type="button">Not packed yet</button>` : trackerHtml(o)}
+  const s = openSheet(`${navBar(it.id)}${lockFrame(it, src)}<h2>${esc(nameOf(it))}</h2><div class="sub">${({ sold: "Sold. Pull it and pack it", packed: "Packed, drop it off", arriving: "Arriving today", delivered: "Delivered" })[it.phase] || "In transit"}</div>
+    ${it.phase === "sold" ? `<button class="btn go" data-ov="packed" type="button" style="margin-top:12px">Mark packed</button>` : it.phase === "packed" ? `<p class="sub" style="margin-top:12px">Moves to Shipped by itself once the tracking is on eBay.</p><button class="btn" data-ov="" type="button">Not packed yet</button>` : trackerHtml(o)}
     <div class="row"><span>Total</span><span>${money(o.total)}</span></div><div class="row"><span>Buyer</span><span>${esc(o.buyer || "—")}</span></div><div class="row"><span>Sold</span><span>${dayText(o.createdAt) || "—"}</span></div><div class="row"><span>Carrier</span><span>${esc(o.carrier || "—")}</span></div><div class="row"><span>Tracking</span><span>${o.trackingNumber ? esc(o.trackingNumber) : "No label yet"}</span></div>
     ${u ? `<a class="btn go" href="${esc(u)}" target="_blank" rel="noopener" style="margin-top:12px">Open carrier tracking</a>` : `<a class="btn go" href="https://www.ebay.com/sh/ord" target="_blank" rel="noopener" style="margin-top:12px">Open eBay orders</a>`}
     <button class="btn iv-arch" data-arch type="button">Archive this order</button>`);
   wireNav(s, it.id); s.querySelector("[data-arch]").addEventListener("click", () => archiveOne(it));
-  s.querySelector("[data-ov]")?.addEventListener("click", (e) => { setOv(o.orderId, e.currentTarget.dataset.ov); closeSheet(); render(); toast(({ delivered: "Moved to Delivered", transit: "Moved back to In transit", packed: "Moved to Packed" })[e.currentTarget.dataset.ov] || "Moved back to Sold"); });
+  s.querySelector("[data-ov]")?.addEventListener("click", (e) => { setOv(o.orderId, e.currentTarget.dataset.ov); closeSheet(); render(); toast(({ delivered: "Moved to Delivered", transit: "Moved back to Shipped", packed: "Moved to Packed" })[e.currentTarget.dataset.ov] || "Moved back to Sold"); });
 }
 function itemSheet(id) {
   if (String(id).startsWith("ord-")) { const o = orderItems(90).find((x) => x.id === String(id)); if (o) orderSheet(o); return; }
@@ -279,7 +279,7 @@ function widgets(g) {
       <button type="button" class="hc" data-goto="channels" data-pst="sold"><em>Sold this week</em><b>${money(wk)}</b></button>
       <div class="hc hc-ch" aria-label="Sales per week, last 8 weeks"><em>8 weeks</em><b>${money(sum8)}</b><span class="sd-bars">${wk8.map((v, i) => `<i style="height:${Math.max(10, Math.round(v / mx * 100))}%"${i === 7 ? ' class="now"' : ""} title="${money(v)}"></i>`).join("")}</span></div>
       <button type="button" class="hc" data-goto="channels"><em>Live</em><b>${lst.size}</b><small>${money(liveV)}</small></button>
-      <button type="button" class="hc" data-stage="shipped"><em>In transit</em><b>${g.shipped.length + g.arriving.length}</b></button>
+      <button type="button" class="hc" data-stage="shipped"><em>Shipped</em><b>${g.shipped.length + g.arriving.length}</b></button>
     </div>
     <div class="hudc-act" role="list" aria-label="Next actions">${acts.map(([l, n, attr]) => `<button class="ha${n ? " hot" : ""}" ${attr} role="listitem"><b>${n}</b><span>${l}</span><i aria-hidden="true"></i></button>`).join("")}</div>
     <i class="hudc-br tl"></i><i class="hudc-br tr"></i><i class="hudc-br bl"></i><i class="hudc-br br"></i></section>`;

@@ -3,7 +3,7 @@
 
 const NEXT_LABEL = { intake: "Stage it", staged: "Mark listed", listed: "Mark sold", sold: "Mark packed", packed: "Mark shipped", shipped: "Mark delivered" };
 const TURL = { USPS: "https://tools.usps.com/go/TrackConfirmAction?tLabels=", UPS: "https://www.ups.com/track?tracknum=", FedEx: "https://www.fedex.com/fedextrack/?trknbr=" };
-const TRACK = [["sold", "Sold"], ["packed", "Packed"], ["shipped", "In transit"], ["delivered", "Doorstep"]];
+const TRACK = [["sold", "Pull"], ["packed", "Packed"], ["shipped", "Shipped"], ["delivered", "Doorstep"]];
 /* the Home route: seven stops climbing from the pile to the doorstep (viewBox 360 x 270) */
 const STOPS = [[44, 96], [200, 208], [296, 320], [120, 432], [48, 544], [200, 656], [296, 748]];
 const SIDE = [1, -1, -1, 1, 1, -1, -1]; /* cards float on the open side of each stop */
