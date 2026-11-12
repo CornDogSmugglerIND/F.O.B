@@ -1,16 +1,16 @@
-import "./viewer.js?v=201";
-import { startScanLink } from "./scanlink.js?v=201";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=201";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=201";
-import { phaseFromItem } from "/visor/phases.js?v=201";
-import { renderScouter } from "./scouter.js?v=201";
-import { renderCollection, openImport } from "./collection.js?v=201";
-import { photoManager } from "./photos.js?v=201";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=201";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=201";
-import { renderSettings } from "./settings.js?v=201";
-import { initSync } from "./sync.js?v=201";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=201";
+import "./viewer.js?v=202";
+import { startScanLink } from "./scanlink.js?v=202";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=202";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=202";
+import { phaseFromItem } from "/visor/phases.js?v=202";
+import { renderScouter } from "./scouter.js?v=202";
+import { renderCollection, openImport } from "./collection.js?v=202";
+import { photoManager } from "./photos.js?v=202";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=202";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=202";
+import { renderSettings } from "./settings.js?v=202";
+import { initSync } from "./sync.js?v=202";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=202";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -338,6 +338,71 @@ function wireArrange(main, kind, W, H) {
   });
 }
 addEventListener("fob:inbox", () => { if (view === "command" && !arranging && !document.querySelector("ion-modal")) renderCommand(); });
+/* ---------- Phone constellation map (Nov 12) ----------
+   Nine cells in a 3x3. One stop per cell, so two stops can never overlap.
+   Dragging a stop onto another swaps them: rearranging always does something. */
+const MAP_KEY = "coalition-map-v2";
+const MAP_DEF = { intake: 0, staged: 1, stored: 2, sold: 5, packed: 4, shipped: 3, arriving: 6, delivered: 7 };
+let mapSel = "";
+function mapCells() {
+  const out = [];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) out.push({ x: (c * 2 + 1) / 6 * 100, y: (r * 2 + 1) / 6 * 100 });
+  return out;
+}
+function mapOrder() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(MAP_KEY) || "{}") || {}; } catch { saved = {}; }
+  const out = {}, used = new Set();
+  for (const s of STOPS) {
+    const v = saved[s.id];
+    if (Number.isInteger(v) && v >= 0 && v < 9 && !used.has(v)) { out[s.id] = v; used.add(v); }
+  }
+  for (const s of STOPS) {
+    if (out[s.id] != null) continue;
+    let v = MAP_DEF[s.id];
+    while (used.has(v)) v = (v + 1) % 9;
+    out[s.id] = v; used.add(v);
+  }
+  return out;
+}
+function mapSave(o) { try { localStorage.setItem(MAP_KEY, JSON.stringify(o)); } catch { /* ignore */ } }
+function mapWire(main, g) {
+  const box = main.querySelector("#cmap"); if (!box) return;
+  main.querySelectorAll(".cm-n").forEach((el) => {
+    let sx = 0, sy = 0, moved = false, hold = 0, live = false, id = el.dataset.node;
+    const start = (e) => {
+      if (e.pointerType === "mouse" && e.button) return;
+      sx = e.clientX; sy = e.clientY; moved = false; live = false;
+      hold = setTimeout(() => { live = true; el.classList.add("lift"); navigator.vibrate?.(12); }, e.pointerType === "mouse" ? 0 : 260);
+      el.setPointerCapture?.(e.pointerId);
+    };
+    const move = (e) => {
+      if (Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 6) moved = true;
+      if (!live) { if (moved) { clearTimeout(hold); } return; }
+      e.preventDefault();
+      const r = box.getBoundingClientRect();
+      el.style.left = `${Math.max(4, Math.min(96, (e.clientX - r.left) / r.width * 100))}%`;
+      el.style.top = `${Math.max(4, Math.min(96, (e.clientY - r.top) / r.height * 100))}%`;
+    };
+    const end = (e) => {
+      clearTimeout(hold); el.classList.remove("lift");
+      if (!live) { if (!moved) { mapSel = id; render(); } return; }
+      live = false;
+      const r = box.getBoundingClientRect(), cells = mapCells();
+      const px = (e.clientX - r.left) / r.width * 100, py = (e.clientY - r.top) / r.height * 100;
+      let best = 0, bd = Infinity;
+      cells.forEach((c, i) => { const d = (c.x - px) ** 2 + (c.y - py) ** 2; if (d < bd) { bd = d; best = i; } });
+      const order = mapOrder(), was = order[id];
+      const other = STOPS.find((s) => s.id !== id && order[s.id] === best);
+      if (other) order[other.id] = was;
+      order[id] = best; mapSave(order); mapSel = id; render();
+    };
+    el.addEventListener("pointerdown", start);
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", () => { clearTimeout(hold); live = false; el.classList.remove("lift"); render(); });
+  });
+}
 const PH_H = 300 + 290 * 7 + 240;
 /* the one thing to do at each stop, right on it: no legend needed */
 const goChip = (s, g) => (s.go && g[s.id].length ? `<i class="tag-go">${s.go} ${g[s.id].length} ›</i>` : "");
@@ -364,19 +429,34 @@ function renderCommand() {
     [g.sold.length + g.packed.length, "Pack and ship", "@sold"],
   ].map(([n, t, v, st]) => `<button class="pill${n ? " hot" : ""}" ${v[0] === "!" ? `data-putaway type="button"` : v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
-    main.style.overflowY = "auto"; main.style.overflowX = "hidden";
-    const H = PH_H, W = 390, sv = routeSaved("phone"), PX = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[0] ?? (i % 2 ? 73 : 27)), PY = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[1] ?? 300 + i * 290);
-    const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
-    const path = routePath(pts, true);
-    main.innerHTML = `${widgets(g)}<div class="arr-ph">${arrUi()}</div><div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
-      <defs><linearGradient id="rgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
-      <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".12" stroke-width="14" stroke-linecap="round"/><path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".18" stroke-width="7" stroke-linecap="round"/>
-      <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/></svg>
-      ${STOPS.map((s, i) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${PX[i]}%;top:${PY[i]}px;--c:${s.c}">
-        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
-        <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong>${goChip(s, g)}</div></div>`).join("")}
-      <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[7] - 17}%;top:${PY[7] + 8}px"><i></i>Done</div></div>`;
+    /* Phone map (Nov 12 rebuild): a constellation that FITS. Nine cells, one
+       stop each, every stop on screen at once. Drag a stop onto another and
+       they swap, so a stop can never land on top of anything. */
+    main.style.overflow = "hidden";
+    const cells = mapCells(), ci = mapOrder();
+    const at = (id) => cells[ci[id]];
+    const pts = STOPS.map((s) => [at(s.id).x, at(s.id).y]);
+    const path = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
+    const sel = STOPS.find((s) => s.id === mapSel) || STOPS.find((s) => g[s.id].length) || STOPS[0];
+    const selN = g[sel.id].length, selV = money(g[sel.id].reduce((a, x) => a + worth(x), 0));
+    main.classList.add("cmd-ph");
+    main.innerHTML = `${widgets(g)}<div class="cmwrap">
+    <div class="cmap" id="cmap">
+      <svg class="cm-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id="cmg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".5" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
+        <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".13" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+        <path d="${path}" fill="none" stroke="url(#cmg)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+      </svg>
+      ${STOPS.map((s, i) => { const n = g[s.id].length, c = at(s.id); return `<button type="button" class="cm-n${n ? " has" : ""}${s.id === sel.id ? " on" : ""}" data-drop="${s.id}" data-node="${s.id}" style="left:${c.x}%;top:${c.y}%;--c:${s.c}" aria-label="${esc(s.label)}, ${n} item${n === 1 ? "" : "s"}, step ${i + 1} of ${STOPS.length}" aria-pressed="${s.id === sel.id}"><i><b>${n}</b></i><span>${esc(s.label)}</span></button>`; }).join("")}
+    </div>
+    <div class="cm-bar" id="cmBar">
+      <div class="cm-bi"><b>${esc(sel.label)}</b><span>${selN ? `${selN} item${selN === 1 ? "" : "s"} · ${selV}` : "Nothing here"}</span><small>${esc(sel.note)}</small></div>
+      <div class="cm-ba">${selN ? `<button type="button" class="cm-go" data-stage="${sel.id}">Open</button>` : ""}${sel.go && selN ? goChip(sel, g) : ""}</div>
+    </div>
+    </div>`;
+    mapWire(main, g);
   } else {
+    main.classList.remove("cmd-ph");
     main.style.overflowY = "hidden"; main.style.overflowX = "";
     const TOP = 150 /* the sales desk sits above the route; nothing overlaps it */, W = Math.max(600, main.clientWidth || 1000), H = Math.max(400, (main.clientHeight || 600) - TOP - 96);
     const sv = routeSaved("desk"), POS = STOPS.map((s) => sv[s.id] || s.pos);

@@ -47,3 +47,76 @@
 .mk-i.drag{background:none;box-shadow:none;border:1.5px solid #8b9c94;border-radius:5px;width:16px;height:22px}
 .mk-f{margin:10px 0 0;padding-top:9px;border-top:1px solid rgba(255,255,255,.07);font:500 11.5px/1.45 var(--disp);color:#78887f}
 @media (max-width:820px){.mkey{position:fixed;left:12px;right:12px;top:auto;bottom:96px;width:auto;max-height:56vh;overflow:auto;-webkit-overflow-scrolling:touch}}
+
+/* ================= Phone constellation map (Nov 12 rebuild) =================
+   Every stop on screen at once. No scrolling, no overlap: one stop per cell,
+   and dragging one onto another swaps them. */
+#main.cmd-ph{display:flex!important;flex-direction:column!important;overflow:hidden!important}
+#main.cmd-ph>*{flex:0 0 auto}
+#main.cmd-ph .hr,#main.cmd-ph #stats{margin-bottom:6px}
+#main .cmwrap{position:relative;flex:1 1 auto!important;min-height:0;display:flex;flex-direction:column;padding:0 10px 6px}
+#main .cmap{position:relative;flex:1 1 auto;min-height:0}
+#main .cm-line{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+#main .cm-n{appearance:none!important;-webkit-appearance:none!important;margin:0!important;font:inherit;color:inherit;
+ box-sizing:border-box!important;position:absolute!important;transform:translate(-50%,-50%);text-align:center;
+ box-shadow:none!important;outline:none;min-width:0!important;max-width:none!important;
+ display:flex!important;flex-direction:column!important;align-items:center!important;gap:5px!important;width:92px!important;height:auto!important;
+ cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;background:none!important;border:0!important;padding:0!important;
+ transition:transform .18s cubic-bezier(.2,.9,.3,1.3)}
+#main .cm-n>i{flex:0 0 auto;width:50px;height:50px;border-radius:50%;display:grid;place-items:center;font-style:normal;
+ background:radial-gradient(circle at 50% 35%,rgba(10,22,18,.96),rgba(4,10,8,.96));
+ border:1.5px solid rgba(145,160,152,.4);transition:border-color .25s,box-shadow .25s,background .25s}
+#main .cm-n>i>b{font:800 19px/1 var(--disp)!important;color:#6f7d77!important;font-variant-numeric:tabular-nums;transition:color .25s}
+#main .cm-n>span{font:700 11.5px/1.15 var(--disp)!important;color:#90a39a!important;text-align:center;max-width:92px;transition:color .25s}
+#main .cm-n.has>i{border-color:var(--c);box-shadow:0 0 16px -2px var(--c),inset 0 0 14px -6px var(--c)}
+#main .cm-n.has>i>b{color:var(--c)!important}
+#main .cm-n.has>span{color:#cfe0d8!important}
+#main .cm-n.on{z-index:5}
+#main .cm-n.on>i{border-width:2px;border-color:var(--c);background:radial-gradient(circle at 50% 35%,rgba(16,40,30,.98),rgba(4,10,8,.98));
+ box-shadow:0 0 0 5px color-mix(in srgb,var(--c) 16%,transparent),0 0 26px -2px var(--c)}
+#main .cm-n.on>span{color:#EAFFF4!important}
+#main .cm-n:active{transform:translate(-50%,-50%) scale(.94)}
+#main .cm-n.lift{z-index:9;transform:translate(-50%,-50%) scale(1.14);transition:none}
+#main .cm-n.lift>i{box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 26px -2px var(--c)}
+#main .cm-n:focus-visible>i{outline:2px solid #7DF2B4;outline-offset:3px}
+/* the bar under the map: everything about the stop you picked, in one place */
+#main .cm-bar{flex:0 0 auto;display:flex;align-items:center;gap:12px;margin-top:8px;
+ padding:11px 14px;border-radius:17px;background:rgba(6,13,10,.9);
+ border:1px solid rgba(125,242,180,.26);box-shadow:0 10px 30px rgba(0,0,0,.45)}
+#main .cm-bi{min-width:0;flex:1}
+#main .cm-bi b{display:block;font:800 16px/1.2 var(--disp);color:#EAFFF4}
+#main .cm-bi span{display:block;font:600 12.5px/1.3 var(--disp);color:#7DF2B4;margin-top:1px}
+#main .cm-bi small{display:block;font:500 11.5px/1.3 var(--disp);color:#8b9c94;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#main .cm-ba{display:flex;align-items:center;gap:7px;flex:0 0 auto}
+#main .cm-go{all:unset;cursor:pointer;padding:9px 15px;border-radius:12px;font:700 13.5px var(--disp);color:#05100C;
+ background:linear-gradient(180deg,#9CFFCB,#59D99A);box-shadow:0 5px 16px rgba(125,242,180,.26)}
+#main .cm-go:active{transform:scale(.97)}
+@media (max-height:720px){
+ #main .cm-n{width:82px!important}#main .cm-n>i{width:44px;height:44px}#main .cm-n>i>b{font-size:17px!important}
+ #main .cm-n>span{font-size:10.5px!important;max-width:82px}#main .cm-bi b{font-size:15px}
+}
+
+/* Command on phone: the HUD shrinks so the map owns the screen. The four
+   action tiles are the first four stops on the map, so they go. */
+#main.cmd-ph .hudc{padding:9px 11px!important;gap:0!important;margin-bottom:6px!important}
+#main.cmd-ph .hudc-act{display:none!important}
+#main.cmd-ph .hudc-read{gap:6px!important}
+#main.cmd-ph .hudc-read .hc{padding:6px 8px!important;min-height:0!important}
+#main.cmd-ph .hudc-read .hc em{font-size:10.5px!important}
+#main.cmd-ph .hudc-read .hc b{font-size:17px!important;line-height:1.1!important}
+#main.cmd-ph .hudc-read .hc small{font-size:10.5px!important}
+#main.cmd-ph .hudc-read .sd-bars{height:14px!important}
+#main.cmd-ph .hudc-br{display:none!important}
+/* compact nodes so three rows always fit */
+#main.cmd-ph .cm-n{width:86px!important;gap:4px!important}
+#main.cmd-ph .cm-n>i{width:42px;height:42px}
+#main.cmd-ph .cm-n>i>b{font-size:16px!important}
+#main.cmd-ph .cm-n>span{font-size:11px!important;max-width:86px;line-height:1.1!important}
+#main.cmd-ph .cm-bar{padding:9px 12px;margin-top:6px;gap:10px}
+#main.cmd-ph .cm-bi b{font-size:15px}
+#main.cmd-ph .cm-bi span{font-size:12px}
+#main.cmd-ph .cm-bi small{font-size:11px}
+#main.cmd-ph .cm-go{padding:8px 13px;font-size:13px}
+#main.cmd-ph .hudc-read{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px 10px!important}
+#main.cmd-ph .hudc-read .hc{min-width:0!important;overflow:hidden}
+#main.cmd-ph .hudc-read .hc em{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}

@@ -939,3 +939,29 @@ html.fx #main .vh-k button.on{background:#7DF2B4!important;color:#05140D;box-sha
 .fx2-slab::before{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;background:linear-gradient(115deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.2) 44%,rgba(255,255,255,.04) 50%,rgba(255,255,255,0) 60%);background-size:250% 100%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35),inset 0 0 18px rgba(190,220,255,.12);mix-blend-mode:screen;animation:fx2Slab 6s ease-in-out infinite}
 @keyframes fx2Slab{0%,55%{background-position:140% 0}85%,100%{background-position:-40% 0}}
 .fc-zoom.fx2-hold{cursor:zoom-in}
+
+/* ============ Phone: the card is the point, so the card fills the screen ============
+   (Nov 12) The optic ring forced a square and squeezed the photo into 46% of the
+   width. On a phone the photo goes full width and the readouts stack underneath
+   as real tiles instead of floating labels. */
+@media (max-width:820px){
+  .lk{display:flex!important;flex-direction:column!important;align-items:stretch!important;
+      gap:12px!important;min-height:0!important;margin:8px 0 20px!important}
+  .lk-ring{display:none!important}
+  .lk-core{grid-column:auto!important;width:100%!important;min-height:0!important}
+  .lk-core img{max-width:100%!important;width:auto!important;max-height:min(60vh,620px)!important;
+    border-radius:12px!important;animation:none!important;
+    box-shadow:0 20px 48px rgba(0,0,0,.75),0 0 0 1px rgba(125,242,180,.3),0 0 46px rgba(60,220,140,.22)!important}
+  .lk-side{grid-column:auto!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:7px!important;width:100%!important;align-items:stretch!important;text-align:left!important}
+  .lk-side.l,.lk-side.r{align-items:stretch!important;text-align:left!important}
+  .lk-r{display:flex!important;flex-direction:column;gap:1px;min-width:0;padding:8px 10px;border-radius:12px;
+    background:rgba(8,16,13,.8);border:1px solid rgba(145,160,152,.26);text-align:left!important}
+  .lk-r em{font:600 10.5px/1.2 var(--disp)!important;color:#8b9c94!important;letter-spacing:.2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  .lk-r b{font:800 16px/1.15 var(--disp)!important;color:#EAFFF4!important;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  .lk-r.money b{color:#B3FBD5!important}
+  .lk-r.up b{color:#7DF2B4!important}.lk-r.down b{color:#F0A060!important}
+  .lk-r.hot{border-color:rgba(240,160,96,.5)}.lk-r.hot b{color:#F0A060!important}
+}
