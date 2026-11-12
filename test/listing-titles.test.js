@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
-const pub = join(root, "public");
+const pub = join(root, "private");
 
 async function src(rel) {
   return readFile(join(pub, rel), "utf8");
@@ -21,7 +21,7 @@ async function repo(rel) {
 test("engine twins stay byte-identical (server + client run the same locked rules)", async () => {
   const server = await repo("src/listing/engine.js");
   const client = await src("visor/listing-engine.js");
-  assert.equal(client, server, "public/visor/listing-engine.js === src/listing/engine.js");
+  assert.equal(client, server, "private/visor/listing-engine.js === src/listing/engine.js");
 });
 
 test("coalition.js runEngine is client-only: no dead server POST, no silent 404 fallback", async () => {

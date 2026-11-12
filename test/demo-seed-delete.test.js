@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
-const pub = join(root, "public");
+const pub = join(root, "private");
 
 async function src(rel) {
   return readFile(join(pub, rel), "utf8");

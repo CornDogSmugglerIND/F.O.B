@@ -13,9 +13,12 @@ const OPEN = [
   /^\/api\/health$/,
   /^\/api\/auth$/,
   /^\/lock\.html$/,
-  /^\/next\/img\//,
+  /^\/lock-glyph\.png$/,
+  /^\/store\//,          // Shopify storefront assets: the shop's own css/js, loaded by customers
+  /^\/theme\.css$/,
+  /^\/apple-touch-icon/,
+  /^\/manifest\.json$/,
   /^\/favicon\./,
-  /^\/api\/scanner\/download\//,   // the Mac app has to be downloadable to be installed
 ];
 
 function sign(exp) {

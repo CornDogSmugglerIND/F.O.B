@@ -10,7 +10,7 @@ import { setDataRoot } from "../src/store.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
-const pub = join(root, "public");
+const pub = join(root, "private");
 
 const tinyPng =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -151,7 +151,9 @@ test("index.html and hud.html keep identical asset lists and cache-busters", asy
 
   for (const pair of assets(index)) {
     const [file] = pair.split("?v=");
-    assert.ok(existsSync(join(pub, file.replace(/^\//, ""))), `${pair} resolves`);
+    const rel = file.replace(/^\//, "");
+    /* the app lives in private/, the icons and storefront stay in public/ */
+    assert.ok(existsSync(join(pub, rel)) || existsSync(join(root, "public", rel)), `${pair} resolves`);
   }
   const ver = (html, name) => html.match(new RegExp(`${name.replace(/\//g, "\\/")}\\?v=(\\d+)`))[1];
   assert.equal(ver(index, "/coalition.css"), ver(hud, "/coalition.css"));

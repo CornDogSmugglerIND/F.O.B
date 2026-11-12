@@ -24,7 +24,7 @@ function grab(js, name) {
   return js.slice(m.index, i);
 }
 
-const js = await readFile(join(root, "public", "coalition.js"), "utf8");
+const js = await readFile(join(root, "private", "coalition.js"), "utf8");
 const statuses = js.match(/const LISTING_STATUSES = \[[^\]]*\];/)[0];
 const fns = [grab(js, "normalizeItem"), grab(js, "estProfit"), grab(js, "parseMoney")].join("\n");
 const { normalizeItem, estProfit, parseMoney } = new Function(

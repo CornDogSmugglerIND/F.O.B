@@ -82,7 +82,7 @@ test("packageWeightAndSize: weight required, dims optional", () => {
 
 /* Phase 2 guards (client modules load with ?v= URLs, so these pin the source) */
 import { readFile } from "node:fs/promises";
-const srcOf = (p) => readFile(new URL(`../public/next/${p}`, import.meta.url), "utf8");
+const srcOf = (p) => readFile(new URL(`../private/next/${p}`, import.meta.url), "utf8");
 
 test("inbox bulk select is not the per-item photo cap; Select all exists", async () => {
   const s = await srcOf("scouter.js");

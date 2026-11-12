@@ -48,7 +48,16 @@ export function createApp() {
   // The new app is the app. Classic stays reachable at /hud.html.
   app.get("/", (_req, res) => res.redirect(302, "/next/"));
   app.use("/uploads", express.static(getUploadsDir()));
+  /* public: the storefront assets, the sign-in page, icons */
   app.use(express.static(join(__dirname, "..", "public")));
+  /* private: the app itself. Lives outside public/ so Vercel can't serve it
+     from the CDN ahead of the gate. Every byte here needs a signed-in cookie. */
+  app.use(express.static(join(__dirname, "..", "private"), {
+    setHeaders: (res, file) => {
+      res.set("X-Robots-Tag", "noindex, nofollow");
+      if (/\.html$/.test(file) || /manifest\.webmanifest$/.test(file)) res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+    },
+  }));
 
   app.use((err, _req, res, _next) => {
     console.error(err);
