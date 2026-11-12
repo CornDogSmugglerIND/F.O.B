@@ -446,7 +446,7 @@ const ORDER = ["command", "scouter", "spaces", "channels", "collection", "settin
 function go(v) {
   const run = () => go_(v);
   const reduce = matchMedia("(prefers-reduced-motion:reduce)").matches;
-  if (document.startViewTransition && !reduce && !window.__fobFX && v !== view) {
+  if (document.startViewTransition && !reduce && v !== view) {
     document.documentElement.dataset.vt = ORDER.indexOf(v) >= ORDER.indexOf(view) ? "fwd" : "back";
     const t = document.startViewTransition(run); t.finished.finally(() => { delete document.documentElement.dataset.vt; });
   } else run();

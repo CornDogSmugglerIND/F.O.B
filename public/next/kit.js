@@ -262,7 +262,7 @@ function openItem(items, opts) {
         <div class="fc-stage it-stage"><div class="it-lock"><svg class="it-arcs" viewBox="0 0 400 400" aria-hidden="true"><circle class="a0" cx="200" cy="200" r="188"/><path class="a1" d="M60 300 A170 170 0 0 1 200 30"/><path class="a2" d="M340 100 A170 170 0 0 1 200 370"/><path class="a3" d="M70 140 A150 150 0 0 1 120 75"/></svg><i class="it-br tl"></i><i class="it-br tr"></i><i class="it-br bl"></i><i class="it-br br"></i>
             <div class="fc-zoom it-card">${src ? `<img src="${esc(src)}" alt="" draggable="false"><span class="it-glare" aria-hidden="true"></span>` : `<i class="fc-none">No photo yet</i>`}</div></div>
           ${photos.length > 1 ? `<div class="fc-thumbs">${photos.map((p, j) => `<button type="button" class="${j === ph ? "on" : ""}" data-ph="${j}" aria-label="Photo ${j + 1}"><img src="${esc(p)}" alt=""></button>`).join("")}</div>` : ""}
-          ${src ? `<span class="fc-hint">Click the card to zoom · move to tilt</span>` : ""}</div>
+          ${src ? `<span class="fc-hint">${matchMedia("(pointer:coarse)").matches ? "Tap to zoom · hold to magnify · drag to tilt" : "Click to zoom · hold to magnify · move to tilt"}</span>` : ""}</div>
         <aside class="fc-info">
           <div class="fc-nav"><span>${esc(opts.backLabel || "")}${items.length > 1 ? ` · ${i + 1} of ${items.length}` : ""}</span>${items.length > 1 ? `<button type="button" data-go="-1" aria-label="Previous">‹</button><button type="button" data-go="1" aria-label="Next">›</button>` : ""}<button type="button" class="fc-x" data-x aria-label="Close">✕</button></div>
           <div class="fc-stat-line"><span class="fc-phase p-${esc(phase)}">${esc(st[0])}</span>${st[1] ? `<span class="fc-next">Next: ${esc(st[1])}</span>` : ""}</div>

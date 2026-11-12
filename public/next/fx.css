@@ -911,3 +911,31 @@ html.fx #main .vh-k button.on{background:#7DF2B4!important;color:#05140D;box-sha
 .co-wrap.cx .vt,.co-wrap.cx .vgw{display:none}
 @media (max-width:600px){.vh{grid-template-columns:1fr;justify-items:center;text-align:center;padding:16px 14px}.vh-v{align-items:center}.vh-keys,.vh-k{justify-content:center}.vh-mix{width:100%}html.fx #main .vh-grail{width:150px}.vh-card{width:118px}.vh-tools{position:static;justify-content:center;grid-row:1}}
 @media (min-width:821px){.vh{padding:24px 28px}html.fx #main .vh-grail{width:170px}.vh-card{width:140px}.vh-tag{max-width:170px}}
+/* ===== fx2 (Nov 11): tactile items, deal-in, glint, slabs ===== */
+.lk-core.fx2-hold{transform-style:preserve-3d;will-change:transform;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab}
+.lk-core.fx2-hold img{backface-visibility:hidden;-webkit-backface-visibility:hidden;-webkit-user-drag:none}
+.lk-core .fx2-back{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:rotateY(180deg)}
+.lk-core.fx2-flipping{transition:transform .7s cubic-bezier(.3,.8,.3,1)}
+.fx2-shine{position:absolute;inset:0;pointer-events:none;z-index:3;border-radius:inherit;mix-blend-mode:screen;opacity:calc(.12 + var(--fxt,0)*.88);transition:opacity .25s;
+ background:radial-gradient(circle at var(--gx,50%) var(--gy,30%),rgba(255,255,255,.4),rgba(255,255,255,.08) 22%,transparent 46%),linear-gradient(115deg,transparent 30%,rgba(255,110,200,.12) 42%,rgba(110,220,255,.12) 50%,rgba(125,242,180,.14) 58%,transparent 70%);background-size:100% 100%,240% 100%;background-position:0 0,calc(100% - var(--gx,50%)) 0}
+.fx2-flip{position:absolute;right:10px;bottom:10px;z-index:6;display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(6,10,9,.7);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#E6EFEA;font:600 13px/1 system-ui,sans-serif;cursor:pointer}
+.fx2-flip svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.fx2-tip{display:block;text-align:center;font-size:12px;color:rgba(214,230,222,.55);margin-top:6px;grid-column:1/-1}
+.lk{position:relative}
+.fx2-loupe{position:fixed;left:0;top:0;width:150px;height:150px;border-radius:50%;z-index:9999;pointer-events:none;opacity:0;scale:.6;transition:opacity .15s,scale .2s cubic-bezier(.2,.9,.25,1.3);background-color:#0b100e;background-repeat:no-repeat;box-shadow:0 0 0 2px rgba(255,255,255,.85),0 0 0 4px rgba(125,242,180,.55),0 20px 50px rgba(0,0,0,.6),inset 0 0 20px rgba(0,0,0,.35)}
+.fx2-loupe::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.35),transparent 30%)}
+.fx2-loupe.on{opacity:1;scale:1}
+@media (pointer:fine){.fx2-loupe{width:190px;height:190px}}
+.fx2-louping{cursor:none}
+/* deal-in */
+.fx2-deal{animation:fx2Deal .62s cubic-bezier(.2,.9,.25,1.12) calc(var(--di,0)*45ms) both}
+@keyframes fx2Deal{0%{opacity:0;transform:translateY(26px) rotate(4deg) scale(.92)}60%{opacity:1}100%{opacity:1;transform:none}}
+/* phone glint */
+.fx2-glint{position:relative}
+.fx2-glint::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.28) 46%,rgba(125,242,180,.16) 54%,transparent 68%);background-size:250% 100%;mix-blend-mode:screen;animation:fx2Glint 1.1s ease-out both}
+@keyframes fx2Glint{from{background-position:140% 0}to{background-position:-40% 0}}
+/* slabs */
+.fx2-slab{position:relative}
+.fx2-slab::before{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;background:linear-gradient(115deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.2) 44%,rgba(255,255,255,.04) 50%,rgba(255,255,255,0) 60%);background-size:250% 100%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35),inset 0 0 18px rgba(190,220,255,.12);mix-blend-mode:screen;animation:fx2Slab 6s ease-in-out infinite}
+@keyframes fx2Slab{0%,55%{background-position:140% 0}85%,100%{background-position:-40% 0}}
+.fc-zoom.fx2-hold{cursor:zoom-in}

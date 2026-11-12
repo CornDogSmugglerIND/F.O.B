@@ -64,7 +64,8 @@ function findHtml(w) {
   return `<section class="wh-findres">${hits.length ? hits.map((i) => `<button type="button" class="wh-hit" data-hit="${esc(i.id)}">${photoOf(i) ? `<img src="${esc(photoOf(i))}" alt="" loading="lazy">` : "<i></i>"}<span><b>${esc(cardName(i))}</b><em>${esc([setOf(i), numOf(i)].filter(Boolean).join(" · "))}</em></span><strong>${esc(nm(w, i.spaceId))}</strong><small>${i.phase === "listed" ? "Live on eBay" : String(i.id).startsWith("mp-") ? "Double Holo" : "Not listed"}</small></button>`).join("") : `<p class="wh-none">No bin has that.</p>`}</section>`;
 }
 function trayHtml(w, here) {
-  const un = w.un.slice(0, 80), n = WS.tray.size;
+  /* real cards with photos first; photo-less $0 drafts sink to the end */
+  const un = [...w.un].sort((a, b) => (photoOf(b) ? 1 : 0) - (photoOf(a) ? 1 : 0) || (Number(b.price) || 0) - (Number(a.price) || 0)).slice(0, 80), n = WS.tray.size;
   if (!w.un.length) return "";
   return `<section class="wh-tray"><header><h3>To put away</h3><span>${w.un.length} not in a bin · drag onto the ${here ? "case" : "bins"}, or tap to pick</span>
       <div class="wh-tacts">${n && here ? `<button type="button" class="btn go" data-put="${esc(here)}">Put ${n} in here</button>` : n ? `<span class="wh-pick">${n} picked · tap a bin</span>` : ""}${n ? `<button type="button" class="btn" data-tclear>Clear</button>` : ""}</div></header>
