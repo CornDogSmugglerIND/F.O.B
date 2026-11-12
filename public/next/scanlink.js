@@ -1,7 +1,7 @@
 /* Scanner link: finished scan batches from the Mac (collage.py -> fob_push.py -> /api/identify/queue)
    land in this device's Photo inbox automatically. A scan leaves the queue once it's identified or deleted on any device. */
-import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=198";
-import { trimScan } from "./scantrim.js?v=198";
+import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=199";
+import { trimScan } from "./scantrim.js?v=199";
 const toData = (b) => new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.onerror = () => r(null); f.readAsDataURL(b); });
 
 let busy = false;
