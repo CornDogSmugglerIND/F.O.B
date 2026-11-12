@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 const DAYS = 30, COOKIE = "fob_s";
 const secret = () => process.env.FOB_SECRET || process.env.FOB_PASSCODE || "";
 const pass = () => process.env.FOB_PASSCODE || "";
+const user = () => process.env.FOB_USER || "";
 
 /* paths that must answer before anyone has signed in */
 const OPEN = [
@@ -58,7 +59,10 @@ export function gate(lockPage) {
 export function authRoute(req, res) {
   if (!pass()) return res.json({ ok: true, open: true });
   const code = String((req.body && req.body.code) || "");
-  if (!code || !same(code, pass())) return res.status(401).json({ ok: false, error: "wrong" });
+  const who = String((req.body && req.body.user) || "").trim();
+  const okUser = !user() || same(who.toLowerCase(), user().toLowerCase());
+  const okPass = !!code && same(code, pass());
+  if (!okUser || !okPass) return res.status(401).json({ ok: false, error: "wrong" });
   const exp = Date.now() + DAYS * 864e5;
   res.set("Set-Cookie", `${COOKIE}=${sign(exp)}; Path=/; Max-Age=${DAYS * 86400}; HttpOnly; Secure; SameSite=Lax`);
   res.json({ ok: true });

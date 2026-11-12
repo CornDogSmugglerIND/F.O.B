@@ -11,7 +11,7 @@ body{margin:0;min-height:100svh;display:grid;place-items:center;padding:24px;
 img{width:76px;height:76px;object-fit:contain;filter:drop-shadow(0 0 22px rgba(125,242,180,.5))}
 h1{margin:16px 0 4px;font-size:21px;font-weight:800;letter-spacing:.2px}
 p{margin:0 0 22px;color:#8b9c94;font-size:14px}
-input{width:100%;height:52px;padding:0 16px;border-radius:15px;text-align:center;letter-spacing:.14em;
+input{width:100%;height:50px;margin-bottom:9px;padding:0 16px;border-radius:15px;text-align:center;letter-spacing:.14em;
  font:600 17px ui-rounded,system-ui,sans-serif;color:#EAFFF4;background:rgba(0,0,0,.45);
  border:1px solid rgba(125,242,180,.3);outline:none;transition:border-color .2s,box-shadow .2s}
 input:focus{border-color:#7DF2B4;box-shadow:0 0 0 4px rgba(125,242,180,.14)}
@@ -25,17 +25,18 @@ button:active{transform:scale(.98)}button:disabled{filter:grayscale(.6);cursor:d
 <form class="box" id="f">
   <img src="/next/img/wm-glyph.png" alt="">
   <h1>Coalition F.O.B</h1>
-  <p>Private. Enter your password.</p>
-  <input id="c" type="password" inputmode="text" autocomplete="current-password" placeholder="Password" autofocus aria-label="Password">
+  <p>Private. Sign in to continue.</p>
+  <input id="u" type="text" inputmode="text" autocapitalize="none" autocomplete="username" placeholder="Username" autofocus aria-label="Username">
+  <input id="c" type="password" inputmode="text" autocomplete="current-password" placeholder="Password" aria-label="Password">
   <button id="b" type="submit">Unlock</button>
   <div class="err" id="e" role="status"></div>
 </form>
 <script>
-var f=document.getElementById('f'),c=document.getElementById('c'),b=document.getElementById('b'),e=document.getElementById('e');
-f.addEventListener('submit',async function(ev){ev.preventDefault();if(!c.value)return;
+var f=document.getElementById('f'),u=document.getElementById('u'),c=document.getElementById('c'),b=document.getElementById('b'),e=document.getElementById('e');
+f.addEventListener('submit',async function(ev){ev.preventDefault();if(!c.value||!u.value)return;
  b.disabled=true;b.textContent='Checking…';e.textContent='';
- try{var r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:c.value})});
+ try{var r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u.value,code:c.value})});
   if(r.ok){b.textContent='Opening…';location.replace('/next/');return}
-  e.textContent='That password is wrong.';}catch(x){e.textContent='Could not reach the server.';}
+  e.textContent='Wrong username or password.';}catch(x){e.textContent='Could not reach the server.';}
  b.disabled=false;b.textContent='Unlock';c.select();});
 </script></body></html>
