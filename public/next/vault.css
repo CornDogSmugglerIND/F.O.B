@@ -844,3 +844,9 @@ html.fx #main .wh-tray h3{font-size:15px}
  html.fx #main .spx-head .wh-find-in{grid-column:1/-1;grid-row:2}
  html.fx #main .spx-head .wh-find-in input{min-height:38px!important;font-size:14px!important}
 }
+@media (max-width:600px){
+ /* Channels: the search gets its own line so the placeholder isn't sliced */
+ html.fx #main .bd-tools{flex-wrap:wrap;gap:8px}
+ html.fx #main .bd-tools .bd-search{flex:1 1 100%;order:-1}
+ html.fx #main .bd-tools .bd-btn{flex:1 1 0;justify-content:center}
+}
