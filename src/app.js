@@ -10,11 +10,15 @@ import { identifyQueueRouter } from "./routes/identifyQueue.js";
 import { scannerRouter } from "./routes/scanner.js";
 import { getUploadsDir } from "./store.js";
 import { getChannelStatuses } from "./channels/config.js";
+import { gate, authRoute } from "./gate.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export function createApp() {
   const app = express();
+  const lockPage = join(__dirname, "..", "public", "lock.html");
+  app.post("/api/auth", express.json({ limit: "4kb" }), authRoute);
+  app.use(gate(lockPage));
   // Device sync carries the full item store (photos included): its own big parser, before the global one.
   app.use("/api/sync", express.json({ limit: "25mb" }), deviceSyncRouter());
   app.use(["/api/channels/ebay/publish-item", "/api/channels/ebay/publish-variation", "/api/channels/ebay/upload-image"], express.json({ limit: "25mb" }));
