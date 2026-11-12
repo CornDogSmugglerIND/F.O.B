@@ -29,6 +29,9 @@ export function createApp() {
 
   const startedAt = Date.now();
 
+  /* behind the gate on purpose: 200 signed in, 401 locked. The app shell asks this on boot. */
+  app.get("/api/session", (_req, res) => res.set("Cache-Control", "no-store").json({ ok: true }));
+
   app.get("/api/health", (_req, res) => {
     res.json({
       status: "ok",
