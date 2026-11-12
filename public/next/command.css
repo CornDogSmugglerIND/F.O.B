@@ -27,3 +27,23 @@
 .tag .tag-go{display:inline-flex;margin-top:8px;padding:5px 12px;border-radius:999px;font-style:normal;font-size:13px;font-weight:700;color:#06110C;background:var(--c);box-shadow:0 0 14px color-mix(in srgb,var(--c) 50%,transparent)}
 .arr-ph{display:flex;justify-content:flex-end;padding:0 12px 4px;position:relative;z-index:7}
 .arr-ph .arr{display:flex;gap:8px}
+
+/* ---------- Nov 12: map key ---------- */
+.mkey{position:absolute;right:0;top:48px;z-index:40;width:min(330px,calc(100vw - 32px));padding:14px 16px 12px;border-radius:18px;background:rgba(6,12,10,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(179,251,213,.4);box-shadow:0 18px 48px rgba(0,0,0,.6);text-align:left;max-height:min(70vh,560px);overflow:auto;animation:mkIn .22s ease both}
+@keyframes mkIn{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:none}}
+.mk-h{display:flex;align-items:center;justify-content:space-between;font:700 15px var(--disp);color:#EAFFF4;margin-bottom:10px}
+.mk-x{all:unset;cursor:pointer;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#9fb3aa;font-size:19px;line-height:1}
+.mk-x:hover{color:#EAFFF4;background:rgba(255,255,255,.08)}
+.mk-r{display:grid;grid-template-columns:26px 1fr;gap:3px 10px;align-items:center;padding:6px 0;border-top:1px solid rgba(255,255,255,.07)}
+.mk-r:first-of-type{border-top:0}
+.mk-r b{font:700 13px var(--disp);color:#dcebe4}
+.mk-r span{grid-column:2;font:500 12.5px/1.35 var(--disp);color:#8b9c94}
+.mk-i{grid-row:span 2;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;font:700 12px var(--disp);font-style:normal;color:#06110C}
+.mk-i.mint{background:#B3FBD5;box-shadow:0 0 12px rgba(179,251,213,.6)}
+.mk-i.amber{background:#E8924A;box-shadow:0 0 12px rgba(232,146,74,.6)}
+.mk-i.num{background:none;color:#B3FBD5;font-size:17px;box-shadow:none}
+.mk-i.cash{background:none;color:#E8924A;font-size:16px;box-shadow:none}
+.mk-i.chip{background:#E8924A;border-radius:999px;font-size:13px}
+.mk-i.drag{background:none;box-shadow:none;border:1.5px solid #8b9c94;border-radius:5px;width:16px;height:22px}
+.mk-f{margin:10px 0 0;padding-top:9px;border-top:1px solid rgba(255,255,255,.07);font:500 11.5px/1.45 var(--disp);color:#78887f}
+@media (max-width:820px){.mkey{position:fixed;left:12px;right:12px;top:auto;bottom:96px;width:auto;max-height:56vh;overflow:auto;-webkit-overflow-scrolling:touch}}

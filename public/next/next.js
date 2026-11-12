@@ -1,16 +1,16 @@
-import "./viewer.js?v=197";
-import { startScanLink } from "./scanlink.js?v=197";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=197";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=197";
-import { phaseFromItem } from "/visor/phases.js?v=197";
-import { renderScouter } from "./scouter.js?v=197";
-import { renderCollection, openImport } from "./collection.js?v=197";
-import { photoManager } from "./photos.js?v=197";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=197";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=197";
-import { renderSettings } from "./settings.js?v=197";
-import { initSync } from "./sync.js?v=197";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=197";
+import "./viewer.js?v=198";
+import { startScanLink } from "./scanlink.js?v=198";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=198";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=198";
+import { phaseFromItem } from "/visor/phases.js?v=198";
+import { renderScouter } from "./scouter.js?v=198";
+import { renderCollection, openImport } from "./collection.js?v=198";
+import { photoManager } from "./photos.js?v=198";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=198";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=198";
+import { renderSettings } from "./settings.js?v=198";
+import { initSync } from "./sync.js?v=198";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=198";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -341,7 +341,20 @@ addEventListener("fob:inbox", () => { if (view === "command" && !arranging && !d
 const PH_H = 300 + 290 * 7 + 240;
 /* the one thing to do at each stop, right on it: no legend needed */
 const goChip = (s, g) => (s.go && g[s.id].length ? `<i class="tag-go">${s.go} ${g[s.id].length} ›</i>` : "");
-const arrUi = () => `<div class="arr">${arranging ? `<button type="button" class="arr-b on" id="arrBtn">Done arranging</button><button type="button" class="arr-b" id="arrReset">Reset map</button>` : `<button type="button" class="arr-b" id="arrBtn" aria-label="Arrange the map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>Arrange map</button>`}</div>`;
+let keyOpen = false;
+const KEY_ROWS = [
+  ["dot mint", "Mint stop", "your own stuff, on its way to being listed"],
+  ["dot amber", "Orange stop", "an eBay order, on its way out the door"],
+  ["num", "Big number", "how many items sit at that stop"],
+  ["cash", "Dollar amount", "what those items are worth"],
+  ["chip", "Orange chip", "the next thing to do there — tap it"],
+  ["drag", "Drag a card", "hold a card, drop it on another stop to move it"],
+];
+const keyUi = () => `<div class="mkey${keyOpen ? " on" : ""}" id="mKey"${keyOpen ? "" : " hidden"}>
+  <div class="mk-h">Map key<button type="button" class="mk-x" id="mKeyX" aria-label="Close the map key">×</button></div>
+  ${KEY_ROWS.map(([k, t, d]) => `<div class="mk-r"><i class="mk-i ${k}">${k === "num" ? "8" : k === "cash" ? "$" : k === "chip" ? "›" : ""}</i><b>${t}</b><span>${d}</span></div>`).join("")}
+  <p class="mk-f">Left to right is the order things happen: Intake → Ready to list → Put away → Pull → Packed → Shipped → Arriving → Delivered.</p></div>`;
+const arrUi = () => `<div class="arr">${arranging ? `<button type="button" class="arr-b on" id="arrBtn">Done arranging</button><button type="button" class="arr-b" id="arrReset">Reset map</button>` : `<button type="button" class="arr-b" id="mKeyB" aria-label="What the map symbols mean" aria-expanded="${keyOpen}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.6v.9"/></svg>Key</button><button type="button" class="arr-b" id="arrBtn" aria-label="Arrange the map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>Arrange map</button>`}${keyUi()}</div>`;
 function renderCommand() {
   const g = groups(); const main = $("#main");
   const pills = [
@@ -387,6 +400,8 @@ function renderCommand() {
   main.querySelectorAll("[data-stage]").forEach((el) => el.addEventListener("click", () => stageSheet(el.dataset.stage)));
   main.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.pst) window.__chStage = b.dataset.pst; go(b.dataset.goto); }));
   main.querySelectorAll(".stop .tag").forEach((d) => d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); stageSheet(d.dataset.stage); } }));
+  main.querySelector("#mKeyB")?.addEventListener("click", () => { keyOpen = !keyOpen; const k = main.querySelector("#mKey"); if (k) { k.hidden = !keyOpen; k.classList.toggle("on", keyOpen); } main.querySelector("#mKeyB")?.setAttribute("aria-expanded", String(keyOpen)); });
+  main.querySelector("#mKeyX")?.addEventListener("click", () => { keyOpen = false; const k = main.querySelector("#mKey"); if (k) { k.hidden = true; k.classList.remove("on"); } main.querySelector("#mKeyB")?.setAttribute("aria-expanded", "false"); });
   main.querySelectorAll(".pc[data-item]").forEach(bindDrag);
   main.querySelectorAll("[data-putaway]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); if (!unbinnedCount()) { toast("Everything is already in a bin."); return; } openPutAway({ toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); if (view === "command") renderCommand(); } }); }));
   if (phone()) wireArrange(main, "phone", 390, PH_H); else wireArrange(main, "desk", Math.max(600, main.clientWidth || 1000), Math.max(420, main.clientHeight || 600));

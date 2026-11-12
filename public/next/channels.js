@@ -1,8 +1,8 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=197";
-import { photoManager } from "./photos.js?v=197";
-import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=197";
-import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=197";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=197";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=198";
+import { photoManager } from "./photos.js?v=198";
+import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=198";
+import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=198";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=198";
 
 let ctx = null;
 const S = { f: { when: "", game: "", bin: "", price: "", type: "" }, groupBy: "set", shut: new Set(), stage: "listed", view: (() => { try { return localStorage.getItem("fob-ch-view2") || "rows"; } catch { return "rows"; } })(), group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
@@ -35,7 +35,7 @@ function live() {
 const pool = (stage) => ["sold", "shipped", "delivered"].includes(stage) ? orderItems().filter((o) => o.phase === stage) : live().filter((i) => stageOf(i) === stage);
 const valOf = (it) => it._kids ? it._kids.reduce((a, k) => a + (Number(k.price) || 0) * (Number(k.quantity) || 1), 0) : (Number(it.price) || 0) * (Number(it.quantity) || 1);
 const ptxt = (it) => it._n > 1 ? `${money(it._lo)}${it._hi > it._lo ? "–" + money(it._hi) : ""}` : money(it.price);
-const badge = (it) => it._order ? (it.phase === "sold" ? "Needs shipping" : ["Label made", "Shipped", "In transit", "Out for delivery", "Delivered"][track(it._order).step]) : it._n > 1 ? `${it._n} variations` : "";
+const badge = (it) => it._order ? (it.phase === "sold" ? "Needs shipping" : ["Label made", "Shipped", "On its way", "Out for delivery", "Delivered"][track(it._order).step]) : it._n > 1 ? `${it._n} variations` : "";
 const expand = (ids) => ids.flatMap((i) => GROUP.get(String(i)) || [i]);
 const stageOf = (it) => it._order ? it.phase : (it.phase || "intake");
 const STAGE_LABEL = { listed: "Live on eBay", staged: "Ready to list", intake: "Intake", sold: "Sold", shipped: "Shipped", delivered: "Delivered" };
@@ -106,8 +106,8 @@ function weekSales() { const now = Date.now(), wk = new Array(8).fill(0); for (c
 function instrumentHtml(all, total, counts) {
   const orders = ["sold", "shipped", "delivered"].includes(S.stage), wk = weekSales(), live = counts.listed || 0;
   const stale = orders ? 0 : all.filter((it) => (daysSince(it.channels?.ebay?.listedAt || it.createdAt) || 0) > 45).length;
-  const g = orders ? ringGauge(all.length, all.length ? 1 : 0, S.stage === "sold" ? "to ship" : S.stage === "shipped" ? "moving" : "done", true) : ringGauge(live, live ? Math.min(1, (live - stale) / live) : 0, "live");
-  return `<div class="ix${orders ? " hot" : ""}">${g}<div class="ix-v"><em>${orders ? ({ sold: "Sold, needs shipping", shipped: "In transit", delivered: "Delivered" })[S.stage] : "Listed on eBay"}</em><b>${money(total)}</b><span>${orders ? `${all.length} order${all.length === 1 ? "" : "s"}` : stale ? `<i class="hot">${stale} sitting 45+ days</i>` : "all fresh"}</span></div>${orders && all.length ? `<button class="btn ix-arch" id="chArchAll" type="button">Archive all</button>` : wk.some((x) => x > 0) ? sparkBars(wk, "sales, 8 wks") : ""}</div>`;
+  const g = orders ? ringGauge(all.length, all.length ? 1 : 0, S.stage === "sold" ? "to pull" : S.stage === "shipped" ? "moving" : "done", true) : ringGauge(live, live ? Math.min(1, (live - stale) / live) : 0, "live");
+  return `<div class="ix${orders ? " hot" : ""}">${g}<div class="ix-v"><em>${orders ? ({ sold: "Sold. Pull and pack", shipped: "Shipped, on its way", delivered: "Delivered" })[S.stage] : "Listed on eBay"}</em><b>${money(total)}</b><span>${orders ? `${all.length} order${all.length === 1 ? "" : "s"}` : stale ? `<i class="hot">${stale} sitting 45+ days</i>` : "all fresh"}</span></div>${orders && all.length ? `<button class="btn ix-arch" id="chArchAll" type="button">Archive all</button>` : wk.some((x) => x > 0) ? sparkBars(wk, "sales, 8 wks") : ""}</div>`;
 }
 function stageRouteHtml(counts) {
   const pos = [8, 36, 64, 92];
@@ -124,7 +124,7 @@ function shelvesHtml(groups) {
   }).join("");
 }
 /* ===================== Channels = the selling desk (Oct 25) ===================== */
-const DESK_TABS = [["listed", "Live"], ["sold", "To ship"], ["shipped", "Shipped"], ["delivered", "Delivered"]];
+const DESK_TABS = [["listed", "Live"], ["sold", "Pull"], ["shipped", "Shipped"], ["delivered", "Delivered"]];
 function deskTop(all, total, counts) {
   const orders = ["sold", "shipped", "delivered"].includes(S.stage);
   const live = pool("listed"), stale = live.filter((it) => (daysSince(it.channels?.ebay?.listedAt || it.createdAt) || 0) > 45), nobin = live.filter((it) => !it.spaceId);
@@ -132,10 +132,10 @@ function deskTop(all, total, counts) {
   const sum = (k) => pool(k).reduce((a, i) => a + (i._order ? Number(i._order.total ?? i.price) || 0 : valOf(i)), 0);
   const step = (k, l, sub) => `<button type="button" role="tab" aria-selected="${S.stage === k}" class="pl-s${S.stage === k ? " on" : ""}${k === "sold" && counts.sold ? " hot" : ""}" data-stage="${k}"><b>${counts[k] || 0}</b><span>${l}</span><em>${sub}</em></button>`;
   const act = [];
-  if (counts.sold) act.push(`<button type="button" class="aq hot" data-stage="sold"><b>${counts.sold}</b><span>to ship. Print the label${counts.sold === 1 ? "" : "s"}</span><i>›</i></button>`);
+  if (counts.sold) act.push(`<button type="button" class="aq hot" data-stage="sold"><b>${counts.sold}</b><span>sold. Pull ${counts.sold === 1 ? "it" : "them"} and print the label${counts.sold === 1 ? "" : "s"}</span><i>›</i></button>`);
   if (stale.length) act.push(`<button type="button" class="aq warn${S.stale ? " on" : ""}" id="dkStale"><b>${stale.length}</b><span>${S.stale ? "sitting 45+ days. Showing them, tap to clear" : "sitting 45+ days. Drop the price or end"}</span><i>›</i></button>`);
   if (nobin.length) act.push(`<button type="button" class="aq" id="dkNoBin"><b>${nobin.length}</b><span>live without a bin. Put them away</span><i>›</i></button>`);
-  return `<nav class="pl" role="tablist" aria-label="Order flow">${step("listed", "Live", money(sum("listed")))}<i class="pl-a" aria-hidden="true"></i>${step("sold", "To ship", counts.sold ? "Ship now" : "All clear")}<i class="pl-a" aria-hidden="true"></i>${step("shipped", "In transit", "")}<i class="pl-a" aria-hidden="true"></i>${step("delivered", "Delivered", "")}</nav>
+  return `<nav class="pl" role="tablist" aria-label="Order flow">${step("listed", "Live", money(sum("listed")))}<i class="pl-a" aria-hidden="true"></i>${step("sold", "Pull", counts.sold ? "Pack it up" : "All clear")}<i class="pl-a" aria-hidden="true"></i>${step("shipped", "Shipped", counts.shipped ? "On its way" : "None moving")}<i class="pl-a" aria-hidden="true"></i>${step("delivered", "Delivered", counts.delivered ? "At the door" : "None yet")}</nav>
     ${act.length && !orders ? `<div class="aqs">${act.join("")}</div>` : ""}
     ${S.stage === "listed" ? "" : `<div class="dk-find"><input id="chQ" type="search" placeholder="Search title or SKU" value="${esc(S.q)}" aria-label="Search title or SKU">
       ${orders ? "" : `<select id="dkSort" aria-label="Sort"><option value="value"${S.sort === "value" ? " selected" : ""}>Price: high</option><option value="low"${S.sort === "low" ? " selected" : ""}>Price: low</option><option value="old"${S.sort === "old" ? " selected" : ""}>Oldest first</option><option value="name"${S.sort === "name" ? " selected" : ""}>Name</option></select>`}
@@ -417,7 +417,7 @@ const SORTS = [["value", "Price: high"], ["low", "Price: low"], ["new", "Newest"
 function boardTabs(counts) {
   const sum = (k) => pool(k).reduce((a, i) => a + (i._order ? Number(i._order.total ?? i.price) || 0 : valOf(i)), 0);
   const tab = (k, l, sub) => `<button type="button" role="tab" aria-selected="${S.stage === k}" class="bd-tab${S.stage === k ? " on" : ""}${k === "sold" && counts.sold ? " hot" : ""}" data-stage="${k}"><b>${counts[k] || 0}</b><span>${l}</span><em>${sub}</em></button>`;
-  return `<nav class="bd-tabs" role="tablist" aria-label="Channels">${tab("listed", "Live", money(sum("listed")))}${tab("sold", "To ship", counts.sold ? "Ship now" : "Clear")}${tab("shipped", "In transit", money(sum("shipped")))}${tab("delivered", "Delivered", money(sum("delivered")))}<i class="bd-scan" aria-hidden="true"></i></nav>`;
+  return `<nav class="bd-tabs" role="tablist" aria-label="Channels">${tab("listed", "Live", money(sum("listed")))}${tab("sold", "Pull", counts.sold ? "Pack it up" : "Clear")}${tab("shipped", "Shipped", money(sum("shipped")))}${tab("delivered", "Delivered", money(sum("delivered")))}<i class="bd-scan" aria-hidden="true"></i></nav>`;
 }
 function boardTile(it, i) {
   const src = photoOf(it), on = S.sel.has(String(it.id)), d = liveDays(it);
