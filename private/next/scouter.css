@@ -323,3 +323,83 @@
  .sc-steps .st{grid-template-columns:1fr;grid-template-areas:"n" "l" "h";justify-items:center;text-align:center;padding:9px 4px 8px;row-gap:2px}
  .sc-steps .st>b{font-size:24px!important}.sc-steps .st>span{font-size:12px;max-width:100%}.sc-steps .st>small{font-size:10.5px;max-width:100%}
 }
+
+/* ============ Camera on a phone (Nov 12): the picture is the screen ============
+   It used to be a 46vh window with a spinning reticle, a dashed crosshair and a
+   big "SEARCHING" box parked over whatever you were pointing at. The camera now
+   takes the screen; the only thing drawn over it is the bracket that tracks the
+   card, and the status moves to a pill at the top. */
+@media (max-width:820px){
+  html.fx #main .sc-wrap.v2.m-one .sc-left{margin:0 -10px}
+  html.fx #main .sc-vf{height:min(64dvh,660px)!important;border-radius:20px!important}
+  /* the decorative reticle goes: arcs, spinning dashes, side ticks, dashed card box */
+  html.fx #main .sc-vf .sc-ret{display:none!important}
+  html.fx #main .sc-vf::before{display:none!important}
+  /* status becomes a small pill at the top instead of a panel over the subject */
+  html.fx #main .sc-vf #sqHud,html.fx #main .sc-vf .sq-hud{
+    position:absolute!important;left:50%!important;top:12px!important;right:auto!important;bottom:auto!important;
+    transform:translateX(-50%)!important;width:auto!important;max-width:84%!important;
+    display:inline-flex!important;align-items:center;gap:7px;
+    padding:6px 13px!important;border-radius:999px!important;
+    background:rgba(4,10,8,.72)!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border:1px solid rgba(125,242,180,.26)!important;box-shadow:none!important}
+  html.fx #main .sc-vf #sqHud *{font-size:12px!important;line-height:1.2!important;letter-spacing:.2px!important}
+  html.fx #main .sc-vf #sqHud [id="sqSt"]{font-weight:700!important;color:#EAFFF4!important}
+  /* controls sit on the picture, not in a bar under it */
+  html.fx #main .sc-vf .sc-deck{position:absolute!important;left:0;right:0;bottom:14px!important;z-index:6;
+    display:flex!important;align-items:center!important;justify-content:space-between!important;
+    gap:0!important;padding:0 22px!important;background:none!important;border:0!important}
+  html.fx #main .sc-vf .sc-tools{position:absolute!important;right:12px!important;top:12px!important;left:auto!important;
+    display:flex!important;flex-direction:column;gap:7px;z-index:6}
+  html.fx #main .sc-vf .sc-tool{padding:7px 12px!important;border-radius:999px!important;font-size:12px!important;
+    background:rgba(4,10,8,.72)!important;border:1px solid rgba(255,255,255,.16)!important;color:#dbeae3!important;min-height:0!important}
+  /* a shutter, not a glowing donut */
+  html.fx #main .sc-vf .sc-big.sc-trig{width:68px!important;height:68px!important;min-width:0!important;padding:0!important;
+    border-radius:50%!important;background:rgba(255,255,255,.14)!important;border:3px solid rgba(255,255,255,.92)!important;
+    box-shadow:0 6px 22px rgba(0,0,0,.5)!important;flex:0 0 auto;position:relative}
+  html.fx #main .sc-vf .sc-big.sc-trig>span{display:none!important}
+  html.fx #main .sc-vf .sc-big.sc-trig>i{width:52px!important;height:52px!important;border:0!important;border-radius:50%!important;
+    background:#fff!important;box-shadow:none!important;transition:transform .12s}
+  html.fx #main .sc-vf .sc-big.sc-trig:active>i{transform:scale(.88)}
+  html.fx #main .sc-vf .sc-big.sc-trig>em{position:absolute;right:-2px;top:-2px;min-width:20px;height:20px;padding:0 5px;
+    border-radius:999px;background:#F0A060;color:#05100C;font:800 11px/20px var(--disp);text-align:center}
+  /* the two side buttons: small, quiet, out of the picture's way */
+  html.fx #main .sc-vf .sc-side{flex:0 0 auto;width:62px!important;min-width:0!important;height:auto!important;
+    display:flex!important;flex-direction:column;align-items:center;gap:3px;padding:8px 0!important;
+    background:none!important;border:0!important;box-shadow:none!important;color:#dbeae3!important}
+  html.fx #main .sc-vf .sc-side span{font-size:11px!important;font-weight:600!important}
+  html.fx #main .sc-vf .sc-side:disabled{opacity:.35}
+  html.fx #main .sc-vf .sc-side i{width:26px!important;height:26px!important}
+  /* toasts clear the shutter */
+  html.fx #main .sc-wrap ~ .toast,html.fx .toast{bottom:calc(86px + env(safe-area-inset-bottom))!important;
+    max-height:4.6em;overflow:hidden;text-overflow:ellipsis}
+}
+@media (max-width:820px){
+  /* the status pill: one row, small */
+  html.fx #main .sc-vf #sqHud{flex-direction:row!important;height:auto!important;min-height:0!important;white-space:nowrap}
+  html.fx #main .sc-vf #sqHud .sq-st{font:700 12px var(--disp)!important;color:#EAFFF4!important;text-transform:none!important;letter-spacing:.2px!important}
+  html.fx #main .sc-vf #sqHud .sq-tip{font:500 12px var(--disp)!important;color:#9fb3aa!important}
+  html.fx #main .sc-vf #sqHud .sq-mt{width:34px!important;height:3px!important;align-self:center}
+  html.fx #main .sc-vf #sqAuto{top:auto!important;bottom:12px!important;left:12px!important;right:auto!important;
+    padding:6px 11px!important;border-radius:999px!important;font-size:11.5px!important;z-index:7}
+  /* the tool column hugs its buttons instead of stretching the whole frame */
+  html.fx #main .sc-vf .sc-tools{height:auto!important;bottom:auto!important;justify-content:flex-start!important}
+  /* the top of Scouter is a strip, so the camera gets the screen */
+  html.fx #main .sc-wrap.v2 .pg-title{display:none!important}
+  html.fx #main .sc-wrap.v2 .st-mode button{padding:7px 8px!important}
+  html.fx #main .sc-wrap.v2 .st-mode b{font-size:13.5px!important}
+  html.fx #main .sc-wrap.v2 .st-mode small{font-size:11px!important}
+  html.fx #main .sc-wrap.v2.m-one .st-flow{display:none!important}
+  html.fx #main .sc-wrap.v2 .sc-steps{gap:7px!important}
+}
+@media (max-width:820px){
+  /* full-bleed camera */
+  html.fx #main .sc-wrap.v2.m-one .sc-left{margin:0 -14px!important;width:auto!important}
+  html.fx #main .sc-vf{border-radius:18px!important}
+  /* top row: status pill centred, auto-capture right, tools left - nothing overlaps */
+  html.fx #main .sc-vf .sc-tools{left:10px!important;right:auto!important;top:10px!important;flex-direction:row!important;gap:6px!important}
+  html.fx #main .sc-vf #sqAuto{top:10px!important;bottom:auto!important;left:auto!important;right:10px!important;max-width:40%}
+  html.fx #main .sc-vf #sqHud{top:52px!important}
+  /* the deck clears the bottom edge */
+  html.fx #main .sc-vf .sc-deck{bottom:18px!important;padding:0 18px!important}
+}
