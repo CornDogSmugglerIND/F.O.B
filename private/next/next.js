@@ -1,17 +1,17 @@
-import "./viewer.js?v=205";
-import { startScanLink } from "./scanlink.js?v=205";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=205";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=205";
-import { phaseFromItem } from "/visor/phases.js?v=205";
-import { renderScouter } from "./scouter.js?v=205";
-import { renderCollection, openImport } from "./collection.js?v=205";
-import { photoManager } from "./photos.js?v=205";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=205";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=205";
-import { renderSettings } from "./settings.js?v=205";
-import { initSync } from "./sync.js?v=205";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=205";
-import * as PS from "./photostore.js?v=205";
+import "./viewer.js?v=207";
+import { startScanLink } from "./scanlink.js?v=207";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=207";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=207";
+import { phaseFromItem } from "/visor/phases.js?v=207";
+import { renderScouter } from "./scouter.js?v=207";
+import { renderCollection, openImport } from "./collection.js?v=207";
+import { photoManager } from "./photos.js?v=207";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=207";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=207";
+import { renderSettings } from "./settings.js?v=207";
+import { initSync } from "./sync.js?v=207";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=207";
+import * as PS from "./photostore.js?v=207";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -354,7 +354,7 @@ addEventListener("fob:inbox", () => { if (view === "command" && !arranging && !d
 /* ---------- Phone constellation map (Nov 12) ----------
    Nine cells in a 3x3. One stop per cell, so two stops can never overlap.
    Dragging a stop onto another swaps them: rearranging always does something. */
-const MAP_KEY = "coalition-map-v2";
+const MAP_KEY = "coalition-map-v4";
 const MAP_DEF = { intake: 0, staged: 1, stored: 2, sold: 5, packed: 4, shipped: 3, arriving: 6, delivered: 7 };
 let mapSel = "";
 function mapCells() {
@@ -446,27 +446,41 @@ function renderCommand() {
        stop each, every stop on screen at once. Drag a stop onto another and
        they swap, so a stop can never land on top of anything. */
     main.style.overflow = "hidden";
+    main.classList.add("cmd-ph");
     const cells = mapCells(), ci = mapOrder();
     const at = (id) => cells[ci[id]];
     const pts = STOPS.map((s) => [at(s.id).x, at(s.id).y]);
-    const path = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
+    /* a smooth line through the stops instead of hard dog-legs */
+    const path = pts.map((p, i, a) => {
+      if (!i) return `M${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+      const q = a[i - 1], mx = (q[0] + p[0]) / 2, my = (q[1] + p[1]) / 2;
+      return `Q${q[0].toFixed(1)} ${q[1].toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)}T${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+    }).join(" ");
     const sel = STOPS.find((s) => s.id === mapSel) || STOPS.find((s) => g[s.id].length) || STOPS[0];
     const selN = g[sel.id].length, selV = money(g[sel.id].reduce((a, x) => a + worth(x), 0));
-    main.classList.add("cmd-ph");
     main.innerHTML = `${widgets(g)}<div class="cmwrap">
     <div class="cmap" id="cmap">
       <svg class="cm-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <defs><linearGradient id="cmg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".5" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
-        <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".13" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
-        <path d="${path}" fill="none" stroke="url(#cmg)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+        <defs><linearGradient id="cmg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
+        <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".1" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+        <path d="${path}" fill="none" stroke="url(#cmg)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+        <path class="cm-flow" d="${path}" fill="none" stroke="#EAFFF4" stroke-width="2.2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        ${pts.slice(1).map((p, i) => { const q = pts[i], mx = (q[0] + p[0]) / 2, my = (q[1] + p[1]) / 2, a = Math.atan2(p[1] - q[1], p[0] - q[0]) * 180 / Math.PI; return `<polygon class="cm-dir" points="-2.4,-1.7 2.2,0 -2.4,1.7" transform="translate(${mx.toFixed(1)} ${my.toFixed(1)}) rotate(${a.toFixed(0)})"/>`; }).join("")}
       </svg>
-      ${STOPS.map((s, i) => { const n = g[s.id].length, c = at(s.id); return `<button type="button" class="cm-n${n ? " has" : ""}${s.id === sel.id ? " on" : ""}" data-drop="${s.id}" data-node="${s.id}" style="left:${c.x}%;top:${c.y}%;--c:${s.c}" aria-label="${esc(s.label)}, ${n} item${n === 1 ? "" : "s"}, step ${i + 1} of ${STOPS.length}" aria-pressed="${s.id === sel.id}"><i><b>${n}</b></i><span>${esc(s.label)}</span></button>`; }).join("")}
+      ${STOPS.map((s, i) => {
+        const l = g[s.id], n = l.length, c = at(s.id);
+        const v = n ? money(l.reduce((a, x) => a + worth(x), 0)) : "";
+        const pic = n ? photoOf(l[0]) : "";
+        return `<button type="button" class="cm-n${n ? " has" : ""}${s.id === sel.id ? " on" : ""}" data-drop="${s.id}" data-node="${s.id}" style="left:${c.x}%;top:${c.y}%;--c:${s.c}" aria-label="${esc(s.label)}, ${n} item${n === 1 ? "" : "s"}, step ${i + 1} of ${STOPS.length}" aria-pressed="${s.id === sel.id}">
+          <i>${pic ? `<img src="${esc(pic)}" alt="" draggable="false">` : ""}<u></u><b>${n}</b><s>${i + 1}</s></i>
+          <span>${esc(s.label)}</span><em>${v || "&nbsp;"}</em>
+        </button>`;
+      }).join("")}
     </div>
     <div class="cm-bar" id="cmBar">
       <div class="cm-bi"><b>${esc(sel.label)}</b><span>${selN ? `${selN} item${selN === 1 ? "" : "s"} · ${selV}` : "Nothing here"}</span><small>${esc(sel.note)}</small></div>
       <div class="cm-ba">${selN ? `<button type="button" class="cm-go" data-stage="${sel.id}">Open</button>` : ""}${sel.go && selN ? goChip(sel, g) : ""}</div>
-    </div>
-    </div>`;
+    </div></div>`;
     mapWire(main, g);
   } else {
     main.classList.remove("cmd-ph");
