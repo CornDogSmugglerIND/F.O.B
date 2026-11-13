@@ -1,4 +1,5 @@
-import { esc, loadItems, saveItems } from "./shared.js?v=204";
+import * as PS from "./photostore.js?v=205";
+import { esc, loadItems, saveItems, srcOf} from "./shared.js?v=205";
 
 /* One photo editor for every item, wherever it is: set main, reorder, remove, add. */
 async function shrink(file, max = 1400) {
@@ -10,7 +11,7 @@ async function shrink(file, max = 1400) {
   c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height); if (bmp.close) bmp.close();
   return c.toDataURL("image/jpeg", 0.8);
 }
-const src = (p) => p.dataUrl || p.url || "";
+const src = (p) => srcOf(p);
 const skuOf = (it) => it.channels?.ebay?.sku || it.sku || "";
 const isLive = (it) => Boolean(it.channels?.ebay?.listingId) && !it.ended && it.phase !== "intake";
 
@@ -32,7 +33,7 @@ export function photoManager(box, id, api) {
     box.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => { if ((get().photos || []).length <= 1 && isLive(get())) { api.toast("A live listing needs at least one photo."); return; } edit((ps) => { ps.splice(Number(b.dataset.rm), 1); }); }));
     box.querySelector(".ph-add input")?.addEventListener("change", async (e) => {
       const files = [...e.target.files]; if (!files.length) return; busy = ""; const add = [];
-      for (const f of files) { try { add.push({ id: `ph-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, dataUrl: await shrink(f), createdAt: new Date().toISOString() }); } catch { /* skip */ } }
+      for (const f of files) { try { const _id = `ph-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, _du = await shrink(f), _at = new Date().toISOString(); add.push(await PS.put(_id, _du) ? { id: _id, idb: 1, createdAt: _at } : { id: _id, dataUrl: _du, createdAt: _at }); } catch { /* skip */ } }
       if (add.length) edit((ps) => { ps.push(...add); }); else api.toast("Those weren't photos.");
     });
     box.querySelector("#phPush")?.addEventListener("click", async () => {

@@ -1,6 +1,7 @@
+import { srcOf } from "./shared.js?v=205";
 /* Batch identify: dump a stack of scans (front + back per card) and let Identify run through all of them,
    like TCGAutomate / carduploader. Each card is saved as it finishes; photos are hosted on eBay so storage never fills. */
-import { inboxList, inboxRemove } from "./inbox.js?v=204";
+import { inboxList, inboxRemove } from "./inbox.js?v=205";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const money = (n) => "$" + (Number(n) || 0).toFixed(2);
@@ -115,7 +116,7 @@ let lastApi = null, qT = 0, openFix = null;
 const items = () => { try { return lastApi.getItems(); } catch { return []; } };
 const pctCls = (p) => (p >= 90 ? "hi" : p >= 70 ? "md" : "lo");
 function rowHtml(c, k, it) {
-  const scans = it ? (it.photos || []).slice(0, 2).map((p) => p.dataUrl || p.url) : c.thumbs;
+  const scans = it ? (it.photos || []).slice(0, 2).map((p) => srcOf(p)) : c.thumbs;
   const m = it?.match || {}, pct = m.pct || 0, done = it && !["wait", "work"].includes(c.state);
   const sub = it ? [it.setName, it.collectorNumber].filter(Boolean).join(" · ") : "";
   return `<div class="bt-row ${c.state}${openFix === (it?.id || "") && it ? " fixing" : ""}" data-it="${esc(it?.id || "")}" data-k="${k}">

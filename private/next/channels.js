@@ -1,8 +1,8 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive } from "./shared.js?v=204";
-import { photoManager } from "./photos.js?v=204";
-import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=204";
-import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=204";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=204";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive, srcOf} from "./shared.js?v=205";
+import { photoManager } from "./photos.js?v=205";
+import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=205";
+import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=205";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=205";
 
 let ctx = null;
 const S = { f: { when: "", game: "", bin: "", price: "", type: "" }, groupBy: "set", shut: new Set(), stage: "listed", view: (() => { try { return localStorage.getItem("fob-ch-view2") || "rows"; } catch { return "rows"; } })(), group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
@@ -723,7 +723,7 @@ function buildSheet(it) {
   let dlN = 0; const aspRow = (k = "", v = "", vals = [], req = false) => { const dl = vals.length ? `bl-dl-${++dlN}` : ""; return `<div class="bl-ar${req ? " req" : ""}${v ? "" : " blank"}" style="gap:6px;align-items:center;display:flex"><input data-ak value="${esc(k)}" placeholder="Name" aria-label="Item specific name" style="flex:1;min-width:0"><input data-av value="${esc(v)}" placeholder="${req ? "Required" : "Optional"}" aria-label="${esc(k || "Item specific")} value" style="flex:1;min-width:0"${dl ? ` list="${dl}"` : ""}>${dl ? `<datalist id="${dl}">${vals.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>` : ""}<button class="btn" data-rm type="button" aria-label="Remove this item specific" style="flex:none;padding:6px 12px">×</button></div>`; };
   const $ = (q) => s.querySelector(q), msg = (t, bad) => { const m = $("#blMsg"); m.textContent = t; m.style.color = bad ? "var(--org)" : ""; };
   let armed = null;
-  const paintPh = () => { const cur = loadItems().find((x) => String(x.id) === String(it.id)) || it, list = cur.photos || []; $("#blPh").innerHTML = list.map((p, k) => `<button type="button" class="bl-pic${k === 0 ? " on" : ""}" data-k="${k}" aria-label="${k === 0 ? "Main photo" : "Make this the main photo"}"><img src="${esc(p.dataUrl || p.url || "")}" alt="" draggable="false">${k === 0 ? "<b>Main</b>" : ""}</button>`).join(""); };
+  const paintPh = () => { const cur = loadItems().find((x) => String(x.id) === String(it.id)) || it, list = cur.photos || []; $("#blPh").innerHTML = list.map((p, k) => `<button type="button" class="bl-pic${k === 0 ? " on" : ""}" data-k="${k}" aria-label="${k === 0 ? "Main photo" : "Make this the main photo"}"><img src="${esc(srcOf(p))}" alt="" draggable="false">${k === 0 ? "<b>Main</b>" : ""}</button>`).join(""); };
   paintPh();
   $("#blPh").addEventListener("click", (e) => { const b = e.target.closest("[data-k]"); if (!b || b.dataset.k === "0") return; const k = Number(b.dataset.k); patchItem(it.id, (i) => { const l = i.photos || []; const [m] = l.splice(k, 1); l.unshift(m); i.photos = l; }); paintPh(); });
   $("#blDesc").value = it.description || "";

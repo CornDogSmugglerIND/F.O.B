@@ -120,9 +120,9 @@
   #main .co-wrap .bd-tab.on>b{color:#7DF2B4!important}
 }
 @media (max-width:600px){
-  /* icons only, so the search box isn't squeezed to "Searc" */
-  #main .co-wrap .bd-tools .bd-btn{padding:0 11px!important;width:44px;justify-content:center}
-  #main .co-wrap .bd-tools .bd-btn>span,#main .co-wrap .bd-tools .bd-btn>b{
-    position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-  #main .co-wrap .bd-tools .bd-search input{min-width:0}
+  /* the tools row scrolls instead of the buttons piling onto each other */
+  #main .co-wrap .bd-tools{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #main .co-wrap .bd-tools::-webkit-scrollbar{display:none}
+  #main .co-wrap .bd-tools .bd-search{flex:1 0 46%!important}
+  #main .co-wrap .bd-tools .bd-btn{white-space:nowrap}
 }

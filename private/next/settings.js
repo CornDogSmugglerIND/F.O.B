@@ -1,4 +1,4 @@
-import { archMap, unarchive, esc as escA } from "./shared.js?v=204";
+import { archMap, unarchive, esc as escA, srcOf} from "./shared.js?v=205";
 /* Settings — moved out of next.js (bridge [32] file split). Same content Sawyer
    verified in P1+2: profile picture, live connections, install steps, storage
    meter, brand plates. Polish lives in settings.css. */
@@ -26,7 +26,7 @@ export function renderSettings(host) {
   const openArch = () => {
     const f = window.__fob; if (!f) return; const m = archMap(), ids = Object.keys(m).sort((a, b) => String(m[b].at).localeCompare(String(m[a].at)));
     const items = (() => { try { return JSON.parse(localStorage.getItem("coalition-items-v4") || "[]"); } catch { return []; } })(), byId = new Map(items.map((i) => [String(i.id), i]));
-    const pic = (id) => { const it = byId.get(id); const p = (it && it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || m[id].photo; return p ? `<img src="${escA(p)}" alt="" loading="lazy">` : `<i>${escA((m[id].title || "?").charAt(0))}</i>`; };
+    const pic = (id) => { const it = byId.get(id); const p = (it && srcOf(it.photos && it.photos[0])) || m[id].photo; return p ? `<img src="${escA(p)}" alt="" loading="lazy">` : `<i>${escA((m[id].title || "?").charAt(0))}</i>`; };
     const s = f.openSheet(`<div class="iv-bar"><button type="button" class="iv-back" data-close>‹ Back to Settings</button></div><h2>Archive</h2><div class="sub">${ids.length ? `${ids.length} archived. They're hidden from every tab. Restore puts one back.` : "Nothing archived yet. Use Archive on any item or order, or Archive all on Sold, Shipped and Delivered."}</div>
       ${ids.length ? `<button class="btn" id="arAll" type="button">Restore all ${ids.length}</button><div class="ar-list">${ids.map((id) => `<div class="ar-row" data-ar="${escA(id)}">${pic(id)}<span><b>${escA(m[id].title || id)}</b><em>${m[id].order ? "Order" : "Item"} · archived ${new Date(m[id].at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</em></span><button class="btn" data-restore="${escA(id)}" type="button">Restore</button></div>`).join("")}</div>` : ""}`);
     s.querySelectorAll("[data-restore]").forEach((b) => b.addEventListener("click", () => { unarchive([b.dataset.restore]); b.closest(".ar-row").remove(); f.render(); f.toast("Restored"); const n = host.querySelector("#spArchN"); if (n) n.textContent = String(Object.keys(archMap()).length); }));

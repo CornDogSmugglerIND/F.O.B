@@ -4,8 +4,8 @@
    - fly(): shared-element move between two rects (the camera moves in Spaces)
    Nothing here knows about eBay or storage. Pages just add classes. */
 
-import { setOf, numOf, cardName, rarityOf, gameOf } from "./cardmeta.js?v=204";
-import { loadSpaces } from "./shared.js?v=204";
+import { setOf, numOf, cardName, rarityOf, gameOf } from "./cardmeta.js?v=205";
+import { loadSpaces, srcOf} from "./shared.js?v=205";
 const reduce = () => false; // Reduce Motion is on for the owner, and the app animations are the point
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -87,7 +87,7 @@ export function wireTabs(root) {
 /* Same item viewer as Command: an iOS sheet with ‹ Back, "n of N", ‹ › arrows and swipe. */
 function openCardSheet(items, opts, f) {
   let i = Math.max(0, Math.min(items.length - 1, opts.index || 0));
-  const photo = opts.photo || ((it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "");
+  const photo = opts.photo || ((it) => srcOf(it && it.photos && it.photos[0]));
   const name = opts.name || ((it) => it.title || it.productName || "Untitled");
   let s = null;
   const go = (k) => { if (k < 0 || k >= items.length || k === i) return; i = k; paint(); };
@@ -113,7 +113,7 @@ export function openCard(items, opts = {}) {
   const f = window.__fob; if (f && window.customElements && customElements.get("ion-modal")) { closeCard(true); return openCardSheet(items, opts, f); }
   closeCard(true);
   let i = Math.max(0, Math.min(items.length - 1, opts.index || 0));
-  const photo = opts.photo || ((it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "");
+  const photo = opts.photo || ((it) => srcOf(it && it.photos && it.photos[0]));
   const name = opts.name || ((it) => it.title || it.productName || "Untitled");
   const z = document.createElement("div"); z.className = "k-zoom"; z.setAttribute("role", "dialog"); z.setAttribute("aria-modal", "true"); document.body.appendChild(z); zoomEl = z;
   const from = opts.from && opts.from.getBoundingClientRect ? opts.from.getBoundingClientRect() : opts.from || null;
@@ -163,7 +163,7 @@ export function lockFrame(it, src, { id = "" } = {}) {
 /* Hologram deck: a 3D carousel with the centered item target-locked; readouts(it) -> {l, r} HTML. */
 export function holoDeck(list, { readouts, ring = true } = {}) {
   const flow = list.slice(0, 16), ld = flow[0] ? readouts(flow[0]) : { l: "", r: "" };
-  const nm = (it) => it.title || it.productName || "Untitled", ph = (it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "";
+  const nm = (it) => it.title || it.productName || "Untitled", ph = (it) => srcOf(it && it.photos && it.photos[0]);
   if (!flow.length) return "";
   return `<div class="cd-stage">
     ${ring ? `<svg class="cd-ring" viewBox="0 0 300 300" aria-hidden="true"><path class="a1" d="M38 196 A118 118 0 0 1 150 32"/><path class="a2" d="M262 104 A118 118 0 0 1 150 268"/><path class="hatch" d="M52 108 A106 106 0 0 1 96 58"/><circle class="seg" cx="150" cy="150" r="134"/><path class="rule" d="M20 92 V208"/><path class="rule" d="M280 92 V208"/></svg>` : ""}
@@ -188,7 +188,7 @@ export function wireHoloDeck(root, list, { readouts, onOpen }) {
 /* Hologram wall: columns of cards on a curve; the card in the middle column lights up. info(it) -> html line under the wall. */
 export function holoWall(list, { info, rows } = {}) {
   if (!list.length) return "";
-  const R = rows || 2, nm = (it) => it.title || it.productName || "Untitled", ph = (it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "";
+  const R = rows || 2, nm = (it) => it.title || it.productName || "Untitled", ph = (it) => srcOf(it && it.photos && it.photos[0]);
   const money = (n) => "$" + (Number(n) || 0).toFixed(2);
   let cols = "";
   for (let c = 0; c * R < list.length; c++) {

@@ -1,16 +1,17 @@
-import "./viewer.js?v=204";
-import { startScanLink } from "./scanlink.js?v=204";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign } from "./shared.js?v=204";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=204";
-import { phaseFromItem } from "/visor/phases.js?v=204";
-import { renderScouter } from "./scouter.js?v=204";
-import { renderCollection, openImport } from "./collection.js?v=204";
-import { photoManager } from "./photos.js?v=204";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=204";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=204";
-import { renderSettings } from "./settings.js?v=204";
-import { initSync } from "./sync.js?v=204";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=204";
+import "./viewer.js?v=205";
+import { startScanLink } from "./scanlink.js?v=205";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=205";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=205";
+import { phaseFromItem } from "/visor/phases.js?v=205";
+import { renderScouter } from "./scouter.js?v=205";
+import { renderCollection, openImport } from "./collection.js?v=205";
+import { photoManager } from "./photos.js?v=205";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=205";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=205";
+import { renderSettings } from "./settings.js?v=205";
+import { initSync } from "./sync.js?v=205";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=205";
+import * as PS from "./photostore.js?v=205";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -18,7 +19,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const money = (n) => "$" + (Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const nameOf = (it) => { const t = it.title || it.productName || ""; return !t ? "Untitled" : /^sku-\d+$/i.test(t.trim()) ? `Draft listing …${t.trim().slice(-4)}` : t; };
-const photoOf = (it) => (it.photos && it.photos[0] && (it.photos[0].dataUrl || it.photos[0].url)) || "";
+const photoOf = (it) => srcOf(it && it.photos && it.photos[0]);
 const worth = (it) => it._order ? (Number(it.price) || 0) : (Number(it.price) || 0) * (Number(it.quantity) || 1);
 
 /* ---------- data ---------- */
@@ -26,7 +27,19 @@ function loadItems() { try { const v = JSON.parse(localStorage.getItem(LS_ITEMS)
 /* never write an older copy over a newer one: if another screen changed an item since we loaded it, its newer version wins */
 function mergeNewer(list) { try { const cur = JSON.parse(localStorage.getItem(LS_ITEMS) || "[]"); if (!Array.isArray(cur)) return list; const cm = new Map(cur.map((i) => [String(i.id), i]));
   for (const i of list) { const c = cm.get(String(i.id)); if (c && c.spaceId !== i.spaceId && Date.parse(c.updatedAt || 0) > Date.parse(i.updatedAt || 0)) i.spaceId = c.spaceId; } return list; } catch { return list; } }
-function saveItems(items) { try { localStorage.setItem(LS_ITEMS, JSON.stringify(mergeNewer(items))); return true; } catch { toast("Couldn't save. Phone storage is full."); return false; } }
+function saveItems(items) {
+  try { localStorage.setItem(LS_ITEMS, JSON.stringify(mergeNewer(items))); return true; }
+  catch {
+    /* Only photos are big enough to fill storage. Move them to device storage
+       and try once more before telling Sawyer anything is lost. */
+    PS.migrate(items).then((n) => {
+      if (!n) { toast("Couldn't save. Phone storage is full."); return; }
+      try { localStorage.setItem(LS_ITEMS, JSON.stringify(mergeNewer(items))); toast(`Moved ${n} photo${n === 1 ? "" : "s"} to device storage. Saved.`); softRender(); }
+      catch { toast("Couldn't save. Phone storage is full."); }
+    });
+    return false;
+  }
+}
 const saveItems2 = (l) => { try { localStorage.setItem(LS_ITEMS, JSON.stringify(l)); return true; } catch { return false; } };
 const isDemo = (i) => i.demo || /^demo/.test(String(i.channels?.ebay?.listingId || "")) || (i.photos || []).some((p) => String(p.dataUrl || "").startsWith("/demo/"));
 function purgeDemo() { const l = loadItems(), k = l.filter((i) => !isDemo(i)), dup = dedupeListings(k); if (dup || k.length !== l.length) saveItems2(k); }
@@ -584,6 +597,20 @@ function render() {
   renderStats(); sig = sigOf(items);
   if (view === "command") renderCommand(); else if (view === "settings") renderSettings($("#main")); else if (view === "scouter") { $("#main").style.overflowY = "auto"; if (!$("#main .sc-wrap")) renderScouter($("#main"), { build: (id) => buildListing(id, chApi()), open: (id, ids) => { items = loadItems(); NAV = { sid: "scouter", ids: (ids || [id]).map(String) }; itemSheet(id); }, variation: () => variationListing(chApi()), importCsv: () => openImport({ toast, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); window.__fobScRepaint?.(); } }), getItems: loadItems, setItems: (l) => { saveItems(l); items = l; renderStats(); }, toast, toastUndo, go });  else window.__fobScRepaint?.();} else if (view === "collection" || view === "spaces" || view === "channels") { $("#main").style.overflowY = "auto"; const sel = view === "collection" ? ".co-wrap" : ".sp-wrap"; $("#main").innerHTML = ""; (view === "collection" ? renderCollection : view === "channels" ? renderChannels : renderSpaces)($("#main"), { toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); } }); } else renderCommand();
 }
+/* Photos used to sit inline in the item list and blow the 5MB localStorage cap
+   at about 20 cards. Move any that are still inline, then warm the object URLs
+   the render paths read synchronously. */
+PS.setOnReady(() => softRender());
+(async () => {
+  try {
+    const list = loadItems();
+    const moved = await PS.migrate(list);
+    if (moved) { saveItems2(list); items = list; lastRaw = null; }
+    await PS.load(PS.idsIn(list));
+    softRender();
+  } catch { /* photos just stay inline */ }
+})();
+
 document.querySelectorAll("#nav button").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));
 addEventListener("resize", (() => { let t; let last = phone(); return () => { clearTimeout(t); t = setTimeout(() => { if (phone() !== last) { last = phone(); render(); } else if (!phone() && document.querySelector(".road")) render(); }, 150); }; })());
 addEventListener("storage", () => softRender());

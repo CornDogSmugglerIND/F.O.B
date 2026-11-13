@@ -1,8 +1,9 @@
-import { isArchived, loadSpaces, assign } from "./shared.js?v=204";
-import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=204";
-import { paintScanBar } from "./scanconnect.js?v=204";
-import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=204";
-import { phaseFromItem } from "/visor/phases.js?v=204";
+import { isArchived, loadSpaces, assign, srcOf} from "./shared.js?v=205";
+import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=205";
+import * as PS from "./photostore.js?v=205";
+import { paintScanBar } from "./scanconnect.js?v=205";
+import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=205";
+import { phaseFromItem } from "/visor/phases.js?v=205";
 /* Scouter: one upload = one item. Photos preview instantly, get shrunk off the
  * hot path, nothing is saved until Save is pressed. */
 const MAX_PICK = 24; /* eBay allows 24 photos on a listing; the item cap matches it (was 5 — Sawyer, Oct 31 2026) */
@@ -105,7 +106,13 @@ async function save() {
   if (!picked.length) { ctx.toast("Add and pick at least one photo."); return; }
   const btn = ctx.host.querySelector("#scSave"); if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
   const stored = [];
-  for (const p of picked) { stored.push({ id: nid(), dataUrl: await resizeData(p.data, STORE_SHRINK), createdAt: new Date().toISOString() }); await tick(); }
+  for (const p of picked) {
+    /* the photo goes to device storage; the item keeps a reference, so the item
+       list stays small enough to actually save (localStorage caps near 5MB) */
+    const pid = nid(), du = await resizeData(p.data, STORE_SHRINK), at = new Date().toISOString();
+    stored.push(await PS.put(pid, du) ? { id: pid, idb: 1, createdAt: at } : { id: pid, dataUrl: du, createdAt: at });
+    await tick();
+  }
   const identified = Boolean(d.identity || d.title.trim());
   const now = new Date().toISOString();
   const id = d.identity || {};
@@ -122,7 +129,7 @@ async function save() {
   try { ctx.setItems([item, ...list]); } catch { ctx.toast("Couldn't save. Storage is full."); if (btn) { btn.disabled = false; btn.textContent = "Save item"; } return; }
   if (d.fromInbox && d.fromInbox.length) { const ids = d.fromInbox; d.fromInbox = null; inboxRemove(ids).catch(() => {}); }
   try { let u = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); u += (k.length + (localStorage.getItem(k) || "").length) * 2; } if (u > 4.2 * 1048576) ctx.toast("Device storage is about " + Math.round(u / 52428.8) + "% full. List or remove items soon."); } catch { /* ignore */ }
-  session.unshift({ id: item.id, title: item.title, qty: item.quantity, price: item.price, photo: stored[0] && stored[0].dataUrl, staged: item.phase === "staged" });
+  session.unshift({ id: item.id, title: item.title, qty: item.quantity, price: item.price, photo: stored[0] && srcOf(stored[0]), staged: item.phase === "staged" });
   d.saved = { item, backup: { done: 0, total: stored.length, state: "run" } };
   paintAll(); backup(item);
 }
@@ -373,7 +380,7 @@ function queue_(noInbox) {
   /* exactly what Command shows at Intake and Ready to list, so the two never disagree */
   const all = ctx.getItems().filter((i) => (i.source === "scouter" || i.source === "app") && !i.ended && !isArchived(i.id));
   const wait = all.filter((i) => phaseFromItem(i) === "intake"), ready = all.filter((i) => phaseFromItem(i) === "staged");
-  const tile = (i, k) => `<button class="sc-q k-tilt" data-q="${esc(i.id)}" data-k="${k}" type="button">${i.photos?.[0] ? `<img src="${esc(i.photos[0].dataUrl || i.photos[0].url || "")}" alt="" loading="lazy" draggable="false">` : "<i></i>"}<span>${esc(i.title || "Untitled item")}</span>${i.price ? `<em>${money(i.price)}</em>` : ""}<u class="sc-qx" data-qdel="${esc(i.id)}" role="button" aria-label="Delete this item">×</u></button>`;
+  const tile = (i, k) => `<button class="sc-q k-tilt" data-q="${esc(i.id)}" data-k="${k}" type="button">${i.photos?.[0] ? `<img src="${esc(srcOf(i.photos[0]))}" alt="" loading="lazy" draggable="false">` : "<i></i>"}<span>${esc(i.title || "Untitled item")}</span>${i.price ? `<em>${money(i.price)}</em>` : ""}<u class="sc-qx" data-qdel="${esc(i.id)}" role="button" aria-label="Delete this item">×</u></button>`;
   const row = (t, sub, l, k, acts = "") => l.length ? `<div class="sc-qh" data-row="${k}"><h3>${t}</h3><em>${l.length}</em><small>${sub}</small>${acts}</div><div class="sc-qs">${l.slice(0, 30).map((i) => tile(i, k)).join("")}</div>` : "";
   const out = row("Need a name", "Tap one to identify it", wait, "wait") + row("Ready to list", "Identified. Tap one to build its eBay listing", ready, "ready", ready.length > 1 ? `<button type="button" class="sc-qa" id="scVar">Make a variation listing</button>` : "");
   const tools = `<div class="sc-qtools"><button type="button" class="sc-qa" id="scCsv">Import a CSV</button></div>`;
@@ -401,7 +408,7 @@ function nextFocus() {
 }
 function focusPanel() {
   const it = ctx.getItems().find((x) => String(x.id) === focus.id); if (!it) return "";
-  const i = focus.ids.indexOf(focus.id), n = focus.ids.length, ph = it.photos?.[0] ? (it.photos[0].dataUrl || it.photos[0].url) : "";
+  const i = focus.ids.indexOf(focus.id), n = focus.ids.length, ph = srcOf(it.photos?.[0]);
   const bins = loadSpaces().filter((b) => b.phys), bin = bins.find((b) => b.id === it.spaceId);
   return `<div class="scc-bar"><button type="button" class="scc-back" id="sccBack">‹ Scanner</button>${n > 1 ? `<span class="scc-n">${i + 1} of ${n} ready</span><button type="button" class="scc-nav" id="sccPrev" aria-label="Previous card"${i === 0 ? " disabled" : ""}>‹</button><button type="button" class="scc-nav" id="sccNext" aria-label="Next card"${i === n - 1 ? " disabled" : ""}>›</button>` : ""}</div>
     <div class="scc-shot">${ph ? `<img src="${esc(ph)}" alt="" draggable="false">` : "<i></i>"}<span class="scc-tag">Ready to list</span></div>
@@ -438,7 +445,7 @@ function loadForId(id) {
   const it = ctx.getItems().find((x) => String(x.id) === String(id)); if (!it) return;
   d.photos.forEach((p) => p.preview && p.preview.startsWith("blob:") && URL.revokeObjectURL(p.preview));
   d = blank(); d.reid = it.id; d.title = /^untitled/i.test(it.title || "") ? "" : (it.title || ""); d.qty = it.quantity || 1; d.paid = it.purchasePrice ? String(it.purchasePrice) : ""; d.market = it.price ? String(it.price) : "";
-  (it.photos || []).slice(0, MAX_PICK).forEach((ph, k) => { const u = ph.dataUrl || ph.url || ""; d.photos.push({ id: nid(), preview: u, data: ph.dataUrl || "", picked: true, err: false, src: u }); });
+  (it.photos || []).slice(0, MAX_PICK).forEach((ph, k) => { const u = srcOf(ph); d.photos.push({ id: nid(), preview: u, data: ph.dataUrl || "", picked: true, err: false, src: u }); });
   paintAll();
   d.photos.filter((p) => !p.data && p.src).forEach(async (p) => { try { const b = await (await fetch(p.src)).blob(); p.data = await new Promise((r, j) => { const f = new FileReader(); f.onload = () => r(f.result); f.onerror = j; f.readAsDataURL(b); }); p.data = await resizeData(p.data, SHRINK); } catch { p.err = true; p.picked = false; } paintTray(); paintFlow(); });
   ctx.toast("Loaded. Tap Identify.");
