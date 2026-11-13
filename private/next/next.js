@@ -1,17 +1,17 @@
-import "./viewer.js?v=209";
-import { startScanLink } from "./scanlink.js?v=209";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=209";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=209";
-import { phaseFromItem } from "/visor/phases.js?v=209";
-import { renderScouter } from "./scouter.js?v=209";
-import { renderCollection, openImport } from "./collection.js?v=209";
-import { photoManager } from "./photos.js?v=209";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=209";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=209";
-import { renderSettings } from "./settings.js?v=209";
-import { initSync } from "./sync.js?v=209";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=209";
-import * as PS from "./photostore.js?v=209";
+import "./viewer.js?v=210";
+import { startScanLink } from "./scanlink.js?v=210";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=210";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=210";
+import { phaseFromItem } from "/visor/phases.js?v=210";
+import { renderScouter } from "./scouter.js?v=210";
+import { renderCollection, openImport } from "./collection.js?v=210";
+import { photoManager } from "./photos.js?v=210";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=210";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=210";
+import { renderSettings } from "./settings.js?v=210";
+import { initSync } from "./sync.js?v=210";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=210";
+import * as PS from "./photostore.js?v=210";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -354,7 +354,7 @@ function wireArrange(main, kind, W, H) {
         if (kind === "phone") {
           /* free movement: the only limit is the map itself */
           let y = oy + (ev.clientY - sy) + (main.scrollTop - s0);
-          y = Math.max(150, Math.min(H - 110, y));
+          y = Math.max(300, Math.min(H - 110, y));
           st.style.top = y + "px"; xp = Math.max(lo, Math.min(100 - lo, xp));
           /* the page keeps up with your finger instead of crawling */
           const mr = main.getBoundingClientRect(), edge = 90;
@@ -371,25 +371,48 @@ function wireArrange(main, kind, W, H) {
       const up = () => {
         st.removeEventListener("pointermove", mv); st.removeEventListener("pointerup", up); st.removeEventListener("pointercancel", up);
         st.classList.remove("moving"); speed = 0; if (raf) cancelAnimationFrame(raf);
-        /* slide to the nearest clear spot so nothing ends up covered */
-        if (blocked(st)) {
-          const unit = kind === "phone" ? 14 : 2.2, prop = "top";
-          const base = parseFloat(st.style[prop]), lim = kind === "phone" ? H - 110 : 88, min = kind === "phone" ? 150 : 10;
-          const bx = parseFloat(st.style.left), lanes = [bx, 100 - bx, kind === "phone" ? 27 : bx, kind === "phone" ? 73 : bx];
-          let placed = false;
-          for (let k = 0; k <= 30 && !placed; k++) {
-            for (const d of (k ? [-1, 1] : [1])) {
-              const v = base + d * k * unit; if (v < min || v > lim) continue;
-              st.style[prop] = v + (kind === "phone" ? "px" : "%");
-              for (const lx of lanes) {
-                st.style.left = lx + "%";
-                if (!blocked(st)) { placed = true; break; }
-              }
-              if (placed) break;
-            }
+        /* Snap to the nearest free slot. The map is a two-lane grid, so there
+           are always more slots than stops - a drop can never fail and a stop
+           can never cover another one. */
+        if (kind === "phone") {
+          /* Geometry, measured: a stop holding cards is 388px tall and ~150 wide,
+             and the two lanes (25% / 75%) clear each other. So one slot per row
+             with the lane alternating puts same-lane stops 480px apart - wider
+             than the tallest stop - and nothing can ever overlap. */
+          const ROW = 240, Y0 = 300, N = STOPS.length;  /* 300, not 170: the pile hangs ~250px above the dot and would sit behind the stats panel */
+          const slots = [];
+          for (let r = 0; r < N; r++) slots.push([r % 2 ? 75 : 25, Y0 + r * ROW]);
+          /* every other stop claims the slot it is sitting closest to */
+          const taken = new Set();
+          for (const o of stops) {
+            if (o === st) continue;
+            const ox2 = parseFloat(o.style.left), oy2 = parseFloat(o.style.top);
+            let bi = 0, bd = Infinity;
+            slots.forEach((c, k) => { if (taken.has(k)) return; const d = ((c[0] - ox2) * 3) ** 2 + (c[1] - oy2) ** 2; if (d < bd) { bd = d; bi = k; } });
+            taken.add(bi);
+            o.style.left = slots[bi][0] + "%"; o.style.top = slots[bi][1] + "px";
           }
-          if (!placed) { st.style.left = ox + "%"; st.style.top = oy + (kind === "phone" ? "px" : "%"); toast("Nowhere clear there, put it back"); }
-          else toast("Moved clear of the others");
+          const cx = parseFloat(st.style.left), cy = parseFloat(st.style.top);
+          let bi = -1, bd = Infinity;
+          slots.forEach((c, k) => { if (taken.has(k)) return; const d = ((c[0] - cx) * 3) ** 2 + (c[1] - cy) ** 2; if (d < bd) { bd = d; bi = k; } });
+          if (bi >= 0) { st.style.left = slots[bi][0] + "%"; st.style.top = slots[bi][1] + "px"; }
+          st.classList.remove("blocked"); redraw();
+          /* persist where every stop ended up, not just the one that moved */
+          const all = routeSaved(kind);
+          for (const o of stops) all[o.dataset.drop] = [parseFloat(o.style.left), parseFloat(o.style.top)];
+          routeSave(kind, all);
+          return;
+        }
+        if (blocked(st)) {
+          const unit = 2.2, base = parseFloat(st.style.top), bx = parseFloat(st.style.left);
+          let placed = false;
+          for (let k = 0; k <= 34 && !placed; k++) for (const d of (k ? [-1, 1] : [1])) {
+            const v = base + d * k * unit; if (v < 10 || v > 88) continue;
+            st.style.top = v + "%";
+            for (const lx of [bx, 100 - bx, 20, 50, 80]) { st.style.left = lx + "%"; if (!blocked(st)) { placed = true; break; } }
+            if (placed) break;
+          }
+          if (!placed) { st.style.left = ox + "%"; st.style.top = oy + "%"; }
           st.classList.remove("blocked"); redraw();
         }
         const map = routeSaved(kind); map[st.dataset.drop] = [parseFloat(st.style.left), parseFloat(st.style.top)]; routeSave(kind, map);
@@ -464,7 +487,7 @@ function mapWire(main, g) {
     el.addEventListener("pointercancel", () => { clearTimeout(hold); live = false; el.classList.remove("lift"); render(); });
   });
 }
-const PH_H = 300 + 240 * 7 + 220;  /* Nov 13: smaller rings, so the stops sit closer and the map is shorter */
+const PH_H = 300 + 240 * 7 + 260;  /* Nov 13: smaller rings, so the stops sit closer and the map is shorter */
 /* the one thing to do at each stop, right on it: no legend needed */
 const goChip = (s, g) => (s.go && g[s.id].length ? `<i class="tag-go">${s.go} ${g[s.id].length} ›</i>` : "");
 let keyOpen = false;
@@ -491,7 +514,7 @@ function renderCommand() {
   ].map(([n, t, v, st]) => `<button class="pill${n ? " hot" : ""}" ${v[0] === "!" ? `data-putaway type="button"` : v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto"; main.style.overflowX = "hidden";
-    const H = PH_H, W = 390, sv = routeSaved("phone"), PX = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[0] ?? (i % 2 ? 73 : 27)), PY = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[1] ?? 260 + i * 240);
+    const H = PH_H, W = 390, sv = routeSaved("phone"), PX = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[0] ?? (i % 2 ? 75 : 25)), PY = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[1] ?? 300 + i * 240);
     const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
     const path = routePath(pts, true);
     main.innerHTML = `${widgets(g)}<div class="arr-ph">${arrUi()}</div><div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
