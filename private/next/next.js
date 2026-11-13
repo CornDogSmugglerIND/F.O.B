@@ -1,17 +1,17 @@
-import "./viewer.js?v=208";
-import { startScanLink } from "./scanlink.js?v=208";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=208";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=208";
-import { phaseFromItem } from "/visor/phases.js?v=208";
-import { renderScouter } from "./scouter.js?v=208";
-import { renderCollection, openImport } from "./collection.js?v=208";
-import { photoManager } from "./photos.js?v=208";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=208";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=208";
-import { renderSettings } from "./settings.js?v=208";
-import { initSync } from "./sync.js?v=208";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=208";
-import * as PS from "./photostore.js?v=208";
+import "./viewer.js?v=209";
+import { startScanLink } from "./scanlink.js?v=209";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=209";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=209";
+import { phaseFromItem } from "/visor/phases.js?v=209";
+import { renderScouter } from "./scouter.js?v=209";
+import { renderCollection, openImport } from "./collection.js?v=209";
+import { photoManager } from "./photos.js?v=209";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=209";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=209";
+import { renderSettings } from "./settings.js?v=209";
+import { initSync } from "./sync.js?v=209";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=209";
+import * as PS from "./photostore.js?v=209";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -318,7 +318,7 @@ function routePath(pts, vertical) { let d = `M${pts[0][0]},${pts[0][1]}`; for (l
 function wireArrange(main, kind, W, H) {
   const road = main.querySelector(".road"); if (!road) return;
   const btn = main.querySelector("#arrBtn"), rst = main.querySelector("#arrReset");
-  btn?.addEventListener("click", () => { arranging = !arranging; renderCommand(); if (arranging) toast("Drag any stop. The route stays in order."); });
+  btn?.addEventListener("click", () => { arranging = !arranging; renderCommand(); if (arranging) toast("Drag a stop anywhere. It will not cover another one."); });
   rst?.addEventListener("click", () => { routeSave(kind, {}); renderCommand(); toast("Route reset"); });
   if (!arranging) return;
   road.classList.add("arranging");
@@ -326,26 +326,74 @@ function wireArrange(main, kind, W, H) {
   const stops = [...road.querySelectorAll(".stop")];
   const points = () => stops.map((st) => { const x = parseFloat(st.style.left) / 100 * W; const y = kind === "phone" ? parseFloat(st.style.top) : parseFloat(st.style.top) / 100 * H; return [x, y]; });
   const redraw = () => { const d = routePath(points(), kind === "phone"); road.querySelectorAll("svg > path").forEach((p) => p.setAttribute("d", d)); road.querySelectorAll("svg animateMotion").forEach((a) => a.setAttribute("path", d)); };
-  /* whole stop is the handle; it keeps the spot you grabbed it by, and can't pass its neighbours, so the line never tangles */
+  /* Nov 13: two things Sawyer called out. A moved stop used to land on top of
+     another one and cover its info, and moving one took forever because it was
+     pinned between its neighbours and the page crawled 10px at a time.
+     Now it moves freely, it turns red the moment it would cover another stop,
+     and on release it slides to the nearest spot that covers nothing. */
+  /* a .stop is a zero-size anchor: its pile and tag are positioned off it, so
+     the footprint is the union of what is actually drawn */
+  const RECT = (el) => {
+    let box = null;
+    for (const k of el.querySelectorAll(".pile,.tag")) {
+      const r = k.getBoundingClientRect(); if (!r.width && !r.height) continue;
+      box = box ? { left: Math.min(box.left, r.left), right: Math.max(box.right, r.right), top: Math.min(box.top, r.top), bottom: Math.max(box.bottom, r.bottom) } : { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    }
+    return box || el.getBoundingClientRect();
+  };
+  const hit = (a, b) => a.left < b.right - 6 && b.left < a.right - 6 && a.top < b.bottom - 6 && b.top < a.bottom - 6;
+  const blocked = (st) => { const r = RECT(st); return stops.some((o) => o !== st && hit(r, RECT(o))); };
   stops.forEach((st, i) => {
     st.addEventListener("pointerdown", (e) => {
       if (e.button > 0) return; e.preventDefault(); e.stopPropagation(); st.setPointerCapture(e.pointerId); st.classList.add("moving");
       const r = road.getBoundingClientRect(), s0 = main.scrollTop, sx = e.clientX, sy = e.clientY, ox = parseFloat(st.style.left), oy = parseFloat(st.style.top);
-      const prev = stops[i - 1], next = stops[i + 1], pv = (el) => parseFloat(el.style[kind === "phone" ? "top" : "left"]);
+      let raf = 0, speed = 0;
+      const glide = () => { raf = 0; if (!speed) return; main.scrollTop += speed; raf = requestAnimationFrame(glide); };
       const mv = (ev) => {
         const lo = kind === "phone" ? 18 : 5; let xp = ox + (ev.clientX - sx) / r.width * 100;
         if (kind === "phone") {
-          let y = oy + (ev.clientY - sy) + (main.scrollTop - s0); const yMin = prev ? pv(prev) + 150 : 160, yMax = next ? pv(next) - 150 : H - 90; y = Math.max(yMin, Math.min(yMax, y));
+          /* free movement: the only limit is the map itself */
+          let y = oy + (ev.clientY - sy) + (main.scrollTop - s0);
+          y = Math.max(150, Math.min(H - 110, y));
           st.style.top = y + "px"; xp = Math.max(lo, Math.min(100 - lo, xp));
-          const mr = main.getBoundingClientRect(); if (ev.clientY > mr.bottom - 70) main.scrollTop += 10; else if (ev.clientY < mr.top + 70) main.scrollTop -= 10;
+          /* the page keeps up with your finger instead of crawling */
+          const mr = main.getBoundingClientRect(), edge = 90;
+          const over = ev.clientY > mr.bottom - edge ? ev.clientY - (mr.bottom - edge) : ev.clientY < mr.top + edge ? ev.clientY - (mr.top + edge) : 0;
+          speed = over ? Math.max(-46, Math.min(46, over * 0.7)) : 0;
+          if (speed && !raf) raf = requestAnimationFrame(glide);
         } else {
-          let y = oy + (ev.clientY - sy) / r.height * 100; y = Math.max(14, Math.min(84, y)); st.style.top = y + "%";
-          const xMin = prev ? pv(prev) + 7 : lo, xMax = next ? pv(next) - 7 : 100 - lo; xp = Math.max(xMin, Math.min(xMax, xp));
+          let y = oy + (ev.clientY - sy) / r.height * 100; y = Math.max(10, Math.min(88, y)); st.style.top = y + "%";
+          xp = Math.max(lo, Math.min(100 - lo, xp));
         }
         st.style.left = xp + "%"; redraw();
+        st.classList.toggle("blocked", blocked(st));
       };
-      const up = () => { st.removeEventListener("pointermove", mv); st.removeEventListener("pointerup", up); st.removeEventListener("pointercancel", up); st.classList.remove("moving");
-        const map = routeSaved(kind); map[st.dataset.drop] = [parseFloat(st.style.left), parseFloat(st.style.top)]; routeSave(kind, map); };
+      const up = () => {
+        st.removeEventListener("pointermove", mv); st.removeEventListener("pointerup", up); st.removeEventListener("pointercancel", up);
+        st.classList.remove("moving"); speed = 0; if (raf) cancelAnimationFrame(raf);
+        /* slide to the nearest clear spot so nothing ends up covered */
+        if (blocked(st)) {
+          const unit = kind === "phone" ? 14 : 2.2, prop = "top";
+          const base = parseFloat(st.style[prop]), lim = kind === "phone" ? H - 110 : 88, min = kind === "phone" ? 150 : 10;
+          const bx = parseFloat(st.style.left), lanes = [bx, 100 - bx, kind === "phone" ? 27 : bx, kind === "phone" ? 73 : bx];
+          let placed = false;
+          for (let k = 0; k <= 30 && !placed; k++) {
+            for (const d of (k ? [-1, 1] : [1])) {
+              const v = base + d * k * unit; if (v < min || v > lim) continue;
+              st.style[prop] = v + (kind === "phone" ? "px" : "%");
+              for (const lx of lanes) {
+                st.style.left = lx + "%";
+                if (!blocked(st)) { placed = true; break; }
+              }
+              if (placed) break;
+            }
+          }
+          if (!placed) { st.style.left = ox + "%"; st.style.top = oy + (kind === "phone" ? "px" : "%"); toast("Nowhere clear there, put it back"); }
+          else toast("Moved clear of the others");
+          st.classList.remove("blocked"); redraw();
+        }
+        const map = routeSaved(kind); map[st.dataset.drop] = [parseFloat(st.style.left), parseFloat(st.style.top)]; routeSave(kind, map);
+      };
       st.addEventListener("pointermove", mv); st.addEventListener("pointerup", up); st.addEventListener("pointercancel", up);
     });
   });
@@ -416,7 +464,7 @@ function mapWire(main, g) {
     el.addEventListener("pointercancel", () => { clearTimeout(hold); live = false; el.classList.remove("lift"); render(); });
   });
 }
-const PH_H = 300 + 290 * 7 + 240;
+const PH_H = 300 + 240 * 7 + 220;  /* Nov 13: smaller rings, so the stops sit closer and the map is shorter */
 /* the one thing to do at each stop, right on it: no legend needed */
 const goChip = (s, g) => (s.go && g[s.id].length ? `<i class="tag-go">${s.go} ${g[s.id].length} ›</i>` : "");
 let keyOpen = false;
@@ -443,7 +491,7 @@ function renderCommand() {
   ].map(([n, t, v, st]) => `<button class="pill${n ? " hot" : ""}" ${v[0] === "!" ? `data-putaway type="button"` : v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto"; main.style.overflowX = "hidden";
-    const H = PH_H, W = 390, sv = routeSaved("phone"), PX = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[0] ?? (i % 2 ? 73 : 27)), PY = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[1] ?? 300 + i * 290);
+    const H = PH_H, W = 390, sv = routeSaved("phone"), PX = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[0] ?? (i % 2 ? 73 : 27)), PY = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[1] ?? 260 + i * 240);
     const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
     const path = routePath(pts, true);
     main.innerHTML = `${widgets(g)}<div class="arr-ph">${arrUi()}</div><div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">

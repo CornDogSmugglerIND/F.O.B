@@ -159,3 +159,13 @@
 #main .cm-line .cm-dir{fill:#B3FBD5;opacity:.5}
 /* the value sits over the route line, so give it a little backing */
 #main .cm-n>em{position:relative;z-index:1;padding:0 5px;border-radius:5px;background:rgba(5,12,9,.8)}
+
+/* ===== Nov 13: the rings stop eating the screen =====
+   The lock-on ring was drawn at 190% of a 150px pile - a 285px circle around
+   every stop. That is why there was never room to move one. */
+@media (max-width:820px){
+  html.fx .road .stop.has .pile::before{width:124%!important}
+  .road.pv .pile{width:124px!important;height:172px!important}
+  .road.pv .pile.up{bottom:26px}
+}
+

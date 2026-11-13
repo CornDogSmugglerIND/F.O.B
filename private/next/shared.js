@@ -1,5 +1,5 @@
 /* Shared helpers for Collection + Spaces (one source of truth for lanes, games, bins). */
-import { urlFor } from "./photostore.js?v=208";
+import { urlFor } from "./photostore.js?v=209";
 export const LS_ITEMS = "coalition-items-v4";
 export const LS_SPACES = "coalition-spaces-v4";
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
