@@ -1,5 +1,5 @@
-import * as PS from "./photostore.js?v=207";
-import { esc, loadItems, saveItems, srcOf} from "./shared.js?v=207";
+import * as PS from "./photostore.js?v=208";
+import { esc, loadItems, saveItems, srcOf} from "./shared.js?v=208";
 
 /* One photo editor for every item, wherever it is: set main, reorder, remove, add. */
 async function shrink(file, max = 1400) {

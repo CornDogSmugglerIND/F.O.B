@@ -1,7 +1,7 @@
-import { srcOf } from "./shared.js?v=207";
+import { srcOf } from "./shared.js?v=208";
 /* Batch identify: dump a stack of scans (front + back per card) and let Identify run through all of them,
    like TCGAutomate / carduploader. Each card is saved as it finishes; photos are hosted on eBay so storage never fills. */
-import { inboxList, inboxRemove } from "./inbox.js?v=207";
+import { inboxList, inboxRemove } from "./inbox.js?v=208";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const money = (n) => "$" + (Number(n) || 0).toFixed(2);
