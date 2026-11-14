@@ -1,17 +1,17 @@
-import "./viewer.js?v=212";
-import { startScanLink } from "./scanlink.js?v=212";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=212";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=212";
-import { phaseFromItem } from "/visor/phases.js?v=212";
-import { renderScouter } from "./scouter.js?v=212";
-import { renderCollection, openImport } from "./collection.js?v=212";
-import { photoManager } from "./photos.js?v=212";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=212";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=212";
-import { renderSettings } from "./settings.js?v=212";
-import { initSync } from "./sync.js?v=212";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=212";
-import * as PS from "./photostore.js?v=212";
+import "./viewer.js?v=213";
+import { startScanLink } from "./scanlink.js?v=213";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=213";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=213";
+import { phaseFromItem } from "/visor/phases.js?v=213";
+import { renderScouter } from "./scouter.js?v=213";
+import { renderCollection, openImport } from "./collection.js?v=213";
+import { photoManager } from "./photos.js?v=213";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=213";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=213";
+import { renderSettings } from "./settings.js?v=213";
+import { initSync } from "./sync.js?v=213";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=213";
+import * as PS from "./photostore.js?v=213";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -567,7 +567,7 @@ function mapWire(main, g) {
    content height, which left 1-4px between steps - everything read as one
    mashed column. The padding is the point, not waste. */
 const PH_FULL = 192, PH_EMPTY = 108, PH_TOP = 124, PH_BOT = 92;
-const dxAt = (k) => 8 + Math.sin(k * 0.95) * 3.6;  /* the road still weaves; the rows stay full width */
+const dxAt = (k) => 8.6 + Math.sin(k * 0.95) * 1.5;  /* gentle weave: the road curves, the dots stay in a rail */
 function phoneRows(g) {
   const by = new Map(STOPS.map((s) => [s.id, s]));
   const rows = []; let y = PH_TOP;
@@ -614,7 +614,7 @@ function renderCommand() {
       <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/></svg>
       ${rows.map(({ s, i, n, y, h, dx }) => `<div class="stop ph${n ? " has" : " bare"}" data-drop="${s.id}" data-i="${i}" style="top:${y}px;height:${h}px;--dx:${dx}%;--c:${s.c}">
         <div class="dot" data-stage="${s.id}" aria-hidden="true"></div><i class="grip" aria-hidden="true"></i><div class="srow">
-        ${n ? pileHtml(g[s.id], "ph", "", s.id) : s.id === "intake" ? `<button type="button" class="empty ph go" data-goto="scouter" aria-label="Add photos"><i>+</i></button>` : ""}
+        <div class="pslot">${n ? pileHtml(g[s.id], "ph", "", s.id) : s.id === "intake" ? `<button type="button" class="empty ph go" data-goto="scouter" aria-label="Add photos"><i>+</i></button>` : ""}</div>
         <div class="tag${n ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${n} items"><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><div class="tnums"><b class="tc">${n}</b><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div>${goChip(s, g)}</div></div></div>`).join("")}
       <div class="flag start" style="left:${rows[0].dx}%;top:${rows[0].y - 16}px"><i></i>Start</div><div class="flag end" style="left:${last.dx}%;top:${last.y + last.h + 14}px"><i></i>Done</div></div>`;
   } else {

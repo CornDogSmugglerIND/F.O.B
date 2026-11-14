@@ -172,8 +172,12 @@
 
   #main .road.pv .stop{left:0!important;width:100%;box-sizing:border-box;
     transform:none!important;animation:none!important;
-    padding:0 14px 0 54px;display:flex;align-items:center;z-index:3}
-  #main .road.pv .stop .srow{display:flex;align-items:center;gap:13px;width:100%;min-width:0}
+    padding:0 10px 0 44px;display:flex;align-items:center;z-index:3}
+  #main .road.pv .stop .srow{display:flex;align-items:center;gap:12px;width:100%;min-width:0}
+  /* every row reserves the same photo slot, so the words start at the same x
+     on all eight rows - three different left edges was the "mess" */
+  #main .road.pv .stop .pslot{flex:0 0 80px;width:80px;display:flex;
+    align-items:center;justify-content:flex-start;position:relative}
 
   /* the dot stays on the road */
   #main .road.pv .stop .dot{position:absolute;left:var(--dx,8%);top:50%;margin:0;
@@ -182,7 +186,7 @@
   /* photo: beside the words now, not above them */
   #main .road.pv .stop .pile{position:relative;left:auto;right:auto;top:auto!important;
     bottom:auto!important;transform:none!important;animation:none!important;
-    width:96px!important;height:132px!important;flex:0 0 96px}
+    width:80px!important;height:110px!important;flex:0 0 80px}
   #main .road.pv .stop .pile .pc{border-radius:9px}
   #main .road.pv .stop .pile .pc.b1{transform:translate(5px,-5px) rotate(2deg)}
   #main .road.pv .stop .pile .pc.b2{transform:translate(9px,-9px) rotate(4deg)}
@@ -193,7 +197,7 @@
   #main .road.pv .stop .more{display:none}
 
   /* a hairline under each row so the steps read as steps, not one column */
-  #main .road.pv .stop::before{content:"";position:absolute;left:46px;right:10px;
+  #main .road.pv .stop::before{content:"";position:absolute;left:44px;right:10px;
     bottom:0;height:1px;background:linear-gradient(90deg,rgba(144,255,204,.16),rgba(144,255,204,0) 70%)}
   #main .road.pv .stop:last-of-type::before{display:none}
   /* an empty intake is just a + : it does not need a card-sized hole */
@@ -245,9 +249,9 @@
 
 /* 375pt phones (iPhone X/XS/11 Pro/13 mini) and anything narrower */
 @media (max-width:380px){
-  #main .road.pv .stop{padding:0 10px 0 46px}
+  #main .road.pv .stop{padding:0 8px 0 40px}
   #main .road.pv .stop .srow{gap:10px}
-  #main .road.pv .stop .pile{width:84px!important;height:116px!important;flex:0 0 84px}
+  #main .road.pv .stop .pile{width:76px!important;height:104px!important;flex:0 0 76px}
   #main .road.pv .stop .empty.ph{width:46px!important;height:46px!important;min-width:0!important;flex:0 0 46px}
   #main .road.pv .stop .tag span{font-size:19px!important}
   #main .road.pv .stop .tnums .tc{font-size:19px!important}

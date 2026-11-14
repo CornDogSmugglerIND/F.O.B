@@ -1,6 +1,6 @@
 /* What a card IS, read from its saved facts first, then its listing title.
    Collection filters (game / set / rarity) and card captions use this. */
-import { nameOf, gameOf, laneOf } from "./shared.js?v=212";
+import { nameOf, gameOf, laneOf } from "./shared.js?v=213";
 
 const CODES = { DRI: "Destined Rivals", ASC: "Ascended Heroes", PFL: "Phantasmal Flames", SFA: "Shrouded Fable", SSP: "Surging Sparks", PRE: "Prismatic Evolutions", JTG: "Journey Together", JTT: "Journey Together", TWM: "Twilight Masquerade", TEF: "Temporal Forces", PAL: "Paldea Evolved", OBF: "Obsidian Flames", SCR: "Stellar Crown", SVI: "Scarlet & Violet", MEW: "151", PAF: "Paldean Fates", PAR: "Paradox Rift", MEG: "Mega Evolution", MEP: "Mega Evolution Promo", SV4A: "Shiny Treasure ex", SV11B: "Black Bolt", SV11W: "White Flare", LTR: "Lord of the Rings", BT11: "Vermilion Bloodline", BT22: "Critical Blow", SB01: "Manga Booster 01" };
 const NAMED = ["Destined Rivals", "Journey Together", "Pitch Black", "Perfect Order", "30th Celebration", "Mega Evolution", "Phantasmal Flames", "Twilight Masquerade", "Shrouded Fable", "Surging Sparks", "Prismatic Evolutions", "Paldean Fates", "Vivid Voltage", "Ancient Origins", "Black Bolt", "White Flare", "Stellar Crown", "Temporal Forces", "Obsidian Flames", "Paldea Evolved", "Paradox Rift", "Crown Zenith", "Evolving Skies", "Vermilion Bloodline", "Critical Blow", "A Fist of Divine Speed", "Championship Clash", "Crazy Planet", "Upper Deck Series 2", "Upper Deck Series 1"];
