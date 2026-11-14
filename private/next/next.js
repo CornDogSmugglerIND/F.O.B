@@ -1,17 +1,17 @@
-import "./viewer.js?v=211";
-import { startScanLink } from "./scanlink.js?v=211";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=211";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=211";
-import { phaseFromItem } from "/visor/phases.js?v=211";
-import { renderScouter } from "./scouter.js?v=211";
-import { renderCollection, openImport } from "./collection.js?v=211";
-import { photoManager } from "./photos.js?v=211";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=211";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=211";
-import { renderSettings } from "./settings.js?v=211";
-import { initSync } from "./sync.js?v=211";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=211";
-import * as PS from "./photostore.js?v=211";
+import "./viewer.js?v=212";
+import { startScanLink } from "./scanlink.js?v=212";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=212";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=212";
+import { phaseFromItem } from "/visor/phases.js?v=212";
+import { renderScouter } from "./scouter.js?v=212";
+import { renderCollection, openImport } from "./collection.js?v=212";
+import { photoManager } from "./photos.js?v=212";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=212";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=212";
+import { renderSettings } from "./settings.js?v=212";
+import { initSync } from "./sync.js?v=212";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=212";
+import * as PS from "./photostore.js?v=212";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -563,7 +563,10 @@ function mapWire(main, g) {
    used 170px of a 390px screen. Now a stop is one full-width row - photo beside
    the words, not stacked above them - and an empty stop collapses to one line.
    Shorter rows + collapsed empties cut the map roughly in half. */
-const PH_FULL = 158, PH_EMPTY = 82, PH_TOP = 116, PH_BOT = 84;
+/* Row heights are content + breathing room. First pass set them to exactly the
+   content height, which left 1-4px between steps - everything read as one
+   mashed column. The padding is the point, not waste. */
+const PH_FULL = 192, PH_EMPTY = 108, PH_TOP = 124, PH_BOT = 92;
 const dxAt = (k) => 8 + Math.sin(k * 0.95) * 3.6;  /* the road still weaves; the rows stay full width */
 function phoneRows(g) {
   const by = new Map(STOPS.map((s) => [s.id, s]));

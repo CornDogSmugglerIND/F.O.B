@@ -188,7 +188,14 @@
   #main .road.pv .stop .pile .pc.b2{transform:translate(9px,-9px) rotate(4deg)}
   #main .road.pv .stop .pile .pc .cap{padding:20px 7px 6px;font-size:11.5px}
   #main .road.pv .stop .pile .pc .cap em{font-size:13px}
-  #main .road.pv .stop .more{right:-6px;top:-8px;font-size:11.5px;padding:1px 8px}
+  /* the count is already in the row ("20"), so the floating +19 chip was
+     saying it twice and sitting on top of the photo - drop it on phone */
+  #main .road.pv .stop .more{display:none}
+
+  /* a hairline under each row so the steps read as steps, not one column */
+  #main .road.pv .stop::before{content:"";position:absolute;left:46px;right:10px;
+    bottom:0;height:1px;background:linear-gradient(90deg,rgba(144,255,204,.16),rgba(144,255,204,0) 70%)}
+  #main .road.pv .stop:last-of-type::before{display:none}
   /* an empty intake is just a + : it does not need a card-sized hole */
   #main .road.pv .stop .empty.ph{position:relative;left:auto;transform:none;
     width:52px!important;height:52px!important;min-width:0!important;flex:0 0 52px;font-size:24px;border-radius:14px;padding:0}
