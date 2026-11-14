@@ -55,7 +55,10 @@ img{-webkit-user-drag:none;-webkit-touch-callout:none}
 /* image placeholders shimmer until the photo lands */
 .cx-img,.co-img,.pk-tile,.sc-q,.sib,.tile,.ph-tile{background:linear-gradient(135deg,#131716,#1b201e 50%,#131716)}
 .build-tag{position:fixed;right:10px;bottom:2px;z-index:5;font-size:10px;color:rgba(255,255,255,.28);pointer-events:none;font-family:var(--disp)}
-@media (max-width:820px){.build-tag{display:none}}
+/* Nov 14: this was hidden on phone, so there was no way to tell which build
+   you were looking at - which is exactly the argument we kept having. It sits
+   above the nav bar, dim, and ignores taps. */
+@media (max-width:820px){.build-tag{right:auto;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 94px);font-size:9.5px;color:rgba(255,255,255,.3)}}
 /* ===== v5: calm ambient stage + real card surfaces ===== */
 .co-card,.cx-card{position:relative;padding:8px 8px 10px;border-radius:22px;background:var(--surf);border:1px solid rgba(179,251,213,.16);box-shadow:var(--hair),0 10px 26px rgba(0,0,0,.42);transition:transform .18s var(--ease),border-color .2s,box-shadow .2s}
 .co-card:hover,.cx-card:hover{border-color:rgba(179,251,213,.5);transform:translateY(-3px)}
