@@ -1,17 +1,17 @@
-import "./viewer.js?v=210";
-import { startScanLink } from "./scanlink.js?v=210";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=210";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=210";
-import { phaseFromItem } from "/visor/phases.js?v=210";
-import { renderScouter } from "./scouter.js?v=210";
-import { renderCollection, openImport } from "./collection.js?v=210";
-import { photoManager } from "./photos.js?v=210";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=210";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=210";
-import { renderSettings } from "./settings.js?v=210";
-import { initSync } from "./sync.js?v=210";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=210";
-import * as PS from "./photostore.js?v=210";
+import "./viewer.js?v=211";
+import { startScanLink } from "./scanlink.js?v=211";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=211";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=211";
+import { phaseFromItem } from "/visor/phases.js?v=211";
+import { renderScouter } from "./scouter.js?v=211";
+import { renderCollection, openImport } from "./collection.js?v=211";
+import { photoManager } from "./photos.js?v=211";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=211";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=211";
+import { renderSettings } from "./settings.js?v=211";
+import { initSync } from "./sync.js?v=211";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=211";
+import * as PS from "./photostore.js?v=211";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -298,11 +298,20 @@ function widgets(g) {
     <i class="hudc-br tl"></i><i class="hudc-br tr"></i><i class="hudc-br bl"></i><i class="hudc-br br"></i></section>`;
 }
 /* ---------- your route, your way: stops can be dragged anywhere, the line always runs in order ---------- */
-const ROUTE_KEY = "coalition-route-v4"; /* 8 stops (Nov 11): arranging is back, with its own button on the map */
-try { localStorage.removeItem("coalition-route-v2"); } catch { /* ignore */ }
+const ROUTE_KEY = "coalition-route-v5"; /* Nov 13: the phone map stores an ORDER, not x/y. v4 coordinates are dropped on purpose - they were what made every new build look identical. */
+try { for (const k of ["coalition-route-v2", "coalition-route-v4"]) localStorage.removeItem(k); } catch { /* ignore */ }
 let arranging = false;
 function routeSaved(kind) { try { return (JSON.parse(localStorage.getItem(ROUTE_KEY) || "{}") || {})[kind] || {}; } catch { return {}; } }
 function routeSave(kind, map) { try { const all = JSON.parse(localStorage.getItem(ROUTE_KEY) || "{}") || {}; all[kind] = map; localStorage.setItem(ROUTE_KEY, JSON.stringify(all)); } catch { /* ignore */ } }
+/* Phone: the route is an order of stops, top to bottom. Rows are laid out one
+   after another, so two stops can never land on top of each other - there is
+   nowhere for them to collide. Rearranging is drag up, drag down. */
+function routeOrder() {
+  try { const a = (JSON.parse(localStorage.getItem(ROUTE_KEY) || "{}") || {}).order;
+    if (Array.isArray(a) && a.length === STOPS.length && STOPS.every((s) => a.includes(s.id))) return a.slice(); } catch { /* ignore */ }
+  return STOPS.map((s) => s.id);
+}
+function routeOrderSave(a) { try { const all = JSON.parse(localStorage.getItem(ROUTE_KEY) || "{}") || {}; all.order = a; localStorage.setItem(ROUTE_KEY, JSON.stringify(all)); } catch { /* ignore */ } }
 /* dark city map under the route (like the original roadmap photo) — fixed seed so it never jumps */
 function mapStreets(W, H) {
   let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
@@ -315,14 +324,76 @@ function mapStreets(W, H) {
   return `<g class="streets" aria-hidden="true"><path d="${d}"/>${m}</g>`;
 }
 function routePath(pts, vertical) { let d = `M${pts[0][0]},${pts[0][1]}`; for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; if (vertical) { const m = (y0 + y1) / 2; d += ` C${x0},${m} ${x1},${m} ${x1},${y1}`; } else { const m = (x0 + x1) / 2; d += ` C${m},${y0} ${m},${y1} ${x1},${y1}`; } } return d; }
+/* Phone rearranging (Nov 13). Stops are rows, so there is no x/y to get wrong:
+   drag one up or down and the rest move out of the way. Two stops cannot end up
+   on top of each other because rows are stacked, not placed. */
+function phoneReorder(main, road) {
+  const H = parseFloat(road.style.height) || 0;
+  let ord = [...road.querySelectorAll(".stop")];
+  const hOf = (el) => parseFloat(el.style.height) || PH_EMPTY;
+  const layout = () => { let y = PH_TOP; const m = new Map(); for (const el of ord) { m.set(el, y); y += hOf(el); } return m; };
+  const place = (skip) => {
+    const m = layout();
+    ord.forEach((el, k) => {
+      if (el !== skip) el.style.top = m.get(el) + "px";
+      el.style.setProperty("--dx", dxAt(k) + "%");
+      const n = el.querySelector(".stepn"); if (n) n.textContent = "Step " + (k + 1) + " of " + ord.length;
+    });
+    return m;
+  };
+  const redraw = () => {
+    const m = layout(), W = 390;
+    const d = routePath(ord.map((el, k) => [dxAt(k) / 100 * W, m.get(el) + hOf(el) / 2]), true);
+    road.querySelectorAll("svg > path").forEach((pa) => pa.setAttribute("d", d));
+  };
+  for (const st of ord) {
+    st.addEventListener("pointerdown", (e) => {
+      if (e.button > 0) return; e.preventDefault(); e.stopPropagation();
+      st.setPointerCapture(e.pointerId); st.classList.add("moving"); road.classList.add("reordering");
+      const s0 = main.scrollTop, sy = e.clientY;
+      let y = parseFloat(st.style.top), raf = 0, speed = 0;
+      const settle = () => {
+        const cur = ord.indexOf(st), mid = y + hOf(st) / 2, m = layout();
+        let tgt = cur;
+        ord.forEach((el, k) => {
+          if (el === st) return;
+          const c = m.get(el) + hOf(el) / 2;
+          if (k < cur && mid < c) tgt = Math.min(tgt, k);
+          if (k > cur && mid > c) tgt = Math.max(tgt, k);
+        });
+        if (tgt !== cur) { ord.splice(cur, 1); ord.splice(tgt, 0, st); place(st); redraw(); }
+      };
+      const glide = () => { raf = 0; if (!speed) return; main.scrollTop += speed; y += speed; st.style.top = y + "px"; settle(); raf = requestAnimationFrame(glide); };
+      const mv = (ev) => {
+        y = parseFloat(st.dataset.oy || "0") + (ev.clientY - sy) + (main.scrollTop - s0);
+        y = Math.max(PH_TOP - 50, Math.min(Math.max(PH_TOP, H - 70), y));
+        st.style.top = y + "px";
+        const mr = main.getBoundingClientRect(), edge = 90;
+        const over = ev.clientY > mr.bottom - edge ? ev.clientY - (mr.bottom - edge) : ev.clientY < mr.top + edge ? ev.clientY - (mr.top + edge) : 0;
+        speed = over ? Math.max(-46, Math.min(46, over * 0.7)) : 0;
+        if (speed && !raf) raf = requestAnimationFrame(glide);
+        settle();
+      };
+      const up = () => {
+        st.removeEventListener("pointermove", mv); st.removeEventListener("pointerup", up); st.removeEventListener("pointercancel", up);
+        speed = 0; if (raf) cancelAnimationFrame(raf);
+        st.classList.remove("moving"); road.classList.remove("reordering"); delete st.dataset.oy;
+        place(null); redraw(); routeOrderSave(ord.map((el) => el.dataset.drop));
+      };
+      st.dataset.oy = String(y);
+      st.addEventListener("pointermove", mv); st.addEventListener("pointerup", up); st.addEventListener("pointercancel", up);
+    });
+  }
+}
 function wireArrange(main, kind, W, H) {
   const road = main.querySelector(".road"); if (!road) return;
   const btn = main.querySelector("#arrBtn"), rst = main.querySelector("#arrReset");
-  btn?.addEventListener("click", () => { arranging = !arranging; renderCommand(); if (arranging) toast("Drag a stop anywhere. It will not cover another one."); });
-  rst?.addEventListener("click", () => { routeSave(kind, {}); renderCommand(); toast("Route reset"); });
+  btn?.addEventListener("click", () => { arranging = !arranging; renderCommand(); if (arranging) toast(kind === "phone" ? "Drag a stop up or down to reorder." : "Drag a stop anywhere. It will not cover another one."); });
+  rst?.addEventListener("click", () => { if (kind === "phone") routeOrderSave(STOPS.map((x) => x.id)); else routeSave(kind, {}); renderCommand(); toast("Route reset"); });
   if (!arranging) return;
   road.classList.add("arranging");
   road.addEventListener("click", (e) => { if (e.target.closest(".stop")) { e.stopPropagation(); e.preventDefault(); } }, true);
+  if (kind === "phone") { phoneReorder(main, road); return; }
   const stops = [...road.querySelectorAll(".stop")];
   const points = () => stops.map((st) => { const x = parseFloat(st.style.left) / 100 * W; const y = kind === "phone" ? parseFloat(st.style.top) : parseFloat(st.style.top) / 100 * H; return [x, y]; });
   const redraw = () => { const d = routePath(points(), kind === "phone"); road.querySelectorAll("svg > path").forEach((p) => p.setAttribute("d", d)); road.querySelectorAll("svg animateMotion").forEach((a) => a.setAttribute("path", d)); };
@@ -487,7 +558,24 @@ function mapWire(main, g) {
     el.addEventListener("pointercancel", () => { clearTimeout(hold); live = false; el.classList.remove("lift"); render(); });
   });
 }
-const PH_H = 300 + 240 * 7 + 260;  /* Nov 13: smaller rings, so the stops sit closer and the map is shorter */
+/* Nov 13, measured off Sawyer's recording: a stop was 348px tall but rows were
+   240px apart, so stops overlapped no matter where you put them, and each one
+   used 170px of a 390px screen. Now a stop is one full-width row - photo beside
+   the words, not stacked above them - and an empty stop collapses to one line.
+   Shorter rows + collapsed empties cut the map roughly in half. */
+const PH_FULL = 158, PH_EMPTY = 82, PH_TOP = 116, PH_BOT = 84;
+const dxAt = (k) => 8 + Math.sin(k * 0.95) * 3.6;  /* the road still weaves; the rows stay full width */
+function phoneRows(g) {
+  const by = new Map(STOPS.map((s) => [s.id, s]));
+  const rows = []; let y = PH_TOP;
+  routeOrder().forEach((id, i) => {
+    const s = by.get(id); if (!s) return;
+    const n = g[s.id].length, h = n ? PH_FULL : PH_EMPTY;
+    rows.push({ s, i, n, y, h, dx: dxAt(i) });
+    y += h;
+  });
+  return { rows, H: y + PH_BOT };
+}
 /* the one thing to do at each stop, right on it: no legend needed */
 const goChip = (s, g) => (s.go && g[s.id].length ? `<i class="tag-go">${s.go} ${g[s.id].length} ›</i>` : "");
 let keyOpen = false;
@@ -514,17 +602,18 @@ function renderCommand() {
   ].map(([n, t, v, st]) => `<button class="pill${n ? " hot" : ""}" ${v[0] === "!" ? `data-putaway type="button"` : v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto"; main.style.overflowX = "hidden";
-    const H = PH_H, W = 390, sv = routeSaved("phone"), PX = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[0] ?? (i % 2 ? 75 : 25)), PY = STOPS.map((_, i) => (sv[STOPS[i].id] || [])[1] ?? 300 + i * 240);
-    const pts = PX.map((x, i) => [x / 100 * W, PY[i]]);
+    const { rows, H } = phoneRows(g), W = 390, last = rows[rows.length - 1];
+    const pts = rows.map((r) => [r.dx / 100 * W, r.y + r.h / 2]);
     const path = routePath(pts, true);
     main.innerHTML = `${widgets(g)}<div class="arr-ph">${arrUi()}</div><div class="road pv" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
       <defs><linearGradient id="rgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
       <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".12" stroke-width="14" stroke-linecap="round"/><path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".18" stroke-width="7" stroke-linecap="round"/>
       <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/></svg>
-      ${STOPS.map((s, i) => `<div class="stop${g[s.id].length ? " has" : ""}" data-drop="${s.id}" style="left:${PX[i]}%;top:${PY[i]}px;--c:${s.c}">
-        ${pileHtml(g[s.id], "up", s.id === "intake" ? "Start here: tap to add photos" : "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
-        <div class="tag${g[s.id].length ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${g[s.id].length} items"><b class="tc">${g[s.id].length}</b><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong>${goChip(s, g)}</div></div>`).join("")}
-      <div class="flag start" style="left:${PX[0] - 17}%;top:${PY[0] + 8}px"><i></i>Start</div><div class="flag end" style="left:${PX[7] - 17}%;top:${PY[7] + 8}px"><i></i>Done</div></div>`;
+      ${rows.map(({ s, i, n, y, h, dx }) => `<div class="stop ph${n ? " has" : " bare"}" data-drop="${s.id}" data-i="${i}" style="top:${y}px;height:${h}px;--dx:${dx}%;--c:${s.c}">
+        <div class="dot" data-stage="${s.id}" aria-hidden="true"></div><i class="grip" aria-hidden="true"></i><div class="srow">
+        ${n ? pileHtml(g[s.id], "ph", "", s.id) : s.id === "intake" ? `<button type="button" class="empty ph go" data-goto="scouter" aria-label="Add photos"><i>+</i></button>` : ""}
+        <div class="tag${n ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${n} items"><em class="stepn">Step ${i + 1} of ${STOPS.length}</em><span>${s.label}</span><small>${s.note}</small><div class="tnums"><b class="tc">${n}</b><strong class="tv">${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong></div>${goChip(s, g)}</div></div></div>`).join("")}
+      <div class="flag start" style="left:${rows[0].dx}%;top:${rows[0].y - 16}px"><i></i>Start</div><div class="flag end" style="left:${last.dx}%;top:${last.y + last.h + 14}px"><i></i>Done</div></div>`;
   } else {
     main.classList.remove("cmd-ph");
     main.style.overflowY = "hidden"; main.style.overflowX = "";
@@ -554,7 +643,7 @@ function renderCommand() {
   main.querySelector("#mKeyX")?.addEventListener("click", () => { keyOpen = false; const k = main.querySelector("#mKey"); if (k) { k.hidden = true; k.classList.remove("on"); } main.querySelector("#mKeyB")?.setAttribute("aria-expanded", "false"); });
   main.querySelectorAll(".pc[data-item]").forEach(bindDrag);
   main.querySelectorAll("[data-putaway]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); if (!unbinnedCount()) { toast("Everything is already in a bin."); return; } openPutAway({ toast, toastUndo, openSheet, closeSheet, refresh: () => { items = loadItems(); renderStats(); if (view === "command") renderCommand(); } }); }));
-  if (phone()) wireArrange(main, "phone", 390, PH_H); else wireArrange(main, "desk", Math.max(600, main.clientWidth || 1000), Math.max(420, main.clientHeight || 600));
+  if (phone()) wireArrange(main, "phone", 390, parseFloat(main.querySelector(".road")?.style.height) || 0); else wireArrange(main, "desk", Math.max(600, main.clientWidth || 1000), Math.max(420, main.clientHeight || 600));
 }
 function bindDrag(el) {
   let ghost = null, sx = 0, sy = 0, moved = false, over = null, down = false;
