@@ -1,9 +1,9 @@
-import { isArchived, loadSpaces, assign, srcOf} from "./shared.js?v=216";
-import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=216";
-import * as PS from "./photostore.js?v=216";
-import { paintScanBar } from "./scanconnect.js?v=216";
-import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=216";
-import { phaseFromItem } from "/visor/phases.js?v=216";
+import { isArchived, loadSpaces, assign, srcOf} from "./shared.js?v=217";
+import { inboxAdd, inboxList, inboxRemove } from "./inbox.js?v=217";
+import * as PS from "./photostore.js?v=217";
+import { paintScanBar } from "./scanconnect.js?v=217";
+import { openBatch, batchRunning, reviewBatch, lastBatchCount } from "./batch.js?v=217";
+import { phaseFromItem } from "/visor/phases.js?v=217";
 /* Scouter: one upload = one item. Photos preview instantly, get shrunk off the
  * hot path, nothing is saved until Save is pressed. */
 const MAX_PICK = 24; /* eBay allows 24 photos on a listing; the item cap matches it (was 5 — Sawyer, Oct 31 2026) */
@@ -575,7 +575,7 @@ async function paintInbox() {
   const bApi = { toast: ctx.toast, getItems: ctx.getItems, setItems: ctx.setItems, go: ctx.go, variation: ctx.variation, refresh: () => { paintInbox(); window.__fobScRepaint?.(); } };
   box.querySelector("#ibReview")?.addEventListener("click", () => reviewBatch(bApi));
   box.querySelector("#ibBatch")?.addEventListener("click", () => openBatch({ toast: ctx.toast, getItems: ctx.getItems, setItems: ctx.setItems, go: ctx.go, variation: ctx.variation, refresh: () => { paintInbox(); window.__fobScRepaint?.(); } }));
-  box.querySelector("#ibDel")?.addEventListener("click", async () => { const ids = [...ibSel]; ibSel.clear(); await inboxRemove(ids); ctx.toast(`Deleted ${ids.length} photo${ids.length === 1 ? "" : "s"}.`); paintInbox(); });
+  box.querySelector("#ibDel")?.addEventListener("click", async () => { const ids = [...ibSel]; ibSel.clear(); await inboxRemove(ids); ctx.toast(`Deleted ${ids.length} photo${ids.length === 1 ? "" : "s"}.`); keepScroll(paintInbox); });
   box.querySelector("#ibGo")?.addEventListener("click", () => {
     const pick = list.filter((p) => ibSel.has(p.id)); if (!pick.length) return;
     if (pick.length > MAX_PICK) { ctx.toast(`One item takes up to ${MAX_PICK} photos. Unpick down to ${MAX_PICK} for one item, or use Identify all for the whole stack.`); return; }
@@ -587,13 +587,36 @@ async function paintInbox() {
   });
 }
 addEventListener("fob:inbox", () => { if (ctx && ctx.host.isConnected && ctx.host.querySelector("#scInbox")) paintInbox(); });
+/* Deleting repaints the queue, and a repaint puts every scroller back to the
+   start - so each delete threw you to the front of the strip and you had to
+   scroll all the way right again. Hold the positions across the repaint. */
+function keepScroll(paint) {
+  const main = document.getElementById("main");
+  const top = main ? main.scrollTop : 0;
+  const was = [...ctx.host.querySelectorAll(".sc-qs,.ib-grid")].map((el, i) => ({
+    key: el.classList.contains("ib-grid") ? "ib" : (el.previousElementSibling?.dataset.row || "r" + i),
+    x: el.scrollLeft, y: el.scrollTop,
+  }));
+  paint();
+  const put = () => {
+    [...ctx.host.querySelectorAll(".sc-qs,.ib-grid")].forEach((el, i) => {
+      const key = el.classList.contains("ib-grid") ? "ib" : (el.previousElementSibling?.dataset.row || "r" + i);
+      const hit = was.find((w) => w.key === key); if (!hit) return;
+      el.scrollLeft = Math.min(hit.x, Math.max(0, el.scrollWidth - el.clientWidth));
+      el.scrollTop = Math.min(hit.y, Math.max(0, el.scrollHeight - el.clientHeight));
+    });
+    if (main) main.scrollTop = top;
+  };
+  put(); requestAnimationFrame(put);
+}
+
 function wireQueue() {
   paintInbox();
   ctx.host.querySelectorAll("[data-qdel]").forEach((x) => x.addEventListener("click", (e) => {
     e.stopPropagation(); e.preventDefault();
     const id = x.dataset.qdel, prev = ctx.getItems(), it = prev.find((i) => String(i.id) === String(id)); if (!it) return;
-    ctx.setItems(prev.filter((i) => String(i.id) !== String(id))); paintAll();
-    const undo = () => { ctx.setItems(prev); paintAll(); };
+    ctx.setItems(prev.filter((i) => String(i.id) !== String(id))); keepScroll(paintAll);
+    const undo = () => { ctx.setItems(prev); keepScroll(paintAll); };
     if (ctx.toastUndo) ctx.toastUndo("Deleted " + (it.title || "item"), undo); else ctx.toast("Deleted " + (it.title || "item"));
   }));
   ctx.host.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => {
