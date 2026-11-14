@@ -1,17 +1,17 @@
-import "./viewer.js?v=213";
-import { startScanLink } from "./scanlink.js?v=213";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=213";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=213";
-import { phaseFromItem } from "/visor/phases.js?v=213";
-import { renderScouter } from "./scouter.js?v=213";
-import { renderCollection, openImport } from "./collection.js?v=213";
-import { photoManager } from "./photos.js?v=213";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=213";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=213";
-import { renderSettings } from "./settings.js?v=213";
-import { initSync } from "./sync.js?v=213";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=213";
-import * as PS from "./photostore.js?v=213";
+import "./viewer.js?v=214";
+import { startScanLink } from "./scanlink.js?v=214";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=214";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=214";
+import { phaseFromItem } from "/visor/phases.js?v=214";
+import { renderScouter } from "./scouter.js?v=214";
+import { renderCollection, openImport } from "./collection.js?v=214";
+import { photoManager } from "./photos.js?v=214";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=214";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=214";
+import { renderSettings } from "./settings.js?v=214";
+import { initSync } from "./sync.js?v=214";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=214";
+import * as PS from "./photostore.js?v=214";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -566,7 +566,7 @@ function mapWire(main, g) {
 /* Row heights are content + breathing room. First pass set them to exactly the
    content height, which left 1-4px between steps - everything read as one
    mashed column. The padding is the point, not waste. */
-const PH_FULL = 192, PH_EMPTY = 108, PH_TOP = 124, PH_BOT = 92;
+const PH_FULL = 210, PH_EMPTY = 146, PH_TOP = 124, PH_BOT = 92;
 const dxAt = (k) => 8.6 + Math.sin(k * 0.95) * 1.5;  /* gentle weave: the road curves, the dots stay in a rail */
 function phoneRows(g) {
   const by = new Map(STOPS.map((s) => [s.id, s]));
