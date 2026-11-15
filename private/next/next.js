@@ -1,17 +1,17 @@
-import "./viewer.js?v=218";
-import { startScanLink } from "./scanlink.js?v=218";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=218";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=218";
-import { phaseFromItem } from "/visor/phases.js?v=218";
-import { renderScouter } from "./scouter.js?v=218";
-import { renderCollection, openImport } from "./collection.js?v=218";
-import { photoManager } from "./photos.js?v=218";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=218";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=218";
-import { renderSettings } from "./settings.js?v=218";
-import { initSync } from "./sync.js?v=218";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=218";
-import * as PS from "./photostore.js?v=218";
+import "./viewer.js?v=219";
+import { startScanLink } from "./scanlink.js?v=219";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=219";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=219";
+import { phaseFromItem } from "/visor/phases.js?v=219";
+import { renderScouter } from "./scouter.js?v=219";
+import { renderCollection, openImport } from "./collection.js?v=219";
+import { photoManager } from "./photos.js?v=219";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=219";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=219";
+import { renderSettings } from "./settings.js?v=219";
+import { initSync } from "./sync.js?v=219";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=219";
+import * as PS from "./photostore.js?v=219";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -338,14 +338,29 @@ function cnArrange(main, road, W) {
       st.setPointerCapture(e.pointerId); st.classList.add("moving"); road.classList.add("picking");
       const s0 = main.scrollTop, sx = e.clientX, sy = e.clientY;
       const home = cnPos(slotOf.get(st)); let near = slotOf.get(st), raf = 0, speed = 0, dx = 0, dy = 0;
-      const put = () => { st.style.left = `calc(${home.x}% + ${dx}px)`; st.style.top = home.y + dy + "px"; };
+      /* Keep the stop on the map. Without this the edge-scroll below could run
+         the drag thousands of px past the end and the stop flew off. */
+      const CY = () => Math.max(30, Math.min(CN_H - 30, home.y + dy));
+      const CX = () => Math.max(-home.x / 100 * rw() + 34, Math.min(rw() - home.x / 100 * rw() - 34, dx));
+      const put = () => { st.style.left = `calc(${home.x}% + ${CX()}px)`; st.style.top = CY() + "px"; };
       const mark = () => {
-        const cx = home.x / 100 * rw() + dx, cy = home.y + dy;
+        const cx = home.x / 100 * rw() + CX(), cy = CY();
         let best = 0, bd = Infinity;
         for (let k = 0; k < 9; k++) { const p = cnPos(k), d = (p.x / 100 * rw() - cx) ** 2 + (p.y - cy) ** 2; if (d < bd) { bd = d; best = k; } }
         if (best !== near) { near = best; ghosts.querySelectorAll("i").forEach((g) => g.classList.toggle("on", Number(g.dataset.cell) === near)); }
       };
-      const glide = () => { raf = 0; if (!speed) return; main.scrollTop += speed; dy += speed; put(); mark(); raf = requestAnimationFrame(glide); };
+      /* Edge-scroll only as far as there is map left. main.scrollTop += speed
+         ran unbounded: the view shot past the end and dy went with it. Take
+         only the scroll that actually happened, and stop when there is none. */
+      const glide = () => {
+        raf = 0; if (!speed) return;
+        const was = main.scrollTop, max = Math.max(0, main.scrollHeight - main.clientHeight);
+        main.scrollTop = Math.max(0, Math.min(max, was + speed));
+        const got = main.scrollTop - was;
+        if (!got) { speed = 0; return; }
+        dy += got; put(); mark();
+        raf = requestAnimationFrame(glide);
+      };
       const mv = (ev) => {
         dx = ev.clientX - sx; dy = ev.clientY - sy + (main.scrollTop - s0); put();
         const r = main.getBoundingClientRect(), edge = 80;
