@@ -1,9 +1,9 @@
-import { photoManager } from "./photos.js?v=219";
-import { hideIds, unhideIds } from "./orders.js?v=219";
-import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=219";
-import { openFocus } from "./focus.js?v=219";
-import { setOf, rarityOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=219";
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=219";
+import { photoManager } from "./photos.js?v=220";
+import { hideIds, unhideIds } from "./orders.js?v=220";
+import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=220";
+import { openFocus } from "./focus.js?v=220";
+import { setOf, rarityOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=220";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=220";
 
 let ctx = null;
 const S = { type: "all", game: "", set: "", rar: "", bset: "", bpg: 0, q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 48 };
@@ -181,12 +181,17 @@ function gridTile(it, n) {
 }
 function pocket(it) {
   const src = photoOf(it);
-  return `<button type="button" class="vb-pk" data-vid="${esc(it.id)}" aria-label="${esc(cardName(it))} ${money(it.price)}"><span class="vb-card">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(cardName(it).charAt(0))}</i>`}<span class="bd-glare"></span></span><span class="vb-sleeve" aria-hidden="true"></span><span class="vb-tag"><b>${money(it.price)}</b><em>${esc(cardName(it))}</em></span></button>`;
+  return `<button type="button" class="vb-pk" data-vid="${esc(it.id)}" aria-label="${esc(cardName(it))} ${money(it.price)}"><span class="vb-card">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(cardName(it).charAt(0))}</i>`}<span class="bd-glare"></span></span><span class="vb-sleeve" aria-hidden="true"></span><span class="vb-tag"><em>${esc(cardName(it))}</em><span class="vb-sub"><i>${esc(setOf(it) || numOf(it) || "")}</i><b>${money(it.price)}</b></span></span></button>`;
 }
 function binderView(list) {
   if (!list.length) return `<div class="bd-empty"><b>No cards here.</b><span>Clear the filters, or scan cards in Scouter to fill the binder.</span></div>`;
-  const wide = innerWidth > 820, per = wide ? 18 : 9, spreads = Math.max(1, Math.ceil(list.length / per)); S.bpg = Math.min(Math.max(0, S.bpg || 0), spreads - 1);
-  const at = S.bpg * per, page = (from, side) => `<div class="vb-page ${side}"><div class="vb-grid">${list.slice(from, from + 9).map(pocket).join("")}${Array.from({ length: Math.max(0, 9 - list.slice(from, from + 9).length) }, () => `<span class="vb-pk empty" aria-hidden="true"><span class="vb-sleeve"></span></span>`).join("")}</div><span class="vb-pn">${(wide ? S.bpg * 2 + (side === "r" ? 2 : 1) : S.bpg + 1)}</span></div>`;
+  /* Nov 18: on a phone this is a grid, not a ring binder. Nine cards a page
+     with empty pockets padding it out meant endless flipping past holes, and
+     the binder frame ate the width the names needed. Desktop keeps the book. */
+  const wide = innerWidth > 820, per = wide ? 18 : 60, spreads = Math.max(1, Math.ceil(list.length / per)); S.bpg = Math.min(Math.max(0, S.bpg || 0), spreads - 1);
+  const at = S.bpg * per, seg = wide ? 9 : per;
+  const page = (from, side) => { const cards = list.slice(from, from + seg);
+    return `<div class="vb-page ${side}"><div class="vb-grid">${cards.map(pocket).join("")}${wide ? Array.from({ length: Math.max(0, 9 - cards.length) }, () => `<span class="vb-pk empty" aria-hidden="true"><span class="vb-sleeve"></span></span>`).join("") : ""}</div><span class="vb-pn">${(wide ? S.bpg * 2 + (side === "r" ? 2 : 1) : S.bpg + 1)}</span></div>`; };
   const dots = spreads <= 14 ? `<div class="vb-dots">${Array.from({ length: spreads }, (_, k) => `<button type="button" class="${k === S.bpg ? "on" : ""}" data-bgo="${k}" aria-label="Page ${k + 1}"></button>`).join("")}</div>` : `<span class="vb-of">Spread ${S.bpg + 1} of ${spreads}</span>`;
   return `<section class="vb${wide ? "" : " one"}"><div class="vb-book"><div class="vb-spread">${page(at, "l")}${wide ? `<div class="vb-spine" aria-hidden="true"><i></i><i></i><i></i></div>${page(at + 9, "r")}` : ""}</div></div>
     <nav class="vb-nav"><button type="button" class="vb-a" data-bflip="-1" aria-label="Previous page"${S.bpg ? "" : " disabled"}><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>${dots}<button type="button" class="vb-a" data-bflip="1" aria-label="Next page"${S.bpg < spreads - 1 ? "" : " disabled"}><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></nav></section>`;
@@ -216,6 +221,7 @@ function filterSheet() {
 function paint() {
   const host = ctx.host, typedFocus = document.activeElement && document.activeElement.id === "coQ";
   if (!S.tab) S.tab = "binder";
+  if (!S.dens) { let d = 0; try { d = Number(localStorage.getItem("coalition-dens")); } catch { /* ignore */ } S.dens = d === 2 || d === 3 ? d : 3; }
   const all = base(), total = all.reduce((a, i) => a + priceOf(i), 0);
   const paid = all.reduce((a, i) => a + (Number(i.purchasePrice) || 0) * (Number(i.quantity) || 1), 0), gain = total - paid;
   const kindTab = { binder: "singles", sealed: "sealed", graded: "graded", all: "all" }[S.tab]; S.type = kindTab;
@@ -224,12 +230,15 @@ function paint() {
   const games = tally(filtered(all, "game"), gameOf), nf = [S.set, S.rar].filter(Boolean).length + (S.sort !== "value" ? 1 : 0);
   const tabVal = (t) => inTab(t).reduce((a, i) => a + priceOf(i), 0);
   let n = 0;
-  host.innerHTML = `<div class="co-wrap cv bd vlt">
+  host.innerHTML = `<div class="co-wrap cv bd vlt" data-dens="${S.dens}">
     <div class="vlt-head"><div class="vlt-val"><em>Collection value</em><b>${money(total)}</b><span>${all.length} items${paid ? ` · <i class="${gain >= 0 ? "up" : "down"}">${gain >= 0 ? "+" : "−"}${money(Math.abs(gain))} over cost</i>` : ""}</span></div></div>
     <div class="bd-hud"><nav class="bd-tabs" role="tablist" aria-label="Collection">${TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${S.tab === k}" class="bd-tab${S.tab === k ? " on" : ""}" data-tab="${k}"><b>${inTab(k).length}</b><span>${l}</span><em>${money(tabVal(k))}</em></button>`).join("")}<i class="bd-scan" aria-hidden="true"></i></nav></div>
     <div class="bd-tools">
       <label class="bd-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="coQ" type="search" placeholder="Search name, set or number" value="${esc(S.q)}" aria-label="Search the collection"></label>
       <button type="button" class="bd-btn${nf ? " on" : ""}" id="coFilt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters${nf ? `<b>${nf}</b>` : ""}</button>
+      <button type="button" class="bd-btn bd-dens" id="coDens" aria-label="Cards per row: ${S.dens}"><svg viewBox="0 0 24 24" aria-hidden="true">${S.dens === 3
+        ? `<rect x="3" y="4" width="5" height="7" rx="1"/><rect x="9.5" y="4" width="5" height="7" rx="1"/><rect x="16" y="4" width="5" height="7" rx="1"/><rect x="3" y="13" width="5" height="7" rx="1"/><rect x="9.5" y="13" width="5" height="7" rx="1"/><rect x="16" y="13" width="5" height="7" rx="1"/>`
+        : `<rect x="3.5" y="4" width="8" height="7" rx="1"/><rect x="12.5" y="4" width="8" height="7" rx="1"/><rect x="3.5" y="13" width="8" height="7" rx="1"/><rect x="12.5" y="13" width="8" height="7" rx="1"/>`}</svg>${S.dens}</button>
       <button type="button" class="bd-btn${S.selecting ? " on" : ""}" id="coSel"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>${S.selecting ? "Done" : "Select"}</button>
       <button type="button" class="bd-btn" id="coMenuBtn" aria-label="Import or export"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></button>
     </div>
@@ -274,6 +283,7 @@ function wire() {
   $("#coIO")?.addEventListener("click", ioSheet);
   $("#coMore")?.addEventListener("click", () => { S.more += 60; paint(); });
   { const mb = $("#coMore"); if (mb && "IntersectionObserver" in window) { const io = new IntersectionObserver((es) => { if (es.some((x) => x.isIntersecting)) { io.disconnect(); mb.click(); } }, { rootMargin: "600px" }); io.observe(mb); } }
+  $("#coDens")?.addEventListener("click", () => { S.dens = S.dens === 3 ? 2 : 3; try { localStorage.setItem("coalition-dens", String(S.dens)); } catch { /* ignore */ } paint(); });
   $("#coSel").addEventListener("click", () => { S.selecting = !S.selecting; if (!S.selecting) S.sel.clear(); paint(); });
   $("#coAll")?.addEventListener("click", () => { rows().forEach((i) => S.sel.add(String(i.id))); paint(); });
   h.querySelectorAll("[data-cat]").forEach((b) => b.addEventListener("click", () => { S.cat = b.dataset.cat; S.more = 90; paint(); }));
