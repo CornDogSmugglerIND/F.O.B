@@ -119,8 +119,15 @@
 }
 /* Command on phone: the HUD shrinks so the map owns the screen. The four
    action tiles are the first four stops on the map, so they go. */
-  gap:5px 8px!important;align-items:start!important;margin-top:7px!important}
-  font-size:11px!important;line-height:1.15!important}
+#main.cmd-ph .hudc{padding:9px 11px!important;gap:0!important;margin-bottom:6px!important}
+#main.cmd-ph .hudc-act{display:none!important}
+#main.cmd-ph .hudc-read{gap:6px!important}
+#main.cmd-ph .hudc-read .hc{padding:6px 8px!important;min-height:0!important}
+#main.cmd-ph .hudc-read .hc em{font-size:10.5px!important}
+#main.cmd-ph .hudc-read .hc b{font-size:17px!important;line-height:1.1!important}
+#main.cmd-ph .hudc-read .hc small{font-size:10.5px!important}
+#main.cmd-ph .hudc-read .sd-bars{height:14px!important}
+#main.cmd-ph .hudc-br{display:none!important}
 /* compact nodes so three rows always fit */
 #main.cmd-ph .cm-n{width:94px!important;gap:3px!important}
 #main.cmd-ph .cm-n>i{width:50px;height:50px}
@@ -133,9 +140,14 @@
 #main.cmd-ph .cm-bi span{font-size:12px}
 #main.cmd-ph .cm-bi small{font-size:11px}
 #main.cmd-ph .cm-go{padding:8px 13px;font-size:13px}
+#main.cmd-ph .hudc-read{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px 10px!important}
+#main.cmd-ph .hudc-read .hc{min-width:0!important;overflow:hidden}
+#main.cmd-ph .hudc-read .hc em{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 
 /* the four read-outs were clipping to "Sold t..." - let them wrap instead */
+#main.cmd-ph .hudc-read .hc em{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;
  font-size:9.5px!important;line-height:1.15!important;letter-spacing:.1px}
+#main.cmd-ph .hudc-read .hc b{font-size:15.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 
 /* step number: the route order is explicit, so a rearranged map still reads 1-8 */
 #main .cm-n>i>s{position:absolute;left:50%;bottom:3px;transform:translateX(-50%);text-decoration:none;
@@ -219,66 +231,25 @@
   #main .road.cn .flag{z-index:4;transform:translateX(-50%)}
 }
 
+/* ===== Nov 18: the HUD read-outs say what they are =====
+   Four tiles across a phone is 70px each - every label clipped to "Sold t..."
+   and "Cards to id...". Two across gives each one room for a real label, so a
+   figure no longer sits on screen with nothing saying what it is. */
+@media (max-width:820px){
+  #main .hudc-read{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:4px 10px!important;align-items:start!important}
+  #main .hudc-read .hc{min-width:0!important;overflow:visible!important;padding:6px 9px!important;
+    min-height:0!important;height:auto!important;align-self:start!important;
+    display:flex!important;flex-direction:column!important;justify-content:flex-start!important;gap:1px!important}
+  #main .hudc-read .hc em{white-space:normal!important;overflow:visible!important;
+    text-overflow:clip!important;font-size:10.5px!important;line-height:1.2!important;display:block}
+  #main .hudc-read .hc b{white-space:nowrap;font-size:18px!important;line-height:1.1!important}
+  #main .hudc-read .hc small{white-space:nowrap;font-size:10.5px!important}
+  #main .hudc-read .sd-bars{height:16px!important}
 
-
-/* ===== Nov 19: the map gets its own viewport, the frame holds still =====
-   The road is an 818px canvas. It used to sit in the page flow, so the whole
-   of Command scrolled as one document and the HUD and tab bar slid away with
-   it. Now the canvas scrolls inside a pane that fills whatever is left under
-   the HUD: the header, the read-outs and the tab bar never move, which is the
-   difference between an app and a web page. */
-#main.cmd-ph .cn-view{flex:1 1 auto!important;min-height:0!important;
-  overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;
-  position:relative;padding:0 10px;overscroll-behavior:contain}
-#main.cmd-ph .arr-ph{flex:0 0 auto!important}
-
-
-/* ===== Nov 19: one phone HUD block, not two fighting =====
-   Nov 18's compaction lived in a media query; the cmd-ph rules switched on
-   today are more specific, so they won and brought none of it with them. The
-   tiles went back to desktop height and the read-outs alone ate 169px of a
-   635px screen - most of it empty, which is the "wasted screen space". Phone
-   HUD sizing now lives here and nowhere else.
-   Everything stays on screen. Nothing is hidden to buy back height. */
-#main.cmd-ph .hudc{padding:8px 10px!important;gap:0!important;margin-bottom:5px!important}
-#main.cmd-ph .hudc-read,#main.cmd-ph .hudc-act{
-  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
-  gap:5px 9px!important;align-items:start!important}
-#main.cmd-ph .hudc-act{margin-top:6px!important;padding-top:6px!important}
-#main.cmd-ph .hudc-read .hc,#main.cmd-ph .hudc-act .ha{
-  min-width:0!important;min-height:0!important;height:auto!important;align-self:start!important;
-  overflow:visible!important;padding:5px 9px!important;
-  display:flex!important;flex-direction:column!important;justify-content:flex-start!important;gap:1px!important}
-/* labels wrap instead of clipping - four across was 70px a tile and cut every one */
-#main.cmd-ph .hudc-read .hc em,#main.cmd-ph .hudc-act .ha span{
-  white-space:normal!important;overflow:visible!important;text-overflow:clip!important;
-  font-size:10.5px!important;line-height:1.15!important;display:block}
-#main.cmd-ph .hudc-read .hc b{font-size:16px!important;line-height:1.05!important;white-space:nowrap;display:block}
-#main.cmd-ph .hudc-read .hc small{font-size:10px!important;line-height:1.1!important;white-space:nowrap}
-#main.cmd-ph .hudc-read .sd-bars{height:13px!important;margin-top:2px}
-#main.cmd-ph .hudc-act .ha{flex-direction:row!important;align-items:baseline!important;gap:6px!important}
-#main.cmd-ph .hudc-act .ha b{font-size:16px!important;line-height:1.05!important;flex:0 0 auto}
-#main.cmd-ph .hudc-br{display:none!important}
-
-/* Arrange had a row to itself - 56px of a phone screen for one button. */
-#main.cmd-ph .arr-ph{flex:0 0 auto!important;padding:0 10px 3px!important}
-#main.cmd-ph .arr-ph .arr-b{padding:5px 11px!important;font-size:12px!important}
-#main.cmd-ph .arr-ph .arr-b svg{width:13px;height:13px}
-
-
-/* ===== Nov 19: the HUD's two tabs =====
-   Phone only. Desktop has the room for both panels, so it shows both and the
-   tab strip stays out of the way. */
-#main.cmd-ph .hudc-tabs{display:flex;gap:4px;padding:2px;margin-bottom:7px;
-  background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);border-radius:11px}
-#main.cmd-ph .hct{flex:1 1 0;min-width:0;padding:6px 8px;border:0;border-radius:9px;background:none;
-  font:600 12px/1 var(--disp);color:#7E9389;letter-spacing:.02em;cursor:pointer;
-  transition:background .18s ease,color .18s ease}
-#main.cmd-ph .hct[aria-selected="true"]{color:#04140C;
-  background:linear-gradient(180deg,#C8FFE4,#7FE8B4);
-  box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 2px 9px rgba(96,230,164,.26)}
-#main.cmd-ph .hudc[data-tab="todo"] .hudc-read{display:none!important}
-#main.cmd-ph .hudc[data-tab="money"] .hudc-act{display:none!important}
-#main.cmd-ph .hudc[data-tab="money"] .hudc-read{margin-top:0!important}
-#main.cmd-ph .hudc-act{margin-top:0!important;padding-top:0!important;border-top:0!important}
-#main:not(.cmd-ph) .hudc-tabs{display:none}
+  #main .hudc-act{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:6px 10px!important;align-items:start!important}
+  #main .hudc-act .ha{min-width:0!important;overflow:visible!important;min-height:0!important;padding:7px 10px!important}
+  #main .hudc-act .ha span{white-space:normal!important;overflow:visible!important;
+    text-overflow:clip!important;line-height:1.15!important}
+}
