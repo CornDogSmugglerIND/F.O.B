@@ -253,3 +253,49 @@
   #main .hudc-act .ha span{white-space:normal!important;overflow:visible!important;
     text-overflow:clip!important;line-height:1.15!important}
 }
+
+
+/* ===== Nov 19: the stack is a deck you can flick through =====
+   Ten items behind one card with no way past them was the complaint. Swipe
+   the stack, or tap a chevron, and the next card rises into the same spot.
+   The top card leaves the way a dealt card leaves - lifts, tilts, slides -
+   and the one behind it comes forward. */
+.pile[data-pile]{touch-action:pan-y}
+.pile .pstep{position:absolute;top:50%;z-index:7;width:26px;height:38px;margin-top:-19px;
+  border:1px solid rgba(179,251,213,.17);border-radius:9px;
+  background:linear-gradient(180deg,rgba(10,26,19,.78),rgba(5,15,11,.86));
+  -webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);
+  color:#B3FBD5;font:400 19px/1 var(--disp);cursor:pointer;opacity:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity .2s ease,transform .18s cubic-bezier(.22,1,.36,1),box-shadow .2s ease}
+.pile .pstep.prev{left:-9px}
+.pile .pstep.next{right:-9px}
+.pile:hover .pstep,.pile:focus-within .pstep{opacity:1}
+.pile .pstep:hover{transform:scale(1.07);box-shadow:0 0 16px rgba(96,230,164,.3);border-color:rgba(179,251,213,.4)}
+.pile .pstep:active{transform:scale(.94)}
+@media (pointer:coarse){.pile .pstep{opacity:.62}}
+
+.pile .more{display:inline-flex;align-items:baseline;gap:0;letter-spacing:.02em;
+  font-variant-numeric:tabular-nums}
+.pile .more b{font-weight:700;color:#C8FFE4;font-style:normal}
+.pile .more i{font-style:normal;opacity:.45;margin:0 1px}
+.pile .more u{text-decoration:none;opacity:.72}
+
+/* dealt-card exit: the face on top leaves, the next one is already behind it */
+@keyframes pcDealNext{
+  0%{transform:translate3d(0,0,0) rotate(0) scale(1);opacity:1}
+  55%{transform:translate3d(-42%,-13%,0) rotate(-9deg) scale(.95);opacity:.5}
+  100%{transform:translate3d(-78%,-4%,0) rotate(-15deg) scale(.88);opacity:0}}
+@keyframes pcDealPrev{
+  0%{transform:translate3d(0,0,0) rotate(0) scale(1);opacity:1}
+  55%{transform:translate3d(42%,-13%,0) rotate(9deg) scale(.95);opacity:.5}
+  100%{transform:translate3d(78%,-4%,0) rotate(15deg) scale(.88);opacity:0}}
+@keyframes pcRise{
+  0%{transform:translate(4px,-4px) rotate(2.5deg) scale(.97);opacity:.75}
+  100%{transform:translate(0,0) rotate(0) scale(1);opacity:1}}
+.pile.sw-next .pc:not(.b1):not(.b2){animation:pcDealNext .34s cubic-bezier(.4,0,.75,.3) forwards;z-index:6}
+.pile.sw-prev .pc:not(.b1):not(.b2){animation:pcDealPrev .34s cubic-bezier(.4,0,.75,.3) forwards;z-index:6}
+.pile.sw-next .pc.b1,.pile.sw-prev .pc.b1{animation:pcRise .34s cubic-bezier(.22,1,.36,1) forwards}
+@media (prefers-reduced-motion:reduce){
+  .pile.sw-next .pc:not(.b1):not(.b2),.pile.sw-prev .pc:not(.b1):not(.b2),
+  .pile.sw-next .pc.b1,.pile.sw-prev .pc.b1{animation-duration:.01ms!important}}

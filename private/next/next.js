@@ -1,17 +1,17 @@
-import "./viewer.js?v=223";
-import { startScanLink } from "./scanlink.js?v=223";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=223";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=223";
-import { phaseFromItem } from "/visor/phases.js?v=223";
-import { renderScouter } from "./scouter.js?v=223";
-import { renderCollection, openImport } from "./collection.js?v=223";
-import { photoManager } from "./photos.js?v=223";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=223";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=223";
-import { renderSettings } from "./settings.js?v=223";
-import { initSync } from "./sync.js?v=223";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=223";
-import * as PS from "./photostore.js?v=223";
+import "./viewer.js?v=224";
+import { startScanLink } from "./scanlink.js?v=224";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=224";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=224";
+import { phaseFromItem } from "/visor/phases.js?v=224";
+import { renderScouter } from "./scouter.js?v=224";
+import { renderCollection, openImport } from "./collection.js?v=224";
+import { photoManager } from "./photos.js?v=224";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=224";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=224";
+import { renderSettings } from "./settings.js?v=224";
+import { initSync } from "./sync.js?v=224";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=224";
+import * as PS from "./photostore.js?v=224";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -265,11 +265,67 @@ function initAvatar() {
 
 /* ---------- Command ---------- */
 const phone = () => matchMedia("(max-width:820px)").matches;
+function pileFace(it, k) {
+  const p = photoOf(it);
+  return `<div class="pc ${k === "" ? "k-tilt" : k}" ${k === "" ? `data-item="${esc(it.id)}"` : ""}>${p ? `<img src="${esc(p)}" alt="" draggable="false">` : `<div class="ini">${esc(nameOf(it).charAt(0).toUpperCase())}</div>`}${k === "" ? `<span class="cap"><span>${esc(nameOf(it))}</span><em>${money(worth(it))}</em></span>` : ""}</div>`;
+}
 function pileHtml(list, cls, emptyMsg, sid = "") {
   if (!list.length) return emptyMsg ? `<button type="button" class="empty go ${cls}" data-goto="scouter"><i>+</i><span>${esc(emptyMsg)}</span></button>` : "";
-  const top = list[0]; const src = photoOf(top);
-  const face = (it, k) => { const p = photoOf(it); return `<div class="pc ${k === "" ? "k-tilt" : k}" ${k === "" ? `data-item="${esc(it.id)}"` : ""}>${p ? `<img src="${esc(p)}" alt="" draggable="false">` : `<div class="ini">${esc(nameOf(it).charAt(0).toUpperCase())}</div>`}${k === "" ? `<span class="cap"><span>${esc(nameOf(it))}</span><em>${money(worth(it))}</em></span>` : ""}</div>`; };
-  return `<div class="pile ${cls}">${list[2] ? face(list[2], "b2") : ""}${list[1] ? face(list[1], "b1") : ""}${face(top, "")}${list.length > 1 ? `<span class="more" data-stage="${sid}">+${list.length - 1} more</span>` : ""}</div>`;
+  return `<div class="pile ${cls}" data-pile="${esc(sid)}" data-i="0">${pileFaces(list, 0)}${list.length > 1 ? `<button type="button" class="pstep prev" aria-label="Previous item">\u2039</button><button type="button" class="pstep next" aria-label="Next item">\u203a</button><span class="more" data-stage="${esc(sid)}" aria-live="polite"><b>1</b><i>/</i><u>${list.length}</u></span>` : ""}</div>`;
+}
+/* The three faces of the stack at a given position, wrapping at the end. */
+function pileFaces(list, i) {
+  const n = list.length, at = (k) => list[(i + k) % n];
+  return `${n > 2 ? pileFace(at(2), "b2") : ""}${n > 1 ? pileFace(at(1), "b1") : ""}${pileFace(at(0), "")}`;
+}
+/* ---------- cycle the stack without opening anything ----------
+   Sawyer: "they're always stacked behind each other. It'll say there's 10
+   there, but I can't see the item behind it and there's no way to scroll
+   through it." So the stack is a deck now: swipe it, or tap the chevrons,
+   and the next card comes up in place. The counter says where he is.
+   Drag-to-move is untouched - that arms on a 300ms hold, and a quick swipe
+   cancels it before it ever arms, so the two gestures do not fight. */
+function wirePile(pile, list) {
+  const n = list.length; if (n < 2) return;
+  let i = 0, busy = false;
+  const label = pile.querySelector(".more");
+  const paint = (dir) => {
+    busy = true;
+    pile.classList.add(dir > 0 ? "sw-next" : "sw-prev");
+    const done = () => {
+      i = (i + (dir > 0 ? 1 : n - 1)) % n;
+      pile.dataset.i = String(i);
+      const keep = [...pile.children].filter((c) => !c.classList.contains("pc"));
+      pile.innerHTML = pileFaces(list, i);
+      keep.forEach((k) => pile.appendChild(k));
+      if (label) label.innerHTML = `<b>${i + 1}</b><i>/</i><u>${n}</u>`;
+      pile.classList.remove("sw-next", "sw-prev");
+      const st = pile.closest(".stop");
+      pile.querySelectorAll(".pc[data-item]").forEach((c) => { if (st) { c.dataset.stage = st.dataset.drop; c.style.cursor = "pointer"; } bindDrag(c); });
+      busy = false;
+    };
+    const top = pile.querySelector(".pc:not(.b1):not(.b2)");
+    if (!top) return done();
+    let fired = false; const once = () => { if (fired) return; fired = true; top.removeEventListener("animationend", once); done(); };
+    top.addEventListener("animationend", once); setTimeout(once, 420);
+  };
+  const step = (d) => { if (!busy) paint(d); };
+  pile.querySelector(".pstep.next")?.addEventListener("click", (e) => { e.stopPropagation(); step(1); });
+  pile.querySelector(".pstep.prev")?.addEventListener("click", (e) => { e.stopPropagation(); step(-1); });
+  /* horizontal flick on the stack itself */
+  let sx = 0, sy = 0, on = false;
+  pile.addEventListener("pointerdown", (e) => { if (e.target.closest(".pstep")) return; on = true; sx = e.clientX; sy = e.clientY; });
+  pile.addEventListener("pointerup", (e) => {
+    if (!on) return; on = false;
+    /* __fobHold goes true on mouse-down before anything has moved, so it cannot
+       stand in for "a drag is happening". A real move-drag has a ghost. */
+    if (document.querySelector(".pc.ghost")) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.abs(dx) < 26 || Math.abs(dx) < Math.abs(dy) * 1.4) return;  /* a tap, or a vertical scroll */
+    e.preventDefault(); e.stopPropagation();
+    step(dx < 0 ? 1 : -1);
+  });
+  pile.addEventListener("pointercancel", () => { on = false; });
 }
 /* HUD widgets: the numbers you check first, tap to jump there */
 function widgets(g) {
@@ -642,6 +698,7 @@ function renderCommand() {
   // wire up
   main.querySelectorAll(".pc.b1,.pc.b2").forEach((m) => { m.dataset.stage = m.closest(".stop").dataset.drop; m.style.cursor = "pointer"; });
   main.querySelectorAll(".more").forEach((m) => { const st = m.closest(".stop"); m.dataset.stage = st.dataset.drop; });
+  main.querySelectorAll(".stop .pile[data-pile]").forEach((pl) => { const st = pl.closest(".stop"); wirePile(pl, g[st.dataset.drop] || []); });
   main.querySelectorAll("[data-stage]").forEach((el) => el.addEventListener("click", () => stageSheet(el.dataset.stage)));
   main.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.pst) window.__chStage = b.dataset.pst; go(b.dataset.goto); }));
   main.querySelectorAll(".stop .tag").forEach((d) => d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); stageSheet(d.dataset.stage); } }));
