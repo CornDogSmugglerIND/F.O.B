@@ -230,3 +230,26 @@
     filter:drop-shadow(0 16px 26px rgba(0,0,0,.65)) drop-shadow(0 0 20px rgba(179,251,213,.5))}
   #main .road.cn .flag{z-index:4;transform:translateX(-50%)}
 }
+
+/* ===== Nov 18: the HUD read-outs say what they are =====
+   Four tiles across a phone is 70px each - every label clipped to "Sold t..."
+   and "Cards to id...". Two across gives each one room for a real label, so a
+   figure no longer sits on screen with nothing saying what it is. */
+@media (max-width:820px){
+  #main .hudc-read{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:4px 10px!important;align-items:start!important}
+  #main .hudc-read .hc{min-width:0!important;overflow:visible!important;padding:6px 9px!important;
+    min-height:0!important;height:auto!important;align-self:start!important;
+    display:flex!important;flex-direction:column!important;justify-content:flex-start!important;gap:1px!important}
+  #main .hudc-read .hc em{white-space:normal!important;overflow:visible!important;
+    text-overflow:clip!important;font-size:10.5px!important;line-height:1.2!important;display:block}
+  #main .hudc-read .hc b{white-space:nowrap;font-size:18px!important;line-height:1.1!important}
+  #main .hudc-read .hc small{white-space:nowrap;font-size:10.5px!important}
+  #main .hudc-read .sd-bars{height:16px!important}
+
+  #main .hudc-act{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:6px 10px!important;align-items:start!important}
+  #main .hudc-act .ha{min-width:0!important;overflow:visible!important;min-height:0!important;padding:7px 10px!important}
+  #main .hudc-act .ha span{white-space:normal!important;overflow:visible!important;
+    text-overflow:clip!important;line-height:1.15!important}
+}

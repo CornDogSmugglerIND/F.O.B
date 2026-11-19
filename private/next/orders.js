@@ -1,5 +1,5 @@
 /* Real eBay orders (last 90 days), kept apart from inventory so Sold and Shipped are always current. */
-import { peekItems, esc, isArchived } from "./shared.js?v=220";
+import { peekItems, esc, isArchived } from "./shared.js?v=221";
 const LS = "coalition-orders-v1";
 export const saveOrders = (list) => { try { localStorage.setItem(LS, JSON.stringify(list)); return true; } catch { return false; } };
 export const loadOrders = () => { try { const v = JSON.parse(localStorage.getItem(LS) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
@@ -14,14 +14,20 @@ export function orderItems(days = 90) {
   for (const it of peekItems()) { if (!it.photos?.length) continue; const s = it.sku || it.channels?.ebay?.sku; if (s && !bySku.has(s)) bySku.set(s, it); const t = norm(it.title); if (t && !byTitle.has(t)) byTitle.set(t, it); }
   const cut = Date.now() - days * 864e5;
   return loadOrders().filter((o) => Date.parse(o.createdAt || 0) >= cut && !isArchived("ord-" + o.orderId) && o.status !== "cancelled").map((o) => {
-    const li = o.items || [], first = li[0] || {}, hit = bySku.get(first.sku) || byTitle.get(norm(first.title)), shipped = o.status !== "label_created";
+    const li = o.items || [], first = li[0] || {};
+    /* Nov 18: show the card that actually sold. On a variation listing eBay's
+       line-item image is the listing's cover, not the variation, so a Delta
+       Reign single came back wearing the listing photo. A SKU match is the
+       exact variation, so that photo wins; eBay's image is the fallback. */
+    const skuHit = first.sku ? bySku.get(first.sku) : null;
+    const hit = skuHit || byTitle.get(norm(first.title)), shipped = o.status !== "label_created";
     const when = shipped ? o.shippedAt || o.createdAt : o.createdAt, ov = rd(OV)[o.orderId];
     /* Sold → Packed (you mark it) → In transit (tracking on eBay) → Arriving (eBay's delivery date is here) → Delivered (real scan) */
     let ph;
     if (!shipped) ph = ov === "packed" ? "packed" : "sold";
     else if (track(o).step === 4) ph = "delivered";
     else { const est = Date.parse(o.estDeliveryAt || ""); ph = est && Date.now() >= est - 18 * 36e5 ? "arriving" : "shipped"; }
-    return { id: "ord-" + o.orderId, source: "order", _order: o, title: (first.title || "eBay order") + (li.length > 1 ? ` + ${li.length - 1} more` : ""), photos: first.image ? [{ url: first.image }] : hit ? hit.photos.slice(0, 1) : [], price: o.total || 0, quantity: li.reduce((a, x) => a + (x.qty || 1), 0) || 1, phase: ph, when };
+    return { id: "ord-" + o.orderId, source: "order", _order: o, title: (first.title || "eBay order") + (li.length > 1 ? ` + ${li.length - 1} more` : ""), photos: skuHit?.photos?.length ? skuHit.photos.slice(0, 1) : first.image ? [{ url: first.image }] : hit?.photos?.length ? hit.photos.slice(0, 1) : [], price: o.total || 0, quantity: li.reduce((a, x) => a + (x.qty || 1), 0) || 1, phase: ph, when };
   }).sort((a, b) => String(b.when).localeCompare(String(a.when)));
 }
 

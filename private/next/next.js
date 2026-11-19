@@ -1,17 +1,17 @@
-import "./viewer.js?v=220";
-import { startScanLink } from "./scanlink.js?v=220";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=220";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=220";
-import { phaseFromItem } from "/visor/phases.js?v=220";
-import { renderScouter } from "./scouter.js?v=220";
-import { renderCollection, openImport } from "./collection.js?v=220";
-import { photoManager } from "./photos.js?v=220";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=220";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=220";
-import { renderSettings } from "./settings.js?v=220";
-import { initSync } from "./sync.js?v=220";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=220";
-import * as PS from "./photostore.js?v=220";
+import "./viewer.js?v=221";
+import { startScanLink } from "./scanlink.js?v=221";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=221";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=221";
+import { phaseFromItem } from "/visor/phases.js?v=221";
+import { renderScouter } from "./scouter.js?v=221";
+import { renderCollection, openImport } from "./collection.js?v=221";
+import { photoManager } from "./photos.js?v=221";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=221";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=221";
+import { renderSettings } from "./settings.js?v=221";
+import { initSync } from "./sync.js?v=221";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=221";
+import * as PS from "./photostore.js?v=221";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -282,17 +282,17 @@ function widgets(g) {
   const lst = new Map(); for (const i of live) { const k = i.channels.ebay.listingId; (lst.get(k) || lst.set(k, []).get(k)).push(i); }
   const nobin = [...lst.values()].filter((g) => g.every((i) => !i.spaceId)).length;
   const acts = [
-    ["Identify", g.intake.length + (window.__fobInboxN || 0), `data-goto="scouter"`],
-    ["Build", g.staged.length, `data-stage="staged"`],
-    ["Put away", g.stored.length + nobin, `data-putaway type="button"`],
-    ["Ship", g.sold.length + g.packed.length, `data-stage="${g.sold.length ? "sold" : "packed"}"`],
+    ["Cards to identify", g.intake.length + (window.__fobInboxN || 0), `data-goto="scouter"`],
+    ["Build listings", g.staged.length, `data-stage="staged"`],
+    ["Put in a bin", g.stored.length + nobin, `data-putaway type="button"`],
+    ["Orders to ship", g.sold.length + g.packed.length, `data-stage="${g.sold.length ? "sold" : "packed"}"`],
   ];
   return `<section class="hudc" role="group" aria-label="Heads-up display">
     <div class="hudc-read">
-      <button type="button" class="hc" data-goto="channels" data-pst="sold"><em>Sold this week</em><b>${money(wk)}</b></button>
-      <div class="hc hc-ch" aria-label="Sales per week, last 8 weeks"><em>8 weeks</em><b>${money(sum8)}</b><span class="sd-bars">${wk8.map((v, i) => `<i style="height:${Math.max(10, Math.round(v / mx * 100))}%"${i === 7 ? ' class="now"' : ""} title="${money(v)}"></i>`).join("")}</span></div>
-      <button type="button" class="hc" data-goto="channels"><em>Live</em><b>${lst.size}</b><small>${money(liveV)}</small></button>
-      <button type="button" class="hc" data-stage="shipped"><em>Shipped</em><b>${g.shipped.length + g.arriving.length}</b></button>
+      <button type="button" class="hc" data-goto="channels" data-pst="sold"><em>eBay sold this week</em><b>${money(wk)}</b></button>
+      <div class="hc hc-ch" aria-label="eBay sales per week, last 8 weeks"><em>eBay sold, last 8 weeks</em><b>${money(sum8)}</b><span class="sd-bars">${wk8.map((v, i) => `<i style="height:${Math.max(10, Math.round(v / mx * 100))}%"${i === 7 ? ' class="now"' : ""} title="${money(v)} this week"></i>`).join("")}</span></div>
+      <button type="button" class="hc" data-goto="channels"><em>Live on eBay</em><b>${lst.size}</b><small>${money(liveV)} asking</small></button>
+      <button type="button" class="hc" data-stage="shipped"><em>In transit to buyers</em><b>${g.shipped.length + g.arriving.length}</b></button>
     </div>
     <div class="hudc-act" role="list" aria-label="Next actions">${acts.map(([l, n, attr]) => `<button class="ha${n ? " hot" : ""}" ${attr} role="listitem"><b>${n}</b><span>${l}</span><i aria-hidden="true"></i></button>`).join("")}</div>
     <i class="hudc-br tl"></i><i class="hudc-br tr"></i><i class="hudc-br bl"></i><i class="hudc-br br"></i></section>`;
