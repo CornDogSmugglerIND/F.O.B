@@ -1,17 +1,17 @@
-import "./viewer.js?v=221";
-import { startScanLink } from "./scanlink.js?v=221";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=221";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=221";
-import { phaseFromItem } from "/visor/phases.js?v=221";
-import { renderScouter } from "./scouter.js?v=221";
-import { renderCollection, openImport } from "./collection.js?v=221";
-import { photoManager } from "./photos.js?v=221";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=221";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=221";
-import { renderSettings } from "./settings.js?v=221";
-import { initSync } from "./sync.js?v=221";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=221";
-import * as PS from "./photostore.js?v=221";
+import "./viewer.js?v=222";
+import { startScanLink } from "./scanlink.js?v=222";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=222";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=222";
+import { phaseFromItem } from "/visor/phases.js?v=222";
+import { renderScouter } from "./scouter.js?v=222";
+import { renderCollection, openImport } from "./collection.js?v=222";
+import { photoManager } from "./photos.js?v=222";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=222";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=222";
+import { renderSettings } from "./settings.js?v=222";
+import { initSync } from "./sync.js?v=222";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=222";
+import * as PS from "./photostore.js?v=222";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -287,14 +287,25 @@ function widgets(g) {
     ["Put in a bin", g.stored.length + nobin, `data-putaway type="button"`],
     ["Orders to ship", g.sold.length + g.packed.length, `data-stage="${g.sold.length ? "sold" : "packed"}"`],
   ];
-  return `<section class="hudc" role="group" aria-label="Heads-up display">
-    <div class="hudc-read">
+  /* Nov 19, from Sawyer's notes: "Every page dumps everything out at once. Use
+     tabs. Stop being scared of putting things behind a tap." On a phone these
+     eight tiles ate 282px of a 635px screen and left the road map 129px, which
+     is why arranging only ever offered a spot or two. Two tabs: the work to do,
+     and the money. Both labelled, both one tap away, neither hidden. Opens on
+     the work, remembers which one he left it on. Desktop shows both at once. */
+  const tab = (() => { try { return localStorage.getItem("coalition-hud-tab") === "money" ? "money" : "todo"; } catch { return "todo"; } })();
+  return `<section class="hudc" role="group" aria-label="Heads-up display" data-tab="${tab}">
+    <div class="hudc-tabs" role="tablist" aria-label="What the display shows">
+      <button type="button" class="hct" role="tab" data-hudtab="todo" aria-selected="${tab === "todo"}">To do</button>
+      <button type="button" class="hct" role="tab" data-hudtab="money" aria-selected="${tab === "money"}">Money</button>
+    </div>
+    <div class="hudc-read" role="tabpanel" aria-label="Money">
       <button type="button" class="hc" data-goto="channels" data-pst="sold"><em>eBay sold this week</em><b>${money(wk)}</b></button>
       <div class="hc hc-ch" aria-label="eBay sales per week, last 8 weeks"><em>eBay sold, last 8 weeks</em><b>${money(sum8)}</b><span class="sd-bars">${wk8.map((v, i) => `<i style="height:${Math.max(10, Math.round(v / mx * 100))}%"${i === 7 ? ' class="now"' : ""} title="${money(v)} this week"></i>`).join("")}</span></div>
       <button type="button" class="hc" data-goto="channels"><em>Live on eBay</em><b>${lst.size}</b><small>${money(liveV)} asking</small></button>
       <button type="button" class="hc" data-stage="shipped"><em>In transit to buyers</em><b>${g.shipped.length + g.arriving.length}</b></button>
     </div>
-    <div class="hudc-act" role="list" aria-label="Next actions">${acts.map(([l, n, attr]) => `<button class="ha${n ? " hot" : ""}" ${attr} role="listitem"><b>${n}</b><span>${l}</span><i aria-hidden="true"></i></button>`).join("")}</div>
+    <div class="hudc-act" role="tabpanel" aria-label="Next actions">${acts.map(([l, n, attr]) => `<button class="ha${n ? " hot" : ""}" ${attr} role="listitem"><b>${n}</b><span>${l}</span><i aria-hidden="true"></i></button>`).join("")}</div>
     <i class="hudc-br tl"></i><i class="hudc-br tr"></i><i class="hudc-br bl"></i><i class="hudc-br br"></i></section>`;
 }
 /* ---------- your route, your way: stops can be dragged anywhere, the line always runs in order ---------- */
@@ -320,7 +331,7 @@ function routePath(pts, vertical) { let d = `M${pts[0][0]},${pts[0][1]}`; for (l
 /* Phone arranging on the constellation (Nov 14). A stop lives in a cell, so
    "it blocks something" has no way to happen: drop on a free cell and it moves
    there, drop on a taken one and the two stops trade places. */
-function cnArrange(main, road, W) {
+function cnArrange(sc, road, W) {
   const stops = [...road.querySelectorAll(".stop")];
   const slotOf = new Map(stops.map((st) => [st, Number(st.dataset.slot)]));
   const show = () => {
@@ -336,7 +347,7 @@ function cnArrange(main, road, W) {
     st.addEventListener("pointerdown", (e) => {
       if (e.button > 0) return; e.preventDefault(); e.stopPropagation();
       st.setPointerCapture(e.pointerId); st.classList.add("moving"); road.classList.add("picking");
-      const s0 = main.scrollTop, sx = e.clientX, sy = e.clientY;
+      const s0 = sc.scrollTop, sx = e.clientX, sy = e.clientY;
       const home = cnPos(slotOf.get(st)); let near = slotOf.get(st), raf = 0, speed = 0, dx = 0, dy = 0;
       /* Keep the stop on the map. Without this the edge-scroll below could run
          the drag thousands of px past the end and the stop flew off. */
@@ -349,21 +360,21 @@ function cnArrange(main, road, W) {
         for (let k = 0; k < 9; k++) { const p = cnPos(k), d = (p.x / 100 * rw() - cx) ** 2 + (p.y - cy) ** 2; if (d < bd) { bd = d; best = k; } }
         if (best !== near) { near = best; ghosts.querySelectorAll("i").forEach((g) => g.classList.toggle("on", Number(g.dataset.cell) === near)); }
       };
-      /* Edge-scroll only as far as there is map left. main.scrollTop += speed
+      /* Edge-scroll only as far as there is map left. sc.scrollTop += speed
          ran unbounded: the view shot past the end and dy went with it. Take
          only the scroll that actually happened, and stop when there is none. */
       const glide = () => {
         raf = 0; if (!speed) return;
-        const was = main.scrollTop, max = Math.max(0, main.scrollHeight - main.clientHeight);
-        main.scrollTop = Math.max(0, Math.min(max, was + speed));
-        const got = main.scrollTop - was;
+        const was = sc.scrollTop, max = Math.max(0, sc.scrollHeight - sc.clientHeight);
+        sc.scrollTop = Math.max(0, Math.min(max, was + speed));
+        const got = sc.scrollTop - was;
         if (!got) { speed = 0; return; }
         dy += got; put(); mark();
         raf = requestAnimationFrame(glide);
       };
       const mv = (ev) => {
-        dx = ev.clientX - sx; dy = ev.clientY - sy + (main.scrollTop - s0); put();
-        const r = main.getBoundingClientRect(), edge = 80;
+        dx = ev.clientX - sx; dy = ev.clientY - sy + (sc.scrollTop - s0); put();
+        const r = sc.getBoundingClientRect(), edge = 80;
         const over = ev.clientY > r.bottom - edge ? ev.clientY - (r.bottom - edge) : ev.clientY < r.top + edge ? ev.clientY - (r.top + edge) : 0;
         speed = over ? Math.max(-40, Math.min(40, over * 0.6)) : 0;
         if (speed && !raf) raf = requestAnimationFrame(glide);
@@ -395,7 +406,7 @@ function wireArrange(main, kind, W, H) {
   if (!arranging) return;
   road.classList.add("arranging");
   road.addEventListener("click", (e) => { if (e.target.closest(".stop")) { e.stopPropagation(); e.preventDefault(); } }, true);
-  if (kind === "phone") { cnArrange(main, road, W); return; }
+  if (kind === "phone") { cnArrange(road.closest(".cn-view") || main, road, W); return; }
   const stops = [...road.querySelectorAll(".stop")];
   const points = () => stops.map((st) => { const x = parseFloat(st.style.left) / 100 * W; const y = kind === "phone" ? parseFloat(st.style.top) : parseFloat(st.style.top) / 100 * H; return [x, y]; });
   const redraw = () => { const d = routePath(points(), kind === "phone"); road.querySelectorAll("svg > path").forEach((p) => p.setAttribute("d", d)); road.querySelectorAll("svg animateMotion").forEach((a) => a.setAttribute("path", d)); };
@@ -607,19 +618,27 @@ function renderCommand() {
     [g.sold.length + g.packed.length, "Pack and ship", "@sold"],
   ].map(([n, t, v, st]) => `<button class="pill${n ? " hot" : ""}" ${v[0] === "!" ? `data-putaway type="button"` : v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
-    main.style.overflowY = "auto"; main.style.overflowX = "hidden";
+    /* Nov 19: cmd-ph has been written since Nov 13 and never switched on - the
+       revert that put the old road back took the classList.add with it and left
+       28 phone rules and this remove() behind. So Sawyer's phone has been
+       rendering Command at desktop sizing, as a 1125px document inside a 635px
+       screen. That is the "it feels like an HTML file, not an app" and the
+       "wasted screen space", and it is why arranging only ever offered a spot
+       or two: two of the three rows sat below the fold. The frame goes back on. */
+    main.classList.add("cmd-ph");
+    main.style.overflowY = ""; main.style.overflowX = "";
     const W = 390, H = CN_H, slots = cnSlots();
     const at = Object.fromEntries(STOPS.map((s) => [s.id, cnPos(slots[s.id])]));
     const pts = STOPS.map((s) => [at[s.id].x / 100 * W, at[s.id].y]);
     const path = routePath(pts, true);
-    main.innerHTML = `${widgets(g)}<div class="arr-ph">${arrUi()}</div><div class="road pv cn" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
+    main.innerHTML = `${widgets(g)}<div class="arr-ph">${arrUi()}</div><div class="cn-view"><div class="road pv cn" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
       <defs><linearGradient id="rgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
       <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".12" stroke-width="14" stroke-linecap="round"/><path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".18" stroke-width="7" stroke-linecap="round"/>
       <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/></svg>
       ${STOPS.map((s, i) => { const n = g[s.id].length, p = at[s.id]; return `<div class="stop${n ? " has" : ""}" data-drop="${s.id}" data-slot="${slots[s.id]}" style="left:${p.x}%;top:${p.y}px;--c:${s.c}">
         ${pileHtml(g[s.id], "up", "", s.id)}<div class="dot" data-stage="${s.id}" aria-hidden="true"></div>
         <div class="tag${n ? " has" : ""}" data-stage="${s.id}" role="button" tabindex="0" aria-label="${esc(s.label)}, ${n} items"><em class="stepn">${i + 1}</em><span>${s.label}</span><strong class="tv"><b class="tc">${n}</b>${money(g[s.id].reduce((a, x) => a + worth(x), 0))}</strong>${goChip(s, g)}</div></div>`; }).join("")}
-      <div class="flag start" style="left:${at[STOPS[0].id].x}%;top:${at[STOPS[0].id].y - 118}px"><i></i>Start</div><div class="flag end" style="left:${at[STOPS[7].id].x}%;top:${at[STOPS[7].id].y + 86}px"><i></i>Done</div></div>`;
+      <div class="flag start" style="left:${at[STOPS[0].id].x}%;top:${at[STOPS[0].id].y - 118}px"><i></i>Start</div><div class="flag end" style="left:${at[STOPS[7].id].x}%;top:${at[STOPS[7].id].y + 86}px"><i></i>Done</div></div></div>`;
   } else {
     main.classList.remove("cmd-ph");
     main.style.overflowY = "hidden"; main.style.overflowX = "";
@@ -644,6 +663,12 @@ function renderCommand() {
   main.querySelectorAll(".more").forEach((m) => { const st = m.closest(".stop"); m.dataset.stage = st.dataset.drop; });
   main.querySelectorAll("[data-stage]").forEach((el) => el.addEventListener("click", () => stageSheet(el.dataset.stage)));
   main.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.pst) window.__chStage = b.dataset.pst; go(b.dataset.goto); }));
+  main.querySelectorAll("[data-hudtab]").forEach((b) => b.addEventListener("click", () => {
+    const sec = b.closest(".hudc"); if (!sec) return;
+    const v = b.dataset.hudtab; sec.dataset.tab = v;
+    sec.querySelectorAll("[data-hudtab]").forEach((x) => x.setAttribute("aria-selected", String(x.dataset.hudtab === v)));
+    try { localStorage.setItem("coalition-hud-tab", v); } catch { /* ignore */ }
+  }));
   main.querySelectorAll(".stop .tag").forEach((d) => d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); stageSheet(d.dataset.stage); } }));
   main.querySelector("#mKeyB")?.addEventListener("click", () => { keyOpen = !keyOpen; const k = main.querySelector("#mKey"); if (k) { k.hidden = !keyOpen; k.classList.toggle("on", keyOpen); } main.querySelector("#mKeyB")?.setAttribute("aria-expanded", String(keyOpen)); });
   main.querySelector("#mKeyX")?.addEventListener("click", () => { keyOpen = false; const k = main.querySelector("#mKey"); if (k) { k.hidden = true; k.classList.remove("on"); } main.querySelector("#mKeyB")?.setAttribute("aria-expanded", "false"); });
