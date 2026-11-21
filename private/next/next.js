@@ -1,17 +1,17 @@
-import "./viewer.js?v=226";
-import { startScanLink } from "./scanlink.js?v=226";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=226";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=226";
-import { phaseFromItem } from "/visor/phases.js?v=226";
-import { renderScouter } from "./scouter.js?v=226";
-import { renderCollection, openImport } from "./collection.js?v=226";
-import { photoManager } from "./photos.js?v=226";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=226";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=226";
-import { renderSettings } from "./settings.js?v=226";
-import { initSync } from "./sync.js?v=226";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=226";
-import * as PS from "./photostore.js?v=226";
+import "./viewer.js?v=227";
+import { startScanLink } from "./scanlink.js?v=227";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=227";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=227";
+import { phaseFromItem } from "/visor/phases.js?v=227";
+import { renderScouter } from "./scouter.js?v=227";
+import { renderCollection, openImport } from "./collection.js?v=227";
+import { photoManager } from "./photos.js?v=227";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=227";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=227";
+import { renderSettings } from "./settings.js?v=227";
+import { initSync } from "./sync.js?v=227";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=227";
+import * as PS from "./photostore.js?v=227";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -350,7 +350,7 @@ function widgets(g) {
       <button type="button" class="hc" data-goto="channels"><em>Live on eBay</em><b>${lst.size}</b><small>${money(liveV)} asking</small></button>
       <button type="button" class="hc" data-stage="shipped"><em>In transit to buyers</em><b>${g.shipped.length + g.arriving.length}</b></button>
     </div>
-    <div class="hudc-act" role="list" aria-label="Next actions">${acts.map(([l, n, attr]) => `<button class="ha${n ? " hot" : ""}" ${attr} role="listitem"><b>${n}</b><span>${l}</span><i aria-hidden="true"></i></button>`).join("")}</div>
+    <div class="hudc-act" role="list" aria-label="Next actions">${acts.map(([l, n, attr]) => `<button class="ha${n ? " hot" : ""}" ${attr} role="listitem"><b>${n}</b><span>${l}</span></button>`).join("")}</div>
     <i class="hudc-br tl"></i><i class="hudc-br tr"></i><i class="hudc-br bl"></i><i class="hudc-br br"></i></section>`;
 }
 /* ---------- your route, your way: stops can be dragged anywhere, the line always runs in order ---------- */
