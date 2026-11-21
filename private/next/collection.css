@@ -191,3 +191,96 @@
   #main .co-wrap[data-dens="2"] .vb-sub i{font-size:10.5px!important}
   #main .co-wrap .bd-dens{min-width:0;gap:4px;font-variant-numeric:tabular-nums}
 }
+
+
+/* ===== Nov 20: Channels and Collection were being sliced off at the right =====
+   Measured on a 375pt phone: #main is 351px, the tab strip rendered 390px on
+   Channels and 424px on Collection, and the toolbar ran to 456px. They were not
+   scrolling, they were overflowing and getting clipped - so "Delivered" and half
+   the toolbar simply did not exist on a phone.
+   Cause: .bd-tabs and .bd-tools are flex items, and a flex item's min-width is
+   auto, so they refuse to shrink below their content and blow past the parent.
+   overflow-x:auto was already set and could never fire. min-width:0 is what
+   lets it. Both rows now scroll sideways inside the screen, with a fade on the
+   edge so it is obvious there is more. */
+#main .co-wrap .bd-hud .bd-tabs,
+#main .co-wrap .bd-hud .bd-tools{min-width:0!important;max-width:100%!important;
+  overflow-x:auto!important;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;scroll-snap-type:x proximity}
+#main .co-wrap .bd-hud .bd-tabs::-webkit-scrollbar,
+#main .co-wrap .bd-hud .bd-tools::-webkit-scrollbar{display:none}
+#main .co-wrap .bd-hud .bd-tab,
+#main .co-wrap .bd-hud .bd-tools .bd-btn{scroll-snap-align:start}
+/* The fade says "keep going" without adding a control to tap. Phone only, and
+   only because the strip always overflows there - measured 83px past the edge
+   on Channels and 117px on Collection. On desktop it fits, so a permanent fade
+   would be decoration with no job, which the direction doc bans. */
+#main .co-wrap .bd-hud{position:relative}
+@media (max-width:820px){
+  #main .co-wrap .bd-hud .bd-tabs{
+    -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 22px),transparent 100%);
+    mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 22px),transparent 100%)}
+}
+
+
+/* ===== Nov 20: stop wasting the width, and line the rows up =====
+   Measured: the card grid came out 309px inside a 345px page, so 36px of a
+   375pt phone went to binder padding and the cards were 95px. And the cards
+   rendered 187px or 201px tall depending on whether the caption wrapped, so
+   every row sat at a different height and nothing lined up. */
+@media (max-width:820px){
+  /* the binder chrome keeps its look, it just stops eating the screen */
+  #main .co-wrap .vb-book{padding:5px!important}
+  #main .co-wrap .vb-page{padding:5px!important}
+  #main .co-wrap .vb-grid{gap:12px 8px!important}
+
+  /* One caption height for every card, so the rows align. The name is held to
+     one line and ellipsised rather than the box being clipped: fixing a height
+     over wrapping text cuts the words in half, which is how the card names came
+     out sliced the first time I tried this. */
+  #main .co-wrap .vb-pk{display:flex!important;flex-direction:column!important}
+  #main .co-wrap .vb-pk .vb-tag{flex:0 0 auto!important;height:auto!important;min-height:0!important;
+    justify-content:flex-start!important;gap:2px!important;overflow:visible!important;
+    padding-top:4px!important}
+  #main .co-wrap .vb-pk .vb-tag em{display:block;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;max-width:100%;font-size:11.5px!important;line-height:1.2!important}
+  #main .co-wrap .vb-pk .vb-tag .vb-sub{display:flex;align-items:baseline;justify-content:space-between;
+    gap:5px;min-width:0}
+  #main .co-wrap .vb-pk .vb-tag .vb-sub i{font-style:normal;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;font-size:10px!important;opacity:.7}
+  #main .co-wrap .vb-pk .vb-tag .vb-sub b{flex:0 0 auto;font-size:12px!important}
+
+  /* a search field you can actually read what you typed in */
+  #main .co-wrap .bd-tools .bd-search{flex:1 1 150px!important;min-width:140px!important}
+}
+
+@media (max-width:820px){
+  /* The binder is five nested frames: co-wrap, .vb, .vb-book, .vb-spread,
+     .vb-page, each with a 3px border, plus two 5px paddings - 38px of chrome
+     wrapped around the cards on a 375pt screen. The frames stay, they just
+     stop being desktop-thick, which hands the width back to the cards. */
+  #main .co-wrap.vlt{border-width:1px!important}
+  #main .co-wrap .vb{border-width:1px!important}
+  #main .co-wrap .vb-spread{border-width:1px!important}
+  #main .co-wrap .vb-grid{border-width:0!important}
+  #main .co-wrap .bd-tools .bd-search input{min-width:0!important;width:100%!important}
+}
+
+@media (max-width:820px){
+  /* Build 220 dropped the set name at 3-up because the cards were 95px and it
+     would not fit. They are 103px now and the set is one of the three things
+     he asked to see on a card, so it comes back, ellipsised rather than gone.
+     The 2-up toggle is still there when he wants the whole name. */
+  #main .co-wrap[data-dens="3"] .vb-sub i{display:block!important;max-width:100%}
+  #main .co-wrap .vb-pk .vb-tag .vb-sub{flex-wrap:wrap!important;row-gap:0!important}
+  #main .co-wrap[data-dens="3"] .vb-pk .vb-tag .vb-sub{display:block!important}
+  #main .co-wrap[data-dens="3"] .vb-pk .vb-tag .vb-sub b{display:block!important;margin-top:1px}
+}
+
+@media (max-width:820px){
+  /* HOLO-DIRECTION bans spaced caps outright, and the set name was rendering
+     as tracked-out uppercase - the "stencil lettering" he keeps calling cheesy.
+     Same information, read as a name instead of a label. */
+  #main .co-wrap .vb-sub i{text-transform:none!important;letter-spacing:0!important;
+    font-weight:500!important;font-size:10px!important}
+}
