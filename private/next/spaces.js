@@ -1,6 +1,6 @@
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=225";
-import { fly, rectOf, sleep, openCard } from "./kit.js?v=225";
-import { setOf, numOf, cardName } from "./cardmeta.js?v=225";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, loadSpaces, saveSpaces, assign, catOf } from "./shared.js?v=226";
+import { fly, rectOf, sleep, openCard } from "./kit.js?v=226";
+import { setOf, numOf, cardName } from "./cardmeta.js?v=226";
 
 /* Spaces = his real storage, as a camera you fly through:
    area -> shelf -> bin (closed, lid flips) -> bin (open, items inside). */
@@ -10,13 +10,17 @@ const SHELVES = [
   { id: "s1", kind: "Listed items", name: "Shelf 1", photo: "stackA.jpg", bins: ["bin-tote", "bin-apache", "bin-bunkerA"] },
   { id: "s2", kind: "Unsifted items", name: "Shelf 2", photo: "stackB.jpg", bins: ["bin-bunkerB1", "bin-bunkerB2"] },
 ];
-/* rect = where the bin sits inside the shelf photo, in % of the photo: [x, y, w, h] */
+/* rect  = where the bin sits inside the shelf photo, in % of the photo: [x, y, w, h]
+   inner = where the INSIDE of the open case is, in % of that bin's open photo.
+           Read off each real photo by eye. Sawyer: items added to a bin showed
+           in a list off to the right, which reads as not yet dropped in. They
+           go in the case now. */
 const PHYS = {
-  "bin-tote": { name: "Bin 1", sub: "Tan tote", closed: "tote-top.jpg", open: "tote-open.jpg", rect: [3, 64, 90, 34], shelf: "s1" },
-  "bin-apache": { name: "Bin 2", sub: "Apache case", closed: "apache-top.jpg", open: "apache-open.jpg", rect: [8, 39, 80, 25], shelf: "s1" },
-  "bin-bunkerA": { name: "Bin 3", sub: "Bunker tote", closed: "bunkerA-top.jpg", open: "bunkerA-open.jpg", rect: [3, 1, 94, 37], shelf: "s1" },
-  "bin-bunkerB1": { name: "Bin 4", sub: "Bunker tote", closed: "bunkerB1-top.jpg", open: "bunkerB1-open.jpg", rect: [3, 58, 92, 40], shelf: "s2" },
-  "bin-bunkerB2": { name: "Bin 5", sub: "Bunker tote", closed: "bunkerB2-top.jpg", open: "bunkerB2-open.jpg", rect: [3, 2, 92, 56], shelf: "s2" },
+  "bin-tote": { name: "Bin 1", sub: "Tan tote", closed: "tote-top.jpg", open: "tote-open.jpg", rect: [3, 64, 90, 34], inner: [8, 11, 85, 74], shelf: "s1" },
+  "bin-apache": { name: "Bin 2", sub: "Apache case", closed: "apache-top.jpg", open: "apache-open.jpg", rect: [8, 39, 80, 25], inner: [16, 50, 69, 43], shelf: "s1" },
+  "bin-bunkerA": { name: "Bin 3", sub: "Bunker tote", closed: "bunkerA-top.jpg", open: "bunkerA-open.jpg", rect: [3, 1, 94, 37], inner: [14, 40, 74, 46], shelf: "s1" },
+  "bin-bunkerB1": { name: "Bin 4", sub: "Bunker tote", closed: "bunkerB1-top.jpg", open: "bunkerB1-open.jpg", rect: [3, 58, 92, 40], inner: [8, 17, 85, 67], shelf: "s2" },
+  "bin-bunkerB2": { name: "Bin 5", sub: "Bunker tote", closed: "bunkerB2-top.jpg", open: "bunkerB2-open.jpg", rect: [3, 2, 92, 56], inner: [9, 23, 84, 64], shelf: "s2" },
 };
 
 let ctx = null, busy = false, keyBound = false;
@@ -95,10 +99,27 @@ function shelfFocusView(w) {
     <div class="spx-fcard"><div><b>${esc(sp.name || nm(w, id))}</b><em>${esc(sp.sub || PHYS[id].sub || "")} · ${its.length} item${its.length === 1 ? "" : "s"} · ${money(val(its))}</em></div><button class="btn go" id="fOpen" type="button">Open it</button></div>
     <p class="spx-hint">Turn the dial or swipe to change bins. Tap the bin to open it.</p></div>`;
 }
+/* ---------- what is actually in the case ----------
+   Sawyer, Nov 18: items added to a bin showed in a list off to the right, and
+   he read that as "not dropped in yet". So when the lid comes up, the tracked
+   items are laid out inside the case itself, on the bin's own photo, using the
+   interior rect measured off that photo. The list below stays - it is the one
+   you can search - this is the glance. */
+function insideHtml(w, sp, p) {
+  if (!p || !p.inner) return "";
+  const its = w.inBin(sp.id); if (!its.length) return "";
+  const [x, y, ww, hh] = p.inner;
+  const top = its.slice().sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+  const show = top.slice(0, 12), rest = top.length - show.length;
+  const cells = show.map((i) => { const ph = photoOf(i);
+    return `<button type="button" class="spx-inc" data-item="${esc(i.id)}" title="${esc(nameOf(i))}">${ph ? `<img src="${esc(ph)}" alt="" loading="lazy" draggable="false">` : `<i>${esc(nameOf(i).charAt(0).toUpperCase())}</i>`}</button>`; }).join("");
+  return `<div class="spx-inside" style="left:${x}%;top:${y}%;width:${ww}%;height:${hh}%" aria-hidden="true">
+    <div class="spx-ingrid">${cells}</div>${rest > 0 ? `<span class="spx-inmore">+${rest}</span>` : ""}</div>`;
+}
 function binView(w) {
   const sp = w.spaces.find((s) => s.id === S.bin); if (!sp) return `<div class="spx-stage"><p class="spx-empty">That bin is gone.</p></div>`;
   const p = PHYS[sp.id], its = w.inBin(sp.id);
-  const flip = p ? `<div class="spx-flip" id="flip"><img class="spx-under" src="${IMG}${p.open}" alt="${esc(sp.name)} open" draggable="false"><img class="spx-lid" src="${IMG}${p.closed}" alt="${esc(sp.name)} closed" draggable="false"></div>`
+  const flip = p ? `<div class="spx-flip" id="flip"><img class="spx-under" src="${IMG}${p.open}" alt="${esc(sp.name)} open" draggable="false">${insideHtml(w, sp, p)}<img class="spx-lid" src="${IMG}${p.closed}" alt="${esc(sp.name)} closed" draggable="false"></div>`
     : `<div class="spx-flip generic" id="flip"><div class="spx-under"></div><div class="spx-lid"><b>${esc(sp.name)}</b></div></div>`;
   const q = WS.bq.trim().toLowerCase(), shown = its.filter((i) => !q || `${nameOf(i)} ${setOf(i)} ${numOf(i)}`.toLowerCase().includes(q)).sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
   const groups = new Map(); for (const i of shown) { const k = setOf(i) || gameOf(i); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(i); }
