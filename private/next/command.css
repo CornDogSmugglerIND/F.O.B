@@ -374,3 +374,33 @@
   #main .hudc-more{display:none!important}
   #main .hudc[data-sales="shut"] .hudc-read{display:grid!important}
 }
+
+/* ===== Nov 21: arranging compresses the map so every spot is on screen =====
+   Rows go from 240px apart to 120px, which only works if a stop stops being a
+   215px tower of photo pile and caption. While arranging each one is a chip:
+   the card photo, the orb and the name. The value, the go chip and the deck
+   controls are not arranging tools, so they step out until he taps Done, and
+   the full map comes straight back. Nothing is deleted - this is a mode. */
+#main .road.cn-tight .stop{transition:left .3s cubic-bezier(.22,1,.36,1),top .3s cubic-bezier(.22,1,.36,1)}
+#main .road.cn-tight .pile{transform:scale(.52);transform-origin:bottom center}
+#main .road.cn-tight .pile .pstep,
+#main .road.cn-tight .pile .more{display:none!important}
+#main .road.cn-tight .tag .go,
+#main .road.cn-tight .tag .val,
+#main .road.cn-tight .tag .stepn{display:none!important}
+#main .road.cn-tight .tag{padding:3px 7px!important;gap:0!important;
+  min-width:0!important;max-width:104px!important}
+#main .road.cn-tight .tag .nm,
+#main .road.cn-tight .tag > span:first-child{font-size:10.5px!important;line-height:1.15!important;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+#main .road.cn-tight .dot{transform:scale(.86)}
+#main .road.cn-tight .flag{display:none!important}
+/* the drop cells have to read clearly once everything is small */
+#main .road.cn-tight .cn-cells i{width:62px;height:62px;margin:-31px 0 0 -31px;border-width:2px}
+#main .road.cn-tight .cn-cells i.on{box-shadow:0 0 0 2px rgba(96,230,164,.6),0 0 24px rgba(96,230,164,.5)}
+
+/* The arrange bar is a full-width block even though its buttons sit on the
+   right, so its empty half was swallowing taps on the top row of stops -
+   three of eight unreachable at their centre. Only the buttons take pointers. */
+#main .arr-ph{pointer-events:none}
+#main .arr-ph .arr-b,#main .arr-ph .arr{pointer-events:auto}

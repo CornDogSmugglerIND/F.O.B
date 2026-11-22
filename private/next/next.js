@@ -1,17 +1,17 @@
-import "./viewer.js?v=228";
-import { startScanLink } from "./scanlink.js?v=228";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=228";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=228";
-import { phaseFromItem } from "/visor/phases.js?v=228";
-import { renderScouter } from "./scouter.js?v=228";
-import { renderCollection, openImport } from "./collection.js?v=228";
-import { photoManager } from "./photos.js?v=228";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=228";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=228";
-import { renderSettings } from "./settings.js?v=228";
-import { initSync } from "./sync.js?v=228";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=228";
-import * as PS from "./photostore.js?v=228";
+import "./viewer.js?v=229";
+import { startScanLink } from "./scanlink.js?v=229";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=229";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=229";
+import { phaseFromItem } from "/visor/phases.js?v=229";
+import { renderScouter } from "./scouter.js?v=229";
+import { renderCollection, openImport } from "./collection.js?v=229";
+import { photoManager } from "./photos.js?v=229";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=229";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=229";
+import { renderSettings } from "./settings.js?v=229";
+import { initSync } from "./sync.js?v=229";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=229";
+import * as PS from "./photostore.js?v=229";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -637,10 +637,19 @@ function mapWire(main, g) {
    them in order. Positions are CELLS, so two stops can never occupy the same
    space - dragging swaps them instead of stacking them. */
 const CN_COLS = [16, 50, 84], CN_ROWS = [186, 426, 666], CN_H = 818;
+/* Nov 21: on a 635px phone the full canvas put rows two and three at y 620 and
+   860 - off the bottom of the screen. Measured, not guessed. That is the whole
+   of "there are only one or two placement options": there was nowhere visible
+   to drop a stop. While arranging, the map compresses to a canvas that fits,
+   and the stops ride it as compact chips so the rows do not collide. Slots are
+   stored as plain indices, so nothing he has already arranged is touched - the
+   same slot just sits at a different y while he is moving it. */
+const ARR_ROWS = [104, 204, 304], ARR_H = 362;
+const cnTight = () => arranging && phone();
 /* slot -> grid position, boustrophedon so the route winds instead of zig-zags */
 function cnPos(slot) {
   const r = Math.floor(slot / 3), k = slot % 3;
-  return { x: CN_COLS[r % 2 ? 2 - k : k], y: CN_ROWS[r] };
+  return { x: CN_COLS[r % 2 ? 2 - k : k], y: (cnTight() ? ARR_ROWS : CN_ROWS)[r] };
 }
 /* stopId -> slot. Defaults to running order; saved as a plain slot map. */
 function cnSlots() {
@@ -678,11 +687,11 @@ function renderCommand() {
   ].map(([n, t, v, st]) => `<button class="pill${n ? " hot" : ""}" ${v[0] === "!" ? `data-putaway type="button"` : v[0] === "@" ? `data-stage="${v.slice(1)}"` : `data-goto="${v}"`} ${st ? `data-pst="${st}"` : ""}><b>${n}</b>${t}</button>`).join("");
   if (phone()) {
     main.style.overflowY = "auto"; main.style.overflowX = "hidden";
-    const W = 390, H = CN_H, slots = cnSlots();
+    const W = 390, H = cnTight() ? ARR_H : CN_H, slots = cnSlots();
     const at = Object.fromEntries(STOPS.map((s) => [s.id, cnPos(slots[s.id])]));
     const pts = STOPS.map((s) => [at[s.id].x / 100 * W, at[s.id].y]);
     const path = routePath(pts, true);
-    main.innerHTML = `${widgets(g)}<div class="arr-ph">${arrUi()}</div><div class="road pv cn" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
+    main.innerHTML = `${widgets(g)}<div class="arr-ph">${arrUi()}</div><div class="road pv cn${cnTight() ? " cn-tight" : ""}" style="position:relative;height:${H}px"><div class="dock">${pills}</div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:${H}px">
       <defs><linearGradient id="rgp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#50B97E"/><stop offset=".55" stop-color="#B3FBD5"/><stop offset="1" stop-color="#E8924A"/></linearGradient></defs>
       <path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".12" stroke-width="14" stroke-linecap="round"/><path d="${path}" fill="none" stroke="#90FFCC" stroke-opacity=".18" stroke-width="7" stroke-linecap="round"/>
       <path d="${path}" fill="none" stroke="url(#rgp)" stroke-width="3" stroke-linecap="round"/></svg>
