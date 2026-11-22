@@ -1,17 +1,17 @@
-import "./viewer.js?v=227";
-import { startScanLink } from "./scanlink.js?v=227";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=227";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=227";
-import { phaseFromItem } from "/visor/phases.js?v=227";
-import { renderScouter } from "./scouter.js?v=227";
-import { renderCollection, openImport } from "./collection.js?v=227";
-import { photoManager } from "./photos.js?v=227";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=227";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=227";
-import { renderSettings } from "./settings.js?v=227";
-import { initSync } from "./sync.js?v=227";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=227";
-import * as PS from "./photostore.js?v=227";
+import "./viewer.js?v=228";
+import { startScanLink } from "./scanlink.js?v=228";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=228";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=228";
+import { phaseFromItem } from "/visor/phases.js?v=228";
+import { renderScouter } from "./scouter.js?v=228";
+import { renderCollection, openImport } from "./collection.js?v=228";
+import { photoManager } from "./photos.js?v=228";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=228";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=228";
+import { renderSettings } from "./settings.js?v=228";
+import { initSync } from "./sync.js?v=228";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=228";
+import * as PS from "./photostore.js?v=228";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -343,14 +343,23 @@ function widgets(g) {
     ["Put in a bin", g.stored.length + nobin, `data-putaway type="button"`],
     ["Orders to ship", g.sold.length + g.packed.length, `data-stage="${g.sold.length ? "sold" : "packed"}"`],
   ];
-  return `<section class="hudc" role="group" aria-label="Heads-up display">
+  /* Nov 21: this block was 318px of a 635px screen - half of Command gone
+     before the road map starts, which is the wasted space Sawyer keeps naming.
+     The four action tiles are the work, so they go first and stay put. The
+     four eBay figures fold behind one line that still shows this week's number,
+     so collapsed is never a blind tap. No invented words: he looked at "Money"
+     in 222 and said he did not know what it meant. Opens folded, remembers. */
+  const open = (() => { try { return localStorage.getItem("coalition-hud-sales") === "1"; } catch { return false; } })();
+  return `<section class="hudc" role="group" aria-label="Heads-up display" data-sales="${open ? "open" : "shut"}">
+    <div class="hudc-act" role="list" aria-label="Next actions">${acts.map(([l, n, attr]) => `<button class="ha${n ? " hot" : ""}" ${attr} role="listitem"><b>${n}</b><span>${l}</span></button>`).join("")}</div>
+    <button type="button" class="hudc-more" data-salestoggle aria-expanded="${open}">
+      <em>eBay sales &amp; listings</em><b>${money(wk)}</b><small>this week</small><svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.6 6 6.4l5-4.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <div class="hudc-read">
       <button type="button" class="hc" data-goto="channels" data-pst="sold"><em>eBay sold this week</em><b>${money(wk)}</b></button>
       <div class="hc hc-ch" aria-label="eBay sales per week, last 8 weeks"><em>eBay sold, last 8 weeks</em><b>${money(sum8)}</b><span class="sd-bars">${wk8.map((v, i) => `<i style="height:${Math.max(10, Math.round(v / mx * 100))}%"${i === 7 ? ' class="now"' : ""} title="${money(v)} this week"></i>`).join("")}</span></div>
       <button type="button" class="hc" data-goto="channels"><em>Live on eBay</em><b>${lst.size}</b><small>${money(liveV)} asking</small></button>
       <button type="button" class="hc" data-stage="shipped"><em>In transit to buyers</em><b>${g.shipped.length + g.arriving.length}</b></button>
     </div>
-    <div class="hudc-act" role="list" aria-label="Next actions">${acts.map(([l, n, attr]) => `<button class="ha${n ? " hot" : ""}" ${attr} role="listitem"><b>${n}</b><span>${l}</span></button>`).join("")}</div>
     <i class="hudc-br tl"></i><i class="hudc-br tr"></i><i class="hudc-br bl"></i><i class="hudc-br br"></i></section>`;
 }
 /* ---------- your route, your way: stops can be dragged anywhere, the line always runs in order ---------- */
@@ -387,7 +396,12 @@ function cnArrange(main, road, W) {
   const ghosts = document.createElement("div"); ghosts.className = "cn-cells";
   for (let k = 0; k < 9; k++) { const p = cnPos(k), g = document.createElement("i"); g.dataset.cell = String(k); g.style.left = p.x + "%"; g.style.top = p.y + "px"; ghosts.appendChild(g); }
   road.appendChild(ghosts);
-  const rw = () => road.getBoundingClientRect().width || W;
+  /* Nov 21: arranging zooms the map out so the whole grid is reachable, and a
+     CSS transform does not change layout coordinates. Screen pixels therefore
+     have to be divided by the zoom before they are written back as left/top,
+     or the stop runs away from the finger. rw() is the layout width, unscaled. */
+  const rw = () => road.offsetWidth || W;
+  const sc = () => { const r = road.getBoundingClientRect().width, l = road.offsetWidth; return l && r ? r / l : 1; };
   for (const st of stops) {
     st.addEventListener("pointerdown", (e) => {
       if (e.button > 0) return; e.preventDefault(); e.stopPropagation();
@@ -414,11 +428,11 @@ function cnArrange(main, road, W) {
         main.scrollTop = Math.max(0, Math.min(max, was + speed));
         const got = main.scrollTop - was;
         if (!got) { speed = 0; return; }
-        dy += got; put(); mark();
+        dy += got / sc(); put(); mark();
         raf = requestAnimationFrame(glide);
       };
       const mv = (ev) => {
-        dx = ev.clientX - sx; dy = ev.clientY - sy + (main.scrollTop - s0); put();
+        const k = sc(); dx = (ev.clientX - sx) / k; dy = (ev.clientY - sy) / k + (main.scrollTop - s0) / k; put();
         const r = main.getBoundingClientRect(), edge = 80;
         const over = ev.clientY > r.bottom - edge ? ev.clientY - (r.bottom - edge) : ev.clientY < r.top + edge ? ev.clientY - (r.top + edge) : 0;
         speed = over ? Math.max(-40, Math.min(40, over * 0.6)) : 0;
@@ -701,6 +715,13 @@ function renderCommand() {
   main.querySelectorAll(".stop .pile[data-pile]").forEach((pl) => { const st = pl.closest(".stop"); wirePile(pl, g[st.dataset.drop] || []); });
   main.querySelectorAll("[data-stage]").forEach((el) => el.addEventListener("click", () => stageSheet(el.dataset.stage)));
   main.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.pst) window.__chStage = b.dataset.pst; go(b.dataset.goto); }));
+  main.querySelectorAll("[data-salestoggle]").forEach((b) => b.addEventListener("click", () => {
+    const sec = b.closest(".hudc"); if (!sec) return;
+    const nowOpen = sec.dataset.sales !== "open";
+    sec.dataset.sales = nowOpen ? "open" : "shut";
+    b.setAttribute("aria-expanded", String(nowOpen));
+    try { localStorage.setItem("coalition-hud-sales", nowOpen ? "1" : "0"); } catch { /* ignore */ }
+  }));
   main.querySelectorAll(".stop .tag").forEach((d) => d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); stageSheet(d.dataset.stage); } }));
   main.querySelector("#mKeyB")?.addEventListener("click", () => { keyOpen = !keyOpen; const k = main.querySelector("#mKey"); if (k) { k.hidden = !keyOpen; k.classList.toggle("on", keyOpen); } main.querySelector("#mKeyB")?.setAttribute("aria-expanded", String(keyOpen)); });
   main.querySelector("#mKeyX")?.addEventListener("click", () => { keyOpen = false; const k = main.querySelector("#mKey"); if (k) { k.hidden = true; k.classList.remove("on"); } main.querySelector("#mKeyB")?.setAttribute("aria-expanded", "false"); });

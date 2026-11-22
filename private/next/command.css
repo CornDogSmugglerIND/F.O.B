@@ -325,3 +325,52 @@
   #main .hudc-read .hc b{line-height:1!important}
   #main .hudc-read .hc small{line-height:1.05!important;margin-top:1px}
 }
+
+/* ===== Nov 21: the eBay figures fold away =====
+   The block was 318px of a 635px screen. The work comes first and stays; the
+   four figures sit behind one line that still carries this week's number, so
+   folded is never a blind tap. */
+#main .hudc-more{display:flex;align-items:baseline;gap:7px;width:100%;
+  margin-top:9px;padding:7px 10px;border-radius:11px;cursor:pointer;
+  border:1px solid rgba(179,251,213,.12);
+  background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015));
+  color:#D3F2E4;text-align:left;
+  transition:border-color .2s ease,background .2s ease}
+#main .hudc-more:hover{border-color:rgba(179,251,213,.3);background:rgba(255,255,255,.06)}
+#main .hudc-more em{font-style:normal;font:600 11.5px/1.1 var(--disp);color:#86A99B;flex:0 1 auto;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#main .hudc-more b{font:700 14px/1 var(--disp);color:#C8FFE4;margin-left:auto;white-space:nowrap}
+#main .hudc-more small{font-size:10px;color:#86A99B;white-space:nowrap}
+#main .hudc-more svg{width:12px;height:8px;flex:0 0 auto;color:#86A99B;
+  transition:transform .26s cubic-bezier(.22,1,.36,1)}
+#main .hudc[data-sales="open"] .hudc-more svg{transform:rotate(180deg)}
+#main .hudc[data-sales="open"] .hudc-more{border-color:rgba(179,251,213,.26)}
+
+#main .hudc[data-sales="shut"] .hudc-read{display:none!important}
+#main .hudc[data-sales="open"] .hudc-read{margin-top:8px;
+  animation:hudReveal .3s cubic-bezier(.22,1,.36,1) both}
+@keyframes hudReveal{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#main .hudc[data-sales="open"] .hudc-read{animation-duration:.01ms}}
+
+/* the action tiles lead now, so they get the room the figures used to take */
+#main .hudc-act{margin-top:0!important;padding-top:0!important;border-top:0!important}
+
+
+
+/* The stop's own box is 27px - just the dot. The card, name and value around
+   it are positioned, so they were never part of the handle, which is a 27px
+   target for a finger. While arranging each stop carries an invisible 56px
+   grab area instead. */
+#main .road.arranging .stop{position:absolute}
+#main .road.arranging .stop::after{content:"";position:absolute;left:50%;top:50%;
+  width:56px;height:56px;transform:translate(-50%,-50%);border-radius:50%;z-index:0}
+#main .road.arranging .stop.moving::after{cursor:grabbing}
+/* the arrange bar must not sit on top of the map it is arranging */
+#main .arr,#main .arr-ph{position:relative;z-index:4}
+
+/* Desktop has the width for all of it at once, so the fold is a phone answer
+   to a phone problem. There, the figures stay on screen and the fold row goes. */
+@media (min-width:821px){
+  #main .hudc-more{display:none!important}
+  #main .hudc[data-sales="shut"] .hudc-read{display:grid!important}
+}
