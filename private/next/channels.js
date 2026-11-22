@@ -1,8 +1,8 @@
-import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive, srcOf} from "./shared.js?v=229";
-import { photoManager } from "./photos.js?v=229";
-import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=229";
-import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=229";
-import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=229";
+import { esc, money, nameOf, photoOf, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, archMap, isArchived, archive, unarchive, srcOf} from "./shared.js?v=230";
+import { photoManager } from "./photos.js?v=230";
+import { setOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=230";
+import { openCard, ringGauge, sparkBars, shelf, svCard } from "./kit.js?v=230";
+import { orderItems, trackUrl, whenLabel, dayText, trackerHtml, setOv, hideIds, track } from "./orders.js?v=230";
 
 let ctx = null;
 const S = { f: { when: "", game: "", bin: "", price: "", type: "" }, groupBy: "set", shut: new Set(), stage: "listed", view: (() => { try { return localStorage.getItem("fob-ch-view2") || "rows"; } catch { return "rows"; } })(), group: "game", q: "", sort: "value", sel: new Set(), more: {}, closed: new Set(), drawer: false };
@@ -56,7 +56,23 @@ function tile(it) {
       <div class="chr-mid"><b>${esc(nameOf(it))}</b><span>${esc(sub)}</span>${badge(it) ? `<i class="chr-chip">${esc(badge(it))}</i>` : ""}</div>
       <div class="chr-end"><b>${ptxt(it)}</b>${!it._order && (Number(it.quantity) || 1) > 1 ? `<span>${Number(it.quantity)} in stock</span>` : ""}</div></article>`;
   }
-  return `<article class="co-card ch-tile k-tilt ${S.view}${on ? " sel" : ""}" data-id="${esc(it.id)}" tabindex="0"><div class="co-art"><div class="co-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i></div>${badge(it) ? `<i class="ch-badge">${esc(badge(it))}</i>` : ""}<i class="co-pick${on ? " on" : ""}" data-pick="${esc(it.id)}">${on ? "✓" : ""}</i></div>${S.view === "cards" ? `<div class="co-cap"><span>${esc(nameOf(it))}</span><b>${ptxt(it)}</b></div>` : `<div class="ch-price">${ptxt(it)}</div>`}</article>`;
+  /* Nov 21: the card used to be a photo, a price and a "No bin" chip. lockData
+     already works out how long a listing has been up and which bin it is in,
+     and the tile threw both away - so a page of 86 live listings told Sawyer
+     nothing he could act on. Days live is the number that matters to a
+     reseller: it is what makes something stale. It goes on the card, with the
+     set, and the card says how old it is at a glance. */
+  const days = it._order ? daysSince(it._order.createdAt) : liveDays(it);
+  const age = days == null ? "" : days >= 45 ? "cold" : days >= 21 ? "warm" : "fresh";
+  const set = it._order ? (it._order.buyer ? "Buyer " + it._order.buyer : "") : (setOf(it) || "");
+  const bin = it._order ? "" : (loadSpaces().find((x) => x.id === it.spaceId)?.name || "");
+  const agelabel = it._order
+    ? (days == null ? "" : days === 0 ? "Sold today" : days + "d ago")
+    : (days == null ? "" : days === 0 ? "Listed today" : days + "d live");
+  return `<article class="co-card ch-tile k-tilt ${S.view}${on ? " sel" : ""}${age ? " age-" + age : ""}" data-id="${esc(it.id)}" tabindex="0"><div class="co-art"><div class="co-img">${src ? `<img src="${esc(src)}" alt="" loading="lazy" draggable="false">` : `<span class="co-ini">${esc(nameOf(it).charAt(0))}</span>`}<i class="co-sheen"></i></div>${agelabel ? `<i class="ch-age" title="${esc(agelabel)}">${esc(agelabel)}</i>` : ""}<i class="co-pick${on ? " on" : ""}" data-pick="${esc(it.id)}">${on ? "✓" : ""}</i></div>
+    <div class="ch-meta"><span class="ch-nm">${esc(nameOf(it))}</span>
+      <span class="ch-sub">${set ? `<i>${esc(set)}</i>` : ""}<b>${ptxt(it)}</b></span>
+      ${bin ? `<span class="ch-bin">${esc(bin)}</span>` : `<span class="ch-bin none">No bin</span>`}</div></article>`;
 }
 function routeHtml(counts) {
   /* Pipeline reticle: one ring, each arc = how much of your stock sits in that stage. The lit arc is the stage you're viewing. */
@@ -422,12 +438,15 @@ function boardTabs(counts) {
 function boardTile(it, i) {
   const src = photoOf(it), on = S.sel.has(String(it.id)), d = liveDays(it);
   const name = it._n > 1 ? nameOf(it).replace(/\s*-\s*pick your card!?.*$/i, "") : cardName(it);
-  return `<article class="bd-t ch-tile${on ? " sel" : ""}${d > 45 ? " stale" : ""}" data-id="${esc(it.id)}" tabindex="0" style="--i:${Math.min(i, 24)}" aria-label="${esc(name)} ${ptxt(it)}">
+  return `<article class="bd-t ch-tile${on ? " sel" : ""}${d > 45 ? " stale" : ""}${d == null ? "" : d >= 45 ? " age-cold" : d >= 21 ? " age-warm" : " age-fresh"}" data-id="${esc(it.id)}" tabindex="0" style="--i:${Math.min(i, 24)}" aria-label="${esc(name)} ${ptxt(it)}">
     <div class="bd-art">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<i class="bd-ini">${esc(name.charAt(0))}</i>`}<span class="bd-glare" aria-hidden="true"></span>
       <i class="bd-br tl"></i><i class="bd-br tr"></i><i class="bd-br bl"></i><i class="bd-br br"></i>
-      ${it._n > 1 ? `<span class="bd-var">${it._n} cards</span>` : ""}${!it.spaceId ? `<span class="bd-flag" title="No bin">No bin</span>` : ""}
+      ${it._n > 1 ? `<span class="bd-var">${it._n} cards</span>` : ""}
+      ${d == null ? "" : `<span class="ch-age" title="${d === 0 ? "Listed today" : d + " days live"}">${d === 0 ? "Today" : d + "d"}</span>`}
       <button type="button" class="bd-pick" data-pick="${esc(it.id)}" aria-label="Select" aria-pressed="${on}"></button></div>
-    <div class="bd-cap"><b>${ptxt(it)}</b><span>${esc(name)}</span></div></article>`;
+    <div class="bd-cap ch-meta"><span class="ch-nm">${esc(name)}</span>
+      <span class="ch-sub">${setOf(it) ? `<i>${esc(setOf(it))}</i>` : "<i></i>"}<b>${ptxt(it)}</b></span>
+      <span class="ch-bin${it.spaceId ? "" : " none"}">${it.spaceId ? esc(binName(it) || "In a bin") : "No bin"}</span></div></article>`;
 }
 function boardFilterCount() { return ["when", "bin", "price", "type"].filter((k) => S.f[k]).length; }
 function boardBody(all) {

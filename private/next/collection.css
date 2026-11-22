@@ -284,3 +284,106 @@
   #main .co-wrap .vb-sub i{text-transform:none!important;letter-spacing:0!important;
     font-weight:500!important;font-size:10px!important}
 }
+
+/* ===== Nov 21: a Channels card that tells him something =====
+   It was a photo, a price and a "No bin" chip. A page of 86 live listings has
+   to answer "what do I act on", and the one number that answers it is how long
+   something has been sitting there. The card carries the name, the set, the
+   price, how long it has been live and which bin it is in, and it reads its
+   own age: fresh under three weeks, warm to six, cold past that. */
+#main .ch-wrap .ch-tile{position:relative;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,rgba(9,19,14,.92),rgba(5,12,9,.96));
+  border:1px solid rgba(179,251,213,.13);border-radius:13px;overflow:hidden;
+  box-shadow:0 2px 10px rgba(0,0,0,.45);
+  transition:border-color .2s ease,box-shadow .2s ease,transform .2s cubic-bezier(.22,1,.36,1)}
+#main .ch-wrap .ch-tile:hover,#main .ch-wrap .ch-tile:focus-visible{
+  border-color:rgba(179,251,213,.4);box-shadow:0 6px 20px rgba(0,0,0,.6),0 0 18px rgba(96,230,164,.16);
+  transform:translateY(-2px)}
+#main .ch-wrap .ch-tile .co-art{position:relative}
+#main .ch-wrap .ch-tile .co-img{border-radius:0!important}
+
+/* how old it is, on the photo */
+#main .ch-wrap .ch-age{position:absolute;left:6px;bottom:6px;z-index:3;
+  padding:2px 7px;border-radius:999px;font:700 9.5px/1.6 var(--disp);letter-spacing:.01em;
+  background:rgba(4,12,8,.82);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);
+  border:1px solid rgba(179,251,213,.26);color:#C8FFE4;white-space:nowrap}
+#main .ch-wrap .ch-tile.age-warm .ch-age{border-color:rgba(242,160,61,.5);color:#F7C98B}
+#main .ch-wrap .ch-tile.age-cold .ch-age{border-color:rgba(232,146,74,.72);color:#FFC59A;
+  background:rgba(26,11,4,.84)}
+/* a cold listing should catch his eye from across the grid */
+#main .ch-wrap .ch-tile.age-cold{border-color:rgba(232,146,74,.42)}
+#main .ch-wrap .ch-tile.age-cold:hover{box-shadow:0 6px 20px rgba(0,0,0,.6),0 0 18px rgba(232,146,74,.26)}
+
+#main .ch-wrap .ch-meta{display:flex;flex-direction:column;gap:2px;padding:7px 9px 8px;min-width:0}
+#main .ch-wrap .ch-nm{font:600 12px/1.2 var(--disp);color:#D3F2E4;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+#main .ch-wrap .ch-sub{display:flex;align-items:baseline;justify-content:space-between;gap:6px;min-width:0}
+#main .ch-wrap .ch-sub i{font-style:normal;font-size:10px;color:#86A99B;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#main .ch-wrap .ch-sub b{flex:0 0 auto;font:700 13.5px/1.1 var(--disp);color:#C8FFE4}
+#main .ch-wrap .ch-bin{font:500 9.5px/1.5 var(--disp);color:#7E9389;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#main .ch-wrap .ch-bin.none{color:#9A8468}
+
+/* the old flat price strip and the orange chip are gone */
+#main .ch-wrap .ch-price,#main .ch-wrap .ch-badge{display:none!important}
+
+/* the toolbar fit on no phone: search clipped to "Search carc", Bulk to "Bu" */
+@media (max-width:820px){
+  #main .ch-wrap .bd-tools{flex-wrap:wrap!important;row-gap:7px!important;overflow:visible!important}
+  #main .ch-wrap .bd-tools .bd-search{flex:1 1 100%!important;min-width:0!important;order:-1}
+  #main .ch-wrap .bd-tools .bd-search input{width:100%!important;min-width:0!important}
+  #main .ch-wrap .bd-tools .bd-btn{flex:1 1 auto!important;justify-content:center;white-space:nowrap}
+}
+
+/* ===== Nov 21: the Sets tracker =====
+   Completion is real: a collector number reads "106/182", so the denominator
+   is the printed set total and the distinct numerators are what he owns. Sets
+   with no numbered cards say so rather than showing a bar that means nothing. */
+#main .st-wrap{display:flex;flex-direction:column;gap:7px;padding:10px 12px 18px}
+#main .st-top{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:4px}
+#main .st-top > div{min-width:0;padding:8px 10px;border-radius:12px;
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+  border:1px solid rgba(179,251,213,.1)}
+#main .st-top em{display:block;font-style:normal;font:600 9.5px/1.2 var(--disp);color:#86A99B;
+  margin-bottom:2px}
+#main .st-top b{font:700 19px/1 var(--disp);color:#C8FFE4}
+
+#main .st-row{all:unset;box-sizing:border-box;display:grid;cursor:pointer;
+  grid-template-columns:1fr auto;grid-template-areas:"nm val" "bar val" "fig val";
+  gap:3px 10px;align-items:center;padding:10px 12px;border-radius:13px;
+  background:linear-gradient(180deg,rgba(9,19,14,.9),rgba(5,12,9,.95));
+  border:1px solid rgba(179,251,213,.12);
+  transition:border-color .2s ease,box-shadow .2s ease,transform .18s cubic-bezier(.22,1,.36,1)}
+#main .st-row:hover,#main .st-row:focus-visible{border-color:rgba(179,251,213,.4);
+  box-shadow:0 5px 18px rgba(0,0,0,.5),0 0 16px rgba(96,230,164,.14);transform:translateY(-1px)}
+#main .st-row.full{border-color:rgba(96,230,164,.5)}
+#main .st-nm{grid-area:nm;font:600 13.5px/1.2 var(--disp);color:#D3F2E4;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#main .st-bar{grid-area:bar;display:block;height:6px;border-radius:999px;overflow:hidden;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.05)}
+#main .st-bar i{display:block;height:100%;border-radius:999px;
+  background:linear-gradient(90deg,#50B97E,#B3FBD5);
+  box-shadow:0 0 10px rgba(96,230,164,.45)}
+#main .st-row.full .st-bar i{background:linear-gradient(90deg,#B3FBD5,#E8F7E4)}
+#main .st-fig{grid-area:fig;display:flex;align-items:baseline;gap:5px;
+  font-variant-numeric:tabular-nums}
+#main .st-fig b{font:700 13px/1 var(--disp);color:#C8FFE4}
+#main .st-fig em{font-style:normal;font-size:10.5px;color:#86A99B}
+#main .st-fig u{text-decoration:none;margin-left:auto;font:700 11px/1 var(--disp);color:#7FE8B4}
+#main .st-un{grid-area:bar;font-size:10.5px;line-height:1.3;color:#7E9389}
+#main .st-val{grid-area:val;text-align:right;font:700 14px/1.1 var(--disp);color:#C8FFE4;
+  white-space:nowrap}
+#main .st-val em{display:block;font-style:normal;font:500 9.5px/1.4 var(--disp);color:#86A99B}
+
+/* Same toolbar problem as Channels: "Search name, set or number" clipped to
+   "Search nam", the density and select buttons sliced. The search takes its
+   own line on a phone and the buttons sit under it. */
+@media (max-width:820px){
+  #main .co-wrap .bd-tools{flex-wrap:wrap!important;row-gap:7px!important;overflow:visible!important}
+  #main .co-wrap .bd-tools .bd-search{flex:1 1 100%!important;min-width:0!important;order:-1}
+  #main .co-wrap .bd-tools .bd-search input{width:100%!important;min-width:0!important}
+  #main .co-wrap .bd-tools .bd-btn{flex:1 1 auto!important;justify-content:center;white-space:nowrap}
+  #main .st-top{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #main .st-top b{font-size:17px!important}
+}

@@ -1,9 +1,9 @@
-import { photoManager } from "./photos.js?v=229";
-import { hideIds, unhideIds } from "./orders.js?v=229";
-import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=229";
-import { openFocus } from "./focus.js?v=229";
-import { setOf, rarityOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=229";
-import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=229";
+import { photoManager } from "./photos.js?v=230";
+import { hideIds, unhideIds } from "./orders.js?v=230";
+import { openCard, ringGauge, shelf, svCard } from "./kit.js?v=230";
+import { openFocus } from "./focus.js?v=230";
+import { setOf, rarityOf, numOf, cardName, kindOf as kindOf2 } from "./cardmeta.js?v=230";
+import { esc, money, nameOf, photoOf, onHand, laneOf, gameOf, peekItems, loadItems, saveItems, loadSpaces, assign, catOf } from "./shared.js?v=230";
 
 let ctx = null;
 const S = { type: "all", game: "", set: "", rar: "", bset: "", bpg: 0, q: "", stage: "all", cat: "All", sort: "value", sel: new Set(), selecting: false, menu: false, more: 48 };
@@ -171,7 +171,55 @@ function binderHtml(list, browsing) {
     <div class="bn-nav"><button type="button" class="bn-a" data-bflip="-1" aria-label="Previous page"${S.bpg ? "" : " disabled"}>‹</button><span>Page ${S.bpg + 1} of ${spreads}</span><button type="button" class="bn-a" data-bflip="1" aria-label="Next page"${S.bpg < spreads - 1 ? "" : " disabled"}>›</button></div></div></section>`;
 }
 /* ===== Collection rebuild (Build 192): tabs (Binder / Sealed / Graded / All), board tools, real binder, shelf, slab case ===== */
-const TABS = [["binder", "Binder"], ["sealed", "Sealed"], ["graded", "Graded"], ["all", "All cards"]];
+const TABS = [["sets", "Sets"], ["binder", "Binder"], ["sealed", "Sealed"], ["graded", "Graded"], ["all", "All cards"]];
+
+/* ---------- Nov 21: this is a collection tracker again ----------
+   Sawyer: "The collection tracker isn't even a collection tracker anymore. I
+   don't even know what the fuck it is. Doesn't feel like Shiny Pro or Collectr."
+   He is right - it was a grid of cards with no sets and no completion, which is
+   a photo album, not a tracker.
+   The set size was sitting in the data the whole time: a collector number reads
+   "106/182", and the denominator IS the printed set total. So the biggest
+   denominator seen in a set gives its size, the distinct numerators give how
+   many of them he owns, and that is real completion - 23 of 182 - not a number
+   I invented. Sets with no numbered cards (sealed, most slabs) say so instead
+   of showing a fake bar. */
+function setStats(list) {
+  const by = new Map();
+  for (const it of list) {
+    const name = setOf(it); if (!name) continue;
+    let g = by.get(name);
+    if (!g) { g = { name, items: [], owned: new Set(), printed: 0, value: 0, newest: 0 }; by.set(name, g); }
+    g.items.push(it);
+    g.value += priceOf(it);
+    const t = Date.parse(it.createdAt || it.addedAt || 0); if (t > g.newest) g.newest = t;
+    const m = String(numOf(it) || "").match(/^(\d{1,3})\/(\d{1,3})$/);
+    if (m) { g.owned.add(m[1].replace(/^0+/, "")); const tot = Number(m[2]); if (tot > g.printed) g.printed = tot; }
+  }
+  return [...by.values()].map((g) => ({
+    name: g.name, items: g.items, value: g.value, newest: g.newest,
+    have: g.owned.size, printed: g.printed,
+    pct: g.printed ? Math.min(100, Math.round(g.owned.size / g.printed * 100)) : null,
+  })).sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1) || b.value - a.value);
+}
+function setsView(list) {
+  const sets = setStats(list);
+  if (!sets.length) return `<div class="bd-empty"><b>No sets yet.</b><span>Cards with a set name show their completion here.</span></div>`;
+  const done = sets.filter((s2) => s2.pct === 100).length;
+  const tracked = sets.filter((s2) => s2.pct != null);
+  return `<section class="st-wrap">
+    <div class="st-top"><div><em>Sets you own cards from</em><b>${sets.length}</b></div>
+      <div><em>Sets completed</em><b>${done}</b></div>
+      <div><em>Cards tracked against a set</em><b>${tracked.reduce((a, s2) => a + s2.have, 0)}</b></div></div>
+    ${sets.map((s2) => `<button type="button" class="st-row${s2.pct === 100 ? " full" : ""}" data-setjump="${esc(s2.name)}">
+      <span class="st-nm">${esc(s2.name)}</span>
+      ${s2.pct == null
+        ? `<span class="st-un">${s2.items.length} item${s2.items.length === 1 ? "" : "s"} · not numbered, so there is no set total to track against</span>`
+        : `<span class="st-bar" role="img" aria-label="${s2.have} of ${s2.printed} cards"><i style="width:${s2.pct}%"></i></span>
+           <span class="st-fig"><b>${s2.have}</b><em>of ${s2.printed}</em><u>${s2.pct}%</u></span>`}
+      <span class="st-val">${money(s2.value)}<em>${s2.items.length} in hand</em></span></button>`).join("")}
+  </section>`;
+}
 const SORTS = [["value", "Value: high"], ["low", "Value: low"], ["new", "Newest"], ["name", "Name A–Z"]];
 function gridTile(it, n) {
   const src = photoOf(it), on = S.sel.has(String(it.id)), q = Number(it.quantity) || 1;
@@ -224,15 +272,15 @@ function paint() {
   if (!S.dens) { let d = 0; try { d = Number(localStorage.getItem("coalition-dens")); } catch { /* ignore */ } S.dens = d === 2 || d === 3 ? d : 3; }
   const all = base(), total = all.reduce((a, i) => a + priceOf(i), 0);
   const paid = all.reduce((a, i) => a + (Number(i.purchasePrice) || 0) * (Number(i.quantity) || 1), 0), gain = total - paid;
-  const kindTab = { binder: "singles", sealed: "sealed", graded: "graded", all: "all" }[S.tab]; S.type = kindTab;
-  const pre = filtered(all, "type"), inTab = (t) => t === "all" ? pre : pre.filter((i) => kindOf2(i) === { binder: "singles", sealed: "sealed", graded: "graded" }[t]);
-  const shown = (S.tab === "all" ? pre : pre.filter((i) => kindOf2(i) === kindTab)).sort(sorter), cut = shown.slice(0, S.more);
+  const kindTab = { sets: "all", binder: "singles", sealed: "sealed", graded: "graded", all: "all" }[S.tab]; S.type = kindTab;
+  const pre = filtered(all, "type"), inTab = (t) => t === "all" || t === "sets" ? pre : pre.filter((i) => kindOf2(i) === { binder: "singles", sealed: "sealed", graded: "graded" }[t]);
+  const shown = (S.tab === "all" || S.tab === "sets" ? pre : pre.filter((i) => kindOf2(i) === kindTab)).sort(sorter), cut = shown.slice(0, S.more);
   const games = tally(filtered(all, "game"), gameOf), nf = [S.set, S.rar].filter(Boolean).length + (S.sort !== "value" ? 1 : 0);
   const tabVal = (t) => inTab(t).reduce((a, i) => a + priceOf(i), 0);
   let n = 0;
   host.innerHTML = `<div class="co-wrap cv bd vlt" data-dens="${S.dens}">
     <div class="vlt-head"><div class="vlt-val"><em>Collection value</em><b>${money(total)}</b><span>${all.length} items${paid ? ` · <i class="${gain >= 0 ? "up" : "down"}">${gain >= 0 ? "+" : "−"}${money(Math.abs(gain))} over cost</i>` : ""}</span></div></div>
-    <div class="bd-hud"><nav class="bd-tabs" role="tablist" aria-label="Collection">${TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${S.tab === k}" class="bd-tab${S.tab === k ? " on" : ""}" data-tab="${k}"><b>${inTab(k).length}</b><span>${l}</span><em>${money(tabVal(k))}</em></button>`).join("")}<i class="bd-scan" aria-hidden="true"></i></nav></div>
+    <div class="bd-hud"><nav class="bd-tabs" role="tablist" aria-label="Collection">${TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${S.tab === k}" class="bd-tab${S.tab === k ? " on" : ""}" data-tab="${k}"><b>${k === "sets" ? setStats(pre).length : inTab(k).length}</b><span>${l}</span><em>${money(tabVal(k))}</em></button>`).join("")}<i class="bd-scan" aria-hidden="true"></i></nav></div>
     <div class="bd-tools">
       <label class="bd-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="coQ" type="search" placeholder="Search name, set or number" value="${esc(S.q)}" aria-label="Search the collection"></label>
       <button type="button" class="bd-btn${nf ? " on" : ""}" id="coFilt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters${nf ? `<b>${nf}</b>` : ""}</button>
@@ -245,10 +293,13 @@ function paint() {
     ${S.menu ? `<div class="cv-menu"><button type="button" class="bd-btn" id="coIO">Import or export a CSV</button></div>` : ""}
     <div class="bd-chips" role="tablist" aria-label="Game"><button type="button" class="bd-chip${!S.game ? " on" : ""}" data-game="">All<b>${filtered(all, "game").filter((i) => S.tab === "all" || kindOf2(i) === kindTab).length}</b></button>${games.map(([g, c]) => `<button type="button" class="bd-chip${S.game === g ? " on" : ""}" data-game="${esc(g)}">${esc(g)}<b>${c}</b></button>`).join("")}</div>
     <div class="bd-sum"><b>${shown.length}</b> ${S.tab === "sealed" ? "sealed" : S.tab === "graded" ? "slabs" : "cards"} · <b>${money(shown.reduce((a, i) => a + priceOf(i), 0))}</b>${S.q || S.game || nf ? ` <button type="button" class="bd-clear" id="vxClear">Clear all</button>` : ""}</div>
-    ${S.selecting || S.tab === "all" ? `<div class="bd-grid vlt-grid">${cut.map((it) => gridTile(it, n++)).join("")}</div>${shown.length > cut.length ? `<button type="button" class="bd-btn vlt-more" id="coMore">Show ${Math.min(60, shown.length - cut.length)} more</button>` : ""}` : S.tab === "binder" ? binderView(shown) : S.tab === "sealed" ? shelfView(shown) : caseView(shown)}
+    ${S.tab === "sets" && !S.selecting ? setsView(pre) : S.selecting || S.tab === "all" ? `<div class="bd-grid vlt-grid">${cut.map((it) => gridTile(it, n++)).join("")}</div>${shown.length > cut.length ? `<button type="button" class="bd-btn vlt-more" id="coMore">Show ${Math.min(60, shown.length - cut.length)} more</button>` : ""}` : S.tab === "binder" ? binderView(shown) : S.tab === "sealed" ? shelfView(shown) : caseView(shown)}
     ${S.selecting ? bar() : ""}</div>`;
   wire();
   const h = host;
+  h.querySelectorAll("[data-setjump]").forEach((b) => b.addEventListener("click", () => {
+    S.set = b.dataset.setjump; S.tab = "binder"; S.bpg = 0; S.more = 48; paint();
+  }));
   h.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { S.tab = b.dataset.tab; S.bpg = 0; S.more = 48; paint(); }));
   h.querySelector("#coFilt")?.addEventListener("click", filterSheet);
   h.querySelectorAll("[data-vid]").forEach((c) => c.addEventListener("click", () => openZoom(c.dataset.vid, c)));
