@@ -1,5 +1,6 @@
 import { shopifyRouter } from "./routes/shopify.js";
 import express from "express";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { scouterRouter } from "./routes/scouter.js";
@@ -32,10 +33,28 @@ export function createApp() {
   /* behind the gate on purpose: 200 signed in, 401 locked. The app shell asks this on boot. */
   app.get("/api/session", (_req, res) => res.set("Cache-Control", "no-store").json({ ok: true }));
 
+  /* Nov 22: Sawyer - "check it after as well, sick of broken ass shit after
+     broken ass shit." Fair, and I could not: the app is behind his login, so
+     after a deploy there was no way to confirm from outside which build was
+     actually live. This endpoint is already open, so it reports the build the
+     running server is serving, read out of the shell's own cache-bust tag.
+     One request after a deploy now answers "did it actually land". */
+  let buildTag = null;
+  const readBuild = () => {
+    if (buildTag !== null) return buildTag;
+    try {
+      const html = readFileSync(join(__dirname, "..", "private", "next", "index.html"), "utf8");
+      const m = html.match(/next\.css\?v=(\d+)/);
+      buildTag = m ? Number(m[1]) : 0;
+    } catch { buildTag = 0; }
+    return buildTag;
+  };
+
   app.get("/api/health", (_req, res) => {
-    res.json({
+    res.set("Cache-Control", "no-store").json({
       status: "ok",
       service: "scouter",
+      build: readBuild(),
       uptimeSeconds: Math.round((Date.now() - startedAt) / 1000),
       channels: getChannelStatuses().map((c) => ({ id: c.id, configured: c.configured })),
     });
