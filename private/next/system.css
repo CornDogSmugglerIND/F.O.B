@@ -1,0 +1,187 @@
+/* ====================================================================
+   system.css — Nov 22, 2026
+   Sawyer: "the whole app needs to be rebuilt... you rebuild one tiny
+   smidgen and think it's a massive overhaul, then one page changes and
+   the rest don't, and a bunch of bugs get littered all over."
+
+   He is right, and this file is the answer to it. The app had 14
+   stylesheets and 4,283 lines with no shared look: every page was hand
+   styled in its own file, so a change could only ever land on one page
+   and the pages drifted apart. There was nothing to change once.
+
+   This loads last and owns the look of every surface, card, tab, button,
+   figure and bar in the app. Change it here, every page moves together.
+   Per-page files keep their layout; this owns the material.
+
+   The material, from his locked standard: frosted glass lit along the top
+   edge, floating above the background with its own shadow, mint-neon on
+   black, metallic green on every figure (never flat mint), one radius
+   scale, one spacing rhythm, target-lock on whatever is focused.
+   ==================================================================== */
+
+:root{
+  --sys-r-sm:9px; --sys-r:13px; --sys-r-lg:17px; --sys-r-pill:999px;
+  --sys-s1:4px; --sys-s2:7px; --sys-s3:11px; --sys-s4:16px; --sys-s5:22px;
+
+  --sys-mA:#C8FFE4; --sys-mB:#7FE8B4; --sys-mC:#3E9E6C;
+  --sys-ink:#D3F2E4; --sys-mute:#7E9389;
+  --sys-amber:#F2A03D; --sys-amber-hi:#FFC59A;
+
+  /* one glass recipe, used everywhere */
+  --sys-glass:linear-gradient(180deg,rgba(14,30,22,.58),rgba(4,12,9,.68));
+  --sys-glass-hi:linear-gradient(180deg,rgba(20,40,30,.68),rgba(6,16,11,.74));
+  --sys-edge:rgba(179,251,213,.17);
+  --sys-lip:0 1px 0 rgba(200,255,228,.2) inset;
+  --sys-lift:0 14px 30px rgba(0,0,0,.52);
+  --sys-lift-hi:0 22px 46px rgba(0,0,0,.62),0 0 28px rgba(96,230,164,.16);
+  --sys-ease:cubic-bezier(.22,1,.36,1);
+}
+
+/* ---------- 1. every figure is metallic, never flat mint ---------- */
+#main .hudc-read .hc b, #main .hudc-act .ha b, #main .hudc-more b,
+#main .bd-tab b, #main .bd-sum b, #main .bd-al b,
+#main .st-fig b, #main .st-val, #main .st-top b,
+#main .ch-sub b, #main .bd-cap b, #main .vb-sub b,
+#main .vlt-val b, #main .cap em, #main .lk-r b{
+  background:linear-gradient(180deg,var(--sys-mA),var(--sys-mB) 62%,var(--sys-mC));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.45))}
+
+/* ---------- 2. one glass surface ---------- */
+#main .hudc, #main .bd-tools, #main .bd-al, #main .st-row, #main .st-top > div,
+#main .bd-sh, #main .readout, #main .sc-card, #main .set-card, #main .spx-side,
+#main .co-bar, #main .bf-g, #main .vlt-head, #main .hudc-more{
+  background:var(--sys-glass)!important;
+  -webkit-backdrop-filter:blur(17px) saturate(1.28);backdrop-filter:blur(17px) saturate(1.28);
+  border:1px solid var(--sys-edge)!important;
+  box-shadow:var(--sys-lip),var(--sys-lift)!important;
+  border-radius:var(--sys-r)!important}
+
+#main .st-row,#main .bd-al,#main .sc-card,#main .set-card{
+  transition:transform .26s var(--sys-ease),box-shadow .26s var(--sys-ease),border-color .2s ease}
+#main .st-row:active,#main .bd-al:active,#main .sc-card:active,#main .set-card:active{
+  transform:translateY(-2px) scale(1.012);box-shadow:var(--sys-lip),var(--sys-lift-hi)!important;
+  border-color:rgba(179,251,213,.42)!important}
+
+/* ---------- 3. one card ---------- */
+#main .bd-t, #main .co-card, #main .vb-pk, #main .vc-slab{
+  position:relative;border-radius:var(--sys-r)!important;overflow:hidden;
+  border:1px solid var(--sys-edge)!important;
+  box-shadow:0 10px 22px rgba(0,0,0,.58)!important;
+  transition:transform .24s var(--sys-ease),box-shadow .24s var(--sys-ease),border-color .2s ease}
+#main .bd-t:hover,#main .co-card:hover,#main .vb-pk:hover,
+#main .bd-t:focus-visible,#main .co-card:focus-visible,#main .vb-pk:focus-visible{
+  transform:translateY(-3px);border-color:rgba(200,255,228,.55)!important;
+  box-shadow:0 18px 38px rgba(0,0,0,.7),0 0 26px rgba(96,230,164,.26)!important}
+
+/* the holo sweep that makes card art read as a card, not a thumbnail */
+#main .bd-art::after,#main .co-img::after,#main .vb-card::after{
+  content:'';position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;opacity:.42;
+  background:linear-gradient(115deg,transparent 30%,rgba(179,251,213,.42) 45%,
+    rgba(255,255,255,.62) 50%,rgba(127,232,180,.36) 57%,transparent 72%);
+  transition:opacity .25s ease,transform .5s var(--sys-ease)}
+#main .bd-t:hover .bd-art::after,#main .co-card:hover .co-img::after,
+#main .vb-pk:hover .vb-card::after{opacity:.78;transform:translateX(9%)}
+
+/* target lock on whatever is selected */
+#main .bd-t.sel::after,#main .co-card.sel::after{
+  content:'';position:absolute;inset:0;pointer-events:none;border-radius:var(--sys-r);
+  box-shadow:0 0 0 2px var(--sys-mA) inset,0 0 26px rgba(96,230,164,.4);z-index:5}
+
+/* stale stock reads amber everywhere it appears */
+#main .bd-t.age-cold,#main .ch-tile.age-cold{border-color:rgba(242,160,61,.5)!important}
+#main .bd-t.age-cold:hover,#main .ch-tile.age-cold:hover{
+  box-shadow:0 18px 38px rgba(0,0,0,.7),0 0 26px rgba(242,160,61,.3)!important}
+
+/* ---------- 4. one tab, one button ---------- */
+#main .bd-tab,#main .hct,#main .cd-tab{
+  border-radius:var(--sys-r)!important;
+  transition:background .2s ease,border-color .2s ease,box-shadow .22s ease}
+#main .bd-tab.on,#main .hct[aria-selected="true"],#main .cd-tab.on{
+  background:linear-gradient(180deg,rgba(200,255,228,.17),rgba(127,232,180,.055))!important;
+  border:1px solid rgba(179,251,213,.5)!important;
+  box-shadow:0 0 18px rgba(96,230,164,.2),var(--sys-lip)!important}
+
+#main .bd-btn,#main .btn,#main .bd-chip,#main .chip,#main .pstep,#main .bd-search{
+  border-radius:var(--sys-r-sm)!important;border:1px solid var(--sys-edge)!important;
+  background:var(--sys-glass)!important;
+  -webkit-backdrop-filter:blur(11px);backdrop-filter:blur(11px);
+  box-shadow:var(--sys-lip)!important;
+  transition:border-color .2s ease,box-shadow .2s ease,transform .16s var(--sys-ease)}
+#main .bd-btn:active,#main .btn:active,#main .bd-chip:active,#main .chip:active{transform:scale(.96)}
+#main .bd-btn.on,#main .bd-chip.on{border-color:rgba(179,251,213,.55)!important;
+  box-shadow:0 0 15px rgba(96,230,164,.26),var(--sys-lip)!important}
+#main .bd-search{border-radius:var(--sys-r-pill)!important}
+
+/* ---------- 5. one bar ---------- */
+#main .st-bar,#main .sd-bars,#main progress{border-radius:var(--sys-r-pill)!important;
+  background:rgba(255,255,255,.06)!important;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.55)!important}
+#main .st-bar i{background:linear-gradient(90deg,var(--sys-mC),var(--sys-mB) 58%,var(--sys-mA))!important;
+  box-shadow:0 0 13px rgba(96,230,164,.65)!important}
+
+/* ---------- 6. section heads stop being flat slabs ---------- */
+#main .bd-sh,#main .sectionhead,#main .ch-group header{
+  background:linear-gradient(90deg,rgba(18,38,28,.6),rgba(6,16,11,.3))!important;
+  border:1px solid rgba(179,251,213,.1)!important;border-radius:var(--sys-r)!important}
+
+/* ---------- 7. nothing sits flat on the wallpaper ---------- */
+#main .co-wrap,#main .ch-wrap,#main .vb,#main .spx-stage{background:transparent!important}
+
+/* Section 8 was a projection layer - haze, a scan sweep, idle float - meant
+   to make the whole app read as a hologram instead of a page. It made every
+   screen darker and muddier and washed out the smoke wallpaper, which is his
+   brand and is never to be removed. Taken out rather than shipped. The look
+   is not something I am getting to by guessing at it. */
+
+/* ====================================================================
+   8. Lift with light, not with shadow.
+   The first attempt at depth laid dark haze over everything and the app
+   came out muddier than it started - and it dimmed the smoke wallpaper,
+   which is his brand and stays. Depth comes from the panels catching
+   light along their top edge and casting a soft shadow under themselves,
+   so they read as floating ABOVE the wallpaper instead of printed on it.
+   ==================================================================== */
+#main .hudc,#main .bd-tools,#main .bd-al,#main .st-row,#main .st-top > div,
+#main .bd-sh,#main .readout,#main .sc-card,#main .set-card,#main .hudc-more,
+#main .bd-t,#main .co-card,#main .vb-pk{position:relative}
+
+/* the specular lip: a bright hairline that reads as a lit edge */
+#main .hudc::after,#main .bd-tools::after,#main .bd-al::after,#main .st-row::after,
+#main .readout::after,#main .hudc-more::after{
+  content:'';position:absolute;left:11%;right:11%;top:0;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(216,255,236,.65),transparent);
+  opacity:.8}
+
+/* glass goes lighter, not darker, so it sits in front of the wallpaper */
+#main .hudc,#main .bd-tools,#main .bd-al,#main .st-row,#main .st-top > div,
+#main .bd-sh,#main .readout,#main .sc-card,#main .set-card,#main .hudc-more{
+  background:linear-gradient(180deg,rgba(26,52,39,.52),rgba(10,24,17,.60))!important;
+  -webkit-backdrop-filter:blur(19px) saturate(1.5) brightness(1.08);
+  backdrop-filter:blur(19px) saturate(1.5) brightness(1.08);
+  border-color:rgba(179,251,213,.22)!important;
+  box-shadow:0 1px 0 rgba(216,255,236,.26) inset,
+             0 -14px 28px rgba(0,0,0,.26) inset,
+             0 16px 34px rgba(0,0,0,.5)!important}
+
+/* ---------- 9. cards get a gloss, not a matte finish ---------- */
+#main .bd-t,#main .co-card,#main .vb-pk{
+  box-shadow:0 14px 30px rgba(0,0,0,.6),
+             0 1px 0 rgba(216,255,236,.2) inset,
+             0 0 0 1px rgba(0,0,0,.35)!important}
+/* the glass curve across the top of a real card */
+#main .bd-art::before,#main .co-img::before,#main .vb-card::before{
+  content:'';position:absolute;left:0;right:0;top:0;height:38%;z-index:2;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.05) 55%,transparent);
+  border-radius:var(--sys-r) var(--sys-r) 40% 40%/var(--sys-r) var(--sys-r) 14% 14%}
+
+/* press and it comes toward you */
+#main .bd-t:active,#main .co-card:active,#main .vb-pk:active{
+  transform:translateY(-5px) scale(1.035);
+  box-shadow:0 26px 50px rgba(0,0,0,.72),0 0 34px rgba(96,230,164,.34),
+             0 0 0 1px rgba(200,255,228,.6)!important;z-index:40}
+
+/* ---------- 10. the active tab glows rather than just tinting ---------- */
+#main .bd-tab.on,#main .hct[aria-selected="true"]{
+  box-shadow:0 0 22px rgba(96,230,164,.26),0 1px 0 rgba(216,255,236,.3) inset,
+             0 8px 18px rgba(0,0,0,.42)!important}
