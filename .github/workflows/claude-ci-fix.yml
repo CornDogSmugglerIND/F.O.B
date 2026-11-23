@@ -31,12 +31,9 @@ jobs:
           FORCE_API: ${{ secrets.CLAUDE_FORCE_API_KEY }}
           RAW_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          OAUTH=$(printf '%s' "$RAW_OAUTH" | tr -d '
-')
-          FORCE=$(printf '%s' "$FORCE_API" | tr -d '
-' | tr '[:upper:]' '[:lower:]')
-          KEY=$(printf '%s' "$RAW_KEY" | tr -d '
-')
+          OAUTH=$(printf '%s' "$RAW_OAUTH" | tr -d '\r')
+          FORCE=$(printf '%s' "$FORCE_API" | tr -d '\r' | tr '[:upper:]' '[:lower:]')
+          KEY=$(printf '%s' "$RAW_KEY" | tr -d '\r')
           # OAuth first. Console API key is known-broken (is_error/billing) unless forced.
           if [ -n "$OAUTH" ]; then
             echo "CLAUDE_CODE_OAUTH_TOKEN=$OAUTH" >> "$GITHUB_ENV"
