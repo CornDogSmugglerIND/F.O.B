@@ -124,3 +124,98 @@
   background:linear-gradient(180deg,rgba(22,44,33,.6),rgba(7,18,13,.7))!important;
   -webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4);
   box-shadow:0 1px 0 rgba(216,255,236,.24) inset,0 10px 22px rgba(0,0,0,.5)!important}
+
+/* ---------- 7. one page deep stops looking like a different app ----------
+   Measured by clicking in the way he does: Warehouse -> shelf -> bin, and
+   a card -> its sheet. The deeper screens were bringing corner radii that
+   exist nowhere else - 14, 18, 20 and 26px - so every level down drifted a
+   little further from the app it came out of. That is the "it gets cheesier
+   the deeper you go". Same scale everywhere now. */
+#main .fc-box,#main .sc-wrap,#main .sc-side{border-radius:var(--sys-r-lg)!important}
+#main .fc-zoom,#main .sc-q,#main .st-mode,#main .sc-drop{border-radius:var(--sys-r)!important}
+
+/* and the same material, so a sheet is the app rather than a plain panel */
+#main .fc-box,#main .sc-wrap,#main .sc-side,#main .sc-q{
+  background:linear-gradient(180deg,rgba(24,48,36,.5),rgba(9,22,16,.62))!important;
+  border:1px solid rgba(179,251,213,.2)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(1.45);backdrop-filter:blur(18px) saturate(1.45);
+  box-shadow:0 1px 0 rgba(216,255,236,.24) inset,0 20px 44px rgba(0,0,0,.58)!important}
+
+/* ====================================================================
+   8. THE OVERLAYS, WHICH LIVE OUTSIDE #main
+   Every rule above is scoped to #main. The item sheet is not in #main -
+   .fc-box sits inside .fc, which hangs directly off <body>. So the sheet
+   has never once been touched by any of this, in any build, which is
+   exactly why "every page behind the front gets cheesier": the front page
+   kept getting the system and the screens behind it never did.
+   These are deliberately unscoped so they reach the overlays.
+   ==================================================================== */
+.fc-box,.sc-side{border-radius:var(--sys-r-lg)!important}
+.fc-zoom,.sc-q,.st-mode,.sc-drop,.fc-act,.fc-pill{border-radius:var(--sys-r)!important}
+
+.fc-box{
+  background:linear-gradient(180deg,rgba(24,48,36,.56),rgba(8,20,15,.68))!important;
+  border:1px solid rgba(179,251,213,.22)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(1.45);backdrop-filter:blur(22px) saturate(1.45);
+  box-shadow:0 1px 0 rgba(216,255,236,.26) inset,0 30px 60px rgba(0,0,0,.66),
+             0 0 34px rgba(96,230,164,.1)!important}
+
+/* the sheet's own figures go metallic like every other number in the app */
+.fc-box b,.fc-box .fc-val,.fc-r b{
+  background:linear-gradient(180deg,var(--sys-mA),var(--sys-mB) 62%,var(--sys-mC))!important;
+  -webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.5))}
+
+/* its controls match the ones on the page it came from */
+.fc-box .fc-act,.fc-box .btn,.fc-zoom{
+  border:1px solid rgba(179,251,213,.2)!important;
+  background:linear-gradient(180deg,rgba(26,52,39,.5),rgba(9,22,16,.6))!important;
+  -webkit-backdrop-filter:blur(13px) saturate(1.4);backdrop-filter:blur(13px) saturate(1.4);
+  box-shadow:0 1px 0 rgba(216,255,236,.22) inset,0 8px 18px rgba(0,0,0,.45)!important;
+  transition:transform .16s var(--sys-ease),box-shadow .2s ease,border-color .2s ease}
+.fc-box .fc-act:active,.fc-box .btn:active{transform:scale(.96)}
+
+/* the card in the sheet gets the same gloss as the card you tapped */
+.fc-box .fc-art,.fc-box .bd-art{
+  box-shadow:0 20px 40px -12px rgba(0,0,0,.95),0 0 0 1px rgba(179,251,213,.22),
+             0 1px 0 rgba(216,255,236,.3) inset!important}
+
+/* ====================================================================
+   9. How it moves when you go a level in.
+   A page swaps its contents instantly; an app moves you somewhere. These
+   are entry animations only - nothing here holds a pointer or delays a
+   tap, which is what broke view transitions the last time they were
+   tried. Each level arrives with depth and settles, so going in and
+   coming back out reads as travel rather than a redraw.
+   ==================================================================== */
+@keyframes sysSheetIn{
+  from{opacity:0;transform:translateY(18px) scale(.955)}
+  to{opacity:1;transform:none}}
+@keyframes sysScrimIn{from{opacity:0}to{opacity:1}}
+@keyframes sysLevelIn{
+  from{opacity:0;transform:translateY(10px) scale(.988)}
+  to{opacity:1;transform:none}}
+
+.fc-box{animation:sysSheetIn .34s cubic-bezier(.22,1,.36,1) both}
+.fc{animation:sysScrimIn .22s ease both}
+
+/* a level of the warehouse, and a page body, arriving */
+#main .sp-wrap.spx[data-level]{animation:sysLevelIn .3s cubic-bezier(.22,1,.36,1) both}
+#main .co-wrap,#main .ch-wrap{animation:sysLevelIn .28s cubic-bezier(.22,1,.36,1) both}
+
+/* the cards in a grid deal in rather than all appearing at once */
+@keyframes sysDealIn{
+  from{opacity:0;transform:translateY(12px) scale(.97)}
+  to{opacity:1;transform:none}}
+#main .bd-t{animation:sysDealIn .4s cubic-bezier(.22,1,.36,1) both;
+  animation-delay:calc(var(--i,0) * 22ms)}
+#main .st-row{animation:sysDealIn .36s cubic-bezier(.22,1,.36,1) both}
+#main .st-row:nth-child(2){animation-delay:40ms}
+#main .st-row:nth-child(3){animation-delay:80ms}
+#main .st-row:nth-child(4){animation-delay:120ms}
+#main .st-row:nth-child(5){animation-delay:160ms}
+#main .st-row:nth-child(n+6){animation-delay:200ms}
+
+@media (prefers-reduced-motion:reduce){
+  .fc-box,.fc,#main .sp-wrap.spx[data-level],#main .co-wrap,#main .ch-wrap,
+  #main .bd-t,#main .st-row{animation-duration:.01ms!important;animation-delay:0s!important}}

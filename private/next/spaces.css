@@ -162,3 +162,106 @@
 .spx-flip.opened .spx-inc:nth-child(n+9){transition-delay:.74s}
 @media (prefers-reduced-motion:reduce){
   .spx-inside,.spx-inc{transition-duration:.01ms!important;transition-delay:0s!important}}
+
+/* ===== Nov 23: the Coalition tac wall =====
+   A tactical steel plate wall behind the Warehouse shelving, built in CSS so
+   it stays sharp at any size. The first pass read as a faint grid rather than
+   metal: the seams had no bevel, so no plate had an edge, and a flat green
+   wash over the whole thing made it muddy instead of lit.
+   What makes it read as steel: each plate is lit along its top edge and
+   shadowed along its bottom, so it has thickness; the green arrives as a rake
+   from one corner rather than a tint over everything; and the base is dark
+   enough that the mint content in front of it still reads first. */
+#main .sp-wrap.spx{position:relative;isolation:isolate}
+#main .sp-wrap.spx::before{
+  content:'';position:absolute;inset:-40px -20px;z-index:-1;pointer-events:none;border-radius:18px;
+  background-image:
+    /* rivets, sunk: a dark pit with a lit lip on top */
+    radial-gradient(circle at 8px 9px,rgba(0,0,0,.72) 0 2.1px,rgba(188,211,200,.42) 2.1px 2.9px,transparent 3.1px),
+    /* plate bevel: light along the top of each plate, dark along the bottom */
+    repeating-linear-gradient(180deg,
+      rgba(196,221,210,.17) 0 1px,
+      rgba(255,255,255,.028) 1px 3px,
+      transparent 3px 98px,
+      rgba(0,0,0,.5) 98px 101px,
+      rgba(0,0,0,.78) 101px 104px),
+    /* the vertical seams, cut and lit on their left shoulder */
+    repeating-linear-gradient(90deg,
+      rgba(186,212,201,.13) 0 1px,
+      transparent 1px 92px,
+      rgba(0,0,0,.6) 92px 96px),
+    /* brushed grain across the face */
+    repeating-linear-gradient(96deg,rgba(255,255,255,.04) 0 1px,transparent 1px 2px),
+    repeating-linear-gradient(96deg,rgba(0,0,0,.09) 0 1px,transparent 1px 5px),
+    /* the steel itself, cool and dark */
+    linear-gradient(172deg,#222b28 0%,#19211e 30%,#101614 66%,#0a0f0d 100%);
+  background-size:96px 104px,100% 104px,96px 100%,auto,auto,auto;
+  background-position:0 0,0 0,0 0,0 0,0 0,0 0;
+  box-shadow:inset 0 0 110px rgba(0,0,0,.8),inset 0 2px 0 rgba(196,221,210,.12)}
+
+/* one light source, raking in from the top left, and the room falling away */
+#main .sp-wrap.spx::after{
+  content:'';position:absolute;inset:-40px -20px;z-index:-1;pointer-events:none;border-radius:18px;
+  background:
+    linear-gradient(126deg,rgba(179,251,213,.16) 0%,rgba(96,230,164,.05) 26%,transparent 52%),
+    radial-gradient(120% 60% at 8% -10%,rgba(216,255,236,.1),transparent 58%),
+    radial-gradient(95% 65% at 95% 115%,rgba(0,0,0,.72),transparent 72%)}
+
+/* the shelving stands off the wall instead of printing onto it */
+#main .sp-wrap.spx .wh-bay,#main .sp-wrap.spx .spx-photo{
+  box-shadow:0 34px 70px -18px rgba(0,0,0,.95),0 0 0 1px rgba(179,251,213,.18),
+             0 0 36px rgba(96,230,164,.12)}
+#main .sp-wrap.spx .spx-post{box-shadow:0 0 18px rgba(0,0,0,.8),0 0 0 1px rgba(0,0,0,.5),
+  inset 1px 0 0 rgba(255,255,255,.22)}
+
+/* The bin label was a two-line block anchored to the top of each hotspot.
+   On shelf 1 the bins sit in bands of 37%, 25% and 34% of the photo, and a
+   48px+ block overflowed its band straight onto the bin below - so Bin 3's
+   label sat across Bin 2 and Bin 2's across Bin 1, all stacked down the left.
+   One line, sized to the band, and each label stays on its own bin. */
+#main .spx-lab{flex-direction:row!important;align-items:baseline!important;gap:7px!important;
+  padding:3px 9px!important;border-radius:999px!important;
+  background:linear-gradient(180deg,rgba(12,26,19,.88),rgba(4,11,8,.92))!important;
+  border:1px solid rgba(179,251,213,.3)!important;
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  box-shadow:0 1px 0 rgba(216,255,236,.2) inset,0 4px 12px rgba(0,0,0,.6)!important;
+  max-width:calc(100% - 16px);white-space:nowrap;overflow:hidden}
+#main .spx-lab b{font-size:13px!important;line-height:1.3!important}
+#main .spx-lab em{font-size:11px!important;line-height:1.3!important;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* "Bin 1" + "0 items" on one line ran together as "Bin 10 items". */
+#main .spx-lab em::before{content:"· ";opacity:.5}
+
+/* ===== Nov 23: the bin view stops falling apart two levels deep =====
+   Measured going Warehouse -> shelf -> bin: the page dropped from 44 drawn
+   surfaces to 6, picked up three corner radii used nowhere else in the app
+   (14, 20, 26px), and ran 7 elements off the right edge. That is the
+   "it gets worse with each thing you click into", in numbers.
+
+   The dial is five 65px bin buttons in a row - 325px plus gaps on a 375px
+   phone - and as a flex item it refuses to shrink, so instead of scrolling
+   it overflowed and bins 4 and 5 were simply unreachable. Same trap as the
+   tab strips: min-width:0 is what lets overflow-x work. */
+#main .spx-dial{min-width:0!important;max-width:100%!important;
+  overflow-x:auto!important;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+  scroll-snap-type:x proximity;overscroll-behavior-x:contain;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 20px),transparent 100%);
+  mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 20px),transparent 100%)}
+#main .spx-dial::-webkit-scrollbar{display:none}
+#main .spx-dl{flex:0 0 auto!important;scroll-snap-align:start}
+
+/* onto the one radius scale, so a page deep looks like the same app */
+#main .spx-fcard,#main .spx-cam{border-radius:13px!important}
+#main .spx-fhot{border-radius:13px!important}
+
+/* and the same material as everywhere else, so it does not go bare */
+#main .spx-fcard,#main .spx-dl,#main .spx-side{
+  background:linear-gradient(180deg,rgba(24,48,36,.5),rgba(9,22,16,.6))!important;
+  border:1px solid rgba(179,251,213,.2)!important;
+  -webkit-backdrop-filter:blur(15px) saturate(1.4);backdrop-filter:blur(15px) saturate(1.4);
+  box-shadow:0 1px 0 rgba(216,255,236,.22) inset,0 14px 30px rgba(0,0,0,.5)!important}
+#main .spx-dl.on{border-color:rgba(179,251,213,.55)!important;
+  box-shadow:0 1px 0 rgba(216,255,236,.3) inset,0 14px 30px rgba(0,0,0,.55),
+             0 0 20px rgba(96,230,164,.26)!important}
+#main .spx-dl b{background:linear-gradient(180deg,#C8FFE4,#7FE8B4 62%,#3E9E6C);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
