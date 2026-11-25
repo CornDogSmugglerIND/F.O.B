@@ -1,17 +1,17 @@
-import "./viewer.js?v=235";
-import { startScanLink } from "./scanlink.js?v=235";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=235";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=235";
-import { phaseFromItem } from "/visor/phases.js?v=235";
-import { renderScouter } from "./scouter.js?v=235";
-import { renderCollection, openImport } from "./collection.js?v=235";
-import { photoManager } from "./photos.js?v=235";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=235";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=235";
-import { renderSettings } from "./settings.js?v=235";
-import { initSync } from "./sync.js?v=235";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=235";
-import * as PS from "./photostore.js?v=235";
+import "./viewer.js?v=236";
+import { startScanLink } from "./scanlink.js?v=236";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=236";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=236";
+import { phaseFromItem } from "/visor/phases.js?v=236";
+import { renderScouter } from "./scouter.js?v=236";
+import { renderCollection, openImport } from "./collection.js?v=236";
+import { photoManager } from "./photos.js?v=236";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=236";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=236";
+import { renderSettings } from "./settings.js?v=236";
+import { initSync } from "./sync.js?v=236";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=236";
+import * as PS from "./photostore.js?v=236";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -462,9 +462,21 @@ function wireArrange(main, kind, W, H) {
   const btn = main.querySelector("#arrBtn"), rst = main.querySelector("#arrReset");
   btn?.addEventListener("click", () => { arranging = !arranging; renderCommand(); if (arranging) toast(kind === "phone" ? "Drag a stop to any spot. Taken spots swap." : "Drag a stop anywhere. It will not cover another one."); });
   rst?.addEventListener("click", () => { routeSave(kind, {}); renderCommand(); toast("Route reset"); });
-  if (!arranging) return;
+  if (!arranging) { main.classList.remove("arr-on"); return; }
   road.classList.add("arranging");
   road.addEventListener("click", (e) => { if (e.target.closest(".stop")) { e.stopPropagation(); e.preventDefault(); } }, true);
+  /* Nov 24: Sawyer, with the sales figures expanded - "there's like two fucking
+     options on my phone to move the roadmap". Measured it: a folded HUD is
+     175px tall and arranging gets 8/8 stops and 9/9 spots on screen; expanded
+     it is 343px and that collapses to 3/8 and 3/9. The compressed canvas was
+     sized against the folded one. You are arranging the map, not reading this
+     week's takings, so the figures and their fold row go away for the duration
+     and the map starts at the top of the screen. Done brings them back. */
+  main.classList.add("arr-on");
+  requestAnimationFrame(() => {
+    const top = Math.max(0, road.offsetTop - (main.querySelector(".arr-ph")?.offsetHeight || 0) - 8);
+    if (Math.abs(main.scrollTop - top) > 4) main.scrollTo({ top, behavior: "smooth" });
+  });
   if (kind === "phone") { cnArrange(main, road, W); return; }
   const stops = [...road.querySelectorAll(".stop")];
   const points = () => stops.map((st) => { const x = parseFloat(st.style.left) / 100 * W; const y = kind === "phone" ? parseFloat(st.style.top) : parseFloat(st.style.top) / 100 * H; return [x, y]; });

@@ -223,3 +223,42 @@
 @media (prefers-reduced-motion:reduce){
   .fc-box,.fc,#main .sp-wrap.spx[data-level],#main .co-wrap,#main .ch-wrap,
   #main .bd-t,#main .st-row{animation-duration:.01ms!important;animation-delay:0s!important}}
+
+/* ===== Nov 24: the arrange canvas gets its own pull =====
+   vault.css pulls .road.pv up 110px to close the gap the hidden dock leaves.
+   That is right for the full 818px map, whose first row sits at y=186. The
+   arrange canvas puts its first row at y=104, so the same 110px dragged row
+   one up behind the Done arranging bar - three of the nine spots could not be
+   grabbed at all. Tight gets a shallower pull that clears the bar. */
+@media (max-width:820px){
+  html.fx #main .road.pv.cn-tight,
+  html body #main .road.pv.cn-tight{margin-top:-70px!important}
+}
+
+/* ===== Nov 24: the arrange chip =====
+   The same rules in command.css lost to later sheets - the label stayed 16px
+   and "Ready to list" and "Put away" came out as "Ready ..." and "Put aw...".
+   They live here, in the last sheet, where they win. Every stop reads the
+   same while arranging, named and whole, whether or not it holds anything. */
+@media (max-width:820px){
+  html.fx #main .road.cn-tight .tag,
+  html body #main .road.cn-tight .tag{min-width:0!important;max-width:112px!important;
+    padding:3px 10px!important;gap:0!important;border-radius:999px!important;
+    background:rgba(6,11,9,.82)!important;border:1px solid rgba(179,251,213,.3)!important;
+    box-shadow:0 2px 10px rgba(0,0,0,.4)!important;white-space:nowrap!important;overflow:hidden!important}
+  html.fx #main .road.cn-tight .tag span,
+  html body #main .road.cn-tight .tag span{font-size:11px!important;line-height:1.25!important;
+    font-weight:600!important;font-family:var(--body,system-ui)!important;text-shadow:none!important;
+    letter-spacing:.1px!important;color:#E6EFEA!important;
+    white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;display:block!important}
+  /* an empty stop is dimmed on the live map so the busy ones read first.
+     While arranging you have to read all eight to move them, so they all
+     come up to full contrast for the duration. */
+  html.fx #main .road.cn-tight .tag:not(.has),
+  html body #main .road.cn-tight .tag:not(.has){opacity:1!important}
+  html.fx #main .road.cn-tight .tag:not(.has) span,
+  html body #main .road.cn-tight .tag:not(.has) span{color:#BFD3C9!important}
+  html.fx #main .road.cn-tight .stop.moving .tag,
+  html body #main .road.cn-tight .stop.moving .tag{border-color:#B3FBD5!important;
+    box-shadow:0 0 0 2px rgba(179,251,213,.3),0 6px 18px rgba(0,0,0,.5)!important}
+}
