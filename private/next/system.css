@@ -62,7 +62,9 @@
 #main .bd-art,#main .vb-card,#main .pc,#main .wh-plac,
 #main .spx-hot,#main .spx-lab{border-radius:var(--sys-r)!important}
 #main .bd-btn,#main .bd-pick,#main .ha,#main .hc{border-radius:var(--sys-r-sm)!important}
-#main .ch-age,#main .more,#main .tag-go,#main .spx-edit,#main .tag{border-radius:var(--sys-r-pill)!important}
+/* .tag-go keeps its own light fill: its text is near-black and sits on mint.
+   Handing it the dark glass left black on black and the button read empty. */
+#main .ch-age,#main .more,#main .spx-edit,#main .tag{border-radius:var(--sys-r-pill)!important}
 
 /* ---------- 2. one card: gloss on top, lit rim, real shadow ---------- */
 #main .bd-art,#main .vb-card,#main .pc{
@@ -73,9 +75,11 @@
   transition:transform .26s var(--sys-ease),box-shadow .26s var(--sys-ease)!important}
 /* .vb-card already has its own gloss ::after in vault.css and mine was
    silently replacing it - same selector, loaded later. Theirs stays. */
-#main .bd-art::after,#main .pc::after{
-  content:'';position:absolute;left:0;right:0;top:0;height:42%;z-index:3;pointer-events:none;
-  background:linear-gradient(180deg,rgba(255,255,255,.26),rgba(255,255,255,.07) 48%,transparent);
+/* The gloss is a 42% white wash. On a 150px Channels card that reads as glass;
+   on the 60px roadmap card it swallowed the photo whole. Only the big ones. */
+#main .bd-art::after{
+  content:'';position:absolute;left:0;right:0;top:0;height:34%;z-index:3;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.17),rgba(255,255,255,.05) 48%,transparent);
   border-radius:var(--sys-r) var(--sys-r) 46% 46%/var(--sys-r) var(--sys-r) 18% 18%}
 
 /* lift on touch - the card comes toward the finger */
@@ -101,7 +105,7 @@
   filter:drop-shadow(0 1px 0 rgba(0,0,0,.5))}
 
 /* ---------- 4. one chip ---------- */
-#main .ch-age,#main .more,#main .tag-go,#main .spx-edit{
+#main .ch-age,#main .more,#main .spx-edit{
   border:1px solid rgba(179,251,213,.3)!important;
   background:linear-gradient(180deg,rgba(10,26,19,.86),rgba(4,12,9,.9))!important;
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
@@ -115,9 +119,9 @@
   box-shadow:0 1px 0 rgba(216,255,236,.22) inset,0 8px 18px rgba(0,0,0,.45)!important;
   transition:transform .16s var(--sys-ease),box-shadow .2s ease,border-color .2s ease}
 #main .bd-btn:active,#main .ha:active,#main .hc:active{transform:scale(.96)}
-#main .ha.hot{border-color:rgba(242,160,61,.5)!important;
-  box-shadow:0 1px 0 rgba(255,217,181,.26) inset,0 8px 20px rgba(0,0,0,.5),
-             0 0 18px rgba(242,160,61,.2)!important}
+/* Every action tile with anything in it carries .hot, so an amber border there
+   outlined the entire HUD in orange - the cheesy chrome he had just had removed.
+   The count is already amber; the tile stays quiet. */
 
 /* ---------- 6. the roadmap label stops being a 40px lozenge ---------- */
 #main .tag{border:1px solid rgba(179,251,213,.2)!important;
