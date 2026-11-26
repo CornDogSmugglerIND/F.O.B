@@ -409,3 +409,35 @@
     html.fx #main .road.cn .stop .pile .pc{width:34px!important;height:48px!important}
   }
 }
+
+/* ===== Nov 26: last two bits of the capsule =====
+   The white finish pin hangs off the delivered stop's dot. On the old tower
+   the dot was centred under the stop and the pin sat neatly above it; on the
+   capsule the dot is a 12px bead on the left edge, so the pin floated half
+   off the side looking like a stray graphic. The numbered badge already says
+   which stop is the end of the route, so the pin steps aside here.
+   And the action chip's 18px line was cutting the tail off every "y" -
+   "Identify 17", "Put away". */
+@media (max-width:820px){
+  html body #main .road.cn .stop[data-drop="delivered"] .dot::after,
+  html.fx #main .road.cn .stop[data-drop="delivered"] .dot::after{display:none!important}
+  html body #main .road.cn .stop .tag-go,
+  html.fx #main .road.cn .stop .tag-go{height:21px!important;line-height:21px!important;
+    padding:0 8px!important;display:inline-flex!important;align-items:center}
+  html body #main .road.cn .stop .tag span,
+  html.fx #main .road.cn .stop .tag span{height:21px!important;line-height:21px!important}
+  html body #main .road.cn .stop .tag,
+  html.fx #main .road.cn .stop .tag{height:70px!important}
+}
+
+/* A 12px line in a 21px box still clipped the tails of y and g, because
+   text-overflow:ellipsis forces overflow:hidden on both axes - you cannot
+   clip only sideways. So the line box is kept short and centred inside a
+   taller box, which leaves the descenders room above the clip. */
+@media (max-width:820px){
+  html body #main .road.cn .stop .tag span,
+  html.fx #main .road.cn .stop .tag span{height:24px!important;line-height:17px!important;
+    display:flex!important;align-items:center}
+  html body #main .road.cn .stop .tag,
+  html.fx #main .road.cn .stop .tag{height:70px!important;justify-content:center}
+}

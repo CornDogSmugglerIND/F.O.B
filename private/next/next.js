@@ -1,17 +1,17 @@
-import "./viewer.js?v=245";
-import { startScanLink } from "./scanlink.js?v=245";
-import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=245";
-import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=245";
-import { phaseFromItem } from "/visor/phases.js?v=245";
-import { renderScouter } from "./scouter.js?v=245";
-import { renderCollection, openImport } from "./collection.js?v=245";
-import { photoManager } from "./photos.js?v=245";
-import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=245";
-import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=245";
-import { renderSettings } from "./settings.js?v=245";
-import { initSync } from "./sync.js?v=245";
-import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=245";
-import * as PS from "./photostore.js?v=245";
+import "./viewer.js?v=249";
+import { startScanLink } from "./scanlink.js?v=249";
+import { isArchived, archive, unarchive, archMap, loadSpaces, assign, srcOf} from "./shared.js?v=249";
+import { orderItems, saveOrders, trackUrl, dayText, trackerHtml, setOv, hiddenIds, hideIds, unhideIds } from "./orders.js?v=249";
+import { phaseFromItem } from "/visor/phases.js?v=249";
+import { renderScouter } from "./scouter.js?v=249";
+import { renderCollection, openImport } from "./collection.js?v=249";
+import { photoManager } from "./photos.js?v=249";
+import { renderSpaces, openPutAway, unbinnedCount } from "./spaces.js?v=249";
+import { renderChannels, buildListing, variationListing, editListing } from "./channels.js?v=249";
+import { renderSettings } from "./settings.js?v=249";
+import { initSync } from "./sync.js?v=249";
+import { initKit, itemTabs, wireTabs, lockFrame } from "./kit.js?v=249";
+import * as PS from "./photostore.js?v=249";
 
 const LS_ITEMS = "coalition-items-v4";
 const LS_AVATAR = "cdsc-avatar";
@@ -398,17 +398,22 @@ function routePath(pts, vertical) { let d = `M${pts[0][0]},${pts[0][1]}`; for (l
    The route redraws live as you move. A short tap still opens the stop, so
    nothing was traded away for this. */
 const GRID = 6;
-/* Every saved layout this app has ever written, read into one shape: {x%, y%}.
-   v1 stored a plain cell index, v2 stored [x%, yPx], desktop stores [x%, y%].
-   Nothing he has already arranged is lost. */
+/* Nov 26, second pass. The first one tried to carry every old layout forward
+   and Sawyer got a scattered map with three stops off screen and the routes
+   crossing: his saved arrangement was a set of cell numbers for a 3x3 grid,
+   read into a 2x4 one where those cells do not exist, so stops landed on top
+   of each other and in the wrong order. A cell number cannot mean anything in
+   a different grid, and [x%, yPx] was measured against an 818px canvas that
+   is now 486. Both are dropped. A layout is only honoured if it was written
+   by this geometry, which is what FMT marks. The map resets once, to a clean
+   2x4 that is known to fit, and everything arranged from here is kept. */
+const FMT = 3;
 function stopAt(kind) {
-  const sv = routeSaved(kind), out = {};
+  const sv = routeSaved(kind), ok = sv.__fmt === FMT, out = {};
   STOPS.forEach((s, i) => {
-    const v = sv[s.id];
-    if (Array.isArray(v) && v.length === 2 && isFinite(v[0]) && isFinite(v[1])) {
-      out[s.id] = { x: v[0], y: kind === "phone" && v[1] > 100 ? v[1] / CN_H * 100 : v[1] };
-    } else if (Number.isInteger(v) && v >= 0 && v < 9) {
-      const p = cnPos(v); out[s.id] = { x: p.x, y: p.y };
+    const v = ok ? sv[s.id] : null;
+    if (Array.isArray(v) && v.length === 2 && isFinite(v[0]) && isFinite(v[1]) && v[1] <= 100) {
+      out[s.id] = { x: v[0], y: v[1] };
     } else if (kind === "phone") {
       const p = cnPos(i); out[s.id] = { x: p.x, y: p.y };
     } else {
@@ -418,7 +423,7 @@ function stopAt(kind) {
   return out;
 }
 function stopSave(kind, stops) {
-  const all = {};
+  const all = { __fmt: FMT };
   for (const o of stops) all[o.dataset.drop] = [+parseFloat(o.style.left).toFixed(2), +parseFloat(o.style.top).toFixed(2)];
   routeSave(kind, all);
 }
@@ -449,25 +454,45 @@ function wireMapMove(main, kind, W, H) {
     road.querySelectorAll("svg animateMotion").forEach((an) => an.setAttribute("path", d));
   };
   /* Free means free: a drop is never refused and no other stop is ever moved
-     out from under him. If it landed on someone, it slides the shortest way
-     out and stops there. */
-  const declash = (st) => {
-    const rw = road.getBoundingClientRect().width || W, rh = road.getBoundingClientRect().height || H;
-    for (let pass = 0; pass < 24; pass++) {
-      let hit = null, best = 0;
-      const a = stopBox(st);
-      for (const o of stops) {
-        if (o === st) continue;
-        const c = stopBox(o);
-        const ox = Math.min(a.r, c.r) - Math.max(a.l, c.l), oy = Math.min(a.b, c.b) - Math.max(a.t, c.t);
-        if (ox > 4 && oy > 4 && ox * oy > best) { best = ox * oy; hit = { c, ox, oy }; }
-      }
-      if (!hit) return;
-      const a2 = stopBox(st), acx = (a2.l + a2.r) / 2, acy = (a2.t + a2.b) / 2;
-      const bcx = (hit.c.l + hit.c.r) / 2, bcy = (hit.c.t + hit.c.b) / 2;
-      if (hit.ox < hit.oy) setPos(st, clampX(st._x + (acx < bcx ? -1 : 1) * (hit.ox + 6) / rw * 100), st._y);
-      else setPos(st, st._x, clampY(st._y + (acy < bcy ? -1 : 1) * (hit.oy + 6) / rh * 100));
+     out from under him. But the two columns leave a 2px gutter, so nudging a
+     stop sideways just puts it into its neighbour and the old version
+     ping-ponged for 24 passes and gave up still overlapping - which then got
+     SAVED, so after a reload two capsules sat on each other and a tap on the
+     covered one did nothing at all. Now it pushes along whichever axis has
+     the room (vertical, nearly always), and if that still cannot find a gap
+     it drops into the nearest unused home slot. It always resolves. */
+  const overlapWith = (st) => {
+    const a = stopBox(st); let worst = null, area = 0;
+    for (const o of stops) {
+      if (o === st) continue;
+      const c = stopBox(o);
+      const ox = Math.min(a.r, c.r) - Math.max(a.l, c.l), oy = Math.min(a.b, c.b) - Math.max(a.t, c.t);
+      if (ox > 4 && oy > 4 && ox * oy > area) { area = ox * oy; worst = { c, ox, oy, a }; }
     }
+    return worst;
+  };
+  const declash = (st) => {
+    const R = () => road.getBoundingClientRect();
+    for (let pass = 0; pass < 20; pass++) {
+      const h = overlapWith(st); if (!h) return;
+      const r = R(), acy = (h.a.t + h.a.b) / 2, bcy = (h.c.t + h.c.b) / 2;
+      const dir = acy <= bcy ? -1 : 1;
+      const next = st._y + dir * (h.oy + 8) / (r.height || H) * 100;
+      const put = clampY(next);
+      if (Math.abs(put - st._y) < 0.3) break;   /* pinned against an edge */
+      setPos(st, st._x, put);
+    }
+    if (!overlapWith(st)) return;
+    /* nothing free nearby - take the closest home slot nobody is sitting on */
+    const used = stops.filter((o) => o !== st).map((o) => ({ x: o._x, y: o._y }));
+    let best = null, bd = Infinity;
+    for (let k = 0; k < STOPS.length; k++) {
+      const p = cnPos(k);
+      if (used.some((u) => Math.abs(u.x - p.x) < 6 && Math.abs(u.y - p.y) < 6)) continue;
+      const d = (p.x - st._x) ** 2 + (p.y - st._y) ** 2;
+      if (d < bd) { bd = d; best = p; }
+    }
+    if (best) setPos(st, best.x, best.y);
   };
   const clampX = (v) => Math.max(kind === "phone" ? 14 : 5, Math.min(kind === "phone" ? 86 : 95, v));
   const clampY = (v) => Math.max(kind === "phone" ? 20 : 10, Math.min(kind === "phone" ? 94 : 90, v));
@@ -541,6 +566,14 @@ function wireMapMove(main, kind, W, H) {
   road.addEventListener("click", (e) => {
     if (Date.now() - (window.__fobStopMoved || 0) < 350) { e.stopPropagation(); e.preventDefault(); }
   }, true);
+  /* A layout saved before this fix can still have two capsules on top of each
+     other, and the covered one swallows every tap. Settle them once on load
+     and write the repair back, so it heals itself instead of needing a reset. */
+  requestAnimationFrame(() => {
+    let fixed = false;
+    for (const st of stops) if (overlapWith(st)) { declash(st); fixed = true; }
+    if (fixed) { redraw(); stopSave(kind, stops); }
+  });
   main.querySelector("#mapReset")?.addEventListener("click", () => {
     routeSave(kind, {}); keyOpen = false; renderCommand(); toast("Map reset");
   });
