@@ -18,6 +18,14 @@ const OPEN = [
   /^\/theme\.css$/,
   /^\/apple-touch-icon/,
   /^\/manifest\.json$/,
+  /* Nov 26: the home-screen install needs these two before anyone has signed
+     in. A browser fetches a web manifest with credentials OMITTED unless the
+     link says otherwise, and it fetches the icons it names the same way - so
+     behind the gate both came back as the 401 login page and the install
+     silently did nothing. These carry the app's name and its icon and no
+     business data: no orders, no inventory, no prices, nothing of his. */
+  /^\/next\/manifest\.webmanifest$/,
+  /^\/next\/img\/icon-\d+\.png$/,
   /^\/favicon\./,
 ];
 
