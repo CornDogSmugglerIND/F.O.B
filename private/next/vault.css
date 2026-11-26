@@ -789,7 +789,10 @@ html.fx #main .ha:hover{border-color:rgba(125,242,180,.45)}
 @media (max-width:420px){.hc{padding:2px 7px!important}.hc b{font-size:16px}.hc em{font-size:9px}.ha{flex-direction:column;gap:0!important;height:48px!important}.ha b{font-size:16px}.ha span{font-size:10.5px}}
 @media (prefers-reduced-motion:reduce){.ha.hot i{animation:none}}
 html.fx #main .road .dock,html body #main .road .dock{display:none!important}
-@media (max-width:820px){html.fx #main .road.pv{margin-top:-110px!important}}
+/* Nov 26: -110px was closing the gap the hidden dock leaves on an 818px
+   canvas whose first row sat at y=186. The canvas now fits the window and
+   rows are fractions of it, so a fixed pull would drag row one off the top. */
+@media (max-width:820px){html.fx #main .road.pv{margin-top:-26px!important}}
 /* ---- the target (Build 195) ---- */
 .sq-tg{transition:transform .08s linear}
 .sq-halo{fill:none;stroke:rgba(214,255,234,.08);stroke-width:14}

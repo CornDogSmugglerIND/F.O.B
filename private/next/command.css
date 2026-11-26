@@ -19,14 +19,7 @@
 /* Nov 11: arrange button on the map, next-step chip on each stop */
 .road .arr{position:absolute;right:14px;top:10px;z-index:30;display:flex;gap:8px}
 .road.pv .arr{position:absolute;top:12px;right:12px}
-.arr-b{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:999px;border:1px solid rgba(179,251,213,.35);background:rgba(10,14,13,.78);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#E6EFEA;font:600 14px var(--body,inherit);cursor:pointer;transition:border-color .2s,background .2s}
-.arr-b:hover{border-color:#B3FBD5}
-.arr-b.on{background:#B3FBD5;color:#06110C;border-color:#B3FBD5}
-.arr-b svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.road.arranging .stop{cursor:grab;outline:1.5px dashed color-mix(in srgb,var(--c) 60%,transparent);outline-offset:8px;border-radius:14px}
 .tag .tag-go{display:inline-flex;margin-top:8px;padding:5px 12px;border-radius:999px;font-style:normal;font-size:13px;font-weight:700;color:#06110C;background:var(--c);box-shadow:0 0 14px color-mix(in srgb,var(--c) 50%,transparent)}
-.arr-ph{display:flex;justify-content:flex-end;padding:0 12px 4px;position:relative;z-index:7}
-.arr-ph .arr{display:flex;gap:8px}
 
 /* ---------- Nov 12: map key ---------- */
 .mkey{position:absolute;right:0;top:48px;z-index:40;width:min(330px,calc(100vw - 32px));padding:14px 16px 12px;border-radius:18px;background:rgba(6,12,10,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(179,251,213,.4);box-shadow:0 18px 48px rgba(0,0,0,.6);text-align:left;max-height:min(70vh,560px);overflow:auto;animation:mkIn .22s ease both}
@@ -178,8 +171,8 @@
   #main .road.cn .stop{z-index:3}
 
   /* card pile: smaller, still tilted, still floating, still target-locked */
-  #main .road.cn .pile{width:60px!important;height:82px!important}
-  #main .road.cn .pile.up{bottom:18px}
+  #main .road.cn .pile{width:54px!important;height:74px!important}
+  #main .road.cn .pile.up{bottom:16px}
   #main .road.cn .pile .pc{border-radius:8px}
   #main .road.cn .pile .pc.b1{transform:translate(4px,-4px) rotate(2.5deg)}
   #main .road.cn .pile .pc.b2{transform:translate(7px,-7px) rotate(5deg)}
@@ -216,17 +209,7 @@
     font-size:10.5px;white-space:nowrap}
   #main .road.cn .tag:active{transform:translateX(-50%) translateY(-2px)!important}
 
-  /* arranging: the nine spots show themselves, and the one you are over lights up */
-  #main .road.cn .cn-cells{position:absolute;inset:0;pointer-events:none;z-index:1;display:none}
-  #main .road.cn.arranging .cn-cells{display:block}
-  #main .road.cn .cn-cells i{position:absolute;width:106px;height:216px;
-    transform:translate(-50%,-42%);border:1px dashed rgba(144,255,204,.22);
-    border-radius:16px;transition:background .12s,border-color .12s}
-  #main .road.cn .cn-cells i.on{border-color:rgba(179,251,213,.85);
-    background:rgba(144,255,204,.1);box-shadow:0 0 26px rgba(144,255,204,.3) inset}
-  #main .road.cn.arranging .stop{transition:left .18s ease,top .18s ease}
-  #main .road.cn .stop.moving{transition:none!important;z-index:9}
-  #main .road.cn .stop.moving .pile{animation:none!important;
+  #main .road.cn .stop.lift .pile{animation:none!important;
     filter:drop-shadow(0 16px 26px rgba(0,0,0,.65)) drop-shadow(0 0 20px rgba(179,251,213,.5))}
   #main .road.cn .flag{z-index:4;transform:translateX(-50%)}
 }
@@ -357,17 +340,6 @@
 
 
 
-/* The stop's own box is 27px - just the dot. The card, name and value around
-   it are positioned, so they were never part of the handle, which is a 27px
-   target for a finger. While arranging each stop carries an invisible 56px
-   grab area instead. */
-#main .road.arranging .stop{position:absolute}
-#main .road.arranging .stop::after{content:"";position:absolute;left:50%;top:50%;
-  width:56px;height:56px;transform:translate(-50%,-50%);border-radius:50%;z-index:0}
-#main .road.arranging .stop.moving::after{cursor:grabbing}
-/* the arrange bar must not sit on top of the map it is arranging */
-#main .arr,#main .arr-ph{position:relative;z-index:4}
-
 /* Desktop has the width for all of it at once, so the fold is a phone answer
    to a phone problem. There, the figures stay on screen and the fold row goes. */
 @media (min-width:821px){
@@ -375,44 +347,25 @@
   #main .hudc[data-sales="shut"] .hudc-read{display:grid!important}
 }
 
-/* ===== Nov 21: arranging compresses the map so every spot is on screen =====
-   Rows go from 240px apart to 120px, which only works if a stop stops being a
-   215px tower of photo pile and caption. While arranging each one is a chip:
-   the card photo, the orb and the name. The value, the go chip and the deck
-   controls are not arranging tools, so they step out until he taps Done, and
-   the full map comes straight back. Nothing is deleted - this is a mode. */
-#main .road.cn-tight .stop{transition:left .3s cubic-bezier(.22,1,.36,1),top .3s cubic-bezier(.22,1,.36,1)}
-/* Nov 24: these rules used to name .tag .go and .tag .val, which this markup
-   has never had - the real ones are .tv (count + money) and .tag-go. So none
-   of it applied and a stop stayed a 150px tower of photo pile and caption:
-   rows 100px apart overlapped each other and row one slid under the Done bar.
-   While arranging a stop is its dot and its name, nothing else. You are
-   placing stations, not reading cards; the cards come back on Done. */
-#main .road.cn-tight .pile,
-#main .road.cn-tight .flag,
-#main .road.cn-tight .tag .stepn,
-#main .road.cn-tight .tag .tv,
-#main .road.cn-tight .tag .tag-go,
-#main .road.cn-tight .tag small{display:none!important}
-#main .road.cn-tight .dot{transform:scale(.9)}
-#main .road.cn-tight .cn-cells i{width:62px;height:62px;margin:-31px 0 0 -31px;border-width:2px}
-#main .road.cn-tight .cn-cells i.on{box-shadow:0 0 0 2px rgba(96,230,164,.6),0 0 24px rgba(96,230,164,.5)}
-
-/* The arrange bar is a full-width block even though its buttons sit on the
-   right, so its empty half was swallowing taps on the top row of stops -
-   three of eight unreachable at their centre. Only the buttons take pointers. */
-#main .arr-ph{pointer-events:none}
-#main .arr-ph .arr-b,#main .arr-ph .arr{pointer-events:auto}
-
-/* ===== Nov 24: arranging gets the screen =====
-   The compressed arrange canvas is 362px and needs the room under a folded
-   175px HUD. With the sales figures expanded the HUD is 343px and two thirds
-   of the map fell off the bottom, which is what Sawyer was hitting. While
-   arranging, the figures and their fold row step aside; Done brings them back
-   exactly as they were, since the panel's state lives in localStorage and the
-   next render reads it. Phones only - desktop has the width for both. */
-@media (max-width:820px){
-  #main.arr-on .hudc-read,
-  #main.arr-on .hudc-more{display:none!important}
-  #main.arr-on .hudc{margin-bottom:2px}
-}
+/* ===== Nov 26: holding a stop to move it =====
+   There is no arrange mode any more, so there is no mode styling either. A
+   stop looks exactly like a stop until you hold it, and then it lifts: the
+   one bit of feedback that says the map is listening. */
+#main .road .stop{touch-action:pan-y}
+#main .road .stop.lift{z-index:30!important;transition:none!important;cursor:grabbing}
+#main .road .stop.lift .tag{transform:scale(1.04);border-color:#B3FBD5!important;
+  box-shadow:0 0 0 2px rgba(179,251,213,.28),0 14px 34px rgba(0,0,0,.6)!important}
+#main .road .stop.lift .dot{transform:scale(1.14);
+  box-shadow:0 0 0 4px rgba(179,251,213,.18),0 0 26px rgba(144,255,204,.5)}
+#main .road .stop.lift .pile{animation:none!important;filter:drop-shadow(0 16px 26px rgba(0,0,0,.55))}
+#main .road.picking .stop:not(.lift){opacity:.55;transition:opacity .18s}
+#main .road.picking .stop:not(.lift) .pile{animation:none!important}
+/* the settle is measured, so it must not be animated while it is measured:
+   .lift stays on until declash has finished and only then comes off. */
+#main .road .stop:not(.lift){transition:left .22s cubic-bezier(.22,1,.36,1),top .22s cubic-bezier(.22,1,.36,1)}
+#main .road .stop.lift{transition:none!important}
+.mk-reset{display:block;width:100%;margin:10px 0 2px;height:38px;border-radius:999px;
+  border:1px solid rgba(179,251,213,.3);background:rgba(10,14,13,.7);color:#E6EFEA;
+  font:600 13px var(--body,system-ui);cursor:pointer}
+.mk-reset:active{background:rgba(179,251,213,.14)}
+.mk-i.move{background:linear-gradient(180deg,#B3FBD5,#50B97E)}
