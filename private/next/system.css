@@ -23,15 +23,15 @@
   --sys-r-sm:9px; --sys-r:13px; --sys-r-lg:17px; --sys-r-pill:999px;
   --sys-s1:4px; --sys-s2:7px; --sys-s3:11px; --sys-s4:16px; --sys-s5:22px;
 
-  --sys-mA:#C8FFE4; --sys-mB:#7FE8B4; --sys-mC:#3E9E6C;
-  --sys-ink:#D3F2E4; --sys-mute:#7E9389;
+  --sys-mA:#E2E3E5; --sys-mB:#7FE8B4; --sys-mC:#3E9E6C;
+  --sys-ink:#E1E2E4; --sys-mute:#7F8892;
   --sys-amber:#F2A03D; --sys-amber-hi:#FFC59A;
 
   /* one glass recipe, used everywhere */
-  --sys-glass:linear-gradient(180deg,rgba(14,30,22,.58),rgba(4,12,9,.68));
-  --sys-glass-hi:linear-gradient(180deg,rgba(20,40,30,.68),rgba(6,16,11,.74));
+  --sys-glass:linear-gradient(180deg,rgba(20,22,24,.58),rgba(7,8,9,.68));
+  --sys-glass-hi:linear-gradient(180deg,rgba(28,30,32,.68),rgba(10,11,12,.74));
   --sys-edge:rgba(179,251,213,.17);
-  --sys-lip:0 1px 0 rgba(200,255,228,.2) inset;
+  --sys-lip:0 1px 0 rgba(226,227,229,.2) inset;
   --sys-lift:0 14px 30px rgba(0,0,0,.52);
   --sys-lift-hi:0 22px 46px rgba(0,0,0,.62),0 0 28px rgba(96,230,164,.16);
   --sys-ease:cubic-bezier(.22,1,.36,1);
@@ -67,11 +67,21 @@
 #main .ch-age,#main .more,#main .spx-edit,#main .tag{border-radius:var(--sys-r-pill)!important}
 
 /* ---------- 2. one card: gloss on top, lit rim, real shadow ---------- */
-#main .bd-art,#main .vb-card,#main .pc{
+/* Nov 26: .pc was in this list and must never have been. A .pc is one face of
+   a card pile - next.css gives it position:absolute;inset:0 so the three faces
+   sit ON TOP of each other. Forcing relative here put them in normal flow, so
+   from build 231 on, one pile painted ~780px of cards marching down the page,
+   over its own label and into the row below. On Sawyer's desktop that is the
+   card sitting on "Ready to list" and the one hanging off the bottom of every
+   stop. The gloss only needs a positioned ancestor, and absolute is positioned. */
+#main .bd-art,#main .vb-card{
   position:relative;
   box-shadow:0 14px 28px -10px rgba(0,0,0,.92),
              0 0 0 1px rgba(179,251,213,.2),
-             0 1px 0 rgba(216,255,236,.26) inset!important;
+             0 1px 0 rgba(234,236,237,.26) inset!important;
+  transition:transform .26s var(--sys-ease),box-shadow .26s var(--sys-ease)!important}
+#main .pc{box-shadow:0 14px 28px -10px rgba(0,0,0,.92),0 0 0 1px rgba(179,251,213,.2),
+  0 1px 0 rgba(234,236,237,.26) inset!important;
   transition:transform .26s var(--sys-ease),box-shadow .26s var(--sys-ease)!important}
 /* .vb-card already has its own gloss ::after in vault.css and mine was
    silently replacing it - same selector, loaded later. Theirs stays. */
@@ -87,7 +97,7 @@
 #main .bd-t:active .bd-art,#main .vb-pk:active .vb-card{
   transform:translateY(-6px) scale(1.04);
   box-shadow:0 30px 52px -12px rgba(0,0,0,.95),
-             0 0 0 1px rgba(200,255,228,.65),
+             0 0 0 1px rgba(226,227,229,.65),
              0 0 34px rgba(96,230,164,.4)!important;z-index:40}
 
 /* the glare layer already exists on every card - turn it up so it reads as gloss */
@@ -107,16 +117,16 @@
 /* ---------- 4. one chip ---------- */
 #main .ch-age,#main .more,#main .spx-edit{
   border:1px solid rgba(179,251,213,.3)!important;
-  background:linear-gradient(180deg,rgba(10,26,19,.86),rgba(4,12,9,.9))!important;
+  background:linear-gradient(180deg,rgba(17,18,19,.86),rgba(7,8,9,.9))!important;
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
-  box-shadow:0 1px 0 rgba(216,255,236,.2) inset,0 3px 10px rgba(0,0,0,.5)!important}
+  box-shadow:0 1px 0 rgba(234,236,237,.2) inset,0 3px 10px rgba(0,0,0,.5)!important}
 
 /* ---------- 5. one control ---------- */
 #main .bd-btn,#main .ha,#main .hc,#main .bd-pick{
   border:1px solid rgba(179,251,213,.2)!important;
-  background:linear-gradient(180deg,rgba(24,48,36,.5),rgba(9,22,16,.6))!important;
+  background:linear-gradient(180deg,rgba(33,36,39,.5),rgba(14,15,17,.6))!important;
   -webkit-backdrop-filter:blur(13px) saturate(1.4);backdrop-filter:blur(13px) saturate(1.4);
-  box-shadow:0 1px 0 rgba(216,255,236,.22) inset,0 8px 18px rgba(0,0,0,.45)!important;
+  box-shadow:0 1px 0 rgba(234,236,237,.22) inset,0 8px 18px rgba(0,0,0,.45)!important;
   transition:transform .16s var(--sys-ease),box-shadow .2s ease,border-color .2s ease}
 #main .bd-btn:active,#main .ha:active,#main .hc:active{transform:scale(.96)}
 /* Every action tile with anything in it carries .hot, so an amber border there
@@ -125,9 +135,9 @@
 
 /* ---------- 6. the roadmap label stops being a 40px lozenge ---------- */
 #main .tag{border:1px solid rgba(179,251,213,.2)!important;
-  background:linear-gradient(180deg,rgba(22,44,33,.6),rgba(7,18,13,.7))!important;
+  background:linear-gradient(180deg,rgba(31,33,35,.6),rgba(12,12,13,.7))!important;
   -webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4);
-  box-shadow:0 1px 0 rgba(216,255,236,.24) inset,0 10px 22px rgba(0,0,0,.5)!important}
+  box-shadow:0 1px 0 rgba(234,236,237,.24) inset,0 10px 22px rgba(0,0,0,.5)!important}
 
 /* ---------- 7. one page deep stops looking like a different app ----------
    Measured by clicking in the way he does: Warehouse -> shelf -> bin, and
@@ -140,10 +150,10 @@
 
 /* and the same material, so a sheet is the app rather than a plain panel */
 #main .fc-box,#main .sc-wrap,#main .sc-side,#main .sc-q{
-  background:linear-gradient(180deg,rgba(24,48,36,.5),rgba(9,22,16,.62))!important;
+  background:linear-gradient(180deg,rgba(33,36,39,.5),rgba(14,15,17,.62))!important;
   border:1px solid rgba(179,251,213,.2)!important;
   -webkit-backdrop-filter:blur(18px) saturate(1.45);backdrop-filter:blur(18px) saturate(1.45);
-  box-shadow:0 1px 0 rgba(216,255,236,.24) inset,0 20px 44px rgba(0,0,0,.58)!important}
+  box-shadow:0 1px 0 rgba(234,236,237,.24) inset,0 20px 44px rgba(0,0,0,.58)!important}
 
 /* ====================================================================
    8. THE OVERLAYS, WHICH LIVE OUTSIDE #main
@@ -158,10 +168,10 @@
 .fc-zoom,.sc-q,.st-mode,.sc-drop,.fc-act,.fc-pill{border-radius:var(--sys-r)!important}
 
 .fc-box{
-  background:linear-gradient(180deg,rgba(24,48,36,.56),rgba(8,20,15,.68))!important;
+  background:linear-gradient(180deg,rgba(33,36,39,.56),rgba(13,14,15,.68))!important;
   border:1px solid rgba(179,251,213,.22)!important;
   -webkit-backdrop-filter:blur(22px) saturate(1.45);backdrop-filter:blur(22px) saturate(1.45);
-  box-shadow:0 1px 0 rgba(216,255,236,.26) inset,0 30px 60px rgba(0,0,0,.66),
+  box-shadow:0 1px 0 rgba(234,236,237,.26) inset,0 30px 60px rgba(0,0,0,.66),
              0 0 34px rgba(96,230,164,.1)!important}
 
 /* the sheet's own figures go metallic like every other number in the app */
@@ -173,16 +183,16 @@
 /* its controls match the ones on the page it came from */
 .fc-box .fc-act,.fc-box .btn,.fc-zoom{
   border:1px solid rgba(179,251,213,.2)!important;
-  background:linear-gradient(180deg,rgba(26,52,39,.5),rgba(9,22,16,.6))!important;
+  background:linear-gradient(180deg,rgba(36,39,42,.5),rgba(14,15,17,.6))!important;
   -webkit-backdrop-filter:blur(13px) saturate(1.4);backdrop-filter:blur(13px) saturate(1.4);
-  box-shadow:0 1px 0 rgba(216,255,236,.22) inset,0 8px 18px rgba(0,0,0,.45)!important;
+  box-shadow:0 1px 0 rgba(234,236,237,.22) inset,0 8px 18px rgba(0,0,0,.45)!important;
   transition:transform .16s var(--sys-ease),box-shadow .2s ease,border-color .2s ease}
 .fc-box .fc-act:active,.fc-box .btn:active{transform:scale(.96)}
 
 /* the card in the sheet gets the same gloss as the card you tapped */
 .fc-box .fc-art,.fc-box .bd-art{
   box-shadow:0 20px 40px -12px rgba(0,0,0,.95),0 0 0 1px rgba(179,251,213,.22),
-             0 1px 0 rgba(216,255,236,.3) inset!important}
+             0 1px 0 rgba(234,236,237,.3) inset!important}
 
 /* ====================================================================
    9. How it moves when you go a level in.
@@ -239,7 +249,7 @@
     transform:translate(-50%,-50%);
     display:flex;align-items:center;gap:9px;padding:7px 10px 7px 8px;
     border-radius:17px;
-    background:linear-gradient(162deg,rgba(26,37,32,.93) 0%,rgba(12,18,15,.95) 58%,rgba(7,11,9,.96) 100%);
+    background:linear-gradient(162deg,rgba(29,31,34,.93) 0%,rgba(14,15,16,.95) 58%,rgba(8,9,10,.96) 100%);
     border:1px solid color-mix(in srgb,var(--c) 38%,rgba(179,251,213,.14));
     box-shadow:0 10px 26px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,255,255,.07),
       0 0 0 1px rgba(0,0,0,.4);
@@ -273,14 +283,14 @@
     gap:1px!important;flex:1 1 auto;overflow:hidden;z-index:2}
   html body #main .road.cn .stop .tag span,
   html.fx #main .road.cn .stop .tag span{font-size:11.5px!important;line-height:1.2!important;
-    font-weight:700!important;color:#EAF3EE!important;letter-spacing:.1px;
+    font-weight:700!important;color:#EEEEEF!important;letter-spacing:.1px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block}
   html body #main .road.cn .stop .tag .stepn,
   html.fx #main .road.cn .stop .tag .stepn{position:absolute!important;right:8px!important;top:5px!important;
     font-size:8.5px!important;font-weight:700!important;opacity:.4;font-style:normal}
   html body #main .road.cn .stop .tag .tv,
   html.fx #main .road.cn .stop .tag .tv{display:flex!important;align-items:baseline;gap:5px;
-    font-size:11px!important;color:#9FC3B2!important;font-weight:600!important;white-space:nowrap}
+    font-size:11px!important;color:#ABB1B7!important;font-weight:600!important;white-space:nowrap}
   html body #main .road.cn .stop .tag .tv .tc,
   html.fx #main .road.cn .stop .tag .tv .tc{font-size:15px!important;font-weight:800!important;
     color:var(--c)!important;line-height:1}
@@ -362,17 +372,17 @@
   pointer-events:none}
 .inst.on{opacity:1;transform:none;pointer-events:auto}
 .inst-b{display:flex;align-items:center;gap:12px;padding:12px 13px;border-radius:19px;
-  background:linear-gradient(162deg,rgba(26,37,32,.97),rgba(9,14,12,.98));
+  background:linear-gradient(162deg,rgba(29,31,34,.97),rgba(11,11,12,.98));
   border:1px solid rgba(179,251,213,.3);
   box-shadow:0 18px 44px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08);flex-wrap:wrap}
 .inst-i{width:42px;height:42px;border-radius:11px;flex:0 0 42px}
 .inst-t{flex:1 1 150px;min-width:0;display:flex;flex-direction:column;gap:2px}
-.inst-t b{font-size:13.5px;color:#EAF3EE;font-weight:700}
-.inst-t span{font-size:11.5px;color:#9FC3B2;line-height:1.35}
+.inst-t b{font-size:13.5px;color:#EEEEEF;font-weight:700}
+.inst-t span{font-size:11.5px;color:#ABB1B7;line-height:1.35}
 .inst-a{display:flex;gap:8px;flex:1 1 100%;justify-content:flex-end}
 .inst-y,.inst-n{height:34px;padding:0 15px;border-radius:999px;font:600 12.5px var(--body,system-ui);cursor:pointer}
-.inst-y{background:#B3FBD5;color:#06110C;border:0}
-.inst-n{background:transparent;color:#9FC3B2;border:1px solid rgba(179,251,213,.24)}
+.inst-y{background:#B3FBD5;color:#0B0B0C;border:0}
+.inst-n{background:transparent;color:#ABB1B7;border:1px solid rgba(179,251,213,.24)}
 
 /* ===== Nov 26: the capsule gets the height its contents need =====
    Measured at 4x: the type was the right size all along (11.5px computed),

@@ -20,12 +20,12 @@
       same-origin, basic responses are stored, and /api/ is never stored at
       all - orders and inventory must always come from the network. */
 const ASSETS = [
-  "./", "./index.html?v=249",
-  "./app.css?v=249", "./next.css?v=249", "./command.css?v=249", "./collection.css?v=249",
-  "./channels.css?v=249", "./scouter.css?v=249", "./spaces.css?v=249", "./vault.css?v=249",
-  "./system.css?v=249", "./premium.css?v=249", "./holo.css?v=249", "./kit.css?v=249",
-  "./fx.css?v=249", "./settings.css?v=249", "./solid.css?v=249",
-  "./next.js?v=249", "./fx.js?v=249", "./fx2.js?v=249", "./native.js?v=249",
+  "./", "./index.html?v=250",
+  "./app.css?v=250", "./next.css?v=250", "./command.css?v=250", "./collection.css?v=250",
+  "./channels.css?v=250", "./scouter.css?v=250", "./spaces.css?v=250", "./vault.css?v=250",
+  "./system.css?v=250", "./premium.css?v=250", "./holo.css?v=250", "./kit.css?v=250",
+  "./fx.css?v=250", "./settings.css?v=250", "./solid.css?v=250",
+  "./next.js?v=250", "./fx.js?v=250", "./fx2.js?v=250", "./native.js?v=250",
   "./manifest.webmanifest", "./img/icon-192.png?v=3", "./img/wm-text.png", "./img/husky.jpg",
 ];
 const BUILD = (ASSETS[1].match(/v=(\d+)/) || [, "0"])[1];
