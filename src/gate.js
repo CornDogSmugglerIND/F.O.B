@@ -69,11 +69,23 @@ export function gate(lockPage) {
 /* POST /api/auth {code} -> cookie */
 export function authRoute(req, res) {
   if (!pass()) return res.json({ ok: true, open: true });
-  const code = String((req.body && req.body.code) || "");
-  const who = String((req.body && req.body.user) || "").trim();
-  const okUser = !user() || same(who.toLowerCase(), user().toLowerCase());
-  const okPass = !!code && same(code, pass());
-  if (!okUser || !okPass) return res.status(401).json({ ok: false, error: "wrong" });
+  /* Nov 26: the username was trimmed and the passcode was not, so a single
+     trailing space - from a phone keyboard, a paste, or a password manager -
+     failed with the same blank "wrong" as a completely wrong passcode, and
+     there was no way to tell the two apart. iOS also likes to insert a
+     non-breaking space and to curl a straight quote. All of that is stripped
+     from both sides now, and the reply says WHICH field was wrong so he is
+     not left guessing which half to retype. */
+  const tidy = (v) => String(v || "").replace(/[\u00A0\u2007\u202F]/g, " ")
+    .replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"').trim();
+  const code = tidy(req.body && req.body.code);
+  const who = tidy(req.body && req.body.user);
+  const okUser = !user() || same(who.toLowerCase(), tidy(user()).toLowerCase());
+  const okPass = !!code && same(code, tidy(pass()));
+  if (!okUser || !okPass) {
+    return res.status(401).json({ ok: false, error: "wrong",
+      field: !okUser ? "user" : "code" });
+  }
   const exp = Date.now() + DAYS * 864e5;
   res.set("Set-Cookie", `${COOKIE}=${sign(exp)}; Path=/; Max-Age=${DAYS * 86400}; HttpOnly; Secure; SameSite=Lax`);
   res.json({ ok: true });

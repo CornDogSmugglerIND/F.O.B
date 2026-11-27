@@ -37,6 +37,11 @@ f.addEventListener('submit',async function(ev){ev.preventDefault();if(!c.value||
  b.disabled=true;b.textContent='Checking…';e.textContent='';
  try{var r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u.value,code:c.value})});
   if(r.ok){b.textContent='Opening…';location.replace('/next/');return}
-  e.textContent='Wrong username or password.';}catch(x){e.textContent='Could not reach the server.';}
+  /* Nov 26: this said "Wrong username or password" whichever one was wrong,
+     so there was no way to tell which half to retype. The server now says. */
+  var d={};try{d=await r.json()}catch(_){}
+  e.textContent = d.field==='user' ? 'That username is not right.'
+    : d.field==='code' ? 'Username is right - the passcode is not.'
+    : 'Wrong username or password.';}catch(x){e.textContent='Could not reach the server.';}
  b.disabled=false;b.textContent='Unlock';c.select();});
 </script></body></html>
