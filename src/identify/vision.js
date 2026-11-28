@@ -84,6 +84,17 @@ Look at the photo(s). Return ONLY valid JSON (no markdown) with this shape:
 Rules:
 - Never guess finish/variant if unsure — set confidence low.
 - Prefer exact printed name and collector number from the card.
+- product_name is ONLY the item's own name, as a shop would list it. Nothing else.
+  Stop as soon as the name is complete. A sealed product's name ends at the word
+  that says what it is — "... Premium Collection", "... Elite Trainer Box",
+  "... Booster Bundle". Do NOT continue past that with anything else printed on
+  the box: not the era or block it belongs to, not the set, not "promos", not
+  what is inside it, not marketing copy, not the card count, not the age rating.
+  Right: "Iono's Bellibolt ex Premium Collection"
+  Wrong: "Iono's Bellibolt ex Premium Collection Scarlet and Violet promos"
+  The era belongs in no field. The specific set, if the box names one, goes in
+  set_name and nowhere else.
+- One item per identify. Never merge two products into one product_name.
 - set_name is the SPECIFIC expansion set for this exact product (e.g. "Destined Rivals", "Surging Sparks", "Journey Together") — NEVER the era, block or generation the set sits inside (never "Scarlet and Violet", "Sword and Shield", "Sun and Moon"). Exception: when the product IS that base set itself. For sealed product, read the set name off the packaging.
 - If photo is blurry / hair / glare, set unusable_photo true.
 - kind=card for TCG/sports cards; sealed/toy/electronics/movie/other otherwise.

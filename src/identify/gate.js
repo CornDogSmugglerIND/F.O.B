@@ -109,6 +109,56 @@ export function resolveSetName(partial = {}) {
   return partial;
 }
 
+/* Words that mean "this is the product itself", not a description of it.
+   If one of these is already in the name, the name is finished and anything
+   trailing after it is packaging copy. */
+const PRODUCT_KIND = [
+  "premium collection", "elite trainer box", "ultra premium collection",
+  "special collection", "build and battle", "booster bundle", "booster box",
+  "booster pack", "collection box", "starter deck", "theme deck", "gift set",
+  "tin", "blister", "bundle", "collection", "box", "deck", "etb",
+];
+
+/**
+ * Nov 27: Sawyer - "it half identifies the item then throws an extra bullshit
+ * filler into the title ... it's like it's making seven different titles at
+ * once". Real example: an "Iono's Bellibolt ex Premium Collection" came back
+ * as "Iono's Bellibolt ex Premium Collection Scarlet and Violet promos".
+ *
+ * Nothing in the pipeline concatenates names - the model was handing back a
+ * product_name with the box's other printed text run into it. The prompt had
+ * a long rule protecting set_name from era names and NO rule at all about
+ * product_name, so every line on the packaging was fair game.
+ *
+ * The prompt is fixed too, but a prompt is a request, not a guarantee. This
+ * is the guarantee: once a name contains the word that says what the product
+ * IS, an era name after that point starts packaging copy, and it is cut.
+ * An era at the START is left alone - "Scarlet & Violet 151 Booster Box" is
+ * the product's real name.
+ * @param {string|null|undefined} name
+ */
+export function cleanProductName(name) {
+  let out = String(name || "").replace(/\s+/g, " ").trim();
+  if (!out) return out;
+  const low = out.toLowerCase();
+  let cut = out.length;
+  for (const era of ERA_SET_NAMES) {
+    const variants = [era, era.replace(" and ", " & ")];
+    for (const v of variants) {
+      let i = low.indexOf(v);
+      while (i > 0) {                       /* > 0: never touch a leading era */
+        const before = low.slice(0, i);
+        if (PRODUCT_KIND.some((k) => before.includes(k)) && i < cut) cut = i;
+        i = low.indexOf(v, i + 1);
+      }
+    }
+  }
+  out = out.slice(0, cut).trim();
+  /* and the loose packaging words that trail a finished name */
+  out = out.replace(/[\s,\-–—]+(?:promos?|promo cards?|and more|plus more|contents|includes)\s*$/i, "");
+  return out.replace(/[\s,\-–—:;]+$/, "").trim();
+}
+
 /**
  * @param {Partial<IdentifyCandidate>} partial
  * @param {number} [quantity]
@@ -117,6 +167,7 @@ export function resolveSetName(partial = {}) {
 export function normalizeIdentity(partial = {}, quantity = 1) {
   const base = emptyIdentity(quantity);
   const p = resolveSetName(partial);
+  if (p.product_name) p.product_name = cleanProductName(p.product_name);
   return {
     ...base,
     ...p,
